@@ -1,0 +1,1 @@
+/* O manifesto kernel */ const SYSTEM={mode:'silent'}; document.addEventListener('click',()=>document.documentElement.classList.toggle('negative'));

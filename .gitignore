@@ -1,0 +1,14 @@
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Env / secrets
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

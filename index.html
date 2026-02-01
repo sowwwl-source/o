@@ -1,0 +1,167 @@
+<?php
+session_start();
+
+/* ===============================
+   CONFIG / DB
+   =============================== */
+
+$host = 'localhost';
+$db   = 'o_point';
+$user = 'o_user';
+$pass = 'CHANGE_ME';
+$charset = 'utf8mb4';
+
+$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$options = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+];
+
+try {
+    $pdo = new PDO($dsn, $user, $pass, $options);
+} catch (\PDOException $e) {
+    die('Connexion impossible.');
+}
+
+/* ===============================
+   AUTH MINIMALE
+   =============================== */
+
+if (!isset($_SESSION['username'])) {
+    die('Non connecté.');
+}
+
+$username = $_SESSION['username'];
+
+/* ===============================
+   LAND
+   =============================== */
+
+$stmt = $pdo->prepare("SELECT * FROM lands WHERE username = ?");
+$stmt->execute([$username]);
+$land = $stmt->fetch();
+
+if (!$land) {
+    die('LAND introuvable.');
+}
+
+/* ===============================
+   CHALOUPES (placeholder)
+   =============================== */
+
+$chaloupes = [
+    ['label' => '— vers SHORE'],
+    ['label' => '— vers BATO'],
+    ['label' => '— silence'],
+];
+
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>O.</title>
+
+<style>
+/* ===============================
+   UX MINIMALE O.
+   =============================== */
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #fafafa;
+  color: #111;
+  max-width: 720px;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
+}
+
+section {
+  margin-bottom: 3rem;
+}
+
+section:hover {
+  background: rgba(0,0,0,0.02);
+}
+
+h1 {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+h2 {
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  opacity: 0.6;
+  margin-bottom: 0.75rem;
+}
+
+.land-status {
+  font-size: 1.2rem;
+  margin-bottom: 0.25rem;
+}
+
+.land-meta {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.shore p {
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+.chaloupes ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.chaloupes li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #ddd;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ===============================
+     LAND
+     =============================== -->
+<section class="land">
+  <h1>0.</h1>
+  <p class="land-status">Vous êtes chez vous</p>
+  <p class="land-meta">
+    Utilisateur : <?= htmlspecialchars($land['username']) ?><br>
+    Fuseau horaire : <?= htmlspecialchars($land['timezone']) ?><br>
+    Zone : <?= htmlspecialchars($land['zone_code']) ?>
+  </p>
+</section>
+
+<!-- ===============================
+     SHORE
+     =============================== -->
+<section class="shore">
+  <h2>SHORE</h2>
+  <p>
+    <?= nl2br(htmlspecialchars($land['shore_text'] ?? 'Silence.')) ?>
+  </p>
+</section>
+
+<!-- ===============================
+     CHALOUPES
+     =============================== -->
+<section class="chaloupes">
+  <h2>CHALOUPES</h2>
+  <ul>
+    <?php foreach ($chaloupes as $c): ?>
+      <li><?= htmlspecialchars($c['label']) ?></li>
+    <?php endforeach; ?>
+  </ul>
+</section>
+
+</body>
+</html>
