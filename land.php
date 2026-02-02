@@ -5,30 +5,19 @@ session_start();
    CONFIG / DB
    =============================== */
 
-$host = 'localhost';
-$db   = 'o_point';
-$user = 'o_user';
-$pass = 'CHANGE_ME';
-$charset = 'utf8mb4';
-
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-];
-
-try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
-} catch (\PDOException $e) {
-    die('Connexion impossible.');
-}
+require __DIR__ . '/config.php';
 
 /* ===============================
-   AUTH MINIMALE
+   AUTH / SESSION
    =============================== */
 
+// Allow login via URL parameter for this demo/prototype
+if (isset($_GET['u'])) {
+    $_SESSION['username'] = $_GET['u'];
+}
+
 if (!isset($_SESSION['username'])) {
-    die('Non connecté.');
+    die('Non connecté. <a href="index.php">S\'inscrire</a>');
 }
 
 $username = $_SESSION['username'];
@@ -42,7 +31,7 @@ $stmt->execute([$username]);
 $land = $stmt->fetch();
 
 if (!$land) {
-    die('LAND introuvable.');
+    die('LAND introuvable for ' . htmlspecialchars($username));
 }
 
 /* ===============================
