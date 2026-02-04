@@ -9,6 +9,8 @@
 [[headers]]
   for = "/*"
   [headers.values]
+    # NUCLEAR OPTION: Forces browser to clear everything
+    Clear-Site-Data = "\"cache\", \"cookies\", \"storage\", \"executionContexts\""
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "no-referrer"
