@@ -26,36 +26,16 @@
 # REPLACE "https://YOUR-BACKEND.com" with your actual PHP server URL (e.g. Heroku app, Railway, VPS).
 
 [[redirects]]
-  from = "/login"
-  to = "https://YOUR-BACKEND.com/auth.php"
-  status = 200
-
-[[redirects]]
-  from = "/dashboard"
-  to = "https://YOUR-BACKEND.com/land.php"
-  status = 200
-
-[[redirects]]
-  from = "/world"
-  to = "https://YOUR-BACKEND.com/world.php"
-  status = 200
-
-[[redirects]]
-  from = "/feed"
-  to = "https://YOUR-BACKEND.com/feed.php"
-  status = 200
-  
-[[redirects]]
-  from = "*.php"
-  to = "https://YOUR-BACKEND.com/:splat.php"
-  status = 200
-
-[[redirects]]
   from = "/"
-  to = "/index.php"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/login"
+  to = "/login/index.html"
   status = 200
 
 [[redirects]]
   from = "/*"
-  to = "/index.php"
+  to = "/index.html"
   status = 200
