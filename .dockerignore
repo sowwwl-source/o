@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README*.md
+README*.txt
+docs/
+
+# Docker files
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Environment files
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Keys
+*.ppk
+*.pem
+*.key
