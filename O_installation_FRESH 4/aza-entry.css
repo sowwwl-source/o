@@ -1,0 +1,137 @@
+/* AZA entry layout (extends global-styles.css). */
+
+body {
+  padding: 2rem 1.5rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.hero {
+  margin-top: 8vh;
+}
+
+.lede {
+  opacity: 0.85;
+  max-width: 62ch;
+}
+
+.portals {
+  margin-top: 2.25rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.portal {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--o-line);
+  background: var(--o-fill);
+  box-shadow: var(--o-shadow);
+  transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.portal:hover {
+  transform: translateY(-1px);
+  border-color: rgba(var(--o-fg-rgb) / 0.55);
+  background: var(--o-fill-2);
+  box-shadow: 0 14px 34px rgba(var(--o-fg-rgb) / 0.16);
+  color: inherit;
+}
+
+.portal[aria-disabled="true"] {
+  opacity: 0.38;
+  filter: blur(0.25px);
+  cursor: not-allowed;
+}
+
+.portal[aria-disabled="true"]:hover {
+  transform: none;
+  border-color: var(--o-line);
+  background: var(--o-fill);
+  box-shadow: var(--o-shadow);
+  color: inherit;
+}
+
+.portal.is-active {
+  border-color: rgba(var(--o-fg-rgb) / 0.85);
+  box-shadow: 0 0 0 1px rgba(var(--o-fg-rgb) / 0.85),
+    0 14px 34px rgba(var(--o-fg-rgb) / 0.16);
+}
+
+.p-num {
+  letter-spacing: 0.18em;
+  opacity: 0.9;
+}
+
+.p-domain {
+  font-size: 0.8rem;
+  letter-spacing: 0.22em;
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+
+.p-title {
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  margin-top: 0.2rem;
+}
+
+.viewer {
+  margin-top: 2rem;
+}
+
+.viewer-inner {
+  padding: 1.4rem;
+  background: var(--o-fill);
+  border: 1px solid var(--o-line);
+  box-shadow: var(--o-shadow);
+}
+
+.viewer h2 {
+  margin-top: 0;
+}
+
+.footer {
+  margin-top: 2.5rem;
+  opacity: 0.8;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--o-line);
+  background: var(--o-fill);
+}
+
+.pill:hover {
+  background: var(--o-fill-2);
+  border-color: rgba(var(--o-fg-rgb) / 0.55);
+  color: inherit;
+}
+
+.pill[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pill[aria-disabled="true"]:hover {
+  background: var(--o-fill);
+  border-color: var(--o-line);
+  color: inherit;
+}
+
+@media (max-width: 520px) {
+  body {
+    padding: 1.25rem 1rem;
+  }
+
+  .portal {
+    grid-template-columns: 3.5rem 1fr;
+  }
+}
