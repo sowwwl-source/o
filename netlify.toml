@@ -25,6 +25,15 @@
 # 2. PHP files and routes must be proxied to an external PHP server.
 # REPLACE "https://YOUR-BACKEND.com" with your actual PHP server URL (e.g. Heroku app, Railway, VPS).
 
+# Proxy all API calls to your external PHP backend.
+# Any request to /api/* will be forwarded to your PHP server.
+# For example: /api/auth.php -> http://164.92.220.248/api/auth.php
+[[redirects]]
+  from = "/api/*"
+  to = "http://164.92.220.248/api/:splat"
+  status = 200
+  force = true # This ensures it proxies POST requests too
+
 [[redirects]]
   from = "/"
   to = "/index.html"

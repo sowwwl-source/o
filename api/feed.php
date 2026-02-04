@@ -25,9 +25,9 @@ $posts = $pdo->query("SELECT posts.content, posts.created_at, lands.username FRO
 <body class="AeiouuoieA">
 <main class="feed">
     <h1>Flux</h1>
-    <p><a href="/dashboard">← Retour au dashboard</a></p>
+    <p><a href="/land.php">← Retour au dashboard</a></p>
     
-    <form method="post" action="post.php">
+    <form method="post" action="/api/post.php">
         <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
         <textarea name="content" required placeholder="Exprime-toi sur le réseau..."></textarea>
         <div>
