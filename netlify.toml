@@ -27,10 +27,10 @@
 
 # Proxy all API calls to your external PHP backend.
 # Any request to /api/* will be forwarded to your PHP server.
-# For example: /api/auth.php -> http://164.92.220.248/api/auth.php
+# For example: /api/auth.php -> http://api.sowwwl.com/api/auth.php
 [[redirects]]
   from = "/api/*"
-  to = "http://164.92.220.248/api/:splat"
+  to = "http://api.sowwwl.com/api/:splat"
   status = 200
   force = true # This ensures it proxies POST requests too
 
