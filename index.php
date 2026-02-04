@@ -67,8 +67,8 @@ $message .= ' <a href="land.php?u=' . urlencode($username) . '">Aller chez vous<
         }
     </style>
 </head>
-<body>
-<main class="app">
+<body class="app">
+<main>
     <h1>O.</h1>
     <p>S’installer ici.</p>
 
