@@ -50,6 +50,8 @@ $chaloupes = [
 <head>
 <meta charset="utf-8">
 <title>O.</title>
+<link rel="stylesheet" href="styles.css">
+<script src="main.js" defer></script>
 
 <style>
 /* ===============================
@@ -115,7 +117,7 @@ h2 {
 </style>
 </head>
 
-<body>
+<body class="app">
 
 <!-- ===============================
      LAND
