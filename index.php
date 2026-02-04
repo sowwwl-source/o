@@ -41,6 +41,8 @@ $message .= ' <a href="land.php?u=' . urlencode($username) . '">Aller chez vous<
 <head>
     <meta charset="UTF-8">
     <title>O.</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="main.js" defer></script>
     <style>
         body {
             font-family: sans-serif;
@@ -65,7 +67,7 @@ $message .= ' <a href="land.php?u=' . urlencode($username) . '">Aller chez vous<
         }
     </style>
 </head>
-<body>
+<body class="app">
 <main>
     <h1>O.</h1>
     <p>S’installer ici.</p>

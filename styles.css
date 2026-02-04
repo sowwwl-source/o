@@ -1,1 +1,13 @@
-html,body{margin:0;padding:0;background:black;color:white;overflow:hidden;touch-action:none}.negative{filter:invert(1)}
+.app {
+  margin: 0;
+  padding: 0;
+  background: black;
+  color: white;
+  overflow: hidden;
+  touch-action: none;
+  min-height: 100vh;
+}
+
+.negative {
+  filter: invert(1);
+}
