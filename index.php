@@ -1,3 +1,3 @@
 <?php
-header('Location: /world', true, 302);
+header('Location: /login', true, 302);
 exit;
