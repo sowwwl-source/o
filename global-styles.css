@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-
 :root {
     --sowl-bg: #0f1a0f;
     --sowl-txt: #d0f0d0;
@@ -7,17 +6,14 @@
     --sowl-accent: #10b981;
     --scanline-opacity: 0.15;
 }
-
 body.inverted {
     --sowl-bg: #d0f0d0;
     --sowl-txt: #0f1a0f;
     --sowl-dim: #8fbf8f;
     --scanline-opacity: 0.05;
 }
-
 html { box-sizing: border-box; height: 100%; }
 *, *::before, *::after { box-sizing: inherit; }
-
 body {
     margin: 0; padding: 2rem 1.5rem;
     width: 100%; min-height: 100vh;
@@ -33,7 +29,6 @@ body {
     margin-left: auto;
     margin-right: auto;
 }
-
 body::after {
     content: " ";
     display: block;
@@ -45,11 +40,9 @@ body::after {
     pointer-events: none;
     opacity: var(--scanline-opacity);
 }
-
 h1 { font-size: 3rem; margin-bottom: 0.5rem; text-shadow: 0 0 10px var(--sowl-accent); }
 h2 { font-size: 0.85rem; letter-spacing: 0.2em; opacity: 0.8; margin-top: 2rem; }
 h3 { font-size: 1rem; letter-spacing: 0.15em; }
-
 a {
     color: var(--sowl-accent);
     text-decoration: none;
@@ -57,14 +50,12 @@ a {
     transition: all 0.2s;
     cursor: pointer;
 }
-
 a:hover {
     background-color: var(--sowl-accent);
     color: var(--sowl-bg);
     border-bottom-color: transparent;
     box-shadow: 0 0 10px var(--sowl-accent);
 }
-
 button {
     font-family: 'Share Tech Mono', monospace;
     padding: 0.75rem 1.5rem;
@@ -74,13 +65,11 @@ button {
     cursor: pointer;
     transition: all 0.3s;
 }
-
 button:hover {
     background: var(--sowl-accent);
     color: var(--sowl-bg);
     box-shadow: 0 0 15px var(--sowl-accent);
 }
-
 input, textarea, select {
     font-family: 'Share Tech Mono', monospace;
     width: 100%;
@@ -89,28 +78,16 @@ input, textarea, select {
     color: var(--sowl-txt);
     border: 1px solid var(--sowl-dim);
     margin: 0.5rem 0;
+    transition: all 0.3s;
 }
-
 input:focus, textarea:focus, select:focus {
     outline: none;
     border-color: var(--sowl-accent);
     box-shadow: 0 0 10px rgba(16,185,129,0.3);
 }
-
 .card { background: rgba(16,185,129,0.05); border: 1px solid var(--sowl-dim); padding: 1.5rem; }
-
 .nav { display: flex; gap: 2rem; margin: 2rem 0; flex-wrap: wrap; }
 .nav a { border: 1px solid var(--sowl-dim); padding: 0.5rem 1rem; }
-
-.grid { display: grid; gap: 1.5rem; margin: 1.5rem 
-
-
-docker compose cp global-styles.css app:/var/www/html/
-
-curl http://localhost:8080 | head -30
-
-exit
-q
-
-
-
+.grid { display: grid; gap: 1.5rem; margin: 1.5rem 0; }
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+@media (max-width: 768px) { body { padding: 1rem; } h1 { font-size: 2rem; } }
