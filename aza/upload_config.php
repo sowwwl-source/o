@@ -1,0 +1,2 @@
+<?php
+$UPLOAD_TOKEN = 'NAGa6lznek5SbS520HtAz6xv4xMqdSl653CXqD6xvWc';

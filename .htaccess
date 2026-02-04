@@ -1,6 +1,15 @@
 # OVH / Apache
 Options -Indexes
 
+# Routes propres
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^login/?$ auth.php [L,QSA]
+  RewriteRule ^dashboard/?$ land.php [L,QSA]
+  RewriteRule ^world/?$ world.php [L,QSA]
+  RewriteRule ^feed/?$ feed.php [L,QSA]
+</IfModule>
+
 # Passer en prod (si autorisé)
 # SetEnv APP_ENV prod
 
@@ -9,4 +18,7 @@ Options -Indexes
   Header set X-Content-Type-Options "nosniff"
   Header set X-Frame-Options "DENY"
   Header set Referrer-Policy "no-referrer"
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+  Header set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+  Header set Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; object-src 'none'; manifest-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org; script-src 'self' https://unpkg.com; style-src 'self' https://unpkg.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; media-src 'self'; connect-src 'self'"
 </IfModule>
