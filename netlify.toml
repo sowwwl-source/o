@@ -49,6 +49,11 @@
   status = 200
 
 [[redirects]]
+  from = "/"
+  to = "/index.php"
+  status = 200
+
+[[redirects]]
   from = "/*"
-  to = "/index.html"
+  to = "/index.php"
   status = 200
