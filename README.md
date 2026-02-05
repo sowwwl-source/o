@@ -3,3 +3,7 @@
 # sowwwl.com
 
 Site source and deployment status.
+
+## Builds
+
+This project has a single build: a Docker image defined by the `Dockerfile` and used by the `app` service in `docker-compose.yml` (`build: .`).
