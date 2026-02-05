@@ -1,13 +1,85 @@
+/* --- PALETTE PERSONNALISABLE --- */
+#palette-btn {
+    position: fixed;
+    bottom: 1.5em;
+    right: 1.5em;
+    z-index: 2000;
+    background: var(--sowl-bg, #101c14);
+    color: var(--sowl-txt, #b6ffb3);
+    border: 1px solid var(--sowl-txt, #b6ffb3);
+    border-radius: 50%;
+    width: 2.5em;
+    height: 2.5em;
+    font-size: 1.5em;
+    box-shadow: 0 0 8px 0 #ffb34755;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+#palette-btn:hover { opacity: 1; }
+
+#palette-panel {
+    position: fixed;
+    bottom: 4.5em;
+    right: 1.5em;
+    z-index: 2100;
+    background: var(--sowl-bg, #101c14);
+    color: var(--sowl-txt, #b6ffb3);
+    border: 1px solid var(--sowl-txt, #b6ffb3);
+    border-radius: 1em;
+    padding: 1.2em 1.5em 1em 1.5em;
+    box-shadow: 0 0 24px 2px #000a;
+    min-width: 260px;
+    display: none;
+}
+#palette-panel.active { display: block; }
+#palette-panel label { display: block; margin: 0.7em 0 0.2em 0; font-size: 0.95em; }
+#palette-panel input[type=range] { width: 100%; }
+#palette-panel .palette-row { display: flex; align-items: center; gap: 0.5em; margin-bottom: 0.5em; }
+#palette-panel .color-preview { width: 1.5em; height: 1.5em; border-radius: 0.5em; border: 1px solid #888; display: inline-block; }
+#palette-panel .close-btn { float: right; background: none; border: none; color: inherit; font-size: 1.2em; cursor: pointer; margin-left: 0.5em; }
+/* --- O. LUMINEUX --- */
+.o-light {
+    display: inline-block;
+    font-family: 'Orbitra', 'Share Tech Mono', monospace;
+    font-size: 2.5em;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #b6ffb3;
+    text-shadow:
+        0 0 8px #b6ffb3,
+        0 0 24px #ffb347,
+        0 0 48px #ffb34788;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s cubic-bezier(.4,2,.6,1), text-shadow 0.5s;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+}
+.o-light.active {
+    opacity: 1;
+    animation: o-pulse 1.2s cubic-bezier(.4,2,.6,1);
+}
+@keyframes o-pulse {
+    0% { opacity: 0; text-shadow: 0 0 0 #b6ffb3, 0 0 0 #ffb347; }
+    20% { opacity: 1; text-shadow: 0 0 16px #b6ffb3, 0 0 32px #ffb347; }
+    60% { opacity: 1; text-shadow: 0 0 32px #b6ffb3, 0 0 64px #ffb347cc; }
+    100% { opacity: 0; text-shadow: 0 0 0 #b6ffb3, 0 0 0 #ffb347; }
+}
 /* --- 1. IMPORT DES FONTS --- */
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitra:wght@400;700&display=swap');
 
 /* --- 2. VARIABLES & PALETTE (L'ADN du site) --- */
 body.AeiouuoieA {
     /* ÉTAT 1 : Terre Profonde (Défaut) */
-    --sowl-bg: #0b0b0b;      /* Noir profond */
-    --sowl-txt: #e6e6e6;     /* Gris clair */
+    --sowl-bg: #101c14;      /* Vert très sombre */
+    --sowl-txt: #b6ffb3;     /* Vert pâle phosphorescent */
     --sowl-dim: #666666;     /* Gris discret */
-
+    --sowl-btn-glow: #ffb347;
     /* Configuration */
     --scanline-opacity: 0.15; /* Intensité des lignes TV */
 }
@@ -38,21 +110,31 @@ body.AeiouuoieA {
     padding: 0;
     width: 100%;
     min-height: 100vh;
-
     background-color: var(--sowl-bg);
     color: var(--sowl-txt);
-
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 16px; /* Taille de base lisible */
+    font-family: 'Orbitra', 'Share Tech Mono', monospace;
+    font-size: 16px;
     line-height: 1.5;
-
-    /* Lissage de la police pour éviter l'effet pixelisé involontaire */
     -webkit-font-smoothing: antialiased;
-
-    /* Transition douce lors de l'inversion des couleurs */
     transition: background-color 0.4s ease, color 0.4s ease;
-
-    overflow-x: hidden; /* Pas de scroll horizontal */
+    overflow-x: hidden;
+}
+/* --- BOUTONS AVEC GLOW ORANGE --- */
+button, .btn {
+    color: var(--sowl-txt);
+    background: transparent;
+    border: 1px solid var(--sowl-txt);
+    border-radius: 4px;
+    padding: 0.5em 1.2em;
+    font-family: 'Orbitra', 'Share Tech Mono', monospace;
+    box-shadow: 0 0 8px 0 var(--sowl-btn-glow, #ffb34755);
+    transition: background 0.3s, color 0.3s, box-shadow 0.3s;
+}
+button:hover, button:focus, .btn:hover, .btn:focus {
+    background: var(--sowl-txt);
+    color: var(--sowl-bg);
+    box-shadow: 0 0 16px 2px var(--sowl-btn-glow, #ffb347cc);
+    outline: none;
 }
 
 /* --- 4. L'EFFET ECRAN (La contamination visuelle) --- */
@@ -595,6 +677,11 @@ body.AeiouuoieA.land-page .aza pre {
 }
 
 body.AeiouuoieA.land-page .aza .message {
+    color: #fca5a5;
+    margin: 0.5rem 0 1rem;
+}
+
+body.AeiouuoieA.land-page .identity .message {
     color: #fca5a5;
     margin: 0.5rem 0 1rem;
 }

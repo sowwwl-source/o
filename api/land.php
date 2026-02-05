@@ -38,6 +38,73 @@ if (!isset($_SESSION['username'])) {
 
 $username = $_SESSION['username'];
 
+/* ===============================
+   LAND (load early for identity)
+   =============================== */
+
+$stmt = $pdo->prepare("SELECT * FROM lands WHERE username = ?");
+$stmt->execute([$username]);
+$land = $stmt->fetch();
+
+if (!$land) {
+    die('LAND introuvable for ' . htmlspecialchars($username));
+}
+
+$user_id = (int) $land['id'];
+
+$identity_message = '';
+$identity_dev_hint = '';
+
+function normalize_phone(string $value): string
+{
+    $trimmed = trim($value);
+    $trimmed = preg_replace('/[^0-9+]/', '', $trimmed);
+    return $trimmed ?: '';
+}
+
+function load_identity(PDO $pdo, int $user_id): ?array
+{
+    $stmt = $pdo->prepare("SELECT * FROM identity_profiles WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+function ensure_identity(PDO $pdo, int $user_id): void
+{
+    $stmt = $pdo->prepare("INSERT IGNORE INTO identity_profiles (user_id) VALUES (?)");
+    $stmt->execute([$user_id]);
+}
+
+function issue_postal_code(PDO $pdo, int $user_id, array $identity, ?string &$dev_code = null): bool
+{
+    $code = generate_verification_code(6);
+    $hash = hash_verification_code($code);
+    $expires = time() + (30 * 24 * 60 * 60);
+
+    $stmt = $pdo->prepare("UPDATE identity_profiles
+        SET postal_code_hash = ?, postal_code_sent_at = NOW(), postal_code_expires_at = FROM_UNIXTIME(?)
+        WHERE user_id = ?
+    ");
+    $stmt->execute([$hash, $expires, $user_id]);
+
+    $address = [
+        'line1' => $identity['address_line1'] ?? '',
+        'line2' => $identity['address_line2'] ?? '',
+        'city' => $identity['city'] ?? '',
+        'region' => $identity['region'] ?? '',
+        'postal_code' => $identity['postal_code'] ?? '',
+        'country' => $identity['country'] ?? '',
+    ];
+
+    $sent = send_postal_code($address, $code);
+    if (!$sent && identity_dev_mode()) {
+        $dev_code = $code;
+    }
+
+    return $sent;
+}
+
 $aza_message = '';
 $aza_result = null;
 $aza_action = '';
@@ -270,15 +337,181 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aza_action'])) {
 }
 
 /* ===============================
-   LAND
+   IDENTITY / CLONE FLOW
    =============================== */
 
-$stmt = $pdo->prepare("SELECT * FROM lands WHERE username = ?");
-$stmt->execute([$username]);
-$land = $stmt->fetch();
+$identity = load_identity($pdo, $user_id);
+$identity = $identity ?: [];
 
-if (!$land) {
-    die('LAND introuvable for ' . htmlspecialchars($username));
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['identity_action'])) {
+    $posted_token = $_POST['csrf_token'] ?? '';
+    if (!hash_equals($csrf_token, $posted_token)) {
+        $identity_message = "Session expirée. Réessaie.";
+    } else {
+        ensure_identity($pdo, $user_id);
+        $identity = load_identity($pdo, $user_id) ?: [];
+        $action = $_POST['identity_action'] ?? '';
+
+        if ($action === 'request_phone_code') {
+            $phone = normalize_phone($_POST['phone'] ?? '');
+            if ($phone === '') {
+                $identity_message = "Numéro invalide.";
+            } else {
+                $code = generate_verification_code(6);
+                $hash = hash_verification_code($code);
+                $expires = time() + 600;
+
+                $stmt = $pdo->prepare("UPDATE identity_profiles SET phone_e164 = ? WHERE user_id = ?");
+                $stmt->execute([$phone, $user_id]);
+
+                $stmt = $pdo->prepare("INSERT INTO identity_phone_otps (user_id, phone_e164, code_hash, expires_at)
+                    VALUES (?, ?, ?, FROM_UNIXTIME(?))
+                ");
+                $stmt->execute([$user_id, $phone, $hash, $expires]);
+
+                $sent = send_sms_code($phone, $code);
+                if ($sent) {
+                    $identity_message = "Code envoyé.";
+                } else {
+                    $identity_message = "Code généré. Envoi SMS en attente de configuration.";
+                    if (identity_dev_mode()) {
+                        $identity_dev_hint = "Code SMS (DEV) : {$code}";
+                    }
+                }
+            }
+        } elseif ($action === 'verify_phone_code') {
+            $code = trim($_POST['phone_code'] ?? '');
+            if ($code === '') {
+                $identity_message = "Code requis.";
+            } else {
+                $stmt = $pdo->prepare("SELECT * FROM identity_phone_otps
+                    WHERE user_id = ? AND expires_at > NOW()
+                    ORDER BY id DESC LIMIT 1
+                ");
+                $stmt->execute([$user_id]);
+                $otp = $stmt->fetch();
+                if (!$otp) {
+                    $identity_message = "Code expiré ou introuvable.";
+                } elseif (!verify_verification_code($code, $otp['code_hash'])) {
+                    $stmt = $pdo->prepare("UPDATE identity_phone_otps SET attempts = attempts + 1 WHERE id = ?");
+                    $stmt->execute([$otp['id']]);
+                    $identity_message = "Code invalide.";
+                } else {
+                    $stmt = $pdo->prepare("UPDATE identity_profiles SET phone_verified_at = NOW() WHERE user_id = ?");
+                    $stmt->execute([$user_id]);
+                    $stmt = $pdo->prepare("DELETE FROM identity_phone_otps WHERE user_id = ?");
+                    $stmt->execute([$user_id]);
+                    $identity_message = "Téléphone validé.";
+                }
+            }
+        } elseif ($action === 'submit_address') {
+            if (empty($identity['phone_verified_at'])) {
+                $identity_message = "Valide le téléphone avant l'adresse.";
+            } else {
+                $line1 = trim($_POST['address_line1'] ?? '');
+                $city = trim($_POST['city'] ?? '');
+                $postal = trim($_POST['postal_code'] ?? '');
+                $country = strtoupper(trim($_POST['country'] ?? ''));
+                if ($line1 === '' || $city === '' || $postal === '' || $country === '') {
+                    $identity_message = "Adresse incomplète.";
+                } elseif (!isset($_FILES['proof_file']) || $_FILES['proof_file']['error'] !== UPLOAD_ERR_OK) {
+                    $identity_message = "Justificatif requis.";
+                } else {
+                    $file = $_FILES['proof_file'];
+                    $finfo = new finfo(FILEINFO_MIME_TYPE);
+                    $mime = $finfo->file($file['tmp_name']);
+                    $allowed = [
+                        'application/pdf' => 'pdf',
+                        'image/jpeg' => 'jpg',
+                        'image/png' => 'png'
+                    ];
+                    if (!isset($allowed[$mime])) {
+                        $identity_message = "Format invalide (pdf/jpg/png).";
+                    } else {
+                        $dir = __DIR__ . '/identity_uploads';
+                        if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
+                            $identity_message = "Erreur stockage justificatif.";
+                        } else {
+                            $filename = 'proof_' . $user_id . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '.' . $allowed[$mime];
+                            $target = $dir . '/' . $filename;
+                            if (!move_uploaded_file($file['tmp_name'], $target)) {
+                                $identity_message = "Upload échoué.";
+                            } else {
+                                $stmt = $pdo->prepare("UPDATE identity_profiles
+                                    SET address_line1 = ?, address_line2 = ?, city = ?, region = ?, postal_code = ?, country = ?,
+                                        proof_file = ?, proof_status = 'pending'
+                                    WHERE user_id = ?
+                                ");
+                                $stmt->execute([
+                                    $line1,
+                                    trim($_POST['address_line2'] ?? ''),
+                                    $city,
+                                    trim($_POST['region'] ?? ''),
+                                    $postal,
+                                    $country,
+                                    'identity_uploads/' . $filename,
+                                    $user_id
+                                ]);
+
+                                if (identity_auto_approve()) {
+                                    $stmt = $pdo->prepare("UPDATE identity_profiles
+                                        SET proof_status = 'approved', address_verified_at = NOW()
+                                        WHERE user_id = ?
+                                    ");
+                                    $stmt->execute([$user_id]);
+                                    $identity = load_identity($pdo, $user_id) ?: [];
+                                    $sent = issue_postal_code($pdo, $user_id, $identity, $identity_dev_hint);
+                                    $identity_message = $sent
+                                        ? "Adresse validée. Courrier envoyé."
+                                        : "Adresse validée. Envoi courrier en attente de configuration.";
+                                } else {
+                                    $identity_message = "Justificatif reçu. Vérification en cours.";
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } elseif ($action === 'resend_postal_code') {
+            if (empty($identity['address_verified_at'])) {
+                $identity_message = "Adresse non validée.";
+            } else {
+                $identity = load_identity($pdo, $user_id) ?: [];
+                $sent = issue_postal_code($pdo, $user_id, $identity, $identity_dev_hint);
+                $identity_message = $sent
+                    ? "Courrier relancé."
+                    : "Courrier relancé (configuration manquante).";
+            }
+        } elseif ($action === 'verify_postal_code') {
+            $code = trim($_POST['postal_code'] ?? '');
+            if ($code === '') {
+                $identity_message = "Code courrier requis.";
+            } else {
+                $identity = load_identity($pdo, $user_id) ?: [];
+                if (empty($identity['postal_code_hash']) || empty($identity['postal_code_expires_at'])) {
+                    $identity_message = "Aucun code actif.";
+                } else {
+                    $expires = strtotime($identity['postal_code_expires_at']);
+                    if ($expires !== false && $expires < time()) {
+                        $identity_message = "Code expiré.";
+                    } elseif (!verify_verification_code($code, $identity['postal_code_hash'])) {
+                        $identity_message = "Code invalide.";
+                    } else {
+                        $stmt = $pdo->prepare("UPDATE identity_profiles
+                            SET postal_verified_at = NOW(), clone_activated_at = NOW()
+                            WHERE user_id = ?
+                        ");
+                        $stmt->execute([$user_id]);
+                        $identity_message = "Identité validée. Clone activé.";
+                    }
+                }
+            }
+        } else {
+            $identity_message = "Action inconnue.";
+        }
+    }
+
+    $identity = load_identity($pdo, $user_id);
 }
 
 /* ===============================
@@ -346,6 +579,109 @@ $chaloupes = [
       <li><?= htmlspecialchars($c['label']) ?></li>
     <?php endforeach; ?>
   </ul>
+</section>
+
+<!-- ===============================
+         IDENTITÉ / CLONE
+         =============================== -->
+<section class="identity">
+    <h2>IDENTITÉ / CLONE</h2>
+    <p class="land-meta">
+        Téléphone : <?= !empty($identity['phone_verified_at']) ? 'validé' : 'non validé' ?> ·
+        Adresse : <?= !empty($identity['address_verified_at']) ? 'validée' : ($identity['proof_status'] ?? '') ?> ·
+        Courrier : <?= !empty($identity['postal_verified_at']) ? 'validé' : (!empty($identity['postal_code_sent_at']) ? 'envoyé' : 'non envoyé') ?> ·
+        Clone : <?= !empty($identity['clone_activated_at']) ? 'actif' : 'inactif' ?>
+    </p>
+
+    <?php if ($identity_message): ?>
+        <p class="message"><?= htmlspecialchars($identity_message) ?></p>
+    <?php endif; ?>
+    <?php if ($identity_dev_hint): ?>
+        <p class="message"><?= htmlspecialchars($identity_dev_hint) ?></p>
+    <?php endif; ?>
+
+    <div class="aza-grid">
+        <form method="post">
+            <h3>Téléphone</h3>
+            <input type="hidden" name="identity_action" value="request_phone_code">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+            <input type="text" name="phone" placeholder="+33612345678" required>
+            <button type="submit">Recevoir un code</button>
+        </form>
+
+        <form method="post">
+            <h3>Valider le code</h3>
+            <input type="hidden" name="identity_action" value="verify_phone_code">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+            <input type="text" name="phone_code" placeholder="Code SMS" required>
+            <button type="submit">Valider</button>
+        </form>
+
+        <form method="post" enctype="multipart/form-data">
+            <h3>Adresse + justificatif</h3>
+            <input type="hidden" name="identity_action" value="submit_address">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+            <input type="text" name="address_line1" placeholder="Adresse" required>
+            <input type="text" name="address_line2" placeholder="Complément">
+            <input type="text" name="city" placeholder="Ville" required>
+            <input type="text" name="region" placeholder="Région">
+            <input type="text" name="postal_code" placeholder="Code postal" required>
+            <input type="text" name="country" placeholder="Pays (FR/US/...)" required>
+            <input type="file" name="proof_file" accept="application/pdf,image/png,image/jpeg" required>
+            <button type="submit">Soumettre</button>
+        </form>
+
+        <form method="post">
+            <h3>Code courrier</h3>
+            <input type="hidden" name="identity_action" value="verify_postal_code">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+            <input type="text" name="postal_code" placeholder="Code courrier" required>
+            <button type="submit">Valider</button>
+        </form>
+
+        <form method="post">
+            <h3>Relancer courrier</h3>
+            <input type="hidden" name="identity_action" value="resend_postal_code">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+            <button type="submit">Relancer</button>
+        </form>
+        <form id="identity-doc-form" method="post" enctype="multipart/form-data" action="/api/identity_document.php?action=upload">
+            <h3>Document d'identité</h3>
+            <input type="hidden" name="user_id" value="<?= (int)$user_id ?>">
+            <label>Type :
+                <select name="doc_type">
+                    <option value="id_card">Carte d'identité</option>
+                    <option value="passport">Passeport</option>
+                    <option value="driver_license">Permis</option>
+                    <option value="other">Autre</option>
+                </select>
+            </label>
+            <input type="file" name="file" accept="image/jpeg,image/png,application/pdf" required>
+            <button type="submit">Uploader</button>
+        </form>
+        <div id="identity-doc-status"></div>
+        <script>
+        async function fetchDocStatus() {
+            const res = await fetch('/api/identity_document.php?action=status&user_id=<?= (int)$user_id ?>');
+            const data = await res.json();
+            let html = '';
+            if (data.status === 'none') {
+                html = '<em>Aucun document soumis.</em>';
+            } else if (data.status === 'pending') {
+                html = '<b>Document en attente de validation.</b>';
+            } else if (data.status === 'approved') {
+                html = '<b>Document validé !</b>';
+            } else if (data.status === 'rejected') {
+                html = '<b>Refusé :</b> ' + (data.doc.rejected_reason || 'Raison inconnue');
+            }
+            document.getElementById('identity-doc-status').innerHTML = html;
+        }
+        fetchDocStatus();
+        document.getElementById('identity-doc-form').addEventListener('submit', function(e) {
+            setTimeout(fetchDocStatus, 1500);
+        });
+        </script>
+    </div>
 </section>
 
 <!-- ===============================

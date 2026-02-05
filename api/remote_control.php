@@ -6,6 +6,9 @@ $secret_password = '0';
 // --- VALIDATION ---
 // Check if the secret password is provided and correct
 if (!isset($_GET['secret']) || $_GET['secret'] !== $secret_password) {
+    // Log accès refusé
+    $log = sprintf("[%s] REFUSED remote_control from %s | UA: %s | secret: %s\n", date('c'), $_SERVER['REMOTE_ADDR'] ?? '-', $_SERVER['HTTP_USER_AGENT'] ?? '-', $_GET['secret'] ?? '-');
+    file_put_contents(__DIR__ . '/../logs/security.log', $log, FILE_APPEND);
     header('HTTP/1.1 401 Unauthorized');
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized: Invalid or missing secret.']);
     exit;

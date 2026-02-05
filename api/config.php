@@ -109,6 +109,175 @@ function send_security_headers(): void
 enforce_https();
 send_security_headers();
 
+function identity_auto_approve(): bool
+{
+    return getenv('IDENTITY_AUTO_APPROVE') === '1';
+}
+
+function identity_dev_mode(): bool
+{
+    return getenv('IDENTITY_DEV_MODE') === '1';
+}
+
+function generate_verification_code(int $length = 6): string
+{
+    $min = (int) pow(10, $length - 1);
+    $max = (int) pow(10, $length) - 1;
+    return (string) random_int($min, $max);
+}
+
+function hash_verification_code(string $code): string
+{
+    return password_hash($code, PASSWORD_DEFAULT);
+}
+
+function verify_verification_code(string $code, string $hash): bool
+{
+    return password_verify($code, $hash);
+}
+
+function send_sms_code(string $phone, string $code): bool
+{
+    $provider = getenv('IDENTITY_SMS_PROVIDER') ?: '';
+    $apiKey = getenv('IDENTITY_SMS_API_KEY') ?: '';
+    $from = getenv('IDENTITY_SMS_FROM') ?: '';
+
+    if ($provider === '' || $apiKey === '' || $from === '') {
+        return false;
+    }
+
+    if (strtolower($provider) !== 'twilio') {
+        return false;
+    }
+
+    if (!function_exists('curl_init')) {
+        return false;
+    }
+
+    $sid = getenv('IDENTITY_TWILIO_ACCOUNT_SID') ?: '';
+    $token = getenv('IDENTITY_TWILIO_AUTH_TOKEN') ?: '';
+    if ($sid === '' || $token === '') {
+        return false;
+    }
+
+    $message = 'Votre code de validation O. : ' . $code;
+
+    $ch = curl_init('https://api.twilio.com/2010-04-01/Accounts/' . rawurlencode($sid) . '/Messages.json');
+    curl_setopt_array($ch, [
+        CURLOPT_USERPWD => $sid . ':' . $token,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => [
+            'To' => $phone,
+            'From' => $from,
+            'Body' => $message,
+        ],
+        CURLOPT_TIMEOUT => 20,
+    ]);
+
+    $body = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($body === false) {
+        return false;
+    }
+
+    return $status >= 200 && $status < 300;
+}
+
+function send_postal_code(array $address, string $code): bool
+{
+    $provider = getenv('IDENTITY_POSTAL_PROVIDER') ?: '';
+    $apiKey = getenv('IDENTITY_POSTAL_API_KEY') ?: '';
+
+    if ($provider === '' || $apiKey === '') {
+        return false;
+    }
+
+    if (strtolower($provider) !== 'lob') {
+        return false;
+    }
+
+    if (!function_exists('curl_init')) {
+        return false;
+    }
+
+    $from = [
+        'name' => getenv('IDENTITY_POSTAL_FROM_NAME') ?: 'O',
+        'address_line1' => getenv('IDENTITY_POSTAL_FROM_ADDRESS1') ?: '',
+        'address_line2' => getenv('IDENTITY_POSTAL_FROM_ADDRESS2') ?: '',
+        'address_city' => getenv('IDENTITY_POSTAL_FROM_CITY') ?: '',
+        'address_state' => getenv('IDENTITY_POSTAL_FROM_STATE') ?: '',
+        'address_zip' => getenv('IDENTITY_POSTAL_FROM_ZIP') ?: '',
+        'address_country' => getenv('IDENTITY_POSTAL_FROM_COUNTRY') ?: 'US',
+    ];
+
+    if ($from['address_line1'] === '' || $from['address_city'] === '' || $from['address_country'] === '') {
+        return false;
+    }
+
+    $to = [
+        'name' => $address['name'] ?? 'Resident',
+        'address_line1' => $address['line1'] ?? '',
+        'address_line2' => $address['line2'] ?? '',
+        'address_city' => $address['city'] ?? '',
+        'address_state' => $address['region'] ?? '',
+        'address_zip' => $address['postal_code'] ?? '',
+        'address_country' => $address['country'] ?? '',
+    ];
+
+    if ($to['address_line1'] === '' || $to['address_city'] === '' || $to['address_country'] === '') {
+        return false;
+    }
+
+    $html = '<html><body style="font-family:Arial,sans-serif;">'
+        . '<h2>Code de validation</h2>'
+        . '<p>Votre code postal de validation :</p>'
+        . '<div style="font-size:24px;letter-spacing:4px;font-weight:bold;">' . htmlspecialchars($code, ENT_QUOTES, 'UTF-8') . '</div>'
+        . '<p>Ce code expire dans 30 jours.</p>'
+        . '</body></html>';
+
+    $payload = [
+        'description' => 'Identity verification code',
+        'to[name]' => $to['name'],
+        'to[address_line1]' => $to['address_line1'],
+        'to[address_line2]' => $to['address_line2'],
+        'to[address_city]' => $to['address_city'],
+        'to[address_state]' => $to['address_state'],
+        'to[address_zip]' => $to['address_zip'],
+        'to[address_country]' => $to['address_country'],
+        'from[name]' => $from['name'],
+        'from[address_line1]' => $from['address_line1'],
+        'from[address_line2]' => $from['address_line2'],
+        'from[address_city]' => $from['address_city'],
+        'from[address_state]' => $from['address_state'],
+        'from[address_zip]' => $from['address_zip'],
+        'from[address_country]' => $from['address_country'],
+        'file' => $html,
+        'color' => 'false',
+    ];
+
+    $ch = curl_init('https://api.lob.com/v1/letters');
+    curl_setopt_array($ch, [
+        CURLOPT_USERPWD => $apiKey . ':',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_TIMEOUT => 25,
+    ]);
+
+    $body = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($body === false) {
+        return false;
+    }
+
+    return $status >= 200 && $status < 300;
+}
+
 function aza_api_request(string $path, array $payload, string $method = 'POST'): array
 {
     $base = rtrim(getenv('AZA_API_BASE_URL') ?: 'https://api.sowwwl.cloud', '/');
