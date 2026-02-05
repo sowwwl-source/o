@@ -1,0 +1,61 @@
+# qu3st.yaml — Arbre de quête (exemple)
+
+start:
+  label: "Choisis ton point d’entrée dans le grand bain :"
+  options:
+    - id: source
+      label: "La source (origine)"
+    - id: confluence
+      label: "La confluence (rencontre)"
+    - id: delta
+      label: "Le delta (partage)"
+
+source:
+  label: "Tu es à la source. Que cherches-tu ?"
+  options:
+    - id: remonter
+      label: "Remonter le fil de l’eau"
+    - id: jaillir
+      label: "Jaillir vers l’inconnu"
+
+confluence:
+  label: "À la confluence, plusieurs rivières se rejoignent."
+  options:
+    - id: partage
+      label: "Partager une histoire"
+    - id: écouter
+      label: "Écouter le courant des autres"
+
+remonter:
+  label: "Tu découvres une mémoire ancienne."
+  options:
+    - id: fin
+      label: "Laisser l’eau t’emporter (fin)"
+
+jaillir:
+  label: "Tu explores de nouveaux possibles."
+  options:
+    - id: fin
+      label: "Laisser l’eau t’emporter (fin)"
+
+partage:
+  label: "Tu transmets un souvenir à la rivière."
+  options:
+    - id: fin
+      label: "Laisser l’eau t’emporter (fin)"
+
+écouter:
+  label: "Tu reçois la sagesse du courant."
+  options:
+    - id: fin
+      label: "Laisser l’eau t’emporter (fin)"
+
+delta:
+  label: "Au delta, tout se disperse et se relie."
+  options:
+    - id: fin
+      label: "Laisser l’eau t’emporter (fin)"
+
+fin:
+  label: "Le grand bain t’accueille, la route se poursuit ailleurs."
+  options: []

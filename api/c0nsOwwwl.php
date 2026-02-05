@@ -1,4 +1,18 @@
 <?php
+$prompt = "Bonjour, qui es-tu ?";
+$api_key = getenv('MISTRAL_API_KEY');
+$ch = curl_init('https://s3f3wvw4cnmqbszk26zsan2m.agents.do-ai.run');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    'Authorization: Bearer ' . $api_key
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['prompt' => $prompt]));
+$response = curl_exec($ch);
+curl_close($ch);
+echo $response;
+?><?php
 // Interface admin c0nsOwwwl : gestion des documents d'identité
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/config.php';

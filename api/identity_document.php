@@ -1,4 +1,18 @@
-<?php
+async function askAI(prompt) {
+  const response = await fetch('https://s3f3wvw4cnmqbszk26zsan2m.agents.do-ai.run', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer X1LXjMN7plD4yOfe5Xv9RgLxjflesAQ1'
+    },
+    body: JSON.stringify({ prompt })
+  });
+  const data = await response.json();
+  return data.completion || data.result || data; // adapte selon la structure de la réponse
+}
+
+// Exemple d’utilisation :
+askAI("Bonjour, qui es-tu ?").then(console.log);<?php
 // identity_document.php : upload et gestion du statut du document d'identité
 // POST /api/identity_document.php?action=upload
 // Champs attendus : user_id, doc_type, fichier (multipart/form-data)
