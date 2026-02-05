@@ -36,6 +36,7 @@ $hallways = $stmt->fetchAll();
     <?php endforeach; ?>
   </ul>
   <a href="o.php">Aller à O</a>
+  <div style="margin-top:1.5em;"><a href="messagerie.php" class="btn btn-primary">Messagerie & Appels</a></div>
 
 <script src="/o_point/feedback.js"></script>
 </body>

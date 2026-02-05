@@ -6,18 +6,20 @@ start_secure_session();
 $msg = '';
 // Inscription
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
-        $u = trim($_POST['username'] ?? '');
-        $p = $_POST['password'] ?? '';
-        $bi = trim($_POST['bi'] ?? '');
-        if ($u && $p) {
-                $hash = password_hash($p, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare('INSERT INTO users (username, email_virtual, password_hash, bi) VALUES (?, ?, ?, ?)');
-                $stmt->execute([$u, strtolower($u).'@o.local', $hash, $bi]);
-                $_SESSION['user_id'] = $pdo->lastInsertId();
-                header('Location: h0me.php'); exit;
-        } else {
-                $msg = "Merci de remplir tous les champs.";
-        }
+    $u = trim($_POST['username'] ?? '');
+    $p = $_POST['password'] ?? '';
+    $bi = trim($_POST['bi'] ?? '');
+    if ($u && $p) {
+        $hash = password_hash($p, PASSWORD_DEFAULT);
+        // Génère un email unique du type 0.<username>.o@sowwwl.com
+        $email_virtual = '0.' . preg_replace('/[^a-zA-Z0-9_\-]/', '', $u) . '.o@sowwwl.com';
+        $stmt = $pdo->prepare('INSERT INTO users (username, email_virtual, password_hash, bi) VALUES (?, ?, ?, ?)');
+        $stmt->execute([$u, $email_virtual, $hash, $bi]);
+        $_SESSION['user_id'] = $pdo->lastInsertId();
+        header('Location: h0me.php'); exit;
+    } else {
+        $msg = "Merci de remplir tous les champs.";
+    }
 }
 // Connexion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
