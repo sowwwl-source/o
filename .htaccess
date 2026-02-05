@@ -4,6 +4,9 @@ Options -Indexes
 # Routes propres
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
   RewriteRule ^login/?$ auth.php [L,QSA]
   RewriteRule ^dashboard/?$ land.php [L,QSA]
   RewriteRule ^world/?$ world.php [L,QSA]

@@ -35,7 +35,7 @@ function start_secure_session(): void
         'domain' => $params['domain'],
         'secure' => $secure,
         'httponly' => true,
-        'samesite' => 'Lax',
+        'samesite' => 'None',
     ]);
 
     ini_set('session.use_strict_mode', '1');
@@ -66,6 +66,48 @@ function is_https_request(): bool
 
     return false;
 }
+
+function enforce_https(): void
+{
+    if (PHP_SAPI === 'cli') {
+        return;
+    }
+
+    if (is_https_request()) {
+        return;
+    }
+
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    $uri = $_SERVER['REQUEST_URI'] ?? '/';
+    if ($host === '') {
+        return;
+    }
+
+    $target = 'https://' . $host . $uri;
+    header('Location: ' . $target, true, 301);
+    exit;
+}
+
+function send_security_headers(): void
+{
+    if (PHP_SAPI === 'cli' || headers_sent()) {
+        return;
+    }
+
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
+    header('Referrer-Policy: no-referrer');
+    header('Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()');
+
+    if (is_https_request()) {
+        header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
+    }
+
+    header("Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; object-src 'none'; manifest-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org; script-src 'self' https://unpkg.com; style-src 'self' https://unpkg.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; media-src 'self'; connect-src 'self'");
+}
+
+enforce_https();
+send_security_headers();
 
 function aza_api_request(string $path, array $payload, string $method = 'POST'): array
 {

@@ -17,7 +17,7 @@
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
     Permissions-Policy = "geolocation=(), microphone=(), camera=(), payment=()"
     # Content-Security-Policy matches _headers
-    Content-Security-Policy = "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; object-src 'none'; manifest-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; media-src 'self'; connect-src 'self'"
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; object-src 'none'; manifest-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org; script-src 'self' https://unpkg.com; style-src 'self' https://unpkg.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; media-src 'self'; connect-src 'self'"
 
 # Redirects for clean URLs (simulating .htaccess)
 # HYBRID DEPLOYMENT CONFIGURATION
@@ -27,10 +27,10 @@
 
 # Proxy all API calls to your external PHP backend.
 # Any request to /api/* will be forwarded to your PHP server.
-# For example: /api/auth.php -> http://api.sowwwl.com/api/auth.php
+# For example: /api/auth.php -> https://api.sowwwl.com/api/auth.php
 [[redirects]]
   from = "/api/*"
-  to = "http://api.sowwwl.com/api/:splat"
+  to = "https://api.sowwwl.com/api/:splat"
   status = 200
   force = true # This ensures it proxies POST requests too
 

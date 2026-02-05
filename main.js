@@ -250,3 +250,162 @@ const SYSTEM = { mode: 'silent' };
   resizeStarfield();
   handleVisibilityChange();
 })();
+
+(() => {
+  const body = document.body;
+  if (!body || !body.classList.contains('AeiouuoieA')) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const isAuth = body.classList.contains('auth-page');
+  const enabled = isAuth || body.dataset.virus === 'on' || body.classList.contains('virus-mode') || params.has('virus');
+  if (!enabled) return;
+
+  body.classList.add('virus-active');
+  if (isAuth) {
+    body.classList.add('virus-locked');
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'virus-overlay';
+  const blocker = document.createElement('div');
+  blocker.className = 'virus-blocker';
+  body.appendChild(overlay);
+  body.appendChild(blocker);
+
+  const status = document.createElement('div');
+  status.className = 'virus-status';
+  status.setAttribute('aria-live', 'polite');
+  status.textContent = isAuth
+    ? 'Signal vert. Pose le téléphone. Silence requis.'
+    : 'Signal vert instable.';
+  body.appendChild(status);
+
+  const candidates = Array.from(document.querySelectorAll('button, .btn, a'));
+  const formFields = Array.from(document.querySelectorAll('input, textarea, select, button'));
+  let lastToggle = 0;
+  let lastMove = { x: window.innerWidth / 2, y: window.innerHeight / 2, t: performance.now() };
+  let virusLevel = 0;
+  let virusGlitch = 0;
+  let virusBlock = 0;
+  let virusBlur = 0;
+  let calmTime = 0;
+  let lastAgitation = performance.now();
+
+  function clamp(v, min, max) {
+    return Math.min(max, Math.max(min, v));
+  }
+
+  function setVars(x, y) {
+    body.style.setProperty('--virus-level', virusLevel.toFixed(3));
+    body.style.setProperty('--virus-glitch', virusGlitch.toFixed(3));
+    body.style.setProperty('--virus-block', virusBlock.toFixed(3));
+    body.style.setProperty('--virus-blur', virusBlur.toFixed(3));
+    body.style.setProperty('--virus-x', `${x}px`);
+    body.style.setProperty('--virus-y', `${y}px`);
+  }
+
+  function updateDisabledButtons(now) {
+    if (virusLevel < 0.55 || now - lastToggle < 1200) return;
+    lastToggle = now;
+
+    const pool = candidates.filter((el) => el.offsetParent !== null);
+    if (!pool.length) return;
+
+    pool.forEach((el) => el.classList.remove('virus-disabled'));
+    const targetCount = Math.max(1, Math.floor(pool.length * (0.2 + virusLevel * 0.35)));
+    for (let i = 0; i < targetCount; i += 1) {
+      const idx = Math.floor(Math.random() * pool.length);
+      pool[idx].classList.add('virus-disabled');
+    }
+  }
+
+  function setAuthLocked(locked) {
+    if (!isAuth) return;
+    if (locked) {
+      body.classList.add('virus-locked');
+      formFields.forEach((el) => {
+        el.setAttribute('disabled', 'disabled');
+      });
+      status.textContent = 'Silence requis. Immobilité détectée ?';
+    } else {
+      body.classList.remove('virus-locked');
+      formFields.forEach((el) => {
+        el.removeAttribute('disabled');
+      });
+      status.textContent = 'Accès stabilisé. Tu peux entrer.';
+    }
+  }
+
+  function bump(amount) {
+    virusLevel = clamp(virusLevel + amount, 0, 1);
+  }
+
+  window.addEventListener('pointermove', (event) => {
+    const now = performance.now();
+    const dt = Math.max(16, now - lastMove.t);
+    const dx = event.clientX - lastMove.x;
+    const dy = event.clientY - lastMove.y;
+    const speed = Math.hypot(dx, dy) / dt;
+
+    if (speed > 0.25) {
+      bump(speed * 0.15);
+      lastAgitation = now;
+    }
+
+    lastMove = { x: event.clientX, y: event.clientY, t: now };
+    setVars(event.clientX, event.clientY);
+  }, { passive: true });
+
+  window.addEventListener('wheel', (event) => {
+    const intensity = Math.min(1, Math.abs(event.deltaY) / 600);
+    bump(intensity * 0.35);
+    lastAgitation = performance.now();
+  }, { passive: true });
+
+  if ('DeviceMotionEvent' in window) {
+    window.addEventListener('devicemotion', (event) => {
+      const acc = event.accelerationIncludingGravity;
+      if (!acc) return;
+      const movement = Math.abs(acc.x || 0) + Math.abs(acc.y || 0) + Math.abs(acc.z || 0);
+      const agitation = Math.abs(movement - 9.8);
+      if (agitation > 0.6) {
+        bump(Math.min(0.6, agitation * 0.04));
+        lastAgitation = performance.now();
+      }
+    }, { passive: true });
+  }
+
+  function animate(now) {
+    virusLevel = clamp(virusLevel - 0.006, 0, 1);
+    virusGlitch = clamp(virusGlitch + (Math.random() - 0.5) * 0.25 + virusLevel * 0.4, 0, 1);
+    virusBlock = clamp(virusLevel * 0.9, 0, 1);
+    virusBlur = clamp(virusLevel * 0.4, 0, 0.6);
+
+    if (isAuth) {
+      const calm = now - lastAgitation;
+      if (calm > 1200) {
+        calmTime += 16;
+      } else {
+        calmTime = Math.max(0, calmTime - 32);
+      }
+
+      if (calmTime >= 2200 && virusLevel < 0.35) {
+        setAuthLocked(false);
+      } else {
+        setAuthLocked(true);
+      }
+    }
+
+    if (virusBlock > 0.72) {
+      blocker.classList.add('is-active');
+    } else {
+      blocker.classList.remove('is-active');
+    }
+
+    updateDisabledButtons(now);
+    requestAnimationFrame(animate);
+  }
+
+  setVars(lastMove.x, lastMove.y);
+  requestAnimationFrame(animate);
+})();

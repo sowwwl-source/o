@@ -20,4 +20,4 @@ Le projet `O_installation_FRESH` contient désormais la fusion des fonctionnalit
 ## Comment reprendre
 1.  Installer et lancer Docker Desktop.
 2.  Dans ce dossier, lancer : `docker compose up -d --build`.
-3.  Accéder à `http://localhost:8080`.
+3.  Accéder à `https://localhost:8080`.
