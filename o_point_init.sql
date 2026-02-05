@@ -1,6 +1,6 @@
 -- O.point : Initialisation SQL complète (v1)
 
--- 1. FOYER (users)
+-- 1. H0ME (users)
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(64) NOT NULL UNIQUE,
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS ports (
     user_id INT NOT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    scope ENUM('foyer','hallway','o') DEFAULT 'foyer',
+    scope ENUM('h0me','hallway','o') DEFAULT 'h0me',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_scope (scope)
 );
@@ -63,7 +63,7 @@ INSERT INTO users (username, email_virtual, password_hash, bi, avatar) VALUES
 
 INSERT INTO ports (user_id, content, scope) VALUES
 (1, 'Ici, la lumière a glissé sur la surface.', 'o'),
-(2, 'Porte sur le matin', 'foyer');
+(2, 'Porte sur le matin', 'h0me');
 
 INSERT INTO hallways (from_user_id, to_user_id, is_open) VALUES
 (1, 2, TRUE);
