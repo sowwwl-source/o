@@ -1,1 +1,120 @@
-<html><head><title>Redirecting...</title><meta http-equiv='refresh' content='0;url=/login/'></head><body><p>Redirecting to login page...</p></body></html>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>O.point — Entrée dans le Grand Bain</title>
+	<link rel="stylesheet" href="styles.css">
+	<style>
+		body {
+			margin: 0;
+			min-height: 100vh;
+			background: linear-gradient(120deg, #0a0a23 0%, #1e2746 100%);
+			color: #fff;
+			font-family: 'Segoe UI', 'Fira Sans', Arial, sans-serif;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			overflow: hidden;
+		}
+		.o-header {
+			font-size: 5rem;
+			font-weight: 900;
+			letter-spacing: 0.1em;
+			color: #7fffd4;
+			text-shadow: 0 0 40px #7fffd4, 0 0 8px #fff;
+			margin-bottom: 0.5em;
+			animation: o-glow 3s infinite alternate;
+		}
+		@keyframes o-glow {
+			from { text-shadow: 0 0 40px #7fffd4, 0 0 8px #fff; }
+			to { text-shadow: 0 0 80px #00e6b8, 0 0 24px #fff; }
+		}
+		.poem {
+			font-size: 1.5rem;
+			max-width: 600px;
+			text-align: center;
+			margin-bottom: 2em;
+			line-height: 1.5;
+			color: #e0eaff;
+			font-style: italic;
+			text-shadow: 0 2px 8px #000a;
+		}
+		.enter-btn {
+			background: linear-gradient(90deg, #7fffd4 0%, #00e6b8 100%);
+			color: #0a0a23;
+			border: none;
+			border-radius: 2em;
+			padding: 1em 2.5em;
+			font-size: 1.3rem;
+			font-weight: bold;
+			letter-spacing: 0.1em;
+			box-shadow: 0 4px 24px #00e6b888;
+			cursor: pointer;
+			transition: transform 0.2s, box-shadow 0.2s;
+			margin-bottom: 2em;
+		}
+		.enter-btn:hover {
+			transform: scale(1.07);
+			box-shadow: 0 8px 32px #7fffd4cc;
+		}
+		.footer {
+			position: absolute;
+			bottom: 1.5em;
+			font-size: 1rem;
+			color: #7fffd4bb;
+			letter-spacing: 0.05em;
+			text-align: center;
+			width: 100vw;
+		}
+		.bubbles {
+			position: fixed;
+			top: 0; left: 0; width: 100vw; height: 100vh;
+			pointer-events: none;
+			z-index: 0;
+		}
+		.bubble {
+			position: absolute;
+			border-radius: 50%;
+			background: rgba(127,255,212,0.15);
+			animation: float 12s linear infinite;
+		}
+		@keyframes float {
+			from { transform: translateY(100vh) scale(0.7); opacity: 0.7; }
+			to { transform: translateY(-10vh) scale(1.2); opacity: 0.2; }
+		}
+	</style>
+</head>
+<body>
+	<div class="o-header">O</div>
+	<div class="poem">
+		Bienvenue dans le Grand Bain.<br>
+		Ici, chaque présence est une onde.<br>
+		<span style="color:#7fffd4;">O.point</span> t’invite à plonger<br>
+		dans un monde miroir, poétique et vivant.<br>
+		<br>
+		<span style="font-size:1.1em; color:#fff;">L’amour universel est la seule action sensée.</span>
+	</div>
+	<a href="/login/" class="enter-btn">Connexion / S’immerger</a>
+	<div class="footer">
+		&copy; 2026 O.point &mdash; Un portail vers l’invisible<br>
+		<span style="font-size:0.9em;">“On entre dans le grand bain”</span>
+	</div>
+	<div class="bubbles">
+		<!-- Bulles animées -->
+		<script>
+			for(let i=0;i<18;i++){
+				let b=document.createElement('div');
+				b.className='bubble';
+				b.style.left=Math.random()*100+'vw';
+				b.style.width=b.style.height=(Math.random()*60+40)+'px';
+				b.style.animationDuration=(8+Math.random()*8)+'s';
+				b.style.background='rgba(127,255,212,'+(0.08+Math.random()*0.18)+')';
+				b.style.animationDelay=(Math.random()*8)+'s';
+				document.querySelector('.bubbles').appendChild(b);
+			}
+		</script>
+	</div>
+</body>
+</html>
