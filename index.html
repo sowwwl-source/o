@@ -96,7 +96,22 @@
 		<br>
 		<span style="font-size:1.1em; color:#fff;">L’amour universel est la seule action sensée.</span>
 	</div>
-	<a href="/login/" class="enter-btn">Connexion / S’immerger</a>
+	<button class="enter-btn" onclick="openLoginModal()">Connexion / S’immerger</button>
+	<div id="login-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(10,10,30,0.92);z-index:10;align-items:center;justify-content:center;">
+		<div style="background:#181f2e;padding:2.5em 2em 2em 2em;border-radius:1.5em;box-shadow:0 8px 40px #000a;max-width:350px;width:90vw;text-align:center;">
+			<h2 style="color:#7fffd4;margin-bottom:0.5em;">Connexion</h2>
+			<p style="color:#e0eaff;font-size:1.1em;">Cette fonctionnalité nécessite un serveur PHP.<br><span style='font-size:0.95em;opacity:0.7;'>Contacte l’équipe ou reviens bientôt pour t’immerger pleinement !</span></p>
+			<button onclick="closeLoginModal()" style="margin-top:1.5em;padding:0.7em 2em;border-radius:2em;background:#7fffd4;color:#0a0a23;font-weight:bold;border:none;cursor:pointer;">Retour</button>
+		</div>
+	</div>
+	<script>
+		function openLoginModal() {
+			document.getElementById('login-modal').style.display = 'flex';
+		}
+		function closeLoginModal() {
+			document.getElementById('login-modal').style.display = 'none';
+		}
+	</script>
 	<div class="footer">
 		&copy; 2026 O.point &mdash; Un portail vers l’invisible<br>
 		<span style="font-size:0.9em;">“On entre dans le grand bain”</span>
