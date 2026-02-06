@@ -1,0 +1,49 @@
+services:
+  app:
+    build:
+      context: .
+      target: production
+    ports:
+      - "8080:80"
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-land_db}
+      DB_USER: ${DB_USER:-user}
+      DB_PASS: ${DB_PASS:-password}
+      INVITE_CODES: ${INVITE_CODES:-CHANGE_ME}
+      AZA_API_BASE_URL: ${AZA_API_BASE_URL:-https://api.sowwwl.cloud}
+      AZA_API_TOKEN: ${AZA_API_TOKEN:-CHANGE_ME}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: "${DB_NAME}"
+      MYSQL_USER: "${DB_USER}"
+      MYSQL_PASSWORD: "${DB_PASS}"
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
