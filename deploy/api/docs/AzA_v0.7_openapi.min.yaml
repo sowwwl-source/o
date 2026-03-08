@@ -1,0 +1,42 @@
+openapi: 3.0.3
+info:
+  title: AzA API Stub
+  version: 0.1.0
+  description: Minimal compatibility surface for api.sowwwl.cloud while the production service is being rebuilt.
+servers:
+  - url: https://api.sowwwl.cloud
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service is reachable
+  /v1/status:
+    get:
+      summary: Runtime status
+      responses:
+        "200":
+          description: Status payload
+  /v1/user/score:
+    post:
+      summary: Stubbed protected endpoint
+      security:
+        - bearerAuth: []
+      responses:
+        "501":
+          description: Not implemented yet
+  /upload:
+    post:
+      summary: Stubbed upload endpoint
+      security:
+        - bearerAuth: []
+      responses:
+        "501":
+          description: Not implemented yet
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

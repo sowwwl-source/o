@@ -1,0 +1,40 @@
+services:
+  caddy:
+    image: caddy:2.8
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:-ops@sowwwl.cloud}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/srv/sites:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    networks:
+      - sowwwl-edge
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      API_BEARER_TOKEN: ${AZA_API_TOKEN:-CHANGE_ME_API_TOKEN}
+      API_PUBLIC_BASE_URL: https://api.sowwwl.cloud
+    expose:
+      - "80"
+    restart: unless-stopped
+    networks:
+      - sowwwl-edge
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  sowwwl-edge:
+    driver: bridge

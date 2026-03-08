@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>0.user.o.sowwwl.cloud</title>
+  <meta name="description" content="User cloud shell with SPA fallback enabled.">
+  <style>
+    :root {
+      --bg: #0c1515;
+      --panel: rgba(21, 31, 31, 0.82);
+      --ink: #f1f4ef;
+      --muted: #a2b2ab;
+      --line: rgba(255, 255, 255, 0.14);
+      --accent: #9ff5ca;
+      --accent-2: #f5db9f;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(159, 245, 202, 0.16), transparent 25%),
+        radial-gradient(circle at 82% 14%, rgba(245, 219, 159, 0.14), transparent 22%),
+        linear-gradient(180deg, #091010 0%, #0f1717 50%, #081010 100%);
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(980px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 28px 0 52px;
+    }
+
+    .shell {
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 24px;
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+    }
+
+    h1 {
+      margin: 0;
+      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      font-size: clamp(2.8rem, 8vw, 5rem);
+      letter-spacing: -0.04em;
+    }
+
+    .lede {
+      max-width: 58ch;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-top: 14px;
+    }
+
+    .status {
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .status strong {
+      color: var(--accent);
+    }
+
+    .nav {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .nav a {
+      text-decoration: none;
+      color: var(--ink);
+      border-radius: 16px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .nav span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 6px;
+    }
+
+    @media (max-width: 820px) {
+      .nav {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 520px) {
+      main {
+        width: min(100vw - 16px, 100vw);
+        padding-top: 16px;
+      }
+
+      .shell {
+        border-radius: 22px;
+        padding: 18px;
+      }
+
+      .nav {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="shell">
+      <h1>User cloud shell</h1>
+      <p class="lede">
+        This host is configured as an SPA entry point. Any deep route that is not an existing file
+        should fall back to <code>/index.html</code>, so the browser router can recover the state.
+      </p>
+      <div class="status">
+        <strong>Fallback active.</strong>
+        Current path: <span id="route"></span>
+      </div>
+      <nav class="nav">
+        <a href="/">Root<span>Shell entry</span></a>
+        <a href="/0">/0<span>Hub-style route</span></a>
+        <a href="/login">/login<span>Auth route</span></a>
+        <a href="/workspace/demo">/workspace/demo<span>Nested SPA route</span></a>
+      </nav>
+    </section>
+  </main>
+  <script>
+    document.getElementById("route").textContent = window.location.pathname;
+  </script>
+</body>
+</html>
