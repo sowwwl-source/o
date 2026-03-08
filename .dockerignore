@@ -5,7 +5,6 @@
 # Documentation
 README*.md
 README*.txt
-docs/
 
 # Docker files
 Dockerfile

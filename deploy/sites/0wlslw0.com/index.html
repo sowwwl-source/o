@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>0WLSLW0</title>
+  <meta name="description" content="0WLSLW0 experimental landing page.">
+  <style>
+    :root {
+      --void: #04040a;
+      --void-2: #0a1120;
+      --ink: #f3f2ff;
+      --muted: #a7a9c3;
+      --line: rgba(255, 255, 255, 0.14);
+      --glow-a: rgba(0, 229, 255, 0.26);
+      --glow-b: rgba(255, 112, 67, 0.18);
+      --accent: #8cf3ff;
+      --accent-2: #ffca8a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 24% 18%, var(--glow-a), transparent 28%),
+        radial-gradient(circle at 78% 14%, var(--glow-b), transparent 28%),
+        linear-gradient(180deg, #04050b 0%, #090e16 48%, #05070d 100%);
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    body::before {
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: 0.22;
+    }
+
+    body::after {
+      background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.42) 100%);
+    }
+
+    main {
+      width: min(1120px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .shell {
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      padding: 28px;
+      background: rgba(8, 12, 20, 0.72);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+    }
+
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 20px 0 0;
+      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      font-size: clamp(3rem, 9vw, 6.4rem);
+      line-height: 0.9;
+      letter-spacing: -0.06em;
+      max-width: 7ch;
+    }
+
+    .lede {
+      max-width: 58ch;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 1.06rem;
+      margin-top: 18px;
+    }
+
+    .portal-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 18px;
+      margin-top: 28px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .panel p {
+      margin: 14px 0 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .actions a {
+      color: var(--ink);
+      text-decoration: none;
+      border-radius: 16px;
+      padding: 12px 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .actions a.primary {
+      background: linear-gradient(120deg, rgba(140, 243, 255, 0.18), rgba(255, 202, 138, 0.14));
+      border-color: rgba(140, 243, 255, 0.28);
+    }
+
+    .console {
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(0, 0, 0, 0.38);
+      color: #9ee7f0;
+      font-family: Menlo, Consolas, monospace;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 900px) {
+      .portal-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      main {
+        width: min(100vw - 16px, 100vw);
+        padding-top: 16px;
+      }
+
+      .shell {
+        border-radius: 22px;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="shell">
+      <div class="topline">
+        <span>0WLSLW0 / alternate ingress</span>
+        <span>HTTPS-ready landing</span>
+      </div>
+      <h1>Signal before story.</h1>
+      <p class="lede">
+        0WLSLW0 is the sharp edge of the constellation: an experiment domain, a pressure valve,
+        a place for controlled ambiguity. The critical fix is not visual first. It is operational:
+        a valid TLS origin, a predictable landing, and clean links back to the network.
+      </p>
+
+      <div class="portal-grid">
+        <article class="panel">
+          <h2>What this door does</h2>
+          <p>
+            It catches curiosity, frames the tone, and sends visitors to the right place without
+            pretending to be the product itself. Keep it fast. Keep it strange. Keep it small.
+          </p>
+          <div class="actions">
+            <a class="primary" href="https://sowwwl.com">Open O.</a>
+            <a href="https://sowwwl.cloud">Open the hub</a>
+            <a href="https://sowwwl.art">See the visual twin</a>
+          </div>
+        </article>
+        <article class="panel">
+          <h2>Origin checklist</h2>
+          <div class="console">[tls] issue cert at origin
+[dns] apex points to vps
+[proxy] Cloudflare Full (strict)
+[site] static landing online
+[links] hub + product wired</div>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

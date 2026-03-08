@@ -29,6 +29,7 @@ COPY --chown=www-data:www-data \
     --exclude=README*.md \
     --exclude=README*.txt \
     --exclude=docs \
+    --exclude=deploy \
     --exclude=Dockerfile \
     --exclude=docker-compose*.yml \
     . .

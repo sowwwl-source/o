@@ -1,0 +1,89 @@
+services:
+  caddy:
+    image: caddy:2.8
+    depends_on:
+      app:
+        condition: service_started
+      api:
+        condition: service_started
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:-ops@sowwwl.cloud}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/srv/sites:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    networks:
+      - sowwwl-edge
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: production
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-land_db}
+      DB_USER: ${DB_USER:-o_app}
+      DB_PASS: ${DB_PASS:-CHANGE_ME_APP_DB_PASSWORD}
+      INVITE_CODES: ${INVITE_CODES:-CHANGE_ME_INVITE_CODES}
+      AZA_API_BASE_URL: https://api.sowwwl.cloud
+      AZA_API_TOKEN: ${AZA_API_TOKEN:-CHANGE_ME_API_TOKEN}
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "80"
+    restart: unless-stopped
+    networks:
+      - sowwwl-edge
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/api/Dockerfile
+    environment:
+      API_BEARER_TOKEN: ${AZA_API_TOKEN:-CHANGE_ME_API_TOKEN}
+      API_PUBLIC_BASE_URL: https://api.sowwwl.cloud
+    expose:
+      - "80"
+    restart: unless-stopped
+    networks:
+      - sowwwl-edge
+
+  db:
+    image: mysql:8.0
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-land_db}
+      MYSQL_USER: ${DB_USER:-o_app}
+      MYSQL_PASSWORD: ${DB_PASS:-CHANGE_ME_APP_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-CHANGE_ME_ROOT_DB_PASSWORD}
+    volumes:
+      - sowwwl_db_data:/var/lib/mysql
+      - ../init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - sowwwl-edge
+
+volumes:
+  caddy_data:
+  caddy_config:
+  sowwwl_db_data:
+
+networks:
+  sowwwl-edge:
+    driver: bridge

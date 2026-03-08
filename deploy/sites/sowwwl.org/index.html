@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SOWWWL.org</title>
+  <meta name="description" content="SOWWWL.org is the public-facing manifesto, method, and map.">
+  <style>
+    :root {
+      --paper: #f3eee4;
+      --ink: #182438;
+      --muted: #5d6776;
+      --line: rgba(24, 36, 56, 0.14);
+      --accent: #114a79;
+      --accent-soft: #d9b36a;
+      --panel: rgba(255, 255, 255, 0.72);
+      --shadow: 0 26px 60px rgba(24, 36, 56, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(17, 74, 121, 0.12), transparent 30%),
+        linear-gradient(180deg, #f7f2e9 0%, #eee6d7 100%);
+      font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+    }
+
+    main {
+      width: min(1060px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 30px 0 64px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      margin: 0;
+    }
+
+    .hero,
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .hero {
+      border-radius: 28px;
+      padding: 26px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: rgba(17, 74, 121, 0.08);
+      color: var(--accent);
+      letter-spacing: 0.18em;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: clamp(2.8rem, 7vw, 5.2rem);
+      margin-top: 18px;
+      max-width: 8ch;
+      line-height: 0.96;
+    }
+
+    .lede {
+      max-width: 58ch;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.75;
+      margin-top: 18px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .actions a {
+      text-decoration: none;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .actions a.primary {
+      background: linear-gradient(120deg, rgba(17, 74, 121, 0.12), rgba(217, 179, 106, 0.16));
+      border-color: rgba(17, 74, 121, 0.24);
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: end;
+      margin: 30px 0 16px;
+    }
+
+    .section-title p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 50ch;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .panel {
+      border-radius: 24px;
+      padding: 20px;
+    }
+
+    .panel p,
+    .panel li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .pillars {
+      counter-reset: pillar;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .pillars li {
+      position: relative;
+      padding-left: 46px;
+      margin-top: 16px;
+    }
+
+    .pillars li::before {
+      counter-increment: pillar;
+      content: counter(pillar);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(17, 74, 121, 0.1);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .quote {
+      font-size: clamp(1.4rem, 4vw, 2.2rem);
+      line-height: 1.35;
+      color: var(--ink);
+    }
+
+    .domain-list {
+      display: grid;
+      gap: 10px;
+      padding: 0;
+      margin: 18px 0 0;
+      list-style: none;
+    }
+
+    .domain-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+
+    .domain-list strong {
+      color: var(--ink);
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      main {
+        width: min(100vw - 16px, 100vw);
+        padding-top: 16px;
+      }
+
+      .hero,
+      .panel {
+        border-radius: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <span class="eyebrow">SOWWWL / public face</span>
+      <h1>A public frame for a living network.</h1>
+      <p class="lede">
+        SOWWWL.org is the stable layer for the outside world: what the project is,
+        how it operates, and which domain to use for which kind of experience. Keep it
+        slow, clear, and durable.
+      </p>
+      <div class="actions">
+        <a class="primary" href="https://sowwwl.cloud">Open the hub</a>
+        <a href="https://sowwwl.com">Open the product</a>
+        <a href="https://sowwwl.fr">Read the editorial stream</a>
+      </div>
+    </section>
+
+    <div class="section-title">
+      <div>
+        <h2>Three commitments</h2>
+        <p>This page should not try to be the product. It should explain the structure around it.</p>
+      </div>
+    </div>
+
+    <section class="grid">
+      <article class="panel">
+        <h3>Clarity before scale</h3>
+        <ol class="pillars">
+          <li>One host, one role. Public copy, product, API, and experiments each get their own domain.</li>
+          <li>Infrastructure should be reversible. Static pages stay static. Dynamic services stay explicit.</li>
+          <li>The landing layer must tell visitors where to go next, not trap them in ambiguity.</li>
+        </ol>
+      </article>
+
+      <article class="panel">
+        <h3>Method</h3>
+        <p>
+          The project grows by separating durable surfaces from volatile ones. That means:
+          editorial work on the content domains, application logic on the product domain,
+          an API on its own host, and experiments on disposable doors.
+        </p>
+        <p class="quote">
+          A network becomes legible when each door names its purpose.
+        </p>
+      </article>
+
+      <article class="panel">
+        <h3>Domain map</h3>
+        <ul class="domain-list">
+          <li><strong>sowwwl.cloud</strong><span>Hub and infrastructure entry</span></li>
+          <li><strong>sowwwl.com</strong><span>Main O. application</span></li>
+          <li><strong>api.sowwwl.cloud</strong><span>AzA API and docs</span></li>
+          <li><strong>0.user.o.sowwwl.cloud</strong><span>User cloud / SPA shell</span></li>
+          <li><strong>0wlslw0.com</strong><span>Experimental landing</span></li>
+          <li><strong>sowwwl.fr / sowwwl.net</strong><span>Editorial / publishing surfaces</span></li>
+        </ul>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
