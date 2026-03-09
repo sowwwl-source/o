@@ -1,0 +1,86 @@
+{
+	email {$ACME_EMAIL}
+}
+
+(common_headers) {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), geolocation=(), microphone=()"
+		-Server
+	}
+}
+
+www.sowwwl.cloud {
+	redir https://sowwwl.cloud{uri} 308
+}
+
+sowwwl.cloud {
+	import common_headers
+	root * /srv/sites/sowwwl.cloud
+	file_server
+}
+
+api.sowwwl.cloud {
+	encode zstd gzip
+	header {
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Headers "Authorization, Content-Type"
+		Access-Control-Allow-Methods "GET, POST, OPTIONS"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+	@preflight method OPTIONS
+	respond @preflight 204
+	reverse_proxy api:80
+}
+
+0.user.o.sowwwl.cloud {
+	import common_headers
+	root * /srv/sites/0.user.o.sowwwl.cloud
+	try_files {path} {path}/ /index.html
+	file_server
+}
+
+www.sowwwl.org {
+	redir https://sowwwl.org{uri} 308
+}
+
+sowwwl.org {
+	import common_headers
+	root * /srv/sites/sowwwl.org
+	file_server
+}
+
+www.0wlslw0.com {
+	redir https://0wlslw0.com{uri} 308
+}
+
+0wlslw0.com {
+	import common_headers
+	root * /srv/sites/0wlslw0.com
+	file_server
+}
+
+www.sowwwl.com {
+	redir https://sowwwl.com{uri} 308
+}
+
+sowwwl.com {
+	import common_headers
+	root * /srv/sites/sowwwl.com
+	file_server
+}
+
+www.sowwwl.art {
+	redir https://sowwwl.art{uri} 308
+}
+
+sowwwl.art {
+	import common_headers
+	root * /srv/sites/0wlslw0.com
+	file_server
+}
