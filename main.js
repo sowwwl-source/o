@@ -4,6 +4,7 @@ const reveals = Array.from(document.querySelectorAll(".reveal"));
 const tzInput = document.querySelector('input[name="timezone"]');
 const tzLabel = document.getElementById("tz-label");
 const tzTime = document.getElementById("tz-time");
+const bootline = document.getElementById("bootline");
 
 if ("IntersectionObserver" in window && reveals.length) {
 	const observer = new IntersectionObserver(
@@ -62,6 +63,20 @@ if (tzInput) {
 	});
 }
 
+if (bootline) {
+	const fullText = bootline.textContent;
+	let i = 0;
+	bootline.textContent = "";
+
+	const typer = setInterval(() => {
+		bootline.textContent += fullText[i] ?? "";
+		i += 1;
+		if (i >= fullText.length) {
+			clearInterval(typer);
+		}
+	}, 28);
+}
+
 setInterval(() => {
 	formatTimeInZone(activeTimezone);
 }, 1000);
@@ -70,4 +85,14 @@ document.addEventListener("keydown", (event) => {
 	if (event.key.toLowerCase() === "n") {
 		document.documentElement.classList.toggle("negative");
 	}
+
+	if (event.key.toLowerCase() === "v") {
+		document.body.classList.toggle("vortex-shift");
+	}
 });
+
+let drift = 0;
+setInterval(() => {
+	drift += 0.015;
+	document.documentElement.style.setProperty("--drift", `${Math.sin(drift) * 4}px`);
+}, 120);

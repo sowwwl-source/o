@@ -61,11 +61,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <header class="hero reveal">
         <p class="eyebrow">sowwwl.xyz</p>
         <h1><span>Just the Three of Us</span> <em>O.n0uSnoImenT</em></h1>
+        <p class="vortex" aria-hidden="true">(.0.)</p>
         <p class="lead">
             Un espace vivant, personnel, discret. Pose ta terre, choisis ton rythme,
             et laisse la nuit coder le reste.
         </p>
     </header>
+
+    <section class="panel reveal telemetry" aria-labelledby="telemetry-title">
+        <h2 id="telemetry-title">Noyau</h2>
+        <div class="data-grid">
+            <p>&gt; INITIALISATION : <span class="highlight">H.°bO</span></p>
+            <p>&gt; DOMAINE : <span class="highlight">sowwwl.xyz</span></p>
+            <p>&gt; IDENTITÉS : <span class="highlight">Pablo Espallergues / seugrellapsE.3</span></p>
+            <p>&gt; STATUT : <span class="highlight">pfe vvv</span> | SÉCURITÉ : <span class="highlight">xXx</span></p>
+            <p class="bootline" id="bootline">[ L'aspiration est en cours... George Duke is ON. ]</p>
+        </div>
+    </section>
 
     <section class="panel reveal" aria-labelledby="install-title">
         <h2 id="install-title">Poser une terre</h2>
