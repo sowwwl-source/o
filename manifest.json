@@ -1,0 +1,9 @@
+{
+	"name": "sowwwl.xyz — Just the Three of Us",
+	"short_name": "sowwwl",
+	"start_url": "/index.php",
+	"display": "standalone",
+	"background_color": "#09090b",
+	"theme_color": "#09090b",
+	"orientation": "portrait"
+}

@@ -1,0 +1,11 @@
+name = "sowwwl-xyz"
+main = "sw.js"
+compatibility_date = "2026-03-20"
+
+[[durable_objects.bindings]]
+name = "STORAGE"
+class_name = "Storage"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = [ "Storage" ]

@@ -1,0 +1,239 @@
+:root {
+	--bg: #09090b;
+	--bg-soft: #14141c;
+	--text: #f5f7ff;
+	--muted: #9fa6c4;
+	--line: rgba(255, 255, 255, 0.12);
+	--accent: #7c8bff;
+	--accent-2: #7bf6dc;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	min-height: 100%;
+}
+
+body {
+	font-family: "Inter", "Segoe UI", "SF Pro Text", system-ui, -apple-system, sans-serif;
+	color: var(--text);
+	background: radial-gradient(circle at 15% 10%, #1d2044 0%, var(--bg) 45%), var(--bg);
+	line-height: 1.4;
+	letter-spacing: 0.01em;
+	overflow-x: hidden;
+}
+
+.noise,
+.aurora {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+}
+
+.noise {
+	opacity: 0.08;
+	background-image: radial-gradient(circle, rgba(255, 255, 255, 0.24) 0.7px, transparent 0.8px);
+	background-size: 3px 3px;
+	z-index: 0;
+}
+
+.aurora {
+	z-index: 0;
+	filter: blur(40px);
+	opacity: 0.3;
+	background:
+		radial-gradient(500px 240px at 10% 0%, rgba(124, 139, 255, 0.5), transparent 70%),
+		radial-gradient(420px 220px at 90% 100%, rgba(123, 246, 220, 0.35), transparent 75%);
+}
+
+.layout {
+	position: relative;
+	z-index: 1;
+	width: min(920px, calc(100% - 2rem));
+	margin: 0 auto;
+	padding: 5rem 0 4rem;
+}
+
+.hero {
+	margin-bottom: 2rem;
+}
+
+.eyebrow {
+	margin: 0;
+	color: var(--muted);
+	text-transform: uppercase;
+	letter-spacing: 0.2em;
+	font-size: 0.75rem;
+}
+
+h1 {
+	margin: 0.8rem 0;
+	font-size: clamp(2rem, 6vw, 4.2rem);
+	line-height: 1;
+	font-weight: 650;
+}
+
+h1 em {
+	display: block;
+	font-style: normal;
+	font-size: clamp(0.95rem, 2.5vw, 1.4rem);
+	color: var(--accent-2);
+	margin-top: 0.8rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.lead {
+	margin: 0;
+	max-width: 62ch;
+	color: var(--muted);
+	font-size: clamp(1rem, 2.2vw, 1.15rem);
+}
+
+.panel {
+	border: 1px solid var(--line);
+	border-radius: 22px;
+	background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+	backdrop-filter: blur(10px);
+	padding: 1.2rem;
+	margin-top: 1rem;
+	box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+}
+
+.panel h2 {
+	margin: 0;
+	font-size: 1rem;
+	text-transform: uppercase;
+	letter-spacing: 0.14em;
+}
+
+.panel-copy {
+	margin-top: 0.45rem;
+	color: var(--muted);
+}
+
+.land-form {
+	display: grid;
+	gap: 0.8rem;
+}
+
+.land-form label {
+	display: grid;
+	gap: 0.35rem;
+	font-size: 0.9rem;
+	color: #d6dbef;
+}
+
+.land-form input {
+	width: 100%;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: rgba(7, 8, 15, 0.82);
+	color: var(--text);
+	padding: 0.85rem 0.9rem;
+	outline: none;
+}
+
+.land-form input:focus {
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px rgba(124, 139, 255, 0.2);
+}
+
+button {
+	border: 1px solid transparent;
+	border-radius: 999px;
+	padding: 0.8rem 1rem;
+	font-weight: 600;
+	background: linear-gradient(90deg, var(--accent), var(--accent-2));
+	color: #0a0d12;
+	cursor: pointer;
+	transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+button:hover {
+	transform: translateY(-1px);
+	opacity: 0.95;
+}
+
+.flash {
+	border-radius: 12px;
+	padding: 0.8rem;
+	margin-bottom: 0.8rem;
+	border: 1px solid var(--line);
+	background: rgba(8, 10, 18, 0.65);
+}
+
+.flash p {
+	margin: 0;
+}
+
+.flash-success {
+	border-color: rgba(123, 246, 220, 0.5);
+}
+
+.flash-warning {
+	border-color: rgba(255, 196, 102, 0.6);
+}
+
+.next-link {
+	display: inline-block;
+	margin-top: 0.5rem;
+	color: var(--accent-2);
+}
+
+.split {
+	display: grid;
+	gap: 1rem;
+	align-items: center;
+	grid-template-columns: 1.35fr 1fr;
+}
+
+.clock {
+	text-align: right;
+}
+
+#tz-label {
+	margin: 0;
+	color: var(--muted);
+	font-size: 0.9rem;
+}
+
+#tz-time {
+	margin: 0.3rem 0 0;
+	font-size: clamp(1.4rem, 5vw, 2.3rem);
+	font-variant-numeric: tabular-nums;
+}
+
+.reveal {
+	opacity: 0;
+	transform: translateY(16px);
+	transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.reveal.on {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+.negative {
+	filter: invert(1) hue-rotate(180deg);
+}
+
+@media (max-width: 720px) {
+	.layout {
+		padding-top: 3.4rem;
+	}
+
+	.split {
+		grid-template-columns: 1fr;
+	}
+
+	.clock {
+		text-align: left;
+	}
+}
