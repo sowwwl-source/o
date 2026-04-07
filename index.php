@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <p>&gt; DOMAINE : <span class="highlight">sowwwl.xyz</span></p>
             <p>&gt; IDENTITÉS : <span class="highlight">Pablo Espallergues / seugrellapsE.3</span></p>
             <p>&gt; STATUT : <span class="highlight">pfe vvv</span> | SÉCURITÉ : <span class="highlight">xXx</span></p>
-            <p class="bootline" id="bootline">[ L'aspiration est en cours... George Duke is ON. ]</p>
+            <p class="bootline" id="bootline">[ Push pull commit. George Duke is ON. ]</p>
         </div>
     </section>
 
