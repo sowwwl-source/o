@@ -1,12 +1,16 @@
-const SYSTEM = { mode: "silent", domain: "sowwwl.xyz" };
+const DEFAULT_TIMEZONE = "Europe/Paris";
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const reveals = Array.from(document.querySelectorAll(".reveal"));
-const tzInput = document.querySelector('input[name="timezone"]');
-const tzLabel = document.getElementById("tz-label");
-const tzTime = document.getElementById("tz-time");
+const usernameInput = document.querySelector("[data-username-input]");
+const timezoneInput = document.querySelector("[data-timezone-input]");
+const previewClock = document.querySelector("[data-preview-clock]");
+const previewShell = document.querySelector("[data-preview-shell]");
+const useLocalTimezoneButton = document.querySelector("[data-use-local-timezone]");
 const bootline = document.getElementById("bootline");
+const copyButtons = Array.from(document.querySelectorAll("[data-copy-link]"));
 
-if ("IntersectionObserver" in window && reveals.length) {
+if ("IntersectionObserver" in window && reveals.length && !reducedMotion) {
 	const observer = new IntersectionObserver(
 		(entries) => {
 			entries.forEach((entry) => {
@@ -16,70 +20,180 @@ if ("IntersectionObserver" in window && reveals.length) {
 				}
 			});
 		},
-		{ threshold: 0.2 }
+		{ threshold: 0.16 }
 	);
 
-	reveals.forEach((el) => observer.observe(el));
+	reveals.forEach((element) => observer.observe(element));
 } else {
-	reveals.forEach((el) => el.classList.add("on"));
+	reveals.forEach((element) => element.classList.add("on"));
 }
 
-function formatTimeInZone(timezone) {
-	try {
-		const now = new Date();
-		const formatted = new Intl.DateTimeFormat("fr-FR", {
+function slugify(value) {
+	const trimmed = value.trim();
+	if (!trimmed) {
+		return "terre";
+	}
+
+	const normalized = typeof trimmed.normalize === "function" ? trimmed.normalize("NFD") : trimmed;
+
+	return (
+		normalized
+			.replace(/[\u0300-\u036f]/g, "")
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/^-+|-+$/g, "")
+			.slice(0, 42) || "terre"
+	);
+}
+
+function formatClock(timezone) {
+	const now = new Date();
+
+	return {
+		time: new Intl.DateTimeFormat("fr-FR", {
 			timeZone: timezone,
 			hour: "2-digit",
 			minute: "2-digit",
 			second: "2-digit",
 			hour12: false,
-		}).format(now);
+		}).format(now),
+		date: new Intl.DateTimeFormat("fr-FR", {
+			timeZone: timezone,
+			weekday: "long",
+			day: "2-digit",
+			month: "long",
+		}).format(now),
+	};
+}
 
-		tzLabel.textContent = `Fuseau : ${timezone}`;
-		tzTime.textContent = formatted;
-		return true;
+function renderClock(card) {
+	if (!card) {
+		return;
+	}
+
+	const timezone = card.dataset.timezone || DEFAULT_TIMEZONE;
+	const label = card.querySelector("[data-clock-label]");
+	const time = card.querySelector("[data-clock-time]");
+	const date = card.querySelector("[data-clock-date]");
+
+	try {
+		const formatted = formatClock(timezone);
+
+		if (label) {
+			label.textContent = `Fuseau : ${timezone}`;
+		}
+
+		if (time) {
+			time.textContent = formatted.time;
+		}
+
+		if (date) {
+			date.textContent = formatted.date;
+		}
 	} catch {
-		tzLabel.textContent = "Fuseau : invalide";
-		tzTime.textContent = "--:--:--";
-		return false;
+		if (label) {
+			label.textContent = "Fuseau : invalide";
+		}
+
+		if (time) {
+			time.textContent = "--:--:--";
+		}
+
+		if (date) {
+			date.textContent = "corrige le fuseau";
+		}
 	}
 }
 
-let activeTimezone = "Europe/Paris";
-formatTimeInZone(activeTimezone);
+function refreshClocks() {
+	document.querySelectorAll("[data-live-clock]").forEach((card) => renderClock(card));
+}
 
-if (tzInput) {
-	tzInput.addEventListener("input", (event) => {
-		const value = event.target.value.trim();
-		if (!value) {
-			activeTimezone = "Europe/Paris";
-			formatTimeInZone(activeTimezone);
+function renderSignupPreview() {
+	if (!previewShell) {
+		return;
+	}
+
+	const slug = slugify(usernameInput?.value || "");
+	const timezone = timezoneInput?.value.trim() || DEFAULT_TIMEZONE;
+	const originBase = previewShell.dataset.originBase || window.location.origin;
+	const slugOutput = previewShell.querySelector("[data-slug-output]");
+	const emailOutput = previewShell.querySelector("[data-email-output]");
+	const linkOutput = previewShell.querySelector("[data-land-link-output]");
+	const timezoneOutput = previewShell.querySelector("[data-preview-timezone]");
+
+	if (slugOutput) {
+		slugOutput.textContent = slug;
+	}
+
+	if (emailOutput) {
+		emailOutput.textContent = `${slug}@o.local`;
+	}
+
+	if (linkOutput) {
+		linkOutput.textContent = `${originBase}/land.php?u=${slug}`;
+	}
+
+	if (timezoneOutput) {
+		timezoneOutput.textContent = timezone;
+	}
+
+	if (previewClock) {
+		previewClock.dataset.timezone = timezone;
+		renderClock(previewClock);
+	}
+}
+
+if (timezoneInput && previewClock) {
+	const guessedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+	if (!timezoneInput.value.trim() && guessedTimezone) {
+		timezoneInput.value = guessedTimezone;
+		previewClock.dataset.timezone = guessedTimezone;
+	}
+
+	timezoneInput.addEventListener("input", renderSignupPreview);
+}
+
+if (usernameInput) {
+	usernameInput.addEventListener("input", renderSignupPreview);
+}
+
+if (useLocalTimezoneButton && timezoneInput) {
+	useLocalTimezoneButton.addEventListener("click", () => {
+		const guessedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		if (!guessedTimezone) {
 			return;
 		}
 
-		if (formatTimeInZone(value)) {
-			activeTimezone = value;
-		}
+		timezoneInput.value = guessedTimezone;
+		renderSignupPreview();
 	});
 }
 
+renderSignupPreview();
+refreshClocks();
+window.setInterval(refreshClocks, 1000);
+
 if (bootline) {
 	const fullText = bootline.textContent;
-	let i = 0;
-	bootline.textContent = "";
 
-	const typer = setInterval(() => {
-		bootline.textContent += fullText[i] ?? "";
-		i += 1;
-		if (i >= fullText.length) {
-			clearInterval(typer);
-		}
-	}, 28);
+	if (reducedMotion) {
+		bootline.textContent = fullText;
+	} else {
+		let index = 0;
+		bootline.textContent = "";
+
+		const typer = window.setInterval(() => {
+			bootline.textContent += fullText[index] ?? "";
+			index += 1;
+
+			if (index >= fullText.length) {
+				window.clearInterval(typer);
+			}
+		}, 28);
+	}
 }
-
-setInterval(() => {
-	formatTimeInZone(activeTimezone);
-}, 1000);
 
 document.addEventListener("keydown", (event) => {
 	if (event.key.toLowerCase() === "n") {
@@ -91,8 +205,39 @@ document.addEventListener("keydown", (event) => {
 	}
 });
 
-let drift = 0;
-setInterval(() => {
-	drift += 0.015;
-	document.documentElement.style.setProperty("--drift", `${Math.sin(drift) * 4}px`);
-}, 120);
+if (!reducedMotion) {
+	let drift = 0;
+
+	window.setInterval(() => {
+		drift += 0.015;
+		document.documentElement.style.setProperty("--drift", `${Math.sin(drift) * 4}px`);
+	}, 120);
+}
+
+copyButtons.forEach((button) => {
+	button.addEventListener("click", async () => {
+		const text = button.dataset.copyLink;
+		if (!text) {
+			return;
+		}
+
+		try {
+			await navigator.clipboard.writeText(text);
+			button.textContent = "Lien copie";
+		} catch {
+			button.textContent = "Copie manuelle";
+		}
+
+		window.setTimeout(() => {
+			button.textContent = "Copier l'adresse";
+		}, 1800);
+	});
+});
+
+if ("serviceWorker" in navigator) {
+	window.addEventListener("load", () => {
+		navigator.serviceWorker.register("/site-sw.js").catch(() => {
+			// Fail silently: the site still works as a regular document.
+		});
+	});
+}

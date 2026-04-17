@@ -8,6 +8,10 @@
 .env
 .env.*
 
+# Runtime storage
+/storage/lands/*.json
+!/storage/lands/.gitignore
+
 # OS / editor
 .DS_Store
 .idea/

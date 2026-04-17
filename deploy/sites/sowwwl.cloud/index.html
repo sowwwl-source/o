@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SOWWWL Cloud</title>
-  <meta name="description" content="SOWWWL cloud hub: domains, product doors, and infrastructure status.">
+  <meta name="description" content="SOWWWL cloud hub: the canonical hub once structure and copy are validated on sowwwl.org.">
   <style>
     :root {
       --bg: #07111f;
@@ -293,29 +293,28 @@
 <body>
   <main>
     <section class="hero">
-      <span class="eyebrow">SOWWWL / cloud control surface</span>
+      <span class="eyebrow">SOWWWL / canonical cloud hub</span>
       <div class="hero-grid">
         <div>
-          <h1>One network. Multiple doors.</h1>
+          <h1>One network. One canonical hub.</h1>
           <p class="lede">
-            This host becomes the canonical hub for the SOWWWL constellation: public entry points,
-            product domains, API status, and deployment handoff. Keep the writing stack on
-            <strong>sowwwl.fr</strong> and <strong>sowwwl.net</strong>, keep the product on
-            <strong>sowwwl.com</strong>, and use this page as the map.
+            <strong>sowwwl.cloud</strong> becomes the authoritative map only after the structure,
+            naming, and copy have been validated on <strong>sowwwl.org</strong>. Once promoted,
+            this page is the stable hub for product doors, API status, and operational handoff.
           </p>
           <div class="cta-row">
             <a class="btn primary" href="https://sowwwl.com">Open the product</a>
             <a class="btn" href="https://api.sowwwl.cloud/docs">Read API docs</a>
-            <a class="btn" href="https://0.user.o.sowwwl.cloud/login">Open user cloud</a>
+            <a class="btn" href="https://sowwwl.org">Review validation layer</a>
           </div>
         </div>
         <div class="status-stack">
           <div class="status-card">
-            <div class="status-label">Primary runtime</div>
-            <div class="status-value"><strong>Hub</strong> + reverse proxy + app + API</div>
+            <div class="status-label">Promotion rule</div>
+            <div class="status-value"><strong>Validate on .org</strong>, publish on .cloud</div>
             <p class="status-meta">
-              Intended topology: Caddy in front, PHP app on <code>sowwwl.com</code>,
-              static hub on <code>sowwwl.cloud</code>, API on <code>api.sowwwl.cloud</code>.
+              Intended flow: shape the message and domain logic on <code>sowwwl.org</code>,
+              then promote the approved frame here so the hub stays canonical.
             </p>
           </div>
           <div class="status-card" id="api-card">
@@ -334,7 +333,7 @@
     <div class="section-head">
       <div>
         <h2>Domain map</h2>
-        <p>Each host should have a single role. Avoid stacking editorial, product, API, and experiment traffic on the same domain.</p>
+        <p>Each host should keep one role. The hub is canonical only after the validation layer approves the frame.</p>
       </div>
     </div>
 
@@ -373,9 +372,9 @@
 
       <article class="panel domain-card">
         <h3>sowwwl.org</h3>
-        <p>The public institution page: manifesto, method, links, and long-lived copy. Keep it static and legible.</p>
+        <p>The validation deck. Use it to approve copy, hierarchy, and domain roles before promoting the final frame to the cloud hub.</p>
         <div class="domain-meta">
-          <span class="chip">public face</span>
+          <span class="chip">validation</span>
           <span class="chip">static</span>
         </div>
         <div class="card-actions"><a href="https://sowwwl.org">Read</a></div>
@@ -415,7 +414,7 @@
     <section class="ops">
       <article class="panel domain-card">
         <h3>Deploy</h3>
-        <p>Use a single VPS, point DNS at it, keep Cloudflare in front, and let Caddy own certificates at the origin.</p>
+        <p>Use a single VPS, point DNS at it, keep Cloudflare in front, and promote only validated structure from <code>sowwwl.org</code> to the hub.</p>
         <ul>
           <li>Copy <code>deploy/.env.production.example</code> to <code>deploy/.env.production</code>.</li>
           <li>Set strong database passwords and a real <code>AZA_API_TOKEN</code>.</li>
@@ -433,7 +432,7 @@
       </article>
     </section>
 
-    <p class="footer-note">SOWWWL Cloud is now the stable control layer. Keep each host single-purpose.</p>
+    <p class="footer-note">SOWWWL Cloud is the canonical control layer after validation. Keep each host single-purpose.</p>
   </main>
   <script>
     (async function () {

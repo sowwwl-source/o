@@ -22,6 +22,12 @@ This stack covers:
 - no DB dependency
 - one place to fix TLS and Cloudflare issues
 
+## Promotion flow
+
+- `sowwwl.org` is the validation layer for copy, structure, and domain roles
+- `sowwwl.cloud` becomes the canonical hub only after that frame is approved
+- `sowwwl.xyz` and `0.user.o.sowwwl.cloud` inherit the approved framing, but keep their user-ingress roles
+
 ## Deploy
 
 From the repository root:

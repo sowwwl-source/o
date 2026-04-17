@@ -12,6 +12,12 @@ This directory adds a production-oriented stack for:
 
 It uses one VPS, one Caddy reverse proxy, static domain sites, and one minimal API compatibility container.
 
+## Domain promotion model
+
+- `sowwwl.org` is the validation surface: approve wording, structure, and domain hierarchy there first
+- `sowwwl.cloud` is the canonical hub: promote the approved frame there once it is validated
+- `sowwwl.xyz` and `0.user.o.sowwwl.cloud` remain user-entry surfaces that follow the approved frame
+
 ## Files
 
 - `docker-compose.prod.yml` - production stack
