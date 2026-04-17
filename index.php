@@ -15,6 +15,7 @@ $timezoneSuggestions = [
     'Asia/Tokyo',
     'Asia/Bangkok',
 ];
+$csrfToken = csrf_token();
 $form = [
     'username' => '',
     'timezone' => DEFAULT_TIMEZONE,
@@ -23,12 +24,15 @@ $form = [
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form['username'] = trim((string) ($_POST['username'] ?? ''));
     $form['timezone'] = trim((string) ($_POST['timezone'] ?? ''));
+    $csrfCandidate = (string) ($_POST['csrf_token'] ?? '');
+    $honeypot = (string) ($_POST['website'] ?? '');
 
     if ($form['username'] === '' || $form['timezone'] === '') {
         $message = 'Rien n’est obligatoire, mais quelque chose est nécessaire.';
         $messageType = 'warning';
     } else {
         try {
+            guard_land_creation_request($csrfCandidate, $honeypot);
             $land = create_land($form['username'], $form['timezone']);
             header('Location: /land.php?u=' . urlencode((string) $land['slug']) . '&created=1', true, 303);
             exit;
@@ -42,12 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+remember_form_rendered_at();
+
 $pulse = land_pulse();
 $previewSlug = preview_land_slug($form['username']);
 $previewTimezone = $form['timezone'] !== '' ? $form['timezone'] : DEFAULT_TIMEZONE;
-$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host = trim((string) ($_SERVER['HTTP_HOST'] ?? SITE_DOMAIN));
-$originBase = $host !== '' ? $scheme . '://' . $host : 'https://' . SITE_DOMAIN;
+$originBase = site_origin();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -74,7 +78,7 @@ $originBase = $host !== '' ? $scheme . '://' . $host : 'https://' . SITE_DOMAIN;
                 <h1><span>Pose ta terre.</span> <em>Garde ton rythme.</em></h1>
                 <p class="vortex" aria-hidden="true">(.0.)</p>
                 <p class="lead">
-                    Une porte plus intime que `sowwwl.cloud`, plus simple qu’un produit complet.
+                    Une porte plus intime que sowwwl.cloud, plus simple qu’un produit complet.
                     Tu poses un nom, tu fixes ton fuseau, et ton espace existe déjà.
                 </p>
                 <div class="hero-actions">
@@ -103,7 +107,7 @@ $originBase = $host !== '' ? $scheme . '://' . $host : 'https://' . SITE_DOMAIN;
                     <div class="status-label">Mode actif</div>
                     <div class="status-value"><strong>Private shell</strong> sans tunnel inutile</div>
                     <p class="status-meta">
-                        Inspiré par `sowwwl.cloud` pour la clarté et `0.user.o.sowwwl.cloud`
+                        Inspiré par sowwwl.cloud pour la clarté et 0.user.o.sowwwl.cloud
                         pour l’intimité du shell. Ici, l’inscription est la page.
                     </p>
                 </div>
@@ -124,6 +128,15 @@ $originBase = $host !== '' ? $scheme . '://' . $host : 'https://' . SITE_DOMAIN;
                     <?php endif; ?>
 
                     <form method="post" class="land-form" autocomplete="off">
+                        <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+
+                        <div class="form-trap" aria-hidden="true">
+                            <label>
+                                Site web
+                                <input type="text" name="website" tabindex="-1" autocomplete="off">
+                            </label>
+                        </div>
+
                         <label>
                             Nom d’usage
                             <input
@@ -154,7 +167,18 @@ $originBase = $host !== '' ? $scheme . '://' . $host : 'https://' . SITE_DOMAIN;
                                 <button type="button" class="inline-action" data-use-local-timezone>Utiliser mon fuseau</button>
                             </div>
                             <span class="input-hint">Le shell l’utilise pour animer ton temps local.</span>
+                            <span class="field-status" data-timezone-status>Choisis un fuseau IANA valide ou utilise la détection locale.</span>
                         </label>
+
+                        <div class="timezone-picks" aria-label="Fuseaux fréquents">
+                            <?php foreach ($timezoneSuggestions as $timezoneSuggestion): ?>
+                                <button
+                                    type="button"
+                                    class="timezone-chip"
+                                    data-timezone-chip="<?= h($timezoneSuggestion) ?>"
+                                ><?= h($timezoneSuggestion) ?></button>
+                            <?php endforeach; ?>
+                        </div>
 
                         <datalist id="timezone-suggestions">
                             <?php foreach ($timezoneSuggestions as $timezoneSuggestion): ?>

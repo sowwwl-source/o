@@ -20,9 +20,7 @@ if ($notFound) {
 
 $created = isset($_GET['created']) && $_GET['created'] === '1';
 $sharePath = $land ? '/land.php?u=' . rawurlencode((string) $land['slug']) : '/';
-$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host = trim((string) ($_SERVER['HTTP_HOST'] ?? SITE_DOMAIN));
-$shareUrl = $host !== '' ? $scheme . '://' . $host . $sharePath : $sharePath;
+$shareUrl = site_origin() . $sharePath;
 ?>
 <!DOCTYPE html>
 <html lang="fr">

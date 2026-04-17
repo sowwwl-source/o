@@ -1,7 +1,5 @@
 const VERSION = "sowwwl-site-v1";
 const APP_SHELL = [
-	"/",
-	"/index.php",
 	"/styles.css",
 	"/main.js",
 	"/manifest.json",
@@ -45,15 +43,19 @@ self.addEventListener("fetch", (event) => {
 
 	if (request.mode === "navigate") {
 		event.respondWith(
-			fetch(request)
-				.then((response) => {
-					if (response.ok) {
-						const clone = response.clone();
-						caches.open(VERSION).then((cache) => cache.put(request, clone));
-					}
-					return response;
-				})
-				.catch(async () => (await caches.match(request)) || caches.match("/"))
+			fetch(request).catch(
+				() =>
+					new Response(
+						"Le shell est hors ligne pour l’instant. Recharge quand la connexion revient.",
+						{
+							status: 503,
+							headers: {
+								"Content-Type": "text/plain; charset=utf-8",
+								"Cache-Control": "no-store",
+							},
+						}
+					)
+			)
 		);
 		return;
 	}

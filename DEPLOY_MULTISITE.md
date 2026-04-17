@@ -6,6 +6,7 @@ Use this file when the target is one VPS serving multiple domains through Caddy.
 
 This stack covers:
 
+- `sowwwl.xyz` as the user ingress app
 - `sowwwl.cloud` as the hub
 - `api.sowwwl.cloud` as the minimal API host
 - `0.user.o.sowwwl.cloud` as the SPA shell with fallback routing
@@ -18,7 +19,7 @@ This stack covers:
 
 - one VPS
 - one reverse proxy
-- no app runtime dependency
+- one light PHP runtime for `sowwwl.xyz`
 - no DB dependency
 - one place to fix TLS and Cloudflare issues
 
@@ -41,6 +42,8 @@ docker compose --env-file deploy/.env.production -f deploy/docker-compose.prod.y
 
 Point these hosts to the VPS:
 
+- `sowwwl.xyz`
+- `www.sowwwl.xyz`
 - `sowwwl.cloud`
 - `www.sowwwl.cloud`
 - `api.sowwwl.cloud`
@@ -59,10 +62,12 @@ Point these hosts to the VPS:
 1. Make sure the origin is reachable on ports `80` and `443`.
 2. Let Caddy issue certificates on the origin.
 3. Set Cloudflare SSL mode to `Full (strict)`.
-4. If `0wlslw0.com` or `sowwwl.cloud` returns `526`, the origin certificate or routing is still wrong.
+4. If `sowwwl.xyz` returns `525`, the origin handshake is still wrong: verify the host exists in Caddy, port `443` is open, and the origin certificate covers `sowwwl.xyz`.
+5. If `0wlslw0.com` or `sowwwl.cloud` returns `526`, the origin certificate or routing is still wrong.
 
 ## Result
 
+- `sowwwl.xyz` resolves to the PHP ingress app
 - `sowwwl.cloud` gets a real home page
 - `api.sowwwl.cloud` resolves and responds
 - `0.user.o.sowwwl.cloud` gets SPA fallback routing

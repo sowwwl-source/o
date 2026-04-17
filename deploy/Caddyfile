@@ -17,6 +17,21 @@ www.sowwwl.cloud {
 	redir https://sowwwl.cloud{uri} 308
 }
 
+sowwwl.xyz {
+	import common_headers
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
+		Cross-Origin-Opener-Policy same-origin
+		Cross-Origin-Resource-Policy same-origin
+		X-Permitted-Cross-Domain-Policies none
+	}
+	reverse_proxy app:80
+}
+
+www.sowwwl.xyz {
+	redir https://sowwwl.xyz{uri} 308
+}
+
 sowwwl.cloud {
 	import common_headers
 	root * /srv/sites/sowwwl.cloud

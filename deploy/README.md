@@ -2,6 +2,7 @@
 
 This directory adds a production-oriented stack for:
 
+- `sowwwl.xyz`
 - `sowwwl.cloud`
 - `api.sowwwl.cloud`
 - `0.user.o.sowwwl.cloud`
@@ -10,7 +11,7 @@ This directory adds a production-oriented stack for:
 - `sowwwl.com`
 - `sowwwl.art`
 
-It uses one VPS, one Caddy reverse proxy, static domain sites, and one minimal API compatibility container.
+It uses one VPS, one Caddy reverse proxy, one light PHP app container for `sowwwl.xyz`, static domain sites, and one minimal API compatibility container.
 
 ## Domain promotion model
 
@@ -23,6 +24,7 @@ It uses one VPS, one Caddy reverse proxy, static domain sites, and one minimal A
 - `docker-compose.prod.yml` - production stack
 - `Caddyfile` - domain routing and redirects
 - `api/` - minimal AzA API stub with docs and health endpoints
+- `app/` - PHP runtime image for `sowwwl.xyz`
 - `sites/` - static sites for the hub, org, alternate landing, SPA shell, and temporary product shell
 
 ## Prepare
@@ -36,6 +38,7 @@ It uses one VPS, one Caddy reverse proxy, static domain sites, and one minimal A
 
 Required apex records:
 
+- `sowwwl.xyz`
 - `sowwwl.cloud`
 - `sowwwl.org`
 - `0wlslw0.com`
@@ -44,6 +47,7 @@ Required apex records:
 
 Required subdomain records:
 
+- `www.sowwwl.xyz`
 - `www.sowwwl.cloud`
 - `www.sowwwl.org`
 - `www.0wlslw0.com`
@@ -68,7 +72,8 @@ If Cloudflare is enabled:
 1. Point the DNS records to the VPS.
 2. For the first certificate issuance, use DNS-only mode if needed.
 3. Once Caddy has valid origin certificates, switch SSL mode to `Full (strict)`.
-4. If you previously had a `526` on `0wlslw0.com` or `sowwwl.cloud`, that error should disappear once the origin is serving a valid certificate and Cloudflare is in `Full (strict)`.
+4. If `sowwwl.xyz` shows a `525`, the origin handshake is still failing. Verify the host exists in Caddy, the origin is reachable on `443`, and the origin certificate matches the domain.
+5. If you previously had a `526` on `0wlslw0.com` or `sowwwl.cloud`, that error should disappear once the origin is serving a valid certificate and Cloudflare is in `Full (strict)`.
 
 ## What the API stub does
 

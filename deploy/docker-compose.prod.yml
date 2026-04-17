@@ -2,6 +2,8 @@ services:
   caddy:
     image: caddy:2.8
     depends_on:
+      app:
+        condition: service_started
       api:
         condition: service_started
     environment:
@@ -14,6 +16,22 @@ services:
       - ./sites:/srv/sites:ro
       - caddy_data:/data
       - caddy_config:/config
+    restart: unless-stopped
+    networks:
+      - sowwwl-edge
+
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/app/Dockerfile
+    environment:
+      SOWWWL_PUBLIC_ORIGIN: https://sowwwl.xyz
+      SOWWWL_STORAGE_DIR: /var/www/runtime/lands
+      SOWWWL_RATE_LIMIT_DIR: /var/www/runtime/rate-limit
+    expose:
+      - "80"
+    volumes:
+      - sowwwl_xyz_runtime:/var/www/runtime
     restart: unless-stopped
     networks:
       - sowwwl-edge
@@ -34,6 +52,7 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  sowwwl_xyz_runtime:
 
 networks:
   sowwwl-edge:

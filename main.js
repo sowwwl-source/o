@@ -4,6 +4,8 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matc
 const reveals = Array.from(document.querySelectorAll(".reveal"));
 const usernameInput = document.querySelector("[data-username-input]");
 const timezoneInput = document.querySelector("[data-timezone-input]");
+const timezoneStatus = document.querySelector("[data-timezone-status]");
+const timezoneChips = Array.from(document.querySelectorAll("[data-timezone-chip]"));
 const previewClock = document.querySelector("[data-preview-clock]");
 const previewShell = document.querySelector("[data-preview-shell]");
 const useLocalTimezoneButton = document.querySelector("[data-use-local-timezone]");
@@ -66,6 +68,15 @@ function formatClock(timezone) {
 	};
 }
 
+function isValidTimezone(timezone) {
+	try {
+		formatClock(timezone);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 function renderClock(card) {
 	if (!card) {
 		return;
@@ -121,6 +132,7 @@ function renderSignupPreview() {
 	const emailOutput = previewShell.querySelector("[data-email-output]");
 	const linkOutput = previewShell.querySelector("[data-land-link-output]");
 	const timezoneOutput = previewShell.querySelector("[data-preview-timezone]");
+	const timezoneIsValid = isValidTimezone(timezone);
 
 	if (slugOutput) {
 		slugOutput.textContent = slug;
@@ -137,6 +149,22 @@ function renderSignupPreview() {
 	if (timezoneOutput) {
 		timezoneOutput.textContent = timezone;
 	}
+
+	if (timezoneStatus) {
+		timezoneStatus.classList.toggle("is-warning", !timezoneIsValid);
+		timezoneStatus.classList.toggle("is-success", timezoneIsValid);
+		timezoneStatus.textContent = timezoneIsValid
+			? "Fuseau valide. L’heure affichée ci-dessous sera cohérente avec cette terre."
+			: "Ce fuseau n’est pas reconnu. Essaie un format comme Europe/Paris ou utilise la détection locale.";
+	}
+
+	if (timezoneInput) {
+		timezoneInput.classList.toggle("is-invalid", !timezoneIsValid);
+	}
+
+	timezoneChips.forEach((chip) => {
+		chip.classList.toggle("is-active", chip.dataset.timezoneChip === timezone);
+	});
 
 	if (previewClock) {
 		previewClock.dataset.timezone = timezone;
@@ -170,6 +198,17 @@ if (useLocalTimezoneButton && timezoneInput) {
 		renderSignupPreview();
 	});
 }
+
+timezoneChips.forEach((chip) => {
+	chip.addEventListener("click", () => {
+		if (!timezoneInput) {
+			return;
+		}
+
+		timezoneInput.value = chip.dataset.timezoneChip || DEFAULT_TIMEZONE;
+		renderSignupPreview();
+	});
+});
 
 renderSignupPreview();
 refreshClocks();
