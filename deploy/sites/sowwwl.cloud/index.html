@@ -66,6 +66,27 @@
       position: relative;
     }
 
+    .ascii-flower {
+      margin: 20px 0 16px;
+      font-family: "Courier New", Courier, monospace;
+      font-size: clamp(2.2rem, 8vw, 4rem);
+      letter-spacing: 0.18em;
+      color: #9ff5ca;
+      text-shadow: 0 0 18px rgba(159, 245, 202, 0.74), 0 0 42px rgba(245, 219, 159, 0.44);
+      animation: pulse-flower 2.8s infinite alternate ease-in-out;
+    }
+
+    @keyframes pulse-flower {
+      0% {
+        text-shadow: 0 0 18px rgba(159, 245, 202, 0.74), 0 0 42px rgba(245, 219, 159, 0.44);
+        transform: scale(1);
+      }
+      100% {
+        text-shadow: 0 0 24px rgba(159, 245, 202, 0.9), 0 0 54px rgba(245, 219, 159, 0.64);
+        transform: scale(1.02);
+      }
+    }
+
     .eyebrow {
       display: inline-flex;
       align-items: center;
@@ -293,10 +314,11 @@
 <body>
   <main>
     <section class="hero">
-      <span class="eyebrow">SOWWWL / canonical cloud hub</span>
+      <span class="eyebrow">SOWWWL / accueil des fleurs</span>
       <div class="hero-grid">
         <div>
-          <h1>One network. One canonical hub.</h1>
+          <h1>One network. Accueil des fleurs.</h1>
+          <div aria-hidden="true" class="ascii-flower">(.✿.)</div>
           <p class="lede">
             <strong>sowwwl.cloud</strong> becomes the authoritative map only after the structure,
             naming, and copy have been validated on <strong>sowwwl.org</strong>. Once promoted,
