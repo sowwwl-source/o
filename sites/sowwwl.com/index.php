@@ -56,7 +56,7 @@ if ($userEmail === $adminEmail) {
         <h3>Admin Access</h3>
         <?php if (!empty($error)) echo '<p style="color:red;">' . htmlspecialchars($error) . '</p>'; ?>
         <form method="post">
-            <input type="text" name="password" placeholder="Admin username/password" autocomplete="off" required>
+            <input type="password" name="password" placeholder="Admin username/password" autocomplete="current-password" required>
             <button type="submit">Login</button>
         </form>
     <?php endif; ?>
