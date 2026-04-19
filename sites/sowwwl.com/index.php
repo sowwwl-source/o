@@ -5,7 +5,7 @@ session_start();
 $adminLogFile = __DIR__ . '/admin.log';
 $visitorLogFile = __DIR__ . '/visitor.log';
 $adminEmail = 'pablo@sowwwl.com';
-$adminPin = 'sowwwl123'; // Default password - CHANGE THIS
+$adminPin = 'Sowwwl123!'; // Default password - CHANGE THIS
 
 if (isset($_GET['logout'])) {
     session_destroy();
