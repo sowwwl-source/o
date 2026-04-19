@@ -2,8 +2,9 @@
 declare(strict_types=1);
 session_start();
 
-$adminLogFile = __DIR__ . '/admin.log';
-$visitorLogFile = __DIR__ . '/visitor.log';
+$runtimeDir = is_dir('/var/www/runtime') ? '/var/www/runtime' : sys_get_temp_dir();
+$adminLogFile = rtrim($runtimeDir, '/') . '/sowwwl_admin.log';
+$visitorLogFile = rtrim($runtimeDir, '/') . '/sowwwl_visitor.log';
 $adminEmail = 'pablo@sowwwl.com';
 $adminPin = 'pablo'; // Simplified password
 
