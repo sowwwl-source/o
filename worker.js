@@ -346,7 +346,7 @@ function renderHomePage({ form, message, messageType, pulse, csrfToken, originBa
 				<p class="vortex" aria-hidden="true">(.0.)</p>
 				<p class="lead">
 					Une porte plus intime que sowwwl.cloud, plus simple qu'un produit complet.
-					Tu poses un nom, tu fixes ton fuseau, et ton espace existe deja.
+					Tu poses un nom, et ton espace existe deja.
 				</p>
 				<div class="hero-actions">
 					<a class="pill-link" href="#poser">Creer mon espace</a>
@@ -355,8 +355,8 @@ function renderHomePage({ form, message, messageType, pulse, csrfToken, originBa
 
 				<nav class="hero-nav" aria-label="Promesse du shell">
 					<a class="nav-card" href="#poser">
-						<strong>2 champs</strong>
-						<span>Nom d'usage et fuseau. Rien de plus pour entrer.</span>
+						<strong>1 champ</strong>
+						<span>Ton nom d'usage. Rien de plus pour entrer.</span>
 					</a>
 					<a class="nav-card" href="#surface">
 						<strong>Temps vivant</strong>
@@ -415,31 +415,12 @@ function renderHomePage({ form, message, messageType, pulse, csrfToken, originBa
 							<span class="input-hint">Choisis un nom simple, memorable, vivant.</span>
 						</label>
 
-						<label>
-							Fuseau horaire
-							<div class="input-stack">
-								<input
-									type="text"
-									name="timezone"
-									placeholder="ex: Europe/Paris"
-									required
-									value="${escapeHtml(previewTimezone)}"
-									data-timezone-input
-									list="timezone-suggestions"
-								>
-								<button type="button" class="inline-action" data-use-local-timezone>Utiliser mon fuseau</button>
-							</div>
-							<span class="input-hint">Le shell l'utilise pour animer ton temps local.</span>
-							<span class="field-status" data-timezone-status>Choisis un fuseau IANA valide ou utilise la detection locale.</span>
-						</label>
-
-						<div class="timezone-picks" aria-label="Fuseaux frequents">
-							${timezoneChips}
-						</div>
-
-						<datalist id="timezone-suggestions">
-							${timezoneOptions}
-						</datalist>
+<input
+                                                        type="hidden"
+                                                        name="timezone"
+                                                        value="${escapeHtml(previewTimezone)}"
+                                                        data-timezone-input
+                                                >
 
 						<button type="submit">Entrer dans O.</button>
 					</form>

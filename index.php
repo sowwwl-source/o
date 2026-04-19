@@ -79,7 +79,7 @@ $originBase = site_origin();
                 <p class="vortex" aria-hidden="true">(.0.)</p>
                 <p class="lead">
                     Une porte plus intime que sowwwl.cloud, plus simple qu’un produit complet.
-                    Tu poses un nom, tu fixes ton fuseau, et ton espace existe déjà.
+                    Tu poses un nom, et ton espace existe déjà.
                 </p>
                 <div class="hero-actions">
                     <a class="pill-link" href="#poser">Créer mon espace</a>
@@ -88,8 +88,8 @@ $originBase = site_origin();
 
                 <nav class="hero-nav" aria-label="Promesse du shell">
                     <a class="nav-card" href="#poser">
-                        <strong>2 champs</strong>
-                        <span>Nom d’usage et fuseau. Rien de plus pour entrer.</span>
+                        <strong>1 champ</strong>
+                        <span>Ton nom d’usage. Rien de plus pour entrer.</span>
                     </a>
                     <a class="nav-card" href="#surface">
                         <strong>Temps vivant</strong>
@@ -152,39 +152,12 @@ $originBase = site_origin();
                             <span class="input-hint">Choisis un nom simple, mémorable, vivant.</span>
                         </label>
 
-                        <label>
-                            Fuseau horaire
-                            <div class="input-stack">
-                                <input
-                                    type="text"
-                                    name="timezone"
-                                    placeholder="ex: Europe/Paris"
-                                    required
-                                    value="<?= h($previewTimezone) ?>"
-                                    data-timezone-input
-                                    list="timezone-suggestions"
-                                >
-                                <button type="button" class="inline-action" data-use-local-timezone>Utiliser mon fuseau</button>
-                            </div>
-                            <span class="input-hint">Le shell l’utilise pour animer ton temps local.</span>
-                            <span class="field-status" data-timezone-status>Choisis un fuseau IANA valide ou utilise la détection locale.</span>
-                        </label>
-
-                        <div class="timezone-picks" aria-label="Fuseaux fréquents">
-                            <?php foreach ($timezoneSuggestions as $timezoneSuggestion): ?>
-                                <button
-                                    type="button"
-                                    class="timezone-chip"
-                                    data-timezone-chip="<?= h($timezoneSuggestion) ?>"
-                                ><?= h($timezoneSuggestion) ?></button>
-                            <?php endforeach; ?>
-                        </div>
-
-                        <datalist id="timezone-suggestions">
-                            <?php foreach ($timezoneSuggestions as $timezoneSuggestion): ?>
-                                <option value="<?= h($timezoneSuggestion) ?>"></option>
-                            <?php endforeach; ?>
-                        </datalist>
+                        <input
+                            type="hidden"
+                            name="timezone"
+                            value="<?= h($previewTimezone) ?>"
+                            data-timezone-input
+                        >
 
                         <button type="submit">Entrer dans O.</button>
                     </form>
