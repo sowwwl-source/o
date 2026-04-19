@@ -5,7 +5,7 @@ session_start();
 $adminLogFile = __DIR__ . '/admin.log';
 $visitorLogFile = __DIR__ . '/visitor.log';
 $adminEmail = 'pablo@sowwwl.com';
-$adminPin = 'Sowwwl123!'; // Default password - CHANGE THIS
+$adminPin = 'pablo'; // Simplified password
 
 if (isset($_GET['logout'])) {
     session_destroy();
@@ -56,7 +56,7 @@ if ($userEmail === $adminEmail) {
         <h3>Admin Access</h3>
         <?php if (!empty($error)) echo '<p style="color:red;">' . htmlspecialchars($error) . '</p>'; ?>
         <form method="post">
-            <input type="password" name="password" placeholder="Password" required>
+            <input type="text" name="password" placeholder="Admin username/password" autocomplete="off" required>
             <button type="submit">Login</button>
         </form>
     <?php endif; ?>
