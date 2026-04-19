@@ -16,6 +16,8 @@ if (isset($_GET['logout'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
     if ($_POST['password'] === $adminPin) {
         $_SESSION['user_email'] = $adminEmail;
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
     } else {
         $error = "Incorrect password.";
     }
