@@ -10,6 +10,7 @@ COPY deploy/app/entrypoint.sh /usr/local/bin/sowwwl-entrypoint
 COPY index.php land.php config.php styles.css main.js manifest.json site-sw.js favicon.svg ./
 COPY lib ./lib
 COPY icons ./icons
+COPY sites ./sites
 
 RUN chmod +x /usr/local/bin/sowwwl-entrypoint
 

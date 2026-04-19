@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 
+if (in_array($_SERVER['HTTP_HOST'] ?? '', ['sowwwl.com', 'www.sowwwl.com'], true)) {
+    require __DIR__ . '/sites/sowwwl.com/index.php';
+    exit;
+}
+
 require __DIR__ . '/config.php';
 
 $message = '';
