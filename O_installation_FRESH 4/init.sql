@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS lands (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    email_virtual VARCHAR(255) NOT NULL,
+    timezone VARCHAR(255) NOT NULL,
+    zone_code VARCHAR(255) NOT NULL,
+    shore_text TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_lands_username (username)
+);

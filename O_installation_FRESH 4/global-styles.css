@@ -1,0 +1,275 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+:root {
+  /* Only two colors, flipped on each "layer". */
+  --o-cream-rgb: 238 246 233;   /* very light green, slightly cream */
+  --o-emerald-rgb: 11 107 74;   /* emerald */
+
+  --o-bg-rgb: var(--o-cream-rgb);
+  --o-fg-rgb: var(--o-emerald-rgb);
+  --o-bg: rgb(var(--o-bg-rgb));
+  --o-fg: rgb(var(--o-fg-rgb));
+
+  --o-font: 'Share Tech Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --o-line: rgba(var(--o-fg-rgb) / 0.22);
+  --o-fill: rgba(var(--o-fg-rgb) / 0.06);
+  --o-fill-2: rgba(var(--o-fg-rgb) / 0.10);
+  --o-shadow: 0 10px 30px rgba(var(--o-fg-rgb) / 0.10);
+
+  /* Off by default; enable with body.o-signal (used for "Machine"). */
+  --o-scan-opacity: 0;
+}
+
+body.o-inverted,
+body.inverted { /* alias for older code */
+  --o-bg-rgb: var(--o-emerald-rgb);
+  --o-fg-rgb: var(--o-cream-rgb);
+}
+
+body.o-signal {
+  --o-scan-opacity: 0.08;
+}
+
+html { box-sizing: border-box; height: 100%; background: var(--o-bg); }
+*, *::before, *::after { box-sizing: inherit; }
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--o-bg);
+  color: var(--o-fg);
+  font-family: var(--o-font);
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: 0.015em;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 240ms ease, color 240ms ease;
+}
+
+body.o-signal::after {
+  content: " ";
+  display: block;
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--o-fg-rgb) / 0) 50%,
+    rgba(var(--o-fg-rgb) / 0.16) 50%
+  );
+  background-size: 100% 4px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: var(--o-scan-opacity);
+}
+
+body.o-zooming {
+  overflow: hidden;
+}
+
+::selection {
+  background: rgba(var(--o-fg-rgb) / 0.25);
+  color: var(--o-fg);
+}
+
+h1 {
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  margin: 0 0 0.5rem;
+  text-shadow: 0 0 0.8rem rgba(var(--o-fg-rgb) / 0.28);
+}
+h2 {
+  font-size: 0.85rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.78;
+  margin: 2.2rem 0 0.75rem;
+}
+h3 {
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 0.6rem;
+}
+
+a {
+  color: var(--o-fg);
+  text-decoration: none;
+  border-bottom: 1px solid var(--o-line);
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+  cursor: pointer;
+}
+a:hover {
+  background: var(--o-fg);
+  color: var(--o-bg);
+  border-bottom-color: transparent;
+}
+
+button {
+  font-family: var(--o-font);
+  padding: 0.75rem 1.1rem;
+  background: transparent;
+  color: var(--o-fg);
+  border: 1px solid var(--o-line);
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+button:hover {
+  background: var(--o-fg);
+  color: var(--o-bg);
+  border-color: transparent;
+}
+
+input, textarea, select {
+  font-family: var(--o-font);
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--o-fill);
+  color: var(--o-fg);
+  border: 1px solid var(--o-line);
+  margin: 0.5rem 0;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: rgba(var(--o-fg-rgb) / 0.55);
+  background: var(--o-fill-2);
+}
+
+:focus-visible {
+  outline: 2px solid rgba(var(--o-fg-rgb) / 0.85);
+  outline-offset: 3px;
+}
+
+.card {
+  background: var(--o-fill);
+  border: 1px solid var(--o-line);
+  padding: 1.5rem;
+  box-shadow: var(--o-shadow);
+}
+
+.nav {
+  display: flex;
+  gap: 1.25rem;
+  margin: 2rem 0;
+  flex-wrap: wrap;
+}
+
+.nav a {
+  border: 1px solid var(--o-line);
+  padding: 0.5rem 0.9rem;
+  opacity: 0.9;
+}
+
+.grid { display: grid; gap: 1.5rem; margin: 1.5rem 0; }
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+
+.o-muted { opacity: 0.72; }
+
+@media (max-width: 768px) {
+  h1 { font-size: 2.2rem; }
+}
+
+/* =====================================
+   Apparitions (discovery links)
+   ===================================== */
+
+.o-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#o-apparitions {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%) translateY(0px);
+  width: min(900px, calc(100vw - 2rem));
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--o-line);
+  background: rgba(var(--o-bg-rgb) / 0.86);
+  box-shadow: 0 18px 60px rgba(0,0,0,0.22);
+  backdrop-filter: blur(6px);
+  z-index: 10001;
+  opacity: 1;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+#o-apparitions.is-hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px);
+  pointer-events: none;
+}
+
+.o-apparitions__sig {
+  opacity: 0.6;
+  letter-spacing: 0.25em;
+}
+
+.o-apparitions__list {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.o-apparition-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--o-line);
+  border-bottom: none;
+  background: var(--o-fill);
+  box-shadow: 0 10px 24px rgba(var(--o-fg-rgb) / 0.10);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-shadow: 0 0 0.9rem rgba(var(--o-fg-rgb) / 0.18);
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.o-apparition-link:hover {
+  background: var(--o-fill-2);
+  border-color: rgba(var(--o-fg-rgb) / 0.55);
+  color: inherit;
+  transform: translateY(-1px);
+}
+
+.o-flip {
+  display: inline-flex;
+  align-items: center;
+}
+
+.o-flip-char {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+  opacity: 0.75;
+  transform: translateY(0.06em);
+}
+
+.o-flip-char.is-locked {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #o-apparitions {
+    transition: none;
+  }
+  .o-apparition-link,
+  .o-flip-char.is-locked {
+    transition: none;
+  }
+}
