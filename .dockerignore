@@ -6,5 +6,5 @@
 .DS_Store
 storage/lands/*.json
 storage/runtime/rate-limit/*.json
-deploy/.env.production
-deploy/.env.production.example
+/.env.production
+/.env.production.example

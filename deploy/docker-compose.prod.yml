@@ -28,6 +28,8 @@ services:
       SOWWWL_PUBLIC_ORIGIN: https://sowwwl.xyz
       SOWWWL_STORAGE_DIR: /var/www/runtime/lands
       SOWWWL_RATE_LIMIT_DIR: /var/www/runtime/rate-limit
+      SOWWWL_ADMIN_PIN: ${SOWWWL_ADMIN_PIN:-pablo}
+      SOWWWL_ADMIN_EMAIL: ${SOWWWL_ADMIN_EMAIL:-pablo@sowwwl.com}
     expose:
       - "80"
     volumes:
