@@ -22,6 +22,7 @@ This stack covers:
 - one light PHP runtime for `sowwwl.xyz`
 - no DB dependency
 - one place to fix TLS and Cloudflare issues
+- no Wrangler or Cloudflare Worker deployment for `sowwwl.xyz`
 
 ## Promotion flow
 
@@ -37,6 +38,8 @@ From the repository root:
 cp deploy/.env.production.example deploy/.env.production
 docker compose --env-file deploy/.env.production -f deploy/docker-compose.prod.yml up --build -d
 ```
+
+Do not deploy `sowwwl.xyz` with `wrangler deploy`. The `.xyz` host now runs from the VPS stack in `deploy/`.
 
 ## DNS checklist
 

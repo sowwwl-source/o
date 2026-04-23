@@ -13,6 +13,8 @@ This directory adds a production-oriented stack for:
 
 It uses one VPS, one Caddy reverse proxy, one light PHP app container for `sowwwl.xyz`, static domain sites, and one minimal API compatibility container.
 
+`sowwwl.xyz` is no longer deployed through Cloudflare Workers or Wrangler.
+
 ## Domain promotion model
 
 - `sowwwl.org` is the validation surface: approve wording, structure, and domain hierarchy there first
@@ -64,6 +66,8 @@ From the repository root:
 cp deploy/.env.production.example deploy/.env.production
 docker compose --env-file deploy/.env.production -f deploy/docker-compose.prod.yml up --build -d
 ```
+
+Do not run `wrangler deploy` for `sowwwl.xyz`; Cloudflare should proxy the VPS origin instead.
 
 ## Cloudflare notes
 

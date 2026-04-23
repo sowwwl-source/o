@@ -1,57 +1,54 @@
-# Deploy the `sowwwl-xyz` Cloudflare Worker
+# `sowwwl.xyz` No Longer Uses Wrangler
 
-This repo contains a Cloudflare Worker (`worker.js`) that serves the `sowwwl.xyz` ingress page and stores lands via a Durable Object (`Storage`).
+The old Cloudflare Worker deployment path for `sowwwl.xyz` has been retired from this repository.
 
-## Required configuration
+`sowwwl.xyz` now runs through the VPS stack:
 
-### 1) Routes (custom domains)
+- [`DEPLOY_MULTISITE.md`](./DEPLOY_MULTISITE.md)
+- [`deploy/README.md`](./deploy/README.md)
+- [`deploy/docker-compose.prod.yml`](./deploy/docker-compose.prod.yml)
+- [`deploy/Caddyfile`](./deploy/Caddyfile)
 
-In `wrangler.toml` the Worker is routed to:
+## What Changed
 
-- `sowwwl.xyz/*`
-- `www.sowwwl.xyz/*`
+- `wrangler.toml` was removed
+- the Worker entrypoint was removed
+- the duplicate Worker `public/` bundle was removed
+- the repo should no longer be deployed with `npx wrangler deploy`
 
-Make sure the `sowwwl.xyz` zone is in the same Cloudflare account and the DNS records are **proxied** (orange cloud) for the routes to attach.
+## What To Change In Cloudflare
 
-### 2) Durable Object
+If a Cloudflare Workers Builds project is still attached to this repository, update or disable it:
 
-Binding (already in `wrangler.toml`):
+1. Remove the deploy command `npx wrangler deploy`.
+2. Stop using Workers Builds for `sowwwl.xyz`.
+3. Point `sowwwl.xyz` and `www.sowwwl.xyz` to the VPS origin instead.
+4. Keep Cloudflare in front only as DNS and proxy, with SSL mode set to `Full (strict)` once the origin certificates are valid.
 
-- binding name: `STORAGE`
-- class: `Storage`
+## Symptom Of A Stale Worker
 
-Migration (already in `wrangler.toml`):
+If `https://sowwwl.xyz/` keeps reloading, shows "chargement raté", or never settles on the real home page, the old Worker route is still serving the former static asset bundle.
 
-- `tag = "v1"`
-- `new_sqlite_classes = ["Storage"]`
+In the previous Worker deployment, the asset bundle contained a `public/index.html` placeholder with a meta refresh to `/`. When that stale Worker is still attached to `sowwwl.xyz/*`, the browser ends up in a self-redirect loop on the root page.
 
-### 3) Static assets
+In that case:
 
-This Worker expects an assets binding named `ASSETS`.
+1. Remove or disable the `sowwwl.xyz/*` and `www.sowwwl.xyz/*` Worker routes in Cloudflare.
+2. Disable the old Workers Builds project for this repository.
+3. Purge the Cloudflare cache for `sowwwl.xyz`.
+4. Verify that `/` is now served by the VPS origin instead of the old Worker asset bundle.
 
-The directory is `./public` (see `wrangler.toml`). It must contain:
+## Deploy Path For `.xyz`
 
-- `styles.css`
-- `main.js`
-- `manifest.json`
-- `site-sw.js`
-- `favicon.svg`
-- `icons/icon.svg`
-- `icons/icon-mask.svg`
+From the repository root:
 
-## Required secret
+```bash
+cp deploy/.env.production.example deploy/.env.production
+docker compose --env-file deploy/.env.production -f deploy/docker-compose.prod.yml up --build -d
+```
 
-The Worker requires the secret:
+After deployment:
 
-- `APP_SECRET`
-
-Set it as a **secret** (not plaintext env var) via the Cloudflare dashboard or Wrangler.
-
-If missing, the Worker will throw: `Le secret APP_SECRET manque dans la configuration Workers.`
-
-## Deploy (recommended)
-
-- Install dependencies: `npm install`
-- Deploy: `npm run deploy`
-
-(You must be logged in to the correct Cloudflare account for Wrangler.)
+- `sowwwl.xyz` should resolve to the PHP ingress app
+- `www.sowwwl.xyz` should redirect to `sowwwl.xyz`
+- Cloudflare should not run Wrangler for this repo anymore
