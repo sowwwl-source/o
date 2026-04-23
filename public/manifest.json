@@ -1,0 +1,27 @@
+{
+	"id": "/",
+	"name": "sowwwl.xyz — Just the Three of Us",
+	"short_name": "sowwwl",
+	"description": "Un espace vivant, personnel, discret. Pose ta terre et laisse la nuit coder le reste.",
+	"lang": "fr",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"background_color": "#09090b",
+	"theme_color": "#09090b",
+	"orientation": "portrait",
+	"icons": [
+		{
+			"src": "/icons/icon.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "any"
+		},
+		{
+			"src": "/icons/icon-mask.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "maskable"
+		}
+	]
+}

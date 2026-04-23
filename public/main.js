@@ -22,20 +22,10 @@ if ("IntersectionObserver" in window && reveals.length && !reducedMotion) {
 				}
 			});
 		},
-		{ threshold: 0.08 }
+		{ threshold: 0.16 }
 	);
 
-	// Mark elements AFTER setting up the observer so they default to visible
-	// if the observer never fires (avoids permanent black/empty screen).
-	reveals.forEach((element) => {
-		element.classList.add("will-animate");
-		observer.observe(element);
-	});
-
-	// Safety net: reveal anything still hidden after 1.5 s (slow load, hidden overflow, etc.).
-	window.setTimeout(() => {
-		reveals.forEach((el) => el.classList.add("on"));
-	}, 1500);
+	reveals.forEach((element) => observer.observe(element));
 } else {
 	reveals.forEach((element) => element.classList.add("on"));
 }

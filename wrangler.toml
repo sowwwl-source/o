@@ -1,4 +1,3 @@
-"$schema" = "./node_modules/wrangler/config-schema.json"
 name = "sowwwl-xyz"
 account_id = "299c02ddf7e0d349c5e57b0bfe07a230"
 main = "worker.js"
@@ -11,9 +10,11 @@ binding = "ASSETS"
 
 [[routes]]
 pattern = "sowwwl.xyz/*"
+zone_name = "sowwwl.xyz"
 
 [[routes]]
 pattern = "www.sowwwl.xyz/*"
+zone_name = "sowwwl.xyz"
 
 [[durable_objects.bindings]]
 name = "STORAGE"

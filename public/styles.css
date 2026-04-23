@@ -14,6 +14,7 @@
 	--danger: #ffc97c;
 	--success: #7bf6dc;
 	--shadow: 0 30px 90px rgba(0, 0, 0, 0.42);
+	--drift: 0px;
 }
 
 * {
@@ -117,6 +118,7 @@ code {
 	width: min(1120px, calc(100% - 2rem));
 	margin: 0 auto;
 	padding: 2rem 0 4rem;
+	transform: translateY(var(--drift));
 }
 
 .hero,
@@ -760,20 +762,14 @@ button:hover,
 }
 
 .reveal {
-	opacity: 1;
-	transform: none;
-}
-
-/* only animate when JS has confirmed the element is ready */
-.will-animate.reveal {
 	opacity: 0;
-	transform: translateY(14px);
-	transition: opacity 0.42s ease, transform 0.42s ease;
+	transform: translateY(16px);
+	transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
-.will-animate.reveal.on {
+.reveal.on {
 	opacity: 1;
-	transform: none;
+	transform: translateY(0);
 }
 
 @keyframes pulse-vortex {
@@ -801,8 +797,8 @@ button:hover,
 	.surface-grid,
 	.panel-shell,
 	.steps-grid,
-	.metric-grid,
-	.summary-grid {
+	metric-grid,
+	summary-grid {
 		grid-template-columns: 1fr;
 	}
 

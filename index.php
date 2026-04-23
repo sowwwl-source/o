@@ -32,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $csrfCandidate = (string) ($_POST['csrf_token'] ?? '');
     $honeypot = (string) ($_POST['website'] ?? '');
 
-    if ($form['username'] === '' || $form['timezone'] === '') {
-        $message = 'Rien n’est obligatoire, mais quelque chose est nécessaire.';
+    if ($form['username'] === '') {
+        $message = 'Écris un nom (2 à 42 caractères) pour créer ta terre.';
         $messageType = 'warning';
     } else {
         try {
@@ -164,7 +164,7 @@ $originBase = site_origin();
                             data-timezone-input
                         >
 
-                        <button type="submit">Entrer dans O.</button>
+                        <button type="submit">Créer ma terre</button>
                     </form>
 
                     <div

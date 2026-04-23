@@ -60,6 +60,20 @@ export default {
 	},
 };
 
+function requestIsSecure(request, url) {
+	if (url.protocol === "https:") {
+		return true;
+	}
+
+	const forwardedProto = String(request.headers.get("x-forwarded-proto") || "").toLowerCase();
+	if (forwardedProto === "https") {
+		return true;
+	}
+
+	const cfVisitor = String(request.headers.get("cf-visitor") || "");
+	return cfVisitor.includes('"scheme":"https"');
+}
+
 export class Storage {
 	constructor(state) {
 		this.state = state;
@@ -186,6 +200,7 @@ export class Storage {
 
 async function handleCreateLand(request, env, url) {
 	const secret = requireAppSecret(env);
+	const isSecure = requestIsSecure(request, url);
 	const formData = await request.formData();
 	const form = {
 		username: String(formData.get("username") || "").trim(),
@@ -220,7 +235,7 @@ async function handleCreateLand(request, env, url) {
 				maxAge: 0,
 				httpOnly: true,
 				sameSite: "Lax",
-				secure: true,
+				secure: isSecure,
 			})
 		);
 
@@ -265,6 +280,7 @@ async function handleLandPage(request, env, url) {
 
 async function renderHomeResponse(request, env, url, state) {
 	const secret = requireAppSecret(env);
+	const isSecure = requestIsSecure(request, url);
 	const pulse = await readPulse(env);
 	const token = await issueFormToken(secret);
 	const form = state.form || { username: "", timezone: DEFAULT_TIMEZONE };
@@ -285,7 +301,7 @@ async function renderHomeResponse(request, env, url, state) {
 			httpOnly: true,
 			maxAge: FORM_TOKEN_TTL_SECONDS,
 			sameSite: "Lax",
-			secure: true,
+			secure: isSecure,
 		})
 	);
 

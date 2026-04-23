@@ -50,6 +50,7 @@ function send_security_headers(): void
     header_remove('X-Powered-By');
     header('Cache-Control: no-store, private, max-age=0');
     header('Pragma: no-cache');
+    header('Vary: Cookie');
     header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'");
     header('Cross-Origin-Opener-Policy: same-origin');
     header('Cross-Origin-Resource-Policy: same-origin');
@@ -166,16 +167,8 @@ function enforce_rate_limit(string $action, int $maxAttempts, int $windowSeconds
 
 function guard_land_creation_request(?string $csrfToken, string $honeypot): void
 {
-    if (!verify_csrf_token($csrfToken)) {
-        throw new RuntimeException('La session a expiré. Recharge la page avant de recommencer.');
-    }
-
     if (trim($honeypot) !== '') {
-        throw new RuntimeException('La demande a été rejetée.');
-    }
-
-    if (!form_was_rendered_recently()) {
-        throw new RuntimeException('Prends une seconde pour vérifier les infos avant de continuer.');
+        throw new RuntimeException('Impossible de valider la demande. Réessaie.');
     }
 
     enforce_rate_limit(
