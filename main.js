@@ -54,28 +54,51 @@ function initTorusCloud(canvas) {
 		devicePixelRatio: 1,
 		animationFrame: 0,
 		points: [],
+		pointerId: null,
+		lastX: 0,
+		lastY: 0,
+		dragging: false,
+		yaw: 0,
+		pitch: 0.92,
+		roll: 0.1,
+		panX: 0,
+		panY: 0,
+		zoom: 11,
+		velocityYaw: 0,
+		velocityPitch: 0,
+		velocityRoll: 0,
+		velocityPanX: 0,
+		velocityPanY: 0,
+		velocityZoom: 0,
+		keys: new Set(),
 	};
 
-	const ringCount = 42;
-	const tubeCount = 18;
-	const majorRadius = 1.9;
-	const minorRadius = 0.78;
+	const torusScale = 11;
+	const ringCount = 96;
+	const tubeCount = 42;
+	const majorRadius = 1.9 * torusScale;
+	const minorRadius = 0.78 * torusScale;
+	const zoomMin = 6.5;
+	const zoomMax = 17.5;
 
 	for (let ringIndex = 0; ringIndex < ringCount; ringIndex += 1) {
 		for (let tubeIndex = 0; tubeIndex < tubeCount; tubeIndex += 1) {
 			const theta = (ringIndex / ringCount) * Math.PI * 2;
 			const phi = (tubeIndex / tubeCount) * Math.PI * 2;
 			const jitter = (Math.sin(ringIndex * 3.11 + tubeIndex * 1.73) + 1) * 0.5;
-			const radiusDrift = minorRadius + (jitter - 0.5) * 0.16;
+			const radiusDrift = minorRadius + (jitter - 0.5) * (0.16 * torusScale);
 
 			state.points.push({
 				theta,
 				phi,
 				radiusDrift,
 				phase: (ringIndex * 0.19 + tubeIndex * 0.13) % (Math.PI * 2),
+				density: 0.82 + jitter * 0.44,
 			});
 		}
 	}
+
+	canvas.dataset.torusScale = String(torusScale);
 
 	function resize() {
 		const rect = canvas.getBoundingClientRect();
@@ -93,6 +116,75 @@ function initTorusCloud(canvas) {
 		return parseRgbTriplet(styles.getPropertyValue("--fg"), parseRgbTriplet(styles.color, fallback));
 	}
 
+	function clamp(value, min, max) {
+		return Math.min(max, Math.max(min, value));
+	}
+
+	function normalizeKey(key) {
+		return key.length === 1 ? key.toLowerCase() : key;
+	}
+
+	function applyKeyboardNavigation() {
+		if (!state.keys.size) {
+			return;
+		}
+
+		if (state.keys.has("ArrowLeft") || state.keys.has("a")) {
+			state.velocityYaw -= 0.0028;
+		}
+
+		if (state.keys.has("ArrowRight") || state.keys.has("d")) {
+			state.velocityYaw += 0.0028;
+		}
+
+		if (state.keys.has("ArrowUp") || state.keys.has("w")) {
+			state.velocityPitch -= 0.0022;
+		}
+
+		if (state.keys.has("ArrowDown") || state.keys.has("s")) {
+			state.velocityPitch += 0.0022;
+		}
+
+		if (state.keys.has("q")) {
+			state.velocityPanX -= 0.028;
+		}
+
+		if (state.keys.has("e")) {
+			state.velocityPanX += 0.028;
+		}
+
+		if (state.keys.has("z") || state.keys.has("+")) {
+			state.velocityZoom += 0.06;
+		}
+
+		if (state.keys.has("x") || state.keys.has("-") || state.keys.has("_")) {
+			state.velocityZoom -= 0.06;
+		}
+	}
+
+	function stepNavigation() {
+		applyKeyboardNavigation();
+
+		if (!state.dragging && !reducedMotion) {
+			state.velocityYaw += 0.00024;
+			state.velocityRoll += 0.00004;
+		}
+
+		state.yaw += state.velocityYaw;
+		state.pitch = clamp(state.pitch + state.velocityPitch, -1.35, 1.35);
+		state.roll = clamp(state.roll + state.velocityRoll, -0.9, 0.9);
+		state.panX = clamp(state.panX + state.velocityPanX, -9.5, 9.5);
+		state.panY = clamp(state.panY + state.velocityPanY, -9.5, 9.5);
+		state.zoom = clamp(state.zoom + state.velocityZoom, zoomMin, zoomMax);
+
+		state.velocityYaw *= 0.92;
+		state.velocityPitch *= 0.9;
+		state.velocityRoll *= 0.9;
+		state.velocityPanX *= 0.84;
+		state.velocityPanY *= 0.84;
+		state.velocityZoom *= 0.86;
+	}
+
 	function drawFrame(time = 0) {
 		const width = state.width;
 		const height = state.height;
@@ -101,18 +193,20 @@ function initTorusCloud(canvas) {
 		}
 
 		const [red, green, blue] = readPalette();
-		const centerX = width * 0.5;
-		const centerY = height * 0.5;
-		const camera = 5.6;
-		const scale = Math.min(width, height) * 0.18;
-		const spinY = time * 0.00024;
-		const spinX = Math.sin(time * 0.00012) * 0.48 + 0.78;
-		const spinZ = Math.cos(time * 0.00009) * 0.14;
+		stepNavigation();
+
+		const centerX = width * 0.5 + state.panX * (width * 0.018);
+		const centerY = height * 0.5 + state.panY * (height * 0.018);
+		const camera = 39 - state.zoom * 1.12;
+		const scale = Math.min(width, height) * (0.7 + state.zoom * 0.078);
+		const spinY = state.yaw + time * 0.00006;
+		const spinX = state.pitch + Math.sin(time * 0.00012) * 0.05;
+		const spinZ = state.roll + Math.cos(time * 0.00009) * 0.03;
 
 		context.clearRect(0, 0, width, height);
 
 		const rendered = state.points.map((point) => {
-			const ripple = Math.sin(time * 0.0012 + point.phase) * 0.028;
+			const ripple = Math.sin(time * 0.0012 + point.phase) * (0.028 * torusScale);
 			const radial = point.radiusDrift + ripple;
 			const localX = (majorRadius + radial * Math.cos(point.phi)) * Math.cos(point.theta);
 			const localY = (majorRadius + radial * Math.cos(point.phi)) * Math.sin(point.theta);
@@ -125,13 +219,14 @@ function initTorusCloud(canvas) {
 			const finalX = rotateYx * Math.cos(spinZ) - rotateXy * Math.sin(spinZ);
 			const finalY = rotateYx * Math.sin(spinZ) + rotateXy * Math.cos(spinZ);
 			const depth = rotateXz + camera;
-			const perspective = scale / depth;
+			const perspective = scale / Math.max(depth, 3.2);
+			const depthFactor = clamp((48 - depth) / 34, 0, 1);
 
 			return {
 				x: centerX + finalX * perspective,
 				y: centerY + finalY * perspective,
-				alpha: Math.max(0.08, Math.min(0.72, 0.14 + ((camera - depth + 4.6) / 9.2) * 0.58)),
-				radius: Math.max(0.45, Math.min(1.9, 0.35 + ((camera - depth + 4.6) / 9.2) * 1.55)),
+				alpha: clamp(0.06 + depthFactor * 0.84 * point.density, 0.05, 0.92),
+				radius: clamp(0.2 + depthFactor * 4.8 * point.density, 0.2, 5.8),
 				depth,
 			};
 		});
@@ -162,7 +257,7 @@ function initTorusCloud(canvas) {
 
 	function start() {
 		stop();
-		if (reducedMotion || document.hidden) {
+		if (document.hidden) {
 			drawFrame(0);
 			return;
 		}
@@ -170,19 +265,124 @@ function initTorusCloud(canvas) {
 		state.animationFrame = window.requestAnimationFrame(tick);
 	}
 
+	function refreshStaticFrame() {
+		if (reducedMotion && !state.animationFrame) {
+			drawFrame(0);
+		}
+	}
+
+	canvas.addEventListener("pointerdown", (event) => {
+		state.pointerId = event.pointerId;
+		state.lastX = event.clientX;
+		state.lastY = event.clientY;
+		state.dragging = true;
+		canvas.classList.add("is-dragging");
+		canvas.focus({ preventScroll: true });
+		canvas.setPointerCapture(event.pointerId);
+	});
+
+	canvas.addEventListener("pointermove", (event) => {
+		if (!state.dragging || state.pointerId !== event.pointerId) {
+			return;
+		}
+
+		const deltaX = event.clientX - state.lastX;
+		const deltaY = event.clientY - state.lastY;
+		state.lastX = event.clientX;
+		state.lastY = event.clientY;
+		state.velocityYaw += deltaX * 0.00058;
+		state.velocityPitch += deltaY * 0.00042;
+		state.velocityPanX += deltaX * 0.0022;
+		state.velocityPanY += deltaY * 0.0016;
+		refreshStaticFrame();
+	});
+
+	function releasePointer(event) {
+		if (event && state.pointerId !== null && canvas.hasPointerCapture(state.pointerId)) {
+			canvas.releasePointerCapture(state.pointerId);
+		}
+
+		state.pointerId = null;
+		state.dragging = false;
+		canvas.classList.remove("is-dragging");
+		refreshStaticFrame();
+	}
+
+	canvas.addEventListener("pointerup", releasePointer);
+	canvas.addEventListener("pointercancel", releasePointer);
+	canvas.addEventListener("pointerleave", () => {
+		if (!state.dragging) {
+			canvas.classList.remove("is-dragging");
+		}
+	});
+
+	canvas.addEventListener(
+		"wheel",
+		(event) => {
+			event.preventDefault();
+			state.velocityZoom += event.deltaY > 0 ? -0.26 : 0.26;
+			refreshStaticFrame();
+		},
+		{ passive: false }
+	);
+
+	canvas.addEventListener("keydown", (event) => {
+		const key = normalizeKey(event.key);
+		if (![
+			"ArrowLeft",
+			"ArrowRight",
+			"ArrowUp",
+			"ArrowDown",
+			"a",
+			"d",
+			"w",
+			"s",
+			"q",
+			"e",
+			"z",
+			"x",
+			"+",
+			"-",
+			"_",
+		].includes(key)) {
+			return;
+		}
+
+		event.preventDefault();
+		state.keys.add(key);
+		refreshStaticFrame();
+	});
+
+	canvas.addEventListener("keyup", (event) => {
+		state.keys.delete(normalizeKey(event.key));
+		refreshStaticFrame();
+	});
+
+	canvas.addEventListener("blur", () => {
+		state.keys.clear();
+		releasePointer();
+	});
+
 	resize();
-	start();
+	if (reducedMotion) {
+		drawFrame(0);
+	} else {
+		start();
+	}
 
 	window.addEventListener("resize", () => {
 		resize();
-		if (reducedMotion) {
-			drawFrame(0);
-		}
+		refreshStaticFrame();
 	});
 
 	document.addEventListener("visibilitychange", () => {
 		if (document.hidden) {
 			stop();
+			drawFrame(0);
+			return;
+		}
+
+		if (reducedMotion) {
 			drawFrame(0);
 			return;
 		}

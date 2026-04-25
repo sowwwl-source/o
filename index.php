@@ -95,8 +95,17 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                 </div>
             </section>
 
-            <div class="hero-cloud" aria-hidden="true">
-                <canvas class="torus-cloud" data-torus-cloud></canvas>
+            <div class="hero-cloud">
+                <div class="torus-shell">
+                    <canvas
+                        class="torus-cloud"
+                        data-torus-cloud
+                        tabindex="0"
+                        role="img"
+                        aria-label="Nuage thorique navigable : glisser pour pivoter, roulette pour traverser, flèches pour dériver."
+                    ></canvas>
+                    <p class="torus-hint">x11 · glisser / roulette / flèches</p>
+                </div>
             </div>
 
             <aside class="hero-aside">
