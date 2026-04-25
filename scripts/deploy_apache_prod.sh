@@ -8,6 +8,7 @@ remote_host="root@161.35.157.37"
 remote_stage_dir="/tmp"
 profile=""
 execute_remote=0
+verify_live=1
 declare -a selected_files=()
 server_script="$script_dir/install_apache_prod.sh"
 
@@ -18,6 +19,7 @@ Usage:
   scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --profile aza
   scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --files index.php main.js styles.css
 	scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --execute --profile homepage
+	scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --execute --no-verify --profile homepage
 
 Profiles:
   homepage   Uploads index.php, main.js, styles.css
@@ -28,6 +30,7 @@ Examples:
   scripts/deploy_apache_prod.sh --profile aza
   scripts/deploy_apache_prod.sh --host root@161.35.157.37 --files index.php styles.css
 	scripts/deploy_apache_prod.sh --execute --profile homepage
+	scripts/deploy_apache_prod.sh --execute --no-verify --profile homepage
 
 What this script does:
   - validates that each selected local file exists under the o/ project root
@@ -35,6 +38,7 @@ What this script does:
 	- uploads the companion server-side installer script
 	- prints the exact command to run on the server
 	- optionally runs that command over ssh with --execute
+	- when using --execute, runs live HTTP verification by default
 
 What this script does not do:
 	- by default, it does not modify /var/www/html remotely
@@ -75,6 +79,10 @@ while [[ $# -gt 0 ]]; do
 			execute_remote=1
 			shift
 			;;
+		--no-verify)
+			verify_live=0
+			shift
+			;;
 		--files)
 			shift
 			while [[ $# -gt 0 && $1 != --* ]]; do
@@ -93,6 +101,39 @@ while [[ $# -gt 0 ]]; do
 			;;
 	esac
 done
+
+run_live_checks() {
+	case "$1" in
+		homepage)
+			echo "Running live homepage verification..."
+			if curl -fsS https://sowwwl.com/ | grep -qE 'hero-backdrop|torus-shell|data-torus-cloud'; then
+				echo "✓ Homepage markers detected live"
+			else
+				echo "✗ Homepage markers not detected live" >&2
+				return 1
+			fi
+			;;
+		aza)
+			echo "Running live aZa verification..."
+			if curl -fsS https://sowwwl.com/aza.php | grep -qE 'gros ZIP|entrée directe|upload\.sowwwl\.com'; then
+				echo "✓ Main aZa direct-upload markers detected live"
+			else
+				echo "✗ Main aZa direct-upload markers not detected live" >&2
+				return 1
+			fi
+
+			if curl -fsSI https://upload.sowwwl.com/aza.php >/dev/null; then
+				echo "✓ Direct aZa host responds over HTTPS"
+			else
+				echo "✗ Direct aZa host did not respond over HTTPS" >&2
+				return 1
+			fi
+			;;
+		*)
+			echo "No automated live verification profile for this selection."
+			;;
+	esac
+}
 
 if [[ -n "$profile" && ${#selected_files[@]} -gt 0 ]]; then
 	echo "Use either --profile or --files, not both." >&2
@@ -161,7 +202,10 @@ if [[ $execute_remote -eq 1 ]]; then
 	ssh "$remote_host" "$(printf '%q ' "${remote_cmd[@]}")"
 	echo
 	echo "Remote deployment finished."
-	if [[ "$profile" == "homepage" ]]; then
+	if [[ $verify_live -eq 1 && -n "$profile" ]]; then
+		echo
+		run_live_checks "$profile"
+	elif [[ "$profile" == "homepage" ]]; then
 		echo "Suggested local check:"
 		printf '%s\n' "curl -s https://sowwwl.com/ | grep -n 'hero-backdrop\\|torus-shell\\|data-torus-cloud'"
 	elif [[ "$profile" == "aza" ]]; then

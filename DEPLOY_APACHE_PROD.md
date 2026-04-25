@@ -83,11 +83,25 @@ Le script :
 - les envoie dans `/tmp/` sur le serveur via `scp`
 - envoie aussi le script serveur `scripts/install_apache_prod.sh`
 - lance automatiquement le script serveur via `ssh`
+- vérifie ensuite les URLs live attendues pour le profil choisi
 
 Le flux recommandé devient donc :
 
 1. depuis le Mac : `scripts/deploy_apache_prod.sh --execute ...`
 2. vérification locale des URLs servies
+
+Pour la homepage, le helper vérifie automatiquement la présence de marqueurs comme `hero-backdrop`, `torus-shell` ou `data-torus-cloud` sur `https://sowwwl.com/`.
+
+Pour `aZa`, il vérifie automatiquement :
+
+- les marqueurs `gros ZIP`, `entrée directe` ou `upload.sowwwl.com` sur `https://sowwwl.com/aza.php`
+- la réponse HTTPS de `https://upload.sowwwl.com/aza.php`
+
+Si on veut exécuter le déploiement sans attendre ces checks live, utiliser :
+
+```bash
+scripts/deploy_apache_prod.sh --execute --no-verify --profile homepage
+```
 
 ## Mode fallback : deux temps
 
