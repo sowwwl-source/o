@@ -63,6 +63,40 @@ cp /var/www/html/config.php "/root/backup-aza-$STAMP/config.php"
 
 Depuis la machine locale, envoyer les fichiers dans `/tmp/` du serveur.
 
+## Chemin recommandé : script local
+
+Depuis la racine `o/`, utiliser le helper :
+
+```bash
+scripts/deploy_apache_prod.sh --profile homepage
+```
+
+ou :
+
+```bash
+scripts/deploy_apache_prod.sh --profile aza
+```
+
+Le script :
+
+- vérifie que les fichiers locaux existent
+- les envoie dans `/tmp/` sur le serveur via `scp`
+- affiche les commandes exactes à exécuter ensuite sur le VPS pour installer les fichiers dans `/var/www/html`, vérifier PHP/Apache, puis recharger Apache
+
+Il accepte aussi une liste manuelle de fichiers :
+
+```bash
+scripts/deploy_apache_prod.sh --files index.php styles.css
+```
+
+Et un hôte différent si nécessaire :
+
+```bash
+scripts/deploy_apache_prod.sh --host user@server --profile homepage
+```
+
+## Copier manuellement avec `scp`
+
 Exemple homepage :
 
 ```bash
