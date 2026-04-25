@@ -626,6 +626,183 @@ function aza_list_archives(?string $ownerSlug = null): array
     ));
 }
 
+function get_all_aza_archives(): array
+{
+    return aza_list_archives(null);
+}
+
+function get_archives_for_land(string $slug): array
+{
+    return aza_list_archives($slug);
+}
+
+function aza_parse_archive_datetime(?string $value): ?DateTimeImmutable
+{
+    if (!$value) {
+        return null;
+    }
+
+    try {
+        return new DateTimeImmutable($value);
+    } catch (Throwable $exception) {
+        return null;
+    }
+}
+
+function aza_archive_with_chronology(array $entry): array
+{
+    $years = [];
+    foreach (($entry['years'] ?? []) as $year) {
+        $yearInt = (int) $year;
+        if ($yearInt >= 1900 && $yearInt <= 2100) {
+            $years[$yearInt] = true;
+        }
+    }
+
+    $years = array_keys($years);
+    sort($years);
+
+    $createdAt = aza_parse_archive_datetime((string) ($entry['created_at'] ?? ''));
+    $localYear = $createdAt
+        ? (int) $createdAt->setTimezone(new DateTimeZone(DEFAULT_TIMEZONE))->format('Y')
+        : null;
+
+    $startYear = $years ? (int) min($years) : $localYear;
+    $endYear = $years ? (int) max($years) : $localYear;
+    $isArchiveDerived = $years !== [];
+    $sortYear = $startYear ?? 9999;
+    $sortTimestamp = $createdAt ? $createdAt->getTimestamp() : PHP_INT_MAX;
+
+    if ($startYear !== null && $endYear !== null) {
+        $chronologyLabel = $startYear === $endYear
+            ? (string) $startYear
+            : $startYear . ' → ' . $endYear;
+    } else {
+        $chronologyLabel = 'Atemporel';
+    }
+
+    $entry['chronology_start_year'] = $startYear;
+    $entry['chronology_end_year'] = $endYear;
+    $entry['chronology_label'] = $chronologyLabel;
+    $entry['chronology_bucket'] = $startYear !== null ? (string) $startYear : 'Inconnu';
+    $entry['chronology_origin'] = $isArchiveDerived ? 'years' : 'created_at';
+    $entry['chronology_origin_label'] = $isArchiveDerived ? 'Traces internes' : 'Date de dépôt';
+    $entry['chronology_sort_year'] = $sortYear;
+    $entry['chronology_sort_timestamp'] = $sortTimestamp;
+
+    return $entry;
+}
+
+function aza_enrich_chronology(array $archive): array
+{
+    return aza_archive_with_chronology($archive);
+}
+
+function aza_sort_archives_chronologically(array $entries): array
+{
+    $entries = array_map('aza_archive_with_chronology', $entries);
+
+    usort(
+        $entries,
+        static function (array $left, array $right): int {
+            $cmp = ((int) ($left['chronology_sort_year'] ?? 9999)) <=> ((int) ($right['chronology_sort_year'] ?? 9999));
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+
+            $cmp = ((int) ($left['chronology_end_year'] ?? 9999)) <=> ((int) ($right['chronology_end_year'] ?? 9999));
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+
+            return ((int) ($left['chronology_sort_timestamp'] ?? PHP_INT_MAX)) <=> ((int) ($right['chronology_sort_timestamp'] ?? PHP_INT_MAX));
+        }
+    );
+
+    return $entries;
+}
+
+function aza_sort_chronologically(array $archives): array
+{
+    return aza_sort_archives_chronologically($archives);
+}
+
+function aza_group_archives_by_chronology(array $entries): array
+{
+    $sorted = aza_sort_archives_chronologically($entries);
+    $groups = [];
+
+    foreach ($sorted as $entry) {
+        $bucket = (string) ($entry['chronology_bucket'] ?? 'Inconnu');
+        if (!isset($groups[$bucket])) {
+            $groups[$bucket] = [
+                'bucket' => $bucket,
+                'label' => $bucket,
+                'items' => [],
+            ];
+        }
+
+        $groups[$bucket]['items'][] = $entry;
+    }
+
+    return array_values($groups);
+}
+
+function aza_group_by_bucket(array $archives): array
+{
+    $groups = [];
+    foreach (aza_sort_archives_chronologically($archives) as $archive) {
+        $bucket = (string) ($archive['chronology_bucket'] ?? 'Inconnu');
+        $groups[$bucket][] = $archive;
+    }
+
+    return $groups;
+}
+
+function aza_chronology_overview(array $entries): array
+{
+    $sorted = aza_sort_archives_chronologically($entries);
+    if (!$sorted) {
+        return [
+            'count' => 0,
+            'first_label' => '—',
+            'last_label' => '—',
+            'first_trace' => null,
+            'last_trace' => null,
+        ];
+    }
+
+    $first = $sorted[0];
+    $last = $sorted[count($sorted) - 1];
+
+    return [
+        'count' => count($sorted),
+        'first_label' => (string) ($first['chronology_label'] ?? '—'),
+        'last_label' => (string) ($last['chronology_label'] ?? '—'),
+        'first_trace' => $first['chronology_start_year'] ?? null,
+        'last_trace' => $last['chronology_end_year'] ?? null,
+    ];
+}
+
+function aza_summarize_chronology(array $archives): array
+{
+    return aza_chronology_overview($archives);
+}
+
+function aza_prepare_chronology(array $archives): array
+{
+    $enriched = array_map('aza_enrich_chronology', $archives);
+    $sorted = aza_sort_chronologically($enriched);
+
+    return [
+        'raw' => $archives,
+        'enriched' => $enriched,
+        'sorted' => $sorted,
+        'grouped' => aza_group_by_bucket($sorted),
+        'summary' => aza_summarize_chronology($sorted),
+    ];
+}
+
 function aza_import_zip_archive(array $file, array $meta = []): array
 {
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {

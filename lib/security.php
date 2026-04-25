@@ -101,6 +101,77 @@ function verify_csrf_token(?string $token): bool
     return $sessionToken !== '' && is_string($token) && hash_equals($sessionToken, $token);
 }
 
+function auth_land_slug(): ?string
+{
+    $slug = trim((string) ($_SESSION['auth_land_slug'] ?? ''));
+    return $slug !== '' ? $slug : null;
+}
+
+function auth_is_land_session_for(?string $slug = null): bool
+{
+    $sessionSlug = auth_land_slug();
+    if ($sessionSlug === null) {
+        return false;
+    }
+
+    if ($slug === null || trim($slug) === '') {
+        return true;
+    }
+
+    return hash_equals($sessionSlug, normalize_username($slug));
+}
+
+function current_authenticated_land(): ?array
+{
+    $slug = auth_land_slug();
+    if ($slug === null) {
+        return null;
+    }
+
+    try {
+        $land = find_land($slug);
+    } catch (InvalidArgumentException $exception) {
+        $land = null;
+    }
+
+    if (!$land) {
+        logout_land();
+        return null;
+    }
+
+    return $land;
+}
+
+function login_land(array $land): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        start_secure_session();
+    }
+
+    session_regenerate_id(true);
+    $_SESSION['logged_in'] = true;
+    $_SESSION['auth_land_slug'] = (string) ($land['slug'] ?? '');
+    $_SESSION['auth_land_username'] = (string) ($land['username'] ?? '');
+    $_SESSION['auth_logged_in_at'] = time();
+}
+
+function logout_land(): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        return;
+    }
+
+    unset(
+        $_SESSION['logged_in'],
+        $_SESSION['auth_land_slug'],
+        $_SESSION['auth_land_username'],
+        $_SESSION['auth_logged_in_at']
+    );
+
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    session_regenerate_id(true);
+}
+
 function client_ip(): string
 {
     $candidates = [
@@ -215,5 +286,18 @@ function guard_land_creation_request(?string $csrfToken, string $honeypot): void
         'create-land',
         CREATE_LAND_RATE_LIMIT_MAX_ATTEMPTS,
         CREATE_LAND_RATE_LIMIT_WINDOW_SECONDS
+    );
+}
+
+function guard_land_login_request(?string $csrfToken): void
+{
+    if (!verify_csrf_token($csrfToken)) {
+        throw new RuntimeException('Session expirée. Recharge la page et réessaie.');
+    }
+
+    enforce_rate_limit(
+        'land-login',
+        LAND_LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+        LAND_LOGIN_RATE_LIMIT_WINDOW_SECONDS
     );
 }

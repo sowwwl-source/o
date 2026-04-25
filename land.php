@@ -26,11 +26,20 @@ if ($notFound) {
 }
 
 $created = isset($_GET['created']) && $_GET['created'] === '1';
+$sessionBound = isset($_GET['session']) && $_GET['session'] === '1';
 $sharePath = $land ? '/land.php?u=' . rawurlencode((string) $land['slug']) : '/';
 $shareUrl = site_origin() . $sharePath;
 $brandDomain = preg_replace('/^www\./', '', $host ?: 'sowwwl.com');
 $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
 $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
+$landRawArchives = $land ? get_archives_for_land((string) $land['slug']) : [];
+$landChronology = aza_prepare_chronology($landRawArchives);
+$landSorted = $landChronology['sorted'];
+$landGrouped = $landChronology['grouped'];
+$landSummary = $landChronology['summary'];
+$archiveSources = aza_supported_sources();
+$authenticatedLand = current_authenticated_land();
+$isAuthenticatedHere = $land && $authenticatedLand && auth_is_land_session_for((string) $land['slug']);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -64,6 +73,9 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                 <span class="meta-pill"><?= h((string) $land['timezone']) ?></span>
                 <span class="meta-pill"><?= h((string) $land['email_virtual']) ?></span>
                 <span class="meta-pill"><?= h(human_created_label((string) ($land['created_at'] ?? '')) ?? 'maintenant') ?></span>
+                <?php if ($isAuthenticatedHere): ?>
+                    <span class="meta-pill aza-direct-pill">session liée</span>
+                <?php endif; ?>
             </div>
         </header>
 
@@ -82,6 +94,12 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                 <?php if ($created): ?>
                     <div class="flash flash-success" aria-live="polite">
                         <p>Votre terre est posée.</p>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($sessionBound && $isAuthenticatedHere): ?>
+                    <div class="flash flash-success" aria-live="polite">
+                        <p>Session ouverte sur cette terre.</p>
                     </div>
                 <?php endif; ?>
 
@@ -117,6 +135,9 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                 <div class="action-row">
                     <a class="pill-link" href="/">Retour au noyau</a>
                     <a class="ghost-link" href="/aza.php?u=<?= rawurlencode((string) $land['slug']) ?>">Ouvrir aZa</a>
+                    <?php if ($isAuthenticatedHere): ?>
+                        <a class="ghost-link" href="/logout.php">Fermer la session</a>
+                    <?php endif; ?>
                     <button
                         type="button"
                         class="copy-button"
@@ -124,6 +145,55 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                     >Copier l'adresse</button>
                 </div>
             </aside>
+        </section>
+
+        <section id="c0r3" class="panel reveal c0r3-shell land-c0r3-section" aria-labelledby="c0r3-title">
+            <header class="section-topline c0r3-header">
+                <div>
+                    <h2 id="c0r3-title">c0r3 <span class="c0r3-subtitle">// Noyau d'archives</span></h2>
+                    <?php if ($landSummary['count'] > 0): ?>
+                        <p class="c0r3-summary-text">
+                            [ <?= h((string) $landSummary['count']) ?> strate<?= $landSummary['count'] > 1 ? 's' : '' ?> détectée<?= $landSummary['count'] > 1 ? 's' : '' ?> ]
+                            <?php if (!empty($landSummary['first_trace'])): ?>
+                                ~ De <?= h((string) $landSummary['first_trace']) ?> à <?= h((string) ($landSummary['last_trace'] ?? $landSummary['first_trace'])) ?>
+                            <?php endif; ?>
+                        </p>
+                    <?php else: ?>
+                        <p class="c0r3-summary-text">[ Aucune mémoire sédimentée ]</p>
+                    <?php endif; ?>
+                </div>
+                <a class="ghost-link" href="/aza.php?u=<?= rawurlencode((string) $land['slug']) ?>">Déposer / ouvrir aZa</a>
+            </header>
+
+            <?php if (!$landSummary['count']): ?>
+                <p class="panel-copy">Aucune archive dans le c0r3 pour l’instant. Le premier ZIP peut venir maintenant.</p>
+            <?php else: ?>
+                <div class="c0r3-chronology" aria-label="Chronologie du c0r3">
+                    <?php foreach ($landGrouped as $bucket => $archives): ?>
+                        <section class="c0r3-year-group">
+                            <h4 class="c0r3-year-title"><?= h((string) $bucket) ?></h4>
+                            <div class="c0r3-cards-list">
+                                <?php foreach ($archives as $archive): ?>
+                                    <article class="c0r3-card-light">
+                                        <div class="c0r3-card-main">
+                                            <span class="c0r3-source"><?= h((string) ($archiveSources[$archive['source']] ?? $archive['source'] ?? 'Inconnu')) ?></span>
+                                            <span class="c0r3-label" title="<?= h((string) ($archive['chronology_origin_label'] ?? 'Date de dépôt')) ?>"><?= h((string) ($archive['chronology_label'] ?? 'Atemporel')) ?></span>
+                                        </div>
+                                        <?php if (!empty($archive['memory_note'])): ?>
+                                            <p class="c0r3-note"><?= h((string) $archive['memory_note']) ?></p>
+                                        <?php elseif (!empty($archive['human_summary'])): ?>
+                                            <p class="c0r3-note"><?= h((string) $archive['human_summary']) ?></p>
+                                        <?php endif; ?>
+                                        <a href="/<?= h((string) $archive['stored_file']) ?>" class="c0r3-download" download>
+                                            [ ↓ pull ]
+                                        </a>
+                                    </article>
+                                <?php endforeach; ?>
+                            </div>
+                        </section>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </section>
     <?php else: ?>
         <section class="hero page-header reveal">

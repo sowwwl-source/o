@@ -1,6 +1,10 @@
 :root {
 	--emerald-rgb: 18 69 52;
 	--beige-rgb: 227 219 200;
+	--aza-emerald: #1e3f32;
+	--aza-emerald-light: #4a6d5d;
+	--aza-beige: #f5f2eb;
+	--aza-border: #dcd7c9;
 	--bg-rgb: var(--emerald-rgb);
 	--fg-rgb: var(--beige-rgb);
 	--bg: rgb(var(--bg-rgb));
@@ -657,6 +661,20 @@ button:hover,
 	background: transparent;
 }
 
+.auth-state-preview,
+.auth-login-preview {
+	border-top: 1px solid rgba(var(--fg-rgb) / 0.12);
+	padding-top: 1rem;
+}
+
+.auth-head {
+	margin-bottom: 0.2rem;
+}
+
+.auth-action-row {
+	margin-top: 0.9rem;
+}
+
 .preview-title {
 	display: block;
 	margin-top: 0.55rem;
@@ -946,6 +964,110 @@ button:hover,
 	margin-top: 1rem;
 }
 
+.aza-chronology-summary {
+	margin-top: 1.4rem;
+}
+
+.aza-timeline-header {
+	align-items: end;
+	border-bottom: 1px solid rgba(var(--fg-rgb) / 0.18);
+	padding-bottom: 1rem;
+	margin-bottom: 0.6rem;
+}
+
+.aza-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.65rem;
+	align-items: center;
+	color: color-mix(in srgb, var(--fg) 72%, var(--bg) 28%);
+	font-family: Menlo, Consolas, monospace;
+	font-size: 0.9rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.aza-stats .separator {
+	opacity: 0.4;
+}
+
+.aza-timeline {
+	display: grid;
+	gap: 2.4rem;
+	margin: 4rem 0;
+	color: var(--fg);
+}
+
+.aza-timeline-track {
+	display: grid;
+	gap: 2.4rem;
+	border-left: 1px solid rgba(var(--fg-rgb) / 0.22);
+	padding-left: 2rem;
+	margin-left: 1rem;
+}
+
+.aza-timeline-group {
+	display: grid;
+	grid-template-columns: minmax(5rem, 7rem) 1fr;
+	gap: 1.4rem;
+	align-items: start;
+	padding-top: 0.2rem;
+	border-top: 1px solid rgba(var(--fg-rgb) / 0.08);
+}
+
+.aza-timeline-group:first-child {
+	border-top: none;
+	padding-top: 0;
+}
+
+.aza-timeline-head {
+	display: grid;
+	gap: 0.35rem;
+	position: sticky;
+	top: 1rem;
+}
+
+.aza-timeline-year {
+	margin: 0;
+	font-size: clamp(1.6rem, 3vw, 2.2rem);
+	line-height: 0.92;
+	letter-spacing: -0.04em;
+}
+
+.aza-timeline-count {
+	margin: 0;
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.18em;
+}
+
+.aza-timeline-grid {
+	margin-top: 0;
+}
+
+.aza-timeline-bucket {
+	position: relative;
+	margin-bottom: 3rem;
+}
+
+.bucket-marker {
+	text-transform: none;
+	position: absolute;
+	left: -4.5rem;
+	top: 0;
+	background: rgba(var(--bg-rgb) / 0.92);
+	padding: 0.2rem 0.6rem;
+	border: 1px solid rgba(var(--fg-rgb) / 0.16);
+	font-family: Menlo, Consolas, monospace;
+	font-weight: 700;
+	font-size: 0.85rem;
+	color: var(--fg);
+}
+
+.bucket-content {
+	align-content: start;
+}
+
 .aza-archive-grid {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(16rem, 22rem));
@@ -956,6 +1078,52 @@ button:hover,
 .aza-archive-card {
 	display: grid;
 	gap: 0.8rem;
+	background: rgba(var(--bg-rgb) / 0.88);
+	border: 1px solid rgba(var(--fg-rgb) / 0.14);
+	padding: 1.5rem;
+	margin-bottom: 1.5rem;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.aza-archive-chronology {
+	display: flex;
+	justify-content: space-between;
+	align-items: start;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+
+.card-header {
+	padding-bottom: 0.15rem;
+	border-bottom: 1px solid rgba(var(--fg-rgb) / 0.08);
+}
+
+.card-header h3,
+.card-header .summary-label {
+	margin: 0 0 0.5rem 0;
+	font-size: 1.2rem;
+}
+
+.card-header .summary-value {
+	margin-top: 0.3rem;
+}
+
+.aza-chronology-pill {
+	border-color: rgba(var(--fg-rgb) / 0.32);
+	color: inherit;
+}
+
+.card-date {
+	white-space: nowrap;
+	align-self: start;
+	font-family: Menlo, Consolas, monospace;
+	background: rgba(var(--fg-rgb) / 0.08);
+	padding: 0.1rem 0.4rem;
+	font-size: 0.8rem;
+}
+
+.aza-chronology-copy {
+	margin-top: -0.15rem;
 }
 
 .aza-meta-list {
@@ -964,8 +1132,44 @@ button:hover,
 	gap: 0.6rem;
 }
 
+.card-meta {
+	font-size: 0.85rem;
+	line-height: 1.55;
+	color: color-mix(in srgb, var(--fg) 66%, var(--bg) 34%);
+	margin-bottom: 1rem;
+	display: flex;
+	gap: 1rem;
+}
+
+.card-meta span {
+	padding: 0 0 0.16rem;
+	border-bottom: 1px solid rgba(var(--fg-rgb) / 0.08);
+}
+
 .aza-download {
 	text-decoration: none;
+}
+
+.btn-download {
+	border-color: var(--line-strong);
+	display: inline-block;
+	font-family: Menlo, Consolas, monospace;
+	text-decoration: none;
+	color: inherit;
+	border-bottom: 1px solid currentColor;
+	transition: opacity 0.2s ease;
+}
+
+.btn-download:hover {
+	opacity: 0.7;
+}
+
+.card-actions {
+	margin-top: 0.25rem;
+}
+
+.card-summary {
+	white-space: pre-line;
 }
 
 .aza-folders {
@@ -1020,6 +1224,151 @@ button:hover,
 	cursor: pointer;
 }
 
+.c0r3-shell {
+	margin-top: 2.4rem;
+}
+
+.land-c0r3-section {
+	display: grid;
+	gap: 1.4rem;
+	margin: 4rem 0;
+	padding: 2rem;
+	background: rgba(var(--fg-rgb) / 0.08);
+	border: 1px dashed rgba(var(--fg-rgb) / 0.22);
+}
+
+.c0r3-header {
+	align-items: end;
+}
+
+.c0r3-header h2 {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+	align-items: baseline;
+	font-size: 0.96rem;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+}
+
+.c0r3-subtitle {
+	font-family: Menlo, Consolas, monospace;
+	font-size: 0.9rem;
+	font-weight: 400;
+	color: color-mix(in srgb, var(--fg) 68%, var(--bg) 32%);
+	letter-spacing: 0.14em;
+}
+
+.c0r3-summary-text {
+	margin: 0.5rem 0 0;
+	font-family: Menlo, Consolas, monospace;
+	color: color-mix(in srgb, var(--fg) 72%, var(--bg) 28%);
+	font-size: 0.8rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	margin-bottom: 2rem;
+}
+
+.c0r3-summary-grid {
+	margin-bottom: 0.4rem;
+}
+
+.c0r3-timeline {
+	margin-top: 1.8rem;
+}
+
+.c0r3-card {
+	padding-bottom: 0.2rem;
+}
+
+.c0r3-chronology {
+	display: grid;
+	gap: 1.5rem;
+}
+
+.c0r3-year-group {
+	display: grid;
+	gap: 0.85rem;
+	padding-top: 0.2rem;
+	border-top: 1px solid rgba(var(--fg-rgb) / 0.08);
+}
+
+.c0r3-year-group:first-child {
+	padding-top: 0;
+	border-top: none;
+}
+
+.c0r3-year-title {
+	margin: 0;
+	font-size: clamp(1.1rem, 2.2vw, 1.5rem);
+	letter-spacing: -0.03em;
+	border-bottom: 1px solid color-mix(in srgb, var(--fg) 52%, var(--bg) 48%);
+	display: inline-block;
+	margin-bottom: 1rem;
+}
+
+.c0r3-cards-list {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(16rem, 24rem));
+	gap: 1rem;
+}
+
+.c0r3-card-light {
+	display: grid;
+	gap: 0.7rem;
+	padding: 0 0 0 1rem;
+	margin-bottom: 1rem;
+	border-left: 2px solid color-mix(in srgb, var(--fg) 52%, var(--bg) 48%);
+	border-bottom: none;
+}
+
+.c0r3-card-main {
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	align-items: baseline;
+	flex-wrap: wrap;
+	font-family: Menlo, Consolas, monospace;
+	margin-bottom: 0.5rem;
+}
+
+.c0r3-source {
+	font-size: 0.72rem;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+.c0r3-label {
+	font-size: 0.9rem;
+	letter-spacing: 0.06em;
+}
+
+.c0r3-note {
+	margin: 0;
+	color: var(--muted);
+	font-size: 0.9rem;
+	line-height: 1.55;
+}
+
+.c0r3-download {
+	display: inline-flex;
+	width: fit-content;
+	padding: 0;
+	border-bottom: none;
+	font-family: Menlo, Consolas, monospace;
+	font-size: 0.76rem;
+	letter-spacing: 0.14em;
+	text-transform: none;
+	transition: opacity 0.18s ease, border-color 0.18s ease;
+}
+
+.c0r3-download:hover,
+.c0r3-download:focus-visible {
+	opacity: 0.82;
+	text-decoration: underline;
+}
+
 .reveal {
 	opacity: 1;
 	transform: none;
@@ -1064,7 +1413,9 @@ button:hover,
 	.steps-grid,
 	.metric-grid,
 	.summary-grid,
+	.aza-timeline-group,
 	.aza-archive-grid,
+	.c0r3-cards-list,
 	.aza-folders {
 		grid-template-columns: 1fr;
 	}
@@ -1077,6 +1428,14 @@ button:hover,
 	.panel-shell > :first-child,
 	.panel-shell > :last-child {
 		grid-column: auto;
+	}
+
+	.aza-timeline-head {
+		position: static;
+	}
+
+	.aza-stats {
+		width: 100%;
 	}
 
 	.hero-nav {

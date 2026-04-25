@@ -66,7 +66,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$archives = aza_list_archives($form['owner_slug'] !== '' ? $form['owner_slug'] : null);
+$rawArchives = $form['owner_slug'] !== ''
+    ? aza_list_archives($form['owner_slug'])
+    : get_all_aza_archives();
+$chronology = aza_prepare_chronology($rawArchives);
+$sortedArchives = $chronology['sorted'];
+$groupedArchives = $chronology['grouped'];
+$chronoSummary = $chronology['summary'];
 $sources = aza_supported_sources();
 $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['owner_slug'] : $ownerSlug);
 ?>
@@ -224,83 +230,130 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
     </section>
 
     <section class="panel reveal" aria-labelledby="aza-list-title">
-        <div class="section-topline">
+        <div class="section-topline aza-timeline-header">
             <div>
-                <h2 id="aza-list-title">Archives</h2>
+                <h2 id="aza-list-title">Mémoire Temporelle</h2>
                 <p class="panel-copy">
                     <?= $form['owner_slug'] !== ''
-                        ? 'Filtre : ' . h($form['owner_slug']) . '.'
-                        : 'Dépôts connus.' ?>
+                        ? 'Filtre : ' . h($form['owner_slug']) . ' · lecture chronologique.'
+                        : 'Dépôts connus, rangés des premières traces vers les plus récentes.' ?>
                 </p>
             </div>
-            <span class="badge"><?= count($archives) ?> archive<?= count($archives) > 1 ? 's' : '' ?></span>
+            <div class="aza-stats" aria-label="Statistiques temporelles">
+                <span>Volume : <?= h((string) $chronoSummary['count']) ?> archive<?= $chronoSummary['count'] > 1 ? 's' : '' ?></span>
+                <?php if (!empty($chronoSummary['first_trace'])): ?>
+                    <span class="separator" aria-hidden="true">|</span>
+                    <span>Amplitude : <?= h((string) $chronoSummary['first_trace']) ?> → <?= h((string) ($chronoSummary['last_trace'] ?? $chronoSummary['first_trace'])) ?></span>
+                <?php endif; ?>
+            </div>
         </div>
 
-        <?php if (!$archives): ?>
+        <?php if ($sortedArchives): ?>
+            <div class="summary-grid aza-chronology-summary">
+                <article class="summary-card">
+                    <span class="summary-label">Volume</span>
+                    <strong class="summary-value summary-value-small"><?= h((string) $chronoSummary['count']) ?></strong>
+                </article>
+                <article class="summary-card">
+                    <span class="summary-label">Première trace</span>
+                    <strong class="summary-value summary-value-small"><?= h((string) ($chronoSummary['first_trace'] ?? '—')) ?></strong>
+                </article>
+                <article class="summary-card">
+                    <span class="summary-label">Dernière trace</span>
+                    <strong class="summary-value summary-value-small"><?= h((string) ($chronoSummary['last_trace'] ?? '—')) ?></strong>
+                </article>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!$sortedArchives): ?>
             <p class="panel-copy">Aucune archive légère pour l’instant. Le premier ZIP peut arriver maintenant.</p>
         <?php else: ?>
-            <div class="aza-archive-grid">
-                <?php foreach ($archives as $archive): ?>
-                    <article class="summary-card aza-archive-card">
-                        <span class="summary-label"><?= h((string) ($sources[$archive['source']] ?? $archive['source'])) ?></span>
-                        <strong class="summary-value summary-value-small"><?= h((string) $archive['label']) ?></strong>
-                        <p>
-                            <?php if (!empty($archive['owner_slug'])): ?>terre <?= h((string) $archive['owner_slug']) ?> · <?php endif; ?>
-                            <?= h(human_created_label((string) ($archive['created_at'] ?? '')) ?? 'maintenant') ?>
-                        </p>
-                        <div class="aza-meta-list">
-                            <span class="meta-pill"><?= h((string) $archive['entries']) ?> entrées</span>
-                            <span class="meta-pill"><?= h((string) $archive['media_entries']) ?> repères média</span>
-                            <a class="meta-pill aza-download" href="/<?= h((string) $archive['stored_file']) ?>" download>Télécharger</a>
-                        </div>
-                        <?php if (!empty($archive['human_summary'])): ?>
-                            <p class="land-note aza-summary"><?= h((string) $archive['human_summary']) ?></p>
-                        <?php endif; ?>
-                        <?php if (!empty($archive['memory_note'])): ?>
-                            <p class="panel-copy aza-memory-note"><?= h((string) $archive['memory_note']) ?></p>
-                        <?php endif; ?>
-                        <?php if (!empty($archive['memory_types']) && is_array($archive['memory_types'])): ?>
-                            <div class="aza-meta-list">
-                                <?php foreach ($archive['memory_types'] as $type): ?>
-                                    <span class="meta-pill aza-memory-pill"><?= h(aza_label_memory_type((string) $type)) ?></span>
+            <div class="aza-timeline" aria-label="Chronologie des archives">
+                <div class="aza-timeline-track">
+                    <?php foreach ($groupedArchives as $bucket => $archives): ?>
+                        <section class="aza-timeline-group aza-timeline-bucket">
+                            <header class="aza-timeline-head">
+                                <p class="aza-timeline-year bucket-marker"><?= h((string) $bucket) ?></p>
+                                <p class="panel-copy aza-timeline-count"><?= count($archives) ?> archive<?= count($archives) > 1 ? 's' : '' ?></p>
+                            </header>
+                            <div class="aza-archive-grid aza-timeline-grid bucket-content">
+                                <?php foreach ($archives as $archive): ?>
+                                    <article class="summary-card aza-archive-card">
+                                        <header class="aza-archive-chronology card-header">
+                                            <div>
+                                                <span class="summary-label"><?= h((string) ($sources[$archive['source']] ?? $archive['source'])) ?></span>
+                                                <strong class="summary-value summary-value-small"><?= h((string) $archive['label']) ?></strong>
+                                            </div>
+                                            <span class="meta-pill aza-chronology-pill card-date" title="<?= h((string) ($archive['chronology_origin_label'] ?? 'Date de dépôt')) ?>">
+                                                <?= h((string) ($archive['chronology_label'] ?? 'Atemporel')) ?>
+                                            </span>
+                                        </header>
+                                        <div class="aza-meta-list card-meta">
+                                            <span>Déposé le : <?= h(human_created_label((string) ($archive['created_at'] ?? '')) ?? 'maintenant') ?></span>
+                                            <span>Entrées : <?= h((string) ($archive['entries'] ?? 0)) ?></span>
+                                            <?php if (!empty($archive['media_entries'])): ?>
+                                                <span>Médias : <?= h((string) $archive['media_entries']) ?></span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($archive['owner_slug'])): ?>
+                                                <span>Terre : <?= h((string) $archive['owner_slug']) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <p class="panel-copy aza-chronology-copy">Chronologie : <?= h((string) ($archive['chronology_origin_label'] ?? 'Date de dépôt')) ?></p>
+                                        <?php if (!empty($archive['human_summary'])): ?>
+                                            <p class="land-note aza-summary card-summary"><?= h((string) $archive['human_summary']) ?></p>
+                                        <?php endif; ?>
+                                        <?php if (!empty($archive['memory_note'])): ?>
+                                            <p class="panel-copy aza-memory-note"><?= h((string) $archive['memory_note']) ?></p>
+                                        <?php endif; ?>
+                                        <?php if (!empty($archive['memory_types']) && is_array($archive['memory_types'])): ?>
+                                            <div class="aza-meta-list">
+                                                <?php foreach ($archive['memory_types'] as $type): ?>
+                                                    <span class="meta-pill aza-memory-pill"><?= h(aza_label_memory_type((string) $type)) ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($archive['content_families']) && is_array($archive['content_families'])): ?>
+                                            <div class="aza-meta-list">
+                                                <?php foreach ($archive['content_families'] as $family): ?>
+                                                    <span class="meta-pill"><?= h(aza_label_content_family((string) $family)) ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($archive['years']) && is_array($archive['years'])): ?>
+                                            <p class="panel-copy">Repères temporels : <?= h(implode(' · ', array_map('strval', $archive['years']))) ?></p>
+                                        <?php endif; ?>
+                                        <?php if (!empty($archive['markers']) && is_array($archive['markers'])): ?>
+                                            <div class="preview-grid aza-markers">
+                                                <?php foreach ($archive['markers'] as $marker): ?>
+                                                    <p><span>Repère</span><code><?= h((string) $marker) ?></code></p>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($archive['notes'])): ?>
+                                            <p class="land-note"><?= h((string) $archive['notes']) ?></p>
+                                        <?php endif; ?>
+                                        <?php if (!empty($archive['top_folders']) && is_array($archive['top_folders'])): ?>
+                                            <div class="preview-grid aza-folders">
+                                                <?php foreach ($archive['top_folders'] as $folder => $count): ?>
+                                                    <p><span><?= h((string) $folder) ?></span><code><?= h((string) $count) ?> entrées</code></p>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($archive['sample_paths']) && is_array($archive['sample_paths'])): ?>
+                                            <details class="aza-details">
+                                                <summary>Voir quelques chemins</summary>
+                                                <pre><?= h(implode("\n", array_slice($archive['sample_paths'], 0, 8))) ?></pre>
+                                            </details>
+                                        <?php endif; ?>
+                                        <div class="card-actions aza-meta-list">
+                                            <a class="meta-pill aza-download btn-download" href="/<?= h((string) $archive['stored_file']) ?>" download>Extraire (ZIP)</a>
+                                        </div>
+                                    </article>
                                 <?php endforeach; ?>
                             </div>
-                        <?php endif; ?>
-                        <?php if (!empty($archive['content_families']) && is_array($archive['content_families'])): ?>
-                            <div class="aza-meta-list">
-                                <?php foreach ($archive['content_families'] as $family): ?>
-                                    <span class="meta-pill"><?= h(aza_label_content_family((string) $family)) ?></span>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                        <?php if (!empty($archive['years']) && is_array($archive['years'])): ?>
-                            <p class="panel-copy">Repères temporels : <?= h(implode(' · ', array_map('strval', $archive['years']))) ?></p>
-                        <?php endif; ?>
-                        <?php if (!empty($archive['markers']) && is_array($archive['markers'])): ?>
-                            <div class="preview-grid aza-markers">
-                                <?php foreach ($archive['markers'] as $marker): ?>
-                                    <p><span>Repère</span><code><?= h((string) $marker) ?></code></p>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                        <?php if (!empty($archive['notes'])): ?>
-                            <p class="land-note"><?= h((string) $archive['notes']) ?></p>
-                        <?php endif; ?>
-                        <?php if (!empty($archive['top_folders']) && is_array($archive['top_folders'])): ?>
-                            <div class="preview-grid aza-folders">
-                                <?php foreach ($archive['top_folders'] as $folder => $count): ?>
-                                    <p><span><?= h((string) $folder) ?></span><code><?= h((string) $count) ?> entrées</code></p>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                        <?php if (!empty($archive['sample_paths']) && is_array($archive['sample_paths'])): ?>
-                            <details class="aza-details">
-                                <summary>Voir quelques chemins</summary>
-                                <pre><?= h(implode("\n", array_slice($archive['sample_paths'], 0, 8))) ?></pre>
-                            </details>
-                        <?php endif; ?>
-                    </article>
-                <?php endforeach; ?>
+                        </section>
+                    <?php endforeach; ?>
+                </div>
             </div>
         <?php endif; ?>
     </section>

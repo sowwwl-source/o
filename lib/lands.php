@@ -113,10 +113,45 @@ function open_land_file_for_creation(string $path): mixed
     throw new RuntimeException('Impossible d’écrire cette terre pour le moment.');
 }
 
-function create_land(string $username, string $timezone): array
+function write_land(array $land): void
+{
+    $slug = normalize_username((string) ($land['slug'] ?? ''));
+    ensure_lands_dir();
+
+    $path = land_file_path($slug);
+    $encoded = json_encode($land, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    if (!is_string($encoded) || file_put_contents($path, $encoded . PHP_EOL, LOCK_EX) === false) {
+        throw new RuntimeException('Impossible de mettre à jour cette terre pour le moment.');
+    }
+}
+
+function validate_land_password(string $password): string
+{
+    $password = (string) $password;
+
+    if (strlen($password) < AUTH_MIN_PASSWORD_LENGTH) {
+        throw new InvalidArgumentException('Le secret doit contenir au moins ' . AUTH_MIN_PASSWORD_LENGTH . ' caractères.');
+    }
+
+    return $password;
+}
+
+function land_has_password_hash(array $land): bool
+{
+    $hash = trim((string) ($land['password_hash'] ?? ''));
+    return $hash !== '';
+}
+
+function create_land(string $username, string $timezone, ?string $password = null): array
 {
     $username = trim(preg_replace('/\s+/u', ' ', trim($username)) ?? trim($username));
     $timezone = validate_timezone($timezone);
+    $passwordHash = '';
+
+    if ($password !== null) {
+        $passwordHash = password_hash(validate_land_password($password), PASSWORD_DEFAULT);
+    }
 
     if (string_length($username) < 2 || string_length($username) > 42) {
         throw new InvalidArgumentException('Le nom d’usage doit tenir entre 2 et 42 caractères.');
@@ -131,6 +166,7 @@ function create_land(string $username, string $timezone): array
         'email_virtual' => $slug . '@o.local',
         'timezone' => $timezone,
         'zone_code' => $timezone,
+        'password_hash' => $passwordHash,
         'created_at' => gmdate(DATE_ATOM),
     ];
 
@@ -178,6 +214,26 @@ function find_land(string $identifier): ?array
 
     $decoded = json_decode($raw, true);
     return is_array($decoded) ? $decoded : null;
+}
+
+function authenticate_land(string $identifier, string $password): ?array
+{
+    $land = find_land($identifier);
+    if (!$land || !land_has_password_hash($land)) {
+        return null;
+    }
+
+    $hash = (string) ($land['password_hash'] ?? '');
+    if (!password_verify($password, $hash)) {
+        return null;
+    }
+
+    if (password_needs_rehash($hash, PASSWORD_DEFAULT)) {
+        $land['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
+        write_land($land);
+    }
+
+    return $land;
 }
 
 function land_snapshot(): array

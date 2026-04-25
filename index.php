@@ -23,32 +23,61 @@ $timezoneSuggestions = [
     'Asia/Bangkok',
 ];
 $csrfToken = csrf_token();
+$authenticatedLand = current_authenticated_land();
 $form = [
     'username' => '',
     'timezone' => DEFAULT_TIMEZONE,
+    'password' => '',
+    'login_identifier' => '',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = (string) ($_POST['action'] ?? 'create');
     $form['username'] = trim((string) ($_POST['username'] ?? ''));
     $form['timezone'] = trim((string) ($_POST['timezone'] ?? ''));
+    $form['password'] = (string) ($_POST['password'] ?? '');
+    $form['login_identifier'] = trim((string) ($_POST['login_identifier'] ?? ''));
     $csrfCandidate = (string) ($_POST['csrf_token'] ?? '');
     $honeypot = (string) ($_POST['website'] ?? '');
 
-    if ($form['username'] === '') {
-        $message = 'Écris un nom (2 à 42 caractères) pour créer ta terre.';
-        $messageType = 'warning';
+    if ($action === 'login') {
+        if ($form['login_identifier'] === '' || $form['password'] === '') {
+            $message = 'Écris le nom de ta terre et son secret.';
+            $messageType = 'warning';
+        } else {
+            try {
+                guard_land_login_request($csrfCandidate);
+                $land = authenticate_land($form['login_identifier'], $form['password']);
+                if (!$land) {
+                    throw new RuntimeException('Identifiants incorrects.');
+                }
+
+                login_land($land);
+                header('Location: /land.php?u=' . urlencode((string) $land['slug']) . '&session=1', true, 303);
+                exit;
+            } catch (InvalidArgumentException | RuntimeException $exception) {
+                $message = $exception->getMessage();
+                $messageType = 'warning';
+            }
+        }
     } else {
-        try {
-            guard_land_creation_request($csrfCandidate, $honeypot);
-            $land = create_land($form['username'], $form['timezone']);
-            header('Location: /land.php?u=' . urlencode((string) $land['slug']) . '&created=1', true, 303);
-            exit;
-        } catch (InvalidArgumentException $exception) {
-            $message = $exception->getMessage();
+        if ($form['username'] === '') {
+            $message = 'Écris un nom (2 à 42 caractères) pour créer ta terre.';
             $messageType = 'warning';
-        } catch (RuntimeException $exception) {
-            $message = $exception->getMessage();
-            $messageType = 'warning';
+        } else {
+            try {
+                guard_land_creation_request($csrfCandidate, $honeypot);
+                $land = create_land($form['username'], $form['timezone'], $form['password']);
+                login_land($land);
+                header('Location: /land.php?u=' . urlencode((string) $land['slug']) . '&created=1&session=1', true, 303);
+                exit;
+            } catch (InvalidArgumentException $exception) {
+                $message = $exception->getMessage();
+                $messageType = 'warning';
+            } catch (RuntimeException $exception) {
+                $message = $exception->getMessage();
+                $messageType = 'warning';
+            }
         }
     }
 }
@@ -125,8 +154,19 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                             <h2 id="install-title">Entrée</h2>
                             <p class="panel-copy">Minimal.</p>
                         </div>
-                        <span class="badge badge-warm">sans mot de passe</span>
+                        <span class="badge badge-warm">secret local</span>
                     </div>
+
+                    <?php if ($authenticatedLand): ?>
+                        <div class="signup-preview auth-state-preview">
+                            <span class="summary-label">Session liée</span>
+                            <strong class="preview-title"><?= h((string) $authenticatedLand['slug']) ?></strong>
+                            <div class="action-row auth-action-row">
+                                <a class="pill-link" href="/land.php?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">Ouvrir la terre</a>
+                                <a class="ghost-link" href="/logout.php">Fermer la session</a>
+                            </div>
+                        </div>
+                    <?php endif; ?>
 
                     <?php if ($message !== ''): ?>
                         <div class="flash flash-<?= h($messageType) ?>" aria-live="polite">
@@ -135,6 +175,7 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                     <?php endif; ?>
 
                     <form method="post" class="land-form" autocomplete="off">
+                        <input type="hidden" name="action" value="create">
                         <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
 
                         <div class="form-trap" aria-hidden="true">
@@ -159,6 +200,20 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                             <span class="input-hint">Simple.</span>
                         </label>
 
+                        <label>
+                            Secret
+                            <input
+                                type="password"
+                                name="password"
+                                placeholder="8 caractères minimum"
+                                required
+                                minlength="<?= AUTH_MIN_PASSWORD_LENGTH ?>"
+                                value="<?= h($form['password']) ?>"
+                                autocomplete="new-password"
+                            >
+                            <span class="input-hint">Il garde l’entrée liée à ta terre.</span>
+                        </label>
+
                         <input
                             type="hidden"
                             name="timezone"
@@ -168,6 +223,45 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
 
                         <button type="submit">Créer ma terre</button>
                     </form>
+
+                    <div class="signup-preview auth-login-preview" aria-labelledby="login-title">
+                        <div class="signup-head auth-head">
+                            <div>
+                                <h3 id="login-title">Connexion</h3>
+                                <p class="panel-copy">Revenir dans une terre existante.</p>
+                            </div>
+                        </div>
+
+                        <form method="post" class="land-form" autocomplete="on">
+                            <input type="hidden" name="action" value="login">
+                            <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+
+                            <label>
+                                Terre
+                                <input
+                                    type="text"
+                                    name="login_identifier"
+                                    placeholder="ex: nox"
+                                    required
+                                    value="<?= h($form['login_identifier']) ?>"
+                                    autocomplete="username"
+                                >
+                            </label>
+
+                            <label>
+                                Secret
+                                <input
+                                    type="password"
+                                    name="password"
+                                    placeholder="mot de passe"
+                                    required
+                                    autocomplete="current-password"
+                                >
+                            </label>
+
+                            <button type="submit">Se connecter</button>
+                        </form>
+                    </div>
 
                     <div
                         class="signup-preview"
