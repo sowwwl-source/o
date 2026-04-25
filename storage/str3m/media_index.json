@@ -1,0 +1,86 @@
+{
+	"version": 1,
+	"updated_at": "2026-04-25T22:30:00Z",
+	"items": [
+		{
+			"id": "txt_centre_latent",
+			"type": "text",
+			"title": "Centre latent",
+			"slug": "centre-latent",
+			"path": "/storage/str3m/text/centre-latent.txt",
+			"land_slug": "",
+			"created_at": "2026-04-25T18:10:00Z",
+			"published_at": "2026-04-25T18:10:00Z",
+			"status": "published",
+			"weight": 1.25,
+			"tags": ["center", "portal", "ritual"],
+			"moods": ["calm", "nocturnal"],
+			"visibility": "public",
+			"layout_hints": ["text", "anchor"],
+			"meta": {
+				"text_format": "plain",
+				"excerpt": "Le centre ne s'ouvre pas frontalement. Il consent."
+			}
+		},
+		{
+			"id": "txt_rive_molle",
+			"type": "text",
+			"title": "Rive molle",
+			"slug": "rive-molle",
+			"path": "/storage/str3m/text/rive-molle.txt",
+			"land_slug": "",
+			"created_at": "2026-04-25T18:15:00Z",
+			"published_at": "2026-04-25T18:15:00Z",
+			"status": "published",
+			"weight": 1,
+			"tags": ["shore", "signal"],
+			"moods": ["calm", "dense"],
+			"visibility": "public",
+			"layout_hints": ["text", "caption"],
+			"meta": {
+				"text_format": "plain",
+				"excerpt": "Un signal ne réclame pas toujours une parole longue."
+			}
+		},
+		{
+			"id": "img_icon_signal",
+			"type": "image",
+			"title": "Signal radial",
+			"slug": "signal-radial",
+			"path": "/icons/icon.svg",
+			"land_slug": "",
+			"created_at": "2026-04-25T18:20:00Z",
+			"published_at": "2026-04-25T18:20:00Z",
+			"status": "published",
+			"weight": 1.1,
+			"tags": ["signal", "glyph"],
+			"moods": ["dense", "nocturnal"],
+			"visibility": "public",
+			"layout_hints": ["image", "centerpiece"],
+			"meta": {
+				"alt": "Icône radiale du flux O.",
+				"dominant_color": "#f2ebd8"
+			}
+		},
+		{
+			"id": "img_favicon_orbit",
+			"type": "image",
+			"title": "Orbitale minimale",
+			"slug": "orbitale-minimale",
+			"path": "/favicon.svg",
+			"land_slug": "",
+			"created_at": "2026-04-25T18:22:00Z",
+			"published_at": "2026-04-25T18:22:00Z",
+			"status": "published",
+			"weight": 0.95,
+			"tags": ["orbit", "sigil"],
+			"moods": ["calm", "nocturnal"],
+			"visibility": "public",
+			"layout_hints": ["image", "surface"],
+			"meta": {
+				"alt": "Favicon orbital de sowwwl.",
+				"dominant_color": "#e6dec9"
+			}
+		}
+	]
+}

@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 require __DIR__ . '/config.php';
+require_once __DIR__ . '/lib/str3m_media.php';
+require_once __DIR__ . '/lib/str3m_daily.php';
 
 $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
 if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
@@ -91,6 +93,14 @@ $originBase = site_origin();
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
 $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
+$dailyStream = str3m_build_daily_stream(null);
+$dailyTextItem = is_array($dailyStream['items']['text'] ?? null) ? $dailyStream['items']['text'] : null;
+$dailyImageItem = is_array($dailyStream['items']['image'] ?? null) ? $dailyStream['items']['image'] : null;
+$dailyAudioItem = is_array($dailyStream['items']['audio'] ?? null) ? $dailyStream['items']['audio'] : null;
+$dailyTextBody = $dailyTextItem ? str3m_load_text_body($dailyTextItem) : '';
+$dailyTextExcerpt = trim((string) (($dailyTextItem['meta']['excerpt'] ?? '') ?: ''));
+$dailyImagePath = $dailyImageItem ? str3m_resolve_media_path($dailyImageItem) : '';
+$dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : '';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -133,18 +143,18 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                         data-torus-cloud
                         tabindex="0"
                         role="img"
-                        aria-label="Nuage thorique navigable : glisser pour pivoter, roulette pour traverser, flèches pour dériver."
+                        aria-label="Nuage thorique navigable : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Le centre ou un geste en O déclenchent aussi l'accès secret."
                     ></canvas>
-                    <p class="torus-hint">x11 · glisser / roulette / flèches</p>
+                    <p class="torus-hint">x11 · glisser / roulette / flèches / centre / O</p>
                 </div>
             </div>
 
             <aside class="hero-aside">
                 <div class="status-card status-card-primary">
                     <div class="status-label">Mode</div>
-                    <div class="status-value"><strong>Calme</strong> / sans centre</div>
+                    <div class="status-value"><strong>Calme</strong> / centre latent</div>
                     <p class="status-meta">
-                        Double-clic dans le vide ou touche I.
+                        Centre, geste O, double-clic dans le vide ou touche I.
                     </p>
                 </div>
 
@@ -317,6 +327,53 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                     <p class="clock-time" data-clock-time>--:--:--</p>
                     <p class="clock-date" data-clock-date>--</p>
                 </div>
+            </section>
+        </div>
+    </section>
+
+    <section class="panel reveal str3m-panel" id="str3m-quotidien" aria-labelledby="str3m-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="str3m-title">str3m du jour</h2>
+                <p class="panel-copy">Composition quotidienne déterministe, légère et réversible.</p>
+            </div>
+            <span class="badge"><?= h((string) ($dailyStream['mood'] ?? 'calm')) ?> / <?= h((string) ($dailyStream['template'] ?? 'empty')) ?></span>
+        </div>
+
+        <div class="str3m-daily-grid">
+            <section class="str3m-card str3m-card-text" aria-labelledby="str3m-text-title">
+                <p class="summary-label">Texte d'ancrage</p>
+                <h3 id="str3m-text-title"><?= $dailyTextItem ? h((string) $dailyTextItem['title']) : 'Aucun fragment publié' ?></h3>
+                <?php if ($dailyTextBody !== ''): ?>
+                    <div class="str3m-text-body">
+                        <p><?= nl2br(h($dailyTextBody)) ?></p>
+                    </div>
+                <?php elseif ($dailyTextExcerpt !== ''): ?>
+                    <p class="str3m-fallback-copy"><?= h($dailyTextExcerpt) ?></p>
+                <?php else: ?>
+                    <p class="str3m-fallback-copy">Le moteur attend encore quelques fragments publiés pour remplir ce point d’ancrage.</p>
+                <?php endif; ?>
+            </section>
+
+            <section class="str3m-card str3m-card-visual" aria-labelledby="str3m-visual-title">
+                <p class="summary-label">Surface</p>
+                <h3 id="str3m-visual-title"><?= $dailyImageItem ? h((string) $dailyImageItem['title']) : 'Image en attente' ?></h3>
+                <?php if ($dailyImagePath !== ''): ?>
+                    <figure class="str3m-figure">
+                        <img src="<?= h($dailyImagePath) ?>" alt="<?= h((string) ($dailyImageItem['meta']['alt'] ?? $dailyImageItem['title'] ?? 'Image str3m')) ?>" class="str3m-image">
+                    </figure>
+                <?php else: ?>
+                    <p class="str3m-fallback-copy">Aucune image publique n’alimente encore la surface du jour.</p>
+                <?php endif; ?>
+
+                <?php if ($dailyAudioPath !== ''): ?>
+                    <div class="str3m-audio-shell">
+                        <p class="summary-label">Nappe</p>
+                        <audio controls preload="none" class="str3m-audio">
+                            <source src="<?= h($dailyAudioPath) ?>">
+                        </audio>
+                    </div>
+                <?php endif; ?>
             </section>
         </div>
     </section>

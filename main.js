@@ -42,6 +42,71 @@ function parseRgbTriplet(value, fallback) {
 	return match.slice(0, 3).map((part) => Number(part));
 }
 
+function distanceBetweenPoints(left, right) {
+	const deltaX = left.x - right.x;
+	const deltaY = left.y - right.y;
+	return Math.hypot(deltaX, deltaY);
+}
+
+function isSecretCircleGesture(points, totalDistance) {
+	if (!Array.isArray(points) || points.length < 12 || totalDistance < 140) {
+		return false;
+	}
+
+	let minX = Number.POSITIVE_INFINITY;
+	let maxX = Number.NEGATIVE_INFINITY;
+	let minY = Number.POSITIVE_INFINITY;
+	let maxY = Number.NEGATIVE_INFINITY;
+
+	points.forEach((point) => {
+		minX = Math.min(minX, point.x);
+		maxX = Math.max(maxX, point.x);
+		minY = Math.min(minY, point.y);
+		maxY = Math.max(maxY, point.y);
+	});
+
+	const width = maxX - minX;
+	const height = maxY - minY;
+	if (width < 34 || height < 34) {
+		return false;
+	}
+
+	const ratio = width / Math.max(height, 1);
+	if (ratio < 0.58 || ratio > 1.72) {
+		return false;
+	}
+
+	const center = {
+		x: minX + width * 0.5,
+		y: minY + height * 0.5,
+	};
+
+	const radii = points.map((point) => distanceBetweenPoints(point, center));
+	const meanRadius = radii.reduce((sum, radius) => sum + radius, 0) / radii.length;
+	if (meanRadius < 16) {
+		return false;
+	}
+
+	const averageDeviation = radii.reduce((sum, radius) => sum + Math.abs(radius - meanRadius), 0) / radii.length;
+	if (averageDeviation / meanRadius > 0.34) {
+		return false;
+	}
+
+	const closureDistance = distanceBetweenPoints(points[0], points[points.length - 1]);
+	if (closureDistance > Math.max(22, meanRadius * 0.8)) {
+		return false;
+	}
+
+	const quadrants = new Set();
+	points.forEach((point) => {
+		const horizontal = point.x >= center.x ? "r" : "l";
+		const vertical = point.y >= center.y ? "b" : "t";
+		quadrants.add(`${horizontal}${vertical}`);
+	});
+
+	return quadrants.size >= 4;
+}
+
 function initTorusCloud(canvas) {
 	const context = canvas.getContext("2d");
 	if (!context) {
@@ -71,6 +136,10 @@ function initTorusCloud(canvas) {
 		velocityPanY: 0,
 		velocityZoom: 0,
 		keys: new Set(),
+		pointerStartX: 0,
+		pointerStartY: 0,
+		gesturePoints: [],
+		gestureDistance: 0,
 	};
 
 	const torusScale = 11;
@@ -122,6 +191,54 @@ function initTorusCloud(canvas) {
 
 	function normalizeKey(key) {
 		return key.length === 1 ? key.toLowerCase() : key;
+	}
+
+	function recordGesturePoint(clientX, clientY) {
+		const point = { x: clientX, y: clientY };
+		const previous = state.gesturePoints[state.gesturePoints.length - 1];
+		if (previous) {
+			const distance = distanceBetweenPoints(previous, point);
+			if (distance < 6) {
+				return;
+			}
+
+			state.gestureDistance += distance;
+		}
+
+		state.gesturePoints.push(point);
+	}
+
+	function getCanvasPoint(event) {
+		const rect = canvas.getBoundingClientRect();
+		return {
+			x: event.clientX - rect.left,
+			y: event.clientY - rect.top,
+		};
+	}
+
+	function triggerSecretAccess() {
+		toggleThemeState();
+		canvas.classList.add("is-secret-open");
+		window.setTimeout(() => {
+			canvas.classList.remove("is-secret-open");
+		}, 900);
+	}
+
+	function shouldToggleFromCenterClick(event) {
+		const travel = Math.hypot(event.clientX - state.pointerStartX, event.clientY - state.pointerStartY);
+		if (travel > 16) {
+			return false;
+		}
+
+		const point = getCanvasPoint(event);
+		const centerX = state.width * 0.5;
+		const centerY = state.height * 0.5;
+		const distanceFromCenter = Math.hypot(point.x - centerX, point.y - centerY);
+		return distanceFromCenter <= Math.min(state.width, state.height) * 0.14;
+	}
+
+	function shouldToggleFromSecretGesture() {
+		return isSecretCircleGesture(state.gesturePoints, state.gestureDistance);
 	}
 
 	function applyKeyboardNavigation() {
@@ -275,6 +392,11 @@ function initTorusCloud(canvas) {
 		state.pointerId = event.pointerId;
 		state.lastX = event.clientX;
 		state.lastY = event.clientY;
+		state.pointerStartX = event.clientX;
+		state.pointerStartY = event.clientY;
+		state.gesturePoints = [];
+		state.gestureDistance = 0;
+		recordGesturePoint(event.clientX, event.clientY);
 		state.dragging = true;
 		canvas.classList.add("is-dragging");
 		canvas.focus({ preventScroll: true });
@@ -290,6 +412,7 @@ function initTorusCloud(canvas) {
 		const deltaY = event.clientY - state.lastY;
 		state.lastX = event.clientX;
 		state.lastY = event.clientY;
+		recordGesturePoint(event.clientX, event.clientY);
 		state.velocityYaw += deltaX * 0.00058;
 		state.velocityPitch += deltaY * 0.00042;
 		state.velocityPanX += deltaX * 0.0022;
@@ -308,7 +431,15 @@ function initTorusCloud(canvas) {
 		refreshStaticFrame();
 	}
 
-	canvas.addEventListener("pointerup", releasePointer);
+	canvas.addEventListener("pointerup", (event) => {
+		recordGesturePoint(event.clientX, event.clientY);
+
+		if (shouldToggleFromCenterClick(event) || shouldToggleFromSecretGesture()) {
+			triggerSecretAccess();
+		}
+
+		releasePointer(event);
+	});
 	canvas.addEventListener("pointercancel", releasePointer);
 	canvas.addEventListener("pointerleave", () => {
 		if (!state.dragging) {
