@@ -81,9 +81,9 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
 
 <main class="layout">
     <header class="hero reveal">
-        <span class="eyebrow eyebrow-pill"><?= h($brandDomain) ?> / terre</span>
         <div class="hero-grid">
             <section class="hero-copy">
+                <span class="eyebrow eyebrow-pill"><?= h($brandDomain) ?> / terre</span>
                 <h1><span>Pose une terre.</span> <em>I pour inverser.</em></h1>
                 <p class="vortex" aria-hidden="true">(.0.)</p>
                 <p class="lead">
