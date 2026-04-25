@@ -102,6 +102,23 @@ $dailyTextBody = $dailyTextItem ? str3m_load_text_body($dailyTextItem) : '';
 $dailyTextExcerpt = trim((string) (($dailyTextItem['meta']['excerpt'] ?? '') ?: ''));
 $dailyImagePath = $dailyImageItem ? str3m_resolve_media_path($dailyImageItem) : '';
 $dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : '';
+$activeVisualProfile = $authenticatedLand
+    ? land_visual_profile($authenticatedLand)
+    : land_collective_profile((string) ($dailyStream['mood'] ?? 'calm'));
+$activeLandProgram = (string) ($activeVisualProfile['program'] ?? 'collective');
+$activeLandLabel = (string) ($activeVisualProfile['label'] ?? 'collectif');
+$activeLandTone = (string) ($activeVisualProfile['tone'] ?? 'str3m public');
+$activeLambda = (int) ($activeVisualProfile['lambda_nm'] ?? 548);
+$activeLandSlug = $authenticatedLand ? (string) ($authenticatedLand['slug'] ?? '') : '';
+$activeLandUsername = $authenticatedLand ? (string) ($authenticatedLand['username'] ?? '') : '';
+$homeStatusLabel = $authenticatedLand ? 'terre liée' : 'surface collective';
+$homeLead = $authenticatedLand
+    ? 'Le torus traduit maintenant la signature chromatique de ta terre. Signal, Str3m et aZa flottent dans sa fréquence.'
+    : 'Le torus porte le str3m commun. Pose une terre plus tard si tu veux qu’il adopte une fréquence propre.';
+$homePrimaryActionHref = $authenticatedLand
+    ? '/land.php?u=' . rawurlencode($activeLandSlug)
+    : '#poser';
+$homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une terre';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -115,72 +132,93 @@ $dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : 
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>
-<body class="experience home">
+<body
+    class="experience home"
+    data-land-program="<?= h($activeLandProgram) ?>"
+    data-land-label="<?= h($activeLandLabel) ?>"
+    data-land-lambda="<?= h((string) $activeLambda) ?>"
+>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 
-<main class="layout">
-    <header class="hero reveal">
-        <div class="hero-grid">
-            <div class="hero-backdrop" aria-hidden="true"></div>
+<div class="world-container" aria-hidden="true">
+    <canvas
+        id="torus-ambient"
+        class="main-torus"
+        data-torus-cloud
+        data-land-type="<?= h($activeLandProgram) ?>"
+        data-land-label="<?= h($activeLandLabel) ?>"
+        data-lambda="<?= h((string) $activeLambda) ?>"
+        data-stream-mood="<?= h((string) ($dailyStream['mood'] ?? 'calm')) ?>"
+        tabindex="0"
+        role="img"
+        aria-label="Torus ambiant : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Swipe gauche vers Signal, haut vers Str3m, droite vers aZa, bas vers le noyau. Le centre ou un geste en O déclenchent aussi l'accès secret."
+    ></canvas>
+</div>
 
-            <?php if (!$homeVisualOnly): ?>
-            <section class="hero-copy">
-                <span class="eyebrow eyebrow-pill"><?= h($brandDomain) ?> / terre</span>
-                <h1><span>Pose une terre.</span> <em>I pour inverser.</em></h1>
-                <p class="vortex" aria-hidden="true">(.0.)</p>
-                <p class="lead">
-                    Un nom. Un fuseau. Une porte.
-                </p>
-                <div class="hero-actions">
-                    <a class="pill-link" href="#poser">Entrer</a>
-                    <a class="ghost-link" href="#surface">Temps</a>
-                </div>
-            </section>
-            <?php endif; ?>
+<main class="layout ui-overlay">
+    <?php if (!$homeVisualOnly): ?>
+    <header class="top-bar reveal">
+        <span class="eyebrow eyebrow-pill"><?= h($brandDomain) ?></span>
+        <div class="top-bar-cluster">
+            <span class="badge badge-glass current-mood"><?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></span>
+            <span class="badge badge-glass"><?= h($activeLandLabel) ?></span>
+            <span class="badge badge-glass">λ <?= h((string) $activeLambda) ?> nm</span>
+        </div>
+    </header>
 
-            <div class="hero-cloud">
-                <div class="torus-shell">
-                    <canvas
-                        class="torus-cloud"
-                        data-torus-cloud
-                        tabindex="0"
-                        role="img"
-                        aria-label="Nuage thorique navigable : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Swipe gauche vers Signal, haut vers Str3m, droite vers aZa, bas vers le noyau. Le centre ou un geste en O déclenchent aussi l'accès secret."
-                    ></canvas>
-                    <p class="torus-hint">x11 · glisser / roulette / flèches / ← signal / ↑ str3m / → aza / ↓ noyau / centre / O</p>
-                </div>
+    <section class="hero-archipelago reveal">
+        <article class="world-intro glass">
+            <span class="summary-label"><?= h($homeStatusLabel) ?></span>
+            <h1><span><?= $authenticatedLand ? 'La terre colore le torus.' : 'Le torus porte le str3m.' ?></span> <em><?= h($activeLandTone) ?></em></h1>
+            <p class="vortex" aria-hidden="true">(.λ.)</p>
+            <p class="lead"><?= h($homeLead) ?></p>
+            <div class="hero-actions">
+                <a class="pill-link" href="/signal.php">Signal</a>
+                <a class="ghost-link" href="#str3m-quotidien">Str3m</a>
+                <a class="ghost-link" href="<?= h($homePrimaryActionHref) ?>"><?= h($homePrimaryActionLabel) ?></a>
             </div>
+        </article>
 
-            <?php if (!$homeVisualOnly): ?>
-            <aside class="hero-aside">
-                <div class="status-card status-card-primary">
-                    <div class="status-label">Mode</div>
-                    <div class="status-value"><strong>Calme</strong> / centre latent</div>
-                    <p class="status-meta">
-                        Centre, geste O, double-clic dans le vide ou touche I.
-                    </p>
+        <section class="island-grid" aria-label="Archipel public">
+            <a href="/signal.php" class="island-card glass">
+                <span class="summary-label">01</span>
+                <strong>Signal</strong>
+                <span>Flux, transmissions, état vivant du domaine.</span>
+            </a>
+            <a href="#str3m-quotidien" class="island-card glass">
+                <span class="summary-label">02</span>
+                <strong>Str3m</strong>
+                <span>Le courant du jour dans sa forme collective.</span>
+            </a>
+            <a href="/aza.php" class="island-card glass">
+                <span class="summary-label">03</span>
+                <strong>aZa</strong>
+                <span>Archives, dépôts et strates consultables.</span>
+            </a>
+        </section>
+
+        <aside class="land-anchor" id="poser">
+            <section class="land-signature glass" aria-label="Signature de la terre">
+                <span class="summary-label">Signature</span>
+                <strong class="preview-title"><?= h($authenticatedLand ? $activeLandUsername : 'Str3m public') ?></strong>
+                <div class="signature-grid">
+                    <p><span>Programme</span><strong><?= h($activeLandLabel) ?></strong></p>
+                    <p><span>Longueur d’onde</span><strong>λ <?= h((string) $activeLambda) ?> nm</strong></p>
+                    <p><span>Tonalité</span><strong><?= h($activeLandTone) ?></strong></p>
                 </div>
-
-                <section class="signup-shell" id="poser" aria-labelledby="install-title">
-                    <div class="signup-head">
-                        <div>
-                            <h2 id="install-title">Entrée</h2>
-                            <p class="panel-copy">Minimal.</p>
-                        </div>
-                        <span class="badge badge-warm">secret local</span>
+                <?php if ($authenticatedLand): ?>
+                    <div class="action-row auth-action-row">
+                        <a class="pill-link" href="/land.php?u=<?= rawurlencode($activeLandSlug) ?>">Ouvrir la terre</a>
+                        <a class="ghost-link" href="/logout.php">Fermer la session</a>
                     </div>
+                <?php endif; ?>
+            </section>
 
-                    <?php if ($authenticatedLand): ?>
-                        <div class="signup-preview auth-state-preview">
-                            <span class="summary-label">Session liée</span>
-                            <strong class="preview-title"><?= h((string) $authenticatedLand['slug']) ?></strong>
-                            <div class="action-row auth-action-row">
-                                <a class="pill-link" href="/land.php?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">Ouvrir la terre</a>
-                                <a class="ghost-link" href="/logout.php">Fermer la session</a>
-                            </div>
-                        </div>
-                    <?php endif; ?>
+            <details class="minimal-auth glass"<?= $message !== '' ? ' open' : '' ?>>
+                <summary class="signup-summary"><?= $authenticatedLand ? 'Relier une autre terre' : 'Poser une terre' ?></summary>
+                <div class="auth-box">
+                    <p class="panel-copy">Connexion optionnelle. Le torus peut rester public, mais il sait aussi vibrer à ta fréquence.</p>
 
                     <?php if ($message !== ''): ?>
                         <div class="flash flash-<?= h($messageType) ?>" aria-live="polite">
@@ -211,7 +249,7 @@ $dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : 
                                 value="<?= h($form['username']) ?>"
                                 data-username-input
                             >
-                            <span class="input-hint">Simple.</span>
+                            <span class="input-hint">Le nom devient une fréquence stable.</span>
                         </label>
 
                         <label>
@@ -290,14 +328,14 @@ $dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : 
                             <p><span>Fuseau</span><strong data-preview-timezone><?= h($previewTimezone) ?></strong></p>
                         </div>
                     </div>
-                </section>
-            </aside>
-            <?php endif; ?>
-        </div>
-    </header>
+                </div>
+            </details>
+        </aside>
+    </section>
+    <?php endif; ?>
 
     <?php if (!$homeVisualOnly): ?>
-    <section class="panel reveal surface-panel" id="surface" aria-labelledby="surface-title">
+    <section class="panel reveal surface-panel glass-section" id="surface" aria-labelledby="surface-title">
         <div class="section-topline">
             <div>
                 <h2 id="surface-title">Temps</h2>
@@ -337,7 +375,7 @@ $dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : 
         </div>
     </section>
 
-    <section class="panel reveal str3m-panel" id="str3m-quotidien" aria-labelledby="str3m-title">
+    <section class="panel reveal str3m-panel glass-section" id="str3m-quotidien" aria-labelledby="str3m-title">
         <div class="section-topline">
             <div>
                 <h2 id="str3m-title">str3m du jour</h2>
@@ -386,7 +424,7 @@ $dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : 
     <?php endif; ?>
 
     <?php if (!$homeVisualOnly): ?>
-    <footer class="site-footer reveal">
+    <footer class="site-footer reveal glass-footer">
         <p><?= (int) $pulse['count'] ?> terres / <?= (int) $pulse['timezones'] ?> fuseaux / I inverse</p>
     </footer>
     <?php endif; ?>

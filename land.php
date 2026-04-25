@@ -40,6 +40,7 @@ $landSummary = $landChronology['summary'];
 $archiveSources = aza_supported_sources();
 $authenticatedLand = current_authenticated_land();
 $isAuthenticatedHere = $land && $authenticatedLand && auth_is_land_session_for((string) $land['slug']);
+$visualProfile = $land ? land_visual_profile($land) : null;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -72,6 +73,10 @@ $isAuthenticatedHere = $land && $authenticatedLand && auth_is_land_session_for((
             <div class="land-meta">
                 <span class="meta-pill"><?= h((string) $land['timezone']) ?></span>
                 <span class="meta-pill"><?= h((string) $land['email_virtual']) ?></span>
+                <?php if ($visualProfile): ?>
+                    <span class="meta-pill"><?= h((string) ($visualProfile['label'] ?? 'collectif')) ?></span>
+                    <span class="meta-pill">λ <?= h((string) ($visualProfile['lambda_nm'] ?? '548')) ?> nm</span>
+                <?php endif; ?>
                 <span class="meta-pill"><?= h(human_created_label((string) ($land['created_at'] ?? '')) ?? 'maintenant') ?></span>
                 <?php if ($isAuthenticatedHere): ?>
                     <span class="meta-pill aza-direct-pill">session liée</span>

@@ -143,6 +143,112 @@ function land_has_password_hash(array $land): bool
     return $hash !== '';
 }
 
+function land_visual_catalog(): array
+{
+    return [
+        'culbu1on' => [
+            'label' => '(c)ulbu1o(n)',
+            'tone' => 'équilibre · oscillation',
+            'lambda_range' => [440, 560],
+        ],
+        'dur3rb' => [
+            'label' => '(d)ur3r(b)',
+            'tone' => 'référence · mesure',
+            'lambda_range' => [400, 700],
+        ],
+        'tocu' => [
+            'label' => 't(o)C.u',
+            'tone' => 'décision · tension',
+            'lambda_range' => [610, 690],
+        ],
+        'collective' => [
+            'label' => 'collectif',
+            'tone' => 'str3m public',
+            'lambda_range' => [500, 580],
+        ],
+    ];
+}
+
+function land_visual_seed(array $land): string
+{
+    $slug = trim((string) ($land['slug'] ?? ''));
+    $timezone = trim((string) ($land['timezone'] ?? ''));
+    $createdAt = trim((string) ($land['created_at'] ?? ''));
+    $username = trim((string) ($land['username'] ?? ''));
+
+    return implode('|', [
+        $slug,
+        $timezone,
+        $createdAt,
+        $username,
+        'visual-v1',
+    ]);
+}
+
+function land_visual_program_from_seed(string $seed): string
+{
+    $catalog = land_visual_catalog();
+    $programs = ['culbu1on', 'dur3rb', 'tocu'];
+    $hash = hash('sha256', $seed . '|program');
+    $bucket = hexdec(substr($hash, 0, 8)) % count($programs);
+    $program = $programs[$bucket] ?? 'culbu1on';
+
+    return isset($catalog[$program]) ? $program : 'culbu1on';
+}
+
+function land_visual_lambda_from_seed(string $seed, string $program): int
+{
+    $catalog = land_visual_catalog();
+    $definition = $catalog[$program] ?? $catalog['collective'];
+    [$minimum, $maximum] = $definition['lambda_range'];
+    $spread = max(1, (int) $maximum - (int) $minimum);
+    $hash = hash('sha256', $seed . '|lambda');
+    $value = hexdec(substr($hash, 8, 8)) % ($spread + 1);
+
+    return (int) $minimum + (int) $value;
+}
+
+function land_visual_profile(array $land): array
+{
+    $catalog = land_visual_catalog();
+    $storedProgram = trim((string) ($land['land_program'] ?? ''));
+    $seed = land_visual_seed($land);
+    $program = isset($catalog[$storedProgram]) && $storedProgram !== 'collective'
+        ? $storedProgram
+        : land_visual_program_from_seed($seed);
+    $storedLambda = (int) ($land['lambda_nm'] ?? 0);
+    $lambda = $storedLambda >= 380 && $storedLambda <= 780
+        ? $storedLambda
+        : land_visual_lambda_from_seed($seed, $program);
+    $definition = $catalog[$program] ?? $catalog['culbu1on'];
+
+    return [
+        'program' => $program,
+        'label' => (string) ($definition['label'] ?? $program),
+        'tone' => (string) ($definition['tone'] ?? ''),
+        'lambda_nm' => $lambda,
+    ];
+}
+
+function land_collective_profile(?string $mood = null): array
+{
+    $catalog = land_visual_catalog();
+    $moodKey = trim((string) $mood);
+    $lambda = match ($moodKey) {
+        'nocturnal' => 468,
+        'dense' => 515,
+        default => 548,
+    };
+    $definition = $catalog['collective'];
+
+    return [
+        'program' => 'collective',
+        'label' => (string) ($definition['label'] ?? 'collectif'),
+        'tone' => (string) ($definition['tone'] ?? 'str3m public'),
+        'lambda_nm' => $lambda,
+    ];
+}
+
 function create_land(string $username, string $timezone, ?string $password = null): array
 {
     $username = trim(preg_replace('/\s+/u', ' ', trim($username)) ?? trim($username));
@@ -169,6 +275,10 @@ function create_land(string $username, string $timezone, ?string $password = nul
         'password_hash' => $passwordHash,
         'created_at' => gmdate(DATE_ATOM),
     ];
+
+    $visualProfile = land_visual_profile($land);
+    $land['land_program'] = (string) $visualProfile['program'];
+    $land['lambda_nm'] = (int) $visualProfile['lambda_nm'];
 
     $path = land_file_path($slug);
     $handle = open_land_file_for_creation($path);

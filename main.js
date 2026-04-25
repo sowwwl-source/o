@@ -42,6 +42,117 @@ function parseRgbTriplet(value, fallback) {
 	return match.slice(0, 3).map((part) => Number(part));
 }
 
+function clampNumber(value, minimum, maximum) {
+	return Math.min(maximum, Math.max(minimum, value));
+}
+
+function mixRgb(left, right, amount) {
+	const factor = clampNumber(amount, 0, 1);
+	return left.map((value, index) => Math.round(value + (right[index] - value) * factor));
+}
+
+function lambdaToRgb(lambda) {
+	const wavelength = clampNumber(Number.isFinite(lambda) ? lambda : 548, 380, 780);
+	let red = 0;
+	let green = 0;
+	let blue = 0;
+
+	if (wavelength >= 380 && wavelength < 440) {
+		red = -(wavelength - 440) / (440 - 380);
+		blue = 1;
+	} else if (wavelength < 490) {
+		green = (wavelength - 440) / (490 - 440);
+		blue = 1;
+	} else if (wavelength < 510) {
+		green = 1;
+		blue = -(wavelength - 510) / (510 - 490);
+	} else if (wavelength < 580) {
+		red = (wavelength - 510) / (580 - 510);
+		green = 1;
+	} else if (wavelength < 645) {
+		red = 1;
+		green = -(wavelength - 645) / (645 - 580);
+	} else {
+		red = 1;
+	}
+
+	let attenuation = 1;
+	if (wavelength > 700) {
+		attenuation = 0.3 + 0.7 * ((780 - wavelength) / (780 - 700));
+	} else if (wavelength < 420) {
+		attenuation = 0.3 + 0.7 * ((wavelength - 380) / (420 - 380));
+	}
+
+	const gamma = 0.8;
+	const toChannel = (channel) => Math.round(255 * Math.pow(clampNumber(channel * attenuation, 0, 1), gamma));
+
+	return [toChannel(red), toChannel(green), toChannel(blue)];
+}
+
+function resolveTorusProfile(canvas) {
+	const bodyStyles = getComputedStyle(document.body);
+	const landType = canvas.dataset.landType || document.body.dataset.landProgram || "collective";
+	const lambda = Number.parseFloat(canvas.dataset.lambda || document.body.dataset.landLambda || "548");
+	const mood = canvas.dataset.streamMood || "calm";
+	const base = lambdaToRgb(lambda);
+	const accent = parseRgbTriplet(bodyStyles.getPropertyValue("--land-accent-rgb"), base);
+	const secondary = parseRgbTriplet(bodyStyles.getPropertyValue("--land-secondary-rgb"), accent);
+	const glow = parseRgbTriplet(bodyStyles.getPropertyValue("--land-glow-rgb"), secondary);
+
+	if (landType === "dur3rb") {
+		const luminance = Math.round(base[0] * 0.299 + base[1] * 0.587 + base[2] * 0.114);
+		const grayscale = [luminance, luminance, luminance];
+		return {
+			primary: mixRgb(grayscale, accent, 0.12),
+			secondary: mixRgb(grayscale, glow, 0.08),
+			glow,
+			waveStrength: 0.58,
+			pulseStrength: 0.44,
+			signalMode: false,
+			motion: mood === "dense" ? 1.08 : 0.9,
+		};
+	}
+
+	if (landType === "tocu") {
+		return {
+			primary: mixRgb(base, accent, 0.48),
+			secondary: mixRgb(base, secondary, 0.4),
+			glow,
+			waveStrength: 1.05,
+			pulseStrength: 0.92,
+			signalMode: true,
+			signalColors: [
+				[255, 78, 58],
+				[72, 126, 255],
+				[246, 226, 76],
+			],
+			motion: mood === "nocturnal" ? 1.18 : 1.32,
+		};
+	}
+
+	if (landType === "culbu1on") {
+		return {
+			primary: mixRgb(base, accent, 0.52),
+			secondary: mixRgb(base, secondary, 0.7),
+			glow,
+			waveStrength: 0.88,
+			pulseStrength: 0.62,
+			signalMode: false,
+			motion: mood === "calm" ? 0.98 : 1.1,
+		};
+	}
+
+	return {
+		primary: mixRgb(base, accent, 0.32),
+		secondary: mixRgb(base, secondary, 0.46),
+		glow,
+		waveStrength: mood === "nocturnal" ? 0.74 : 0.68,
+		pulseStrength: mood === "dense" ? 0.68 : 0.52,
+		signalMode: false,
+		motion: mood === "nocturnal" ? 1.06 : 0.92,
+	};
+}
+
 function distanceBetweenPoints(left, right) {
 	const deltaX = left.x - right.x;
 	const deltaY = left.y - right.y;
@@ -262,12 +373,6 @@ function initTorusCloud(canvas) {
 		context.setTransform(state.devicePixelRatio, 0, 0, state.devicePixelRatio, 0, 0);
 	}
 
-	function readPalette() {
-		const styles = getComputedStyle(document.body);
-		const fallback = document.body.classList.contains("is-inverted") ? [18, 69, 52] : [227, 219, 200];
-		return parseRgbTriplet(styles.getPropertyValue("--fg"), parseRgbTriplet(styles.color, fallback));
-	}
-
 	function clamp(value, min, max) {
 		return Math.min(max, Math.max(min, value));
 	}
@@ -404,7 +509,7 @@ function initTorusCloud(canvas) {
 			return;
 		}
 
-		const [red, green, blue] = readPalette();
+		const profile = resolveTorusProfile(canvas);
 		stepNavigation();
 
 		const centerX = width * 0.5 + state.panX * (width * 0.018);
@@ -418,11 +523,14 @@ function initTorusCloud(canvas) {
 		context.clearRect(0, 0, width, height);
 
 		const rendered = state.points.map((point) => {
-			const ripple = Math.sin(time * 0.0012 + point.phase) * (0.028 * torusScale);
-			const radial = point.radiusDrift + ripple;
+			const ripple = Math.sin(time * 0.0012 * profile.motion + point.phase) * (0.028 * torusScale);
+			const tide =
+				Math.sin(time * 0.00085 * profile.motion + point.theta * 2.4 + point.phase) * (0.054 * torusScale * profile.waveStrength) +
+				Math.cos(time * 0.00115 * profile.motion + point.phi * 2.1 + point.phase * 0.8) * (0.032 * torusScale * profile.waveStrength);
+			const radial = point.radiusDrift + ripple + tide * 0.34;
 			const localX = (majorRadius + radial * Math.cos(point.phi)) * Math.cos(point.theta);
 			const localY = (majorRadius + radial * Math.cos(point.phi)) * Math.sin(point.theta);
-			const localZ = radial * Math.sin(point.phi);
+			const localZ = radial * Math.sin(point.phi) + tide;
 
 			const rotateYx = localX * Math.cos(spinY) + localZ * Math.sin(spinY);
 			const rotateYz = -localX * Math.sin(spinY) + localZ * Math.cos(spinY);
@@ -433,21 +541,33 @@ function initTorusCloud(canvas) {
 			const depth = rotateXz + camera;
 			const perspective = scale / Math.max(depth, 3.2);
 			const depthFactor = clamp((48 - depth) / 34, 0, 1);
+			const shimmer = Math.sin(time * 0.0018 * profile.motion + point.phase * 2.2 + depth * 0.1);
 
 			return {
 				x: centerX + finalX * perspective,
 				y: centerY + finalY * perspective,
-				alpha: clamp(0.06 + depthFactor * 0.84 * point.density, 0.05, 0.92),
-				radius: clamp(0.2 + depthFactor * 4.8 * point.density, 0.2, 5.8),
+				alpha: clamp(0.08 + depthFactor * (0.72 + profile.pulseStrength * 0.18) * point.density + shimmer * 0.06, 0.05, 0.94),
+				radius: clamp(0.24 + depthFactor * (4.4 + profile.pulseStrength * 1.1) * point.density, 0.2, 6.2),
 				depth,
+				mix: clamp(0.18 + depthFactor * 0.6 + shimmer * 0.14, 0, 1),
+				signalSeed: point.phase + point.theta + point.phi,
 			};
 		});
 
 		rendered.sort((left, right) => right.depth - left.depth);
 
 		rendered.forEach((point) => {
+			let color = mixRgb(profile.primary, profile.secondary, point.mix);
+			if (profile.signalMode && Array.isArray(profile.signalColors)) {
+				const trigger = Math.sin(time * 0.0024 + point.signalSeed * 3.6 + point.depth * 0.08);
+				if (trigger > 0.74) {
+					const index = Math.abs(Math.floor((point.signalSeed * 10 + time * 0.004) % profile.signalColors.length));
+					color = profile.signalColors[index] || color;
+				}
+			}
+
 			context.beginPath();
-			context.fillStyle = `rgba(${red}, ${green}, ${blue}, ${point.alpha})`;
+			context.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${point.alpha})`;
 			context.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
 			context.fill();
 		});
