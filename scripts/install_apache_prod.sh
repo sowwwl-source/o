@@ -12,11 +12,13 @@ usage() {
 Usage:
   install_apache_prod.sh [--stage-dir /tmp] [--docroot /var/www/html] [--backup-root /root] --profile homepage
   install_apache_prod.sh [--stage-dir /tmp] [--docroot /var/www/html] [--backup-root /root] --profile aza
+	install_apache_prod.sh [--stage-dir /tmp] [--docroot /var/www/html] [--backup-root /root] --profile full-web
   install_apache_prod.sh [--stage-dir /tmp] [--docroot /var/www/html] [--backup-root /root] --files index.php main.js styles.css
 
 Profiles:
   homepage   Installs index.php, main.js, styles.css
   aza        Installs aza.php, config.php
+	full-web   Installs the main public PHP/CSS/JS surfaces served from /var/www/html
 
 What this script does:
   - verifies staged files exist in the stage directory
@@ -35,6 +37,9 @@ profile_files() {
 			;;
 		aza)
 			printf '%s\n' aza.php config.php
+			;;
+		full-web)
+			printf '%s\n' index.php land.php aza.php config.php main.js styles.css manifest.json site-sw.js favicon.svg
 			;;
 		*)
 			echo "Unknown profile: $1" >&2
@@ -164,6 +169,10 @@ echo "Deployment complete. Optional checks:"
 if [[ "$profile" == "homepage" ]]; then
 	echo "curl -s https://sowwwl.com/ | grep -n 'hero-backdrop\\|torus-shell\\|data-torus-cloud'"
 elif [[ "$profile" == "aza" ]]; then
+	echo "curl -s https://sowwwl.com/aza.php | grep -n 'gros ZIP\\|entrée directe\\|upload.sowwwl.com'"
+	echo "curl -I https://upload.sowwwl.com/aza.php"
+elif [[ "$profile" == "full-web" ]]; then
+	echo "curl -s https://sowwwl.com/ | grep -n 'hero-backdrop\\|torus-shell\\|data-torus-cloud'"
 	echo "curl -s https://sowwwl.com/aza.php | grep -n 'gros ZIP\\|entrée directe\\|upload.sowwwl.com'"
 	echo "curl -I https://upload.sowwwl.com/aza.php"
 else

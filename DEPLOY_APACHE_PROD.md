@@ -77,6 +77,12 @@ ou :
 scripts/deploy_apache_prod.sh --execute --profile aza
 ```
 
+ou pour déployer d’un coup les surfaces web principales :
+
+```bash
+scripts/deploy_apache_prod.sh --execute --profile full-web
+```
+
 Le script :
 
 - vérifie que les fichiers locaux existent
@@ -102,6 +108,14 @@ Si on veut exécuter le déploiement sans attendre ces checks live, utiliser :
 ```bash
 scripts/deploy_apache_prod.sh --execute --no-verify --profile homepage
 ```
+
+## Profils disponibles
+
+- `homepage` : `index.php`, `main.js`, `styles.css`
+- `aza` : `aza.php`, `config.php`
+- `full-web` : `index.php`, `land.php`, `aza.php`, `config.php`, `main.js`, `styles.css`, `manifest.json`, `site-sw.js`, `favicon.svg`
+
+Utiliser `full-web` quand une évolution touche plusieurs surfaces publiques à la fois et qu’on veut garder un seul déploiement cohérent.
 
 ## Mode fallback : deux temps
 
@@ -138,6 +152,12 @@ Exemple `aZa` :
 
 ```bash
 bash /tmp/install_apache_prod.sh --profile aza
+```
+
+Exemple `full-web` :
+
+```bash
+bash /tmp/install_apache_prod.sh --profile full-web
 ```
 
 Exemple manuel :

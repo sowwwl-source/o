@@ -17,6 +17,7 @@ usage() {
 Usage:
   scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --profile homepage
   scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --profile aza
+	scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --profile full-web
   scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --files index.php main.js styles.css
 	scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --execute --profile homepage
 	scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --execute --no-verify --profile homepage
@@ -24,10 +25,12 @@ Usage:
 Profiles:
   homepage   Uploads index.php, main.js, styles.css
   aza        Uploads aza.php, config.php
+	full-web   Uploads the main public PHP/CSS/JS surfaces served from /var/www/html
 
 Examples:
   scripts/deploy_apache_prod.sh --profile homepage
   scripts/deploy_apache_prod.sh --profile aza
+	scripts/deploy_apache_prod.sh --profile full-web
   scripts/deploy_apache_prod.sh --host root@161.35.157.37 --files index.php styles.css
 	scripts/deploy_apache_prod.sh --execute --profile homepage
 	scripts/deploy_apache_prod.sh --execute --no-verify --profile homepage
@@ -53,6 +56,9 @@ profile_files() {
 			;;
 		aza)
 			printf '%s\n' aza.php config.php
+			;;
+		full-web)
+			printf '%s\n' index.php land.php aza.php config.php main.js styles.css manifest.json site-sw.js favicon.svg
 			;;
 		*)
 			echo "Unknown profile: $1" >&2
@@ -128,6 +134,10 @@ run_live_checks() {
 				echo "✗ Direct aZa host did not respond over HTTPS" >&2
 				return 1
 			fi
+			;;
+		full-web)
+			run_live_checks homepage
+			run_live_checks aza
 			;;
 		*)
 			echo "No automated live verification profile for this selection."
@@ -212,6 +222,11 @@ if [[ $execute_remote -eq 1 ]]; then
 		echo "Suggested local checks:"
 		printf '%s\n' "curl -s https://sowwwl.com/aza.php | grep -n 'gros ZIP\\|entrée directe\\|upload.sowwwl.com'"
 		printf '%s\n' 'curl -I https://upload.sowwwl.com/aza.php'
+	elif [[ "$profile" == "full-web" ]]; then
+		echo "Suggested local checks:"
+		printf '%s\n' "curl -s https://sowwwl.com/ | grep -n 'hero-backdrop\\|torus-shell\\|data-torus-cloud'"
+		printf '%s\n' "curl -s https://sowwwl.com/aza.php | grep -n 'gros ZIP\\|entrée directe\\|upload.sowwwl.com'"
+		printf '%s\n' 'curl -I https://upload.sowwwl.com/aza.php'
 	fi
 	exit 0
 fi
@@ -226,6 +241,10 @@ echo 'optional live checks:'
 if [[ "$profile" == "homepage" ]]; then
 	printf '%s\n' "curl -s https://sowwwl.com/ | grep -n 'hero-backdrop\\|torus-shell\\|data-torus-cloud'"
 elif [[ "$profile" == "aza" ]]; then
+	printf '%s\n' "curl -s https://sowwwl.com/aza.php | grep -n 'gros ZIP\\|entrée directe\\|upload.sowwwl.com'"
+	printf '%s\n' 'curl -I https://upload.sowwwl.com/aza.php'
+elif [[ "$profile" == "full-web" ]]; then
+	printf '%s\n' "curl -s https://sowwwl.com/ | grep -n 'hero-backdrop\\|torus-shell\\|data-torus-cloud'"
 	printf '%s\n' "curl -s https://sowwwl.com/aza.php | grep -n 'gros ZIP\\|entrée directe\\|upload.sowwwl.com'"
 	printf '%s\n' 'curl -I https://upload.sowwwl.com/aza.php'
 else
