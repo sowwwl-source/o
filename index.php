@@ -152,7 +152,7 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
         data-stream-mood="<?= h((string) ($dailyStream['mood'] ?? 'calm')) ?>"
         tabindex="0"
         role="img"
-        aria-label="Torus ambiant : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Swipe gauche vers Signal, haut vers Str3m, droite vers aZa, bas vers le noyau. Le centre ou un geste en O déclenchent aussi l'accès secret."
+        aria-label="Torus ambiant : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Sur mobile, un appui long puis une glisse permettent aussi de naviguer. Swipe gauche vers Signal, haut vers Str3m, droite vers aZa, bas vers le noyau. Le centre ou un geste en O déclenchent aussi l'accès secret."
     ></canvas>
 </div>
 

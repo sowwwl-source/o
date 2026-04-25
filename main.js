@@ -1,5 +1,6 @@
 const DEFAULT_TIMEZONE = "Europe/Paris";
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const coarsePointer = window.matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints || 0) > 0;
 const THEME_KEY = "o-theme-inverted";
 
 const reveals = Array.from(document.querySelectorAll(".reveal"));
@@ -325,6 +326,24 @@ function navigateFromSwipe(direction) {
 	return false;
 }
 
+function ensureTorusTouchHint() {
+	if (!document.body) {
+		return null;
+	}
+
+	const existing = document.querySelector("[data-torus-touch-hint]");
+	if (existing instanceof HTMLDivElement) {
+		return existing;
+	}
+
+	const hint = document.createElement("div");
+	hint.className = "torus-touch-hint";
+	hint.dataset.torusTouchHint = "";
+	hint.setAttribute("aria-hidden", "true");
+	document.body.appendChild(hint);
+	return hint;
+}
+
 function initStr3mJoystick() {
 	if (!document.body || document.querySelector("[data-str3m-joystick]")) {
 		return;
@@ -488,10 +507,14 @@ function initTorusCloud(canvas) {
 		return;
 	}
 
+	const touchHint = ensureTorusTouchHint();
+
 	const state = {
 		width: 0,
 		height: 0,
 		devicePixelRatio: 1,
+		autoScale: 1,
+		autoLiftY: 0,
 		animationFrame: 0,
 		points: [],
 		pointerId: null,
@@ -518,6 +541,10 @@ function initTorusCloud(canvas) {
 		pointerNearEdge: false,
 		gesturePoints: [],
 		gestureDistance: 0,
+		longPressTimer: 0,
+		longPressActive: false,
+		longPressDirection: "",
+		longPressEligible: false,
 	};
 
 	const torusScale = 11;
@@ -552,9 +579,18 @@ function initTorusCloud(canvas) {
 		state.devicePixelRatio = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
 		state.width = Math.max(1, Math.round(rect.width));
 		state.height = Math.max(1, Math.round(rect.height));
+		const viewportRatio = state.width / Math.max(state.height, 1);
+		const isPortraitViewport = state.height > state.width * 1.04;
+		state.autoScale = isPortraitViewport
+			? clampNumber(0.74 + viewportRatio * 0.26, 0.78, 0.92)
+			: clampNumber(0.94 + viewportRatio * 0.05, 0.94, 1.04);
+		state.autoLiftY = isPortraitViewport ? Math.round(state.height * -0.035) : 0;
 		canvas.width = Math.round(state.width * state.devicePixelRatio);
 		canvas.height = Math.round(state.height * state.devicePixelRatio);
 		context.setTransform(state.devicePixelRatio, 0, 0, state.devicePixelRatio, 0, 0);
+		canvas.style.setProperty("--torus-autoscale", state.autoScale.toFixed(3));
+		canvas.style.setProperty("--torus-center-lift", `${state.autoLiftY}px`);
+		updateTouchHint();
 	}
 
 	function clamp(value, min, max) {
@@ -586,6 +622,88 @@ function initTorusCloud(canvas) {
 			x: event.clientX - rect.left,
 			y: event.clientY - rect.top,
 		};
+	}
+
+	function setHintState(message = "", isActive = false) {
+		if (!(touchHint instanceof HTMLDivElement)) {
+			return;
+		}
+
+		touchHint.textContent = message;
+		touchHint.classList.toggle("is-visible", Boolean(message));
+		touchHint.classList.toggle("is-active", Boolean(message) && isActive);
+	}
+
+	function updateTouchHint(direction = "") {
+		const shouldShow = coarsePointer && window.innerWidth <= 820;
+		if (!shouldShow) {
+			setHintState("", false);
+			return;
+		}
+
+		if (state.longPressActive) {
+			const messageByDirection = {
+				left: "Relâche pour Signal",
+				right: "Relâche pour aZa",
+				up: "Relâche pour Str3m",
+				down: "Relâche pour le noyau",
+			};
+			setHintState(messageByDirection[direction] || "Glisse : ← Signal · ↑ Str3m · → aZa · ↓ Noyau", true);
+			return;
+		}
+
+		setHintState("Appui long + glisse : Signal · Str3m · aZa · Noyau", false);
+	}
+
+	function clearLongPressTimer() {
+		if (!state.longPressTimer) {
+			return;
+		}
+
+		window.clearTimeout(state.longPressTimer);
+		state.longPressTimer = 0;
+	}
+
+	function setLongPressDirection(direction = "") {
+		state.longPressDirection = direction;
+		if (direction) {
+			canvas.dataset.navDirection = direction;
+		} else {
+			delete canvas.dataset.navDirection;
+		}
+		updateTouchHint(direction);
+	}
+
+	function resetLongPressState() {
+		clearLongPressTimer();
+		state.longPressActive = false;
+		state.longPressEligible = false;
+		setLongPressDirection("");
+		canvas.classList.remove("is-nav-armed");
+		document.body.classList.remove("torus-nav-active");
+		updateTouchHint();
+	}
+
+	function queueLongPress(pointerId) {
+		clearLongPressTimer();
+		if (!state.longPressEligible) {
+			return;
+		}
+
+		state.longPressTimer = window.setTimeout(() => {
+			if (!state.dragging || state.pointerId !== pointerId) {
+				return;
+			}
+
+			state.longPressActive = true;
+			state.velocityYaw *= 0.4;
+			state.velocityPitch *= 0.4;
+			state.velocityPanX *= 0.2;
+			state.velocityPanY *= 0.2;
+			canvas.classList.add("is-nav-armed");
+			document.body.classList.add("torus-nav-active");
+			updateTouchHint();
+		}, 360);
 	}
 
 	function triggerSecretAccess() {
@@ -697,9 +815,9 @@ function initTorusCloud(canvas) {
 		stepNavigation();
 
 		const centerX = width * 0.5 + state.panX * (width * 0.018);
-		const centerY = height * 0.5 + state.panY * (height * 0.018);
+		const centerY = height * 0.5 + state.autoLiftY + state.panY * (height * 0.018);
 		const camera = 39 - state.zoom * 1.12;
-		const scale = Math.min(width, height) * (0.7 + state.zoom * 0.078);
+		const scale = Math.min(width, height) * (0.7 + state.zoom * 0.078) * state.autoScale;
 		const spinY = state.yaw + time * 0.00006;
 		const spinX = state.pitch + Math.sin(time * 0.00012) * 0.05;
 		const spinZ = state.roll + Math.cos(time * 0.00009) * 0.03;
@@ -788,6 +906,7 @@ function initTorusCloud(canvas) {
 	}
 
 	canvas.addEventListener("pointerdown", (event) => {
+		resetLongPressState();
 		state.pointerId = event.pointerId;
 		state.pointerType = event.pointerType || "";
 		state.lastX = event.clientX;
@@ -798,15 +917,32 @@ function initTorusCloud(canvas) {
 		state.pointerNearEdge = isNearViewportEdge(event);
 		state.gesturePoints = [];
 		state.gestureDistance = 0;
+		state.longPressEligible = state.pointerType === "touch" && !state.pointerNearEdge;
+		state.longPressActive = false;
+		setLongPressDirection("");
 		recordGesturePoint(event.clientX, event.clientY);
 		state.dragging = true;
 		canvas.classList.add("is-dragging");
 		canvas.focus({ preventScroll: true });
 		canvas.setPointerCapture(event.pointerId);
+		queueLongPress(event.pointerId);
 	});
 
 	canvas.addEventListener("pointermove", (event) => {
 		if (!state.dragging || state.pointerId !== event.pointerId) {
+			return;
+		}
+
+		const travelX = event.clientX - state.pointerStartX;
+		const travelY = event.clientY - state.pointerStartY;
+		const travelDistance = Math.hypot(travelX, travelY);
+		if (!state.longPressActive && travelDistance > 14) {
+			clearLongPressTimer();
+		}
+
+		if (state.longPressActive) {
+			const direction = detectCardinalDirection(travelX, travelY, travelDistance, 18, 1.08);
+			setLongPressDirection(direction || "");
 			return;
 		}
 
@@ -827,10 +963,12 @@ function initTorusCloud(canvas) {
 			canvas.releasePointerCapture(state.pointerId);
 		}
 
+		clearLongPressTimer();
 		state.pointerId = null;
 		state.pointerType = "";
 		state.pointerStartedAt = 0;
 		state.pointerNearEdge = false;
+		state.longPressEligible = false;
 		state.dragging = false;
 		canvas.classList.remove("is-dragging");
 		refreshStaticFrame();
@@ -838,6 +976,19 @@ function initTorusCloud(canvas) {
 
 	canvas.addEventListener("pointerup", (event) => {
 		recordGesturePoint(event.clientX, event.clientY);
+		if (state.longPressActive) {
+			const deltaX = event.clientX - state.pointerStartX;
+			const deltaY = event.clientY - state.pointerStartY;
+			const direction = state.longPressDirection || detectCardinalDirection(deltaX, deltaY, Math.hypot(deltaX, deltaY), 18, 1.08);
+			resetLongPressState();
+			releasePointer(event);
+
+			if (direction) {
+				navigateFromSwipe(direction);
+			}
+			return;
+		}
+
 		const swipeDirection = shouldTriggerSwipe(event);
 
 		if (swipeDirection) {
@@ -848,7 +999,10 @@ function initTorusCloud(canvas) {
 
 		releasePointer(event);
 	});
-	canvas.addEventListener("pointercancel", releasePointer);
+	canvas.addEventListener("pointercancel", (event) => {
+		resetLongPressState();
+		releasePointer(event);
+	});
 	canvas.addEventListener("pointerleave", () => {
 		if (!state.dragging) {
 			canvas.classList.remove("is-dragging");
@@ -899,10 +1053,12 @@ function initTorusCloud(canvas) {
 
 	canvas.addEventListener("blur", () => {
 		state.keys.clear();
+		resetLongPressState();
 		releasePointer();
 	});
 
 	resize();
+	updateTouchHint();
 	if (reducedMotion) {
 		drawFrame(0);
 	} else {

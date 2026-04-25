@@ -194,6 +194,46 @@ body.home .layout.ui-overlay {
 	z-index: 1;
 }
 
+.main-torus.is-nav-armed {
+	filter: brightness(1.28) contrast(1.12) saturate(1.14);
+}
+
+.main-torus[data-nav-direction] {
+	filter: brightness(1.3) contrast(1.14) saturate(1.16) drop-shadow(0 0 1.2rem rgba(var(--land-secondary-rgb) / 0.16));
+}
+
+.torus-touch-hint {
+	position: fixed;
+	left: max(1rem, env(safe-area-inset-left));
+	bottom: max(1rem, env(safe-area-inset-bottom));
+	max-width: min(48vw, 17rem);
+	padding: 0.2rem 0 0.28rem;
+	border-bottom: 1px solid rgba(var(--fg-rgb) / 0.16);
+	font-size: 0.56rem;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: rgba(var(--fg-rgb) / 0.66);
+	background: transparent;
+	opacity: 0;
+	transform: translateY(0.35rem);
+	transition: opacity 0.2s ease, transform 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+	pointer-events: none;
+	z-index: 39;
+	text-wrap: balance;
+	will-change: opacity, transform;
+}
+
+.torus-touch-hint.is-visible {
+	opacity: 0.84;
+	transform: translateY(0);
+}
+
+.torus-touch-hint.is-active {
+	color: rgb(var(--land-secondary-rgb));
+	border-color: rgba(var(--land-secondary-rgb) / 0.32);
+	opacity: 1;
+}
+
 .glass,
 .glass-section,
 .glass-footer {
@@ -2547,6 +2587,16 @@ button:hover,
 		width: min(100% - 1rem, 100%);
 	}
 
+	.world-container {
+		background:
+			radial-gradient(circle at center, rgba(var(--land-glow-rgb) / 0.12) 0 16%, rgba(5 5 7 / 0.08) 34%, rgba(5 5 7 / 0.68) 100%),
+			linear-gradient(180deg, rgba(5 5 7 / 0.78), rgba(5 5 7 / 0.97));
+	}
+
+	.main-torus {
+		filter: brightness(1.2) contrast(1.1) saturate(1.1);
+	}
+
 	.top-bar {
 		flex-direction: column;
 		align-items: start;
@@ -2612,6 +2662,12 @@ button:hover,
 		display: none;
 	}
 
+	.torus-touch-hint {
+		max-width: min(52vw, 15rem);
+		font-size: 0.54rem;
+		letter-spacing: 0.14em;
+	}
+
 	.str3m-joystick__edge {
 		font-size: 0.52rem;
 	}
@@ -2630,6 +2686,11 @@ button:hover,
 @media (max-width: 640px) {
 	h1 {
 		font-size: clamp(2.7rem, 12vw, 4rem);
+	}
+
+	.torus-touch-hint {
+		max-width: min(54vw, 13rem);
+		bottom: calc(max(0.9rem, env(safe-area-inset-bottom)) + 0.1rem);
 	}
 
 	.land-title strong {
