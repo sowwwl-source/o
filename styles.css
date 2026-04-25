@@ -116,6 +116,83 @@ code {
 	padding: 1.5rem 0 2.5rem;
 }
 
+body.home {
+	overflow: hidden;
+}
+
+body.home .layout {
+	width: 100%;
+	padding: 0;
+	min-height: 100vh;
+}
+
+body.home .hero {
+	min-height: 100vh;
+}
+
+body.home .hero-grid {
+	grid-template-columns: 1fr;
+	gap: 0;
+	margin-top: 0;
+	min-height: 100vh;
+	width: 100%;
+}
+
+body.home .hero-copy,
+body.home .hero-aside,
+body.home #surface,
+body.home #str3m-quotidien,
+body.home .site-footer {
+	display: none;
+}
+
+body.home .hero-backdrop,
+body.home .hero-cloud,
+body.home .torus-shell,
+body.home .torus-cloud {
+	grid-column: 1;
+	grid-row: 1;
+}
+
+body.home .hero-backdrop,
+body.home .hero-cloud {
+	min-height: 100vh;
+	height: 100vh;
+	padding: 0;
+}
+
+body.home .hero-cloud {
+	mask-image: none;
+	overflow: visible;
+	z-index: 7;
+}
+
+body.home .hero-backdrop::before {
+	inset: -4% -4%;
+	opacity: 0.82;
+}
+
+body.home .hero-cloud::before,
+body.home .torus-hint {
+	display: none;
+}
+
+body.home .torus-shell {
+	width: 100vw;
+	height: 100vh;
+	max-width: none;
+	max-height: none;
+	place-items: stretch;
+}
+
+body.home .torus-cloud {
+	width: 100vw;
+	height: 100vh;
+	opacity: 1;
+	transform: none;
+	filter: saturate(1.02) contrast(1.1) drop-shadow(0 0 1.8rem rgba(var(--fg-rgb) / 0.16));
+}
+
 .hero,
 .panel,
 .site-footer {
