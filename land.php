@@ -3,6 +3,13 @@ declare(strict_types=1);
 
 require __DIR__ . '/config.php';
 
+$host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
+    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+    header('Location: https://sowwwl.com' . $path, true, 302);
+    exit;
+}
+
 $identifier = (string) ($_GET['u'] ?? '');
 $land = null;
 $notFound = false;
@@ -21,19 +28,21 @@ if ($notFound) {
 $created = isset($_GET['created']) && $_GET['created'] === '1';
 $sharePath = $land ? '/land.php?u=' . rawurlencode((string) $land['slug']) : '/';
 $shareUrl = site_origin() . $sharePath;
+$brandDomain = preg_replace('/^www\./', '', $host ?: 'sowwwl.com');
+$stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
+$scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="sowwwl.xyz — espace personnel.">
+    <meta name="description" content="<?= $land ? h((string) $land['username']) . ' — espace personnel sur ' . h($brandDomain) : 'Terre introuvable — ' . h($brandDomain) ?>">
     <meta name="theme-color" content="#09090b">
-    <title><?= $land ? h((string) $land['username']) . ' — sowwwl.xyz' : 'Terre introuvable — sowwwl.xyz' ?></title>
+    <title><?= $land ? h((string) $land['username']) . ' — ' . h($brandDomain) : 'Terre introuvable — ' . h($brandDomain) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="manifest" href="/manifest.json">
-    <link rel="stylesheet" href="/styles.css">
-    <script defer src="/main.js"></script>
+    <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
+    <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>
 <body class="experience land-view">
 <div class="noise" aria-hidden="true"></div>
@@ -45,10 +54,10 @@ $shareUrl = site_origin() . $sharePath;
             <p class="eyebrow"><strong>terre active</strong> <span><?= h((string) $land['slug']) ?></span></p>
             <h1 class="land-title">
                 <strong><?= h((string) $land['username']) ?></strong>
-                <span><?= h(SITE_TAGLINE) ?></span>
+                <span>I inverse</span>
             </h1>
             <p class="lead">
-                Ta terre est posée. Elle garde ton fuseau, ton nom d’usage, et une porte simple pour revenir.
+                Terre posée. Fuseau gardé.
             </p>
 
             <div class="land-meta">
@@ -62,8 +71,8 @@ $shareUrl = site_origin() . $sharePath;
             <section class="panel reveal" aria-labelledby="clock-title">
                 <div class="section-topline">
                     <div>
-                        <h2 id="clock-title">Temps local</h2>
-                        <p class="panel-copy">Le temps de ta terre, calculé en direct dans le navigateur.</p>
+                        <h2 id="clock-title">Temps</h2>
+                        <p class="panel-copy">Local.</p>
                     </div>
                     <?php if ($created): ?>
                         <span class="badge">terre posée</span>
@@ -89,32 +98,25 @@ $shareUrl = site_origin() . $sharePath;
 
                 <div class="summary-grid">
                     <article class="summary-card">
-                        <span class="summary-label">Nom d’usage</span>
-                        <strong class="summary-value"><?= h((string) $land['username']) ?></strong>
-                        <p>Le nom visible de ta présence sur cette terre.</p>
-                    </article>
-                    <article class="summary-card">
-                        <span class="summary-label">Code zone</span>
+                        <span class="summary-label">Zone</span>
                         <strong class="summary-value summary-value-small"><?= h((string) $land['zone_code']) ?></strong>
-                        <p>Le repère utilisé pour synchroniser le temps vivant.</p>
                     </article>
                     <article class="summary-card">
                         <span class="summary-label">Ouverture</span>
                         <strong class="summary-value summary-value-small"><?= h(human_created_label((string) ($land['created_at'] ?? '')) ?? 'maintenant') ?></strong>
-                        <p>Première apparition de cette terre dans la constellation.</p>
                     </article>
                 </div>
             </section>
 
             <aside class="panel reveal" aria-labelledby="ritual-title">
-                <h2 id="ritual-title">Rituel</h2>
-                <p class="panel-copy">Une terre minuscule a besoin de peu pour rester habitable.</p>
+                <h2 id="ritual-title">Retour</h2>
+                <p class="panel-copy">Trois gestes.</p>
                 <p class="land-note">
-                    Garde le lien, garde le fuseau, et reviens quand tu veux. Le reste peut grandir plus tard,
-                    sans casser la base.
+                    Revenir. Déposer. Copier.
                 </p>
                 <div class="action-row">
                     <a class="pill-link" href="/">Retour au noyau</a>
+                    <a class="ghost-link" href="/aza.php?u=<?= rawurlencode((string) $land['slug']) ?>">Ouvrir aZa</a>
                     <button
                         type="button"
                         class="copy-button"
@@ -128,7 +130,7 @@ $shareUrl = site_origin() . $sharePath;
             <p class="eyebrow">terre introuvable</p>
             <h1>Cette porte ne mène nulle part.</h1>
             <p class="lead">
-                Le lien est vide, abîmé, ou la terre n’a jamais été posée.
+                Rien ici.
             </p>
             <div class="hero-actions">
                 <a class="pill-link" href="/">Revenir à l’accueil</a>

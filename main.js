@@ -1,5 +1,6 @@
 const DEFAULT_TIMEZONE = "Europe/Paris";
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const THEME_KEY = "o-theme-inverted";
 
 const reveals = Array.from(document.querySelectorAll(".reveal"));
 const usernameInput = document.querySelector("[data-username-input]");
@@ -11,6 +12,25 @@ const previewShell = document.querySelector("[data-preview-shell]");
 const useLocalTimezoneButton = document.querySelector("[data-use-local-timezone]");
 const bootline = document.getElementById("bootline");
 const copyButtons = Array.from(document.querySelectorAll("[data-copy-link]"));
+
+function applyThemeState(isInverted) {
+	document.body.classList.toggle("is-inverted", Boolean(isInverted));
+}
+
+function readThemeState() {
+	return window.localStorage.getItem(THEME_KEY) === "1";
+}
+
+function writeThemeState(isInverted) {
+	window.localStorage.setItem(THEME_KEY, isInverted ? "1" : "0");
+	applyThemeState(isInverted);
+}
+
+function toggleThemeState() {
+	writeThemeState(!readThemeState());
+}
+
+applyThemeState(readThemeState());
 
 if ("IntersectionObserver" in window && reveals.length && !reducedMotion) {
 	const observer = new IntersectionObserver(
@@ -223,6 +243,39 @@ timezoneChips.forEach((chip) => {
 renderSignupPreview();
 refreshClocks();
 window.setInterval(refreshClocks, 1000);
+
+document.addEventListener("keydown", (event) => {
+	if (event.key.toLowerCase() !== "i") {
+		return;
+	}
+
+	const target = event.target;
+	if (target instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) {
+		return;
+	}
+
+	toggleThemeState();
+});
+
+document.addEventListener("dblclick", (event) => {
+	const target = event.target;
+	if (!(target instanceof Element)) {
+		return;
+	}
+
+	if (target.closest("a, button, input, textarea, select, summary, label")) {
+		return;
+	}
+
+	if (
+		target === document.body ||
+		target.classList.contains("noise") ||
+		target.classList.contains("aurora") ||
+		target === document.documentElement
+	) {
+		toggleThemeState();
+	}
+});
 
 if (bootline) {
 	const fullText = bootline.textContent;

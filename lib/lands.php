@@ -62,17 +62,55 @@ function ensure_lands_dir(): void
     $directory = lands_dir();
 
     if (is_dir($directory)) {
+        if (!is_writable($directory)) {
+            throw new RuntimeException('Le stockage des terres n’est pas accessible pour le moment.');
+        }
+
         return;
     }
 
     if (!mkdir($directory, 0775, true) && !is_dir($directory)) {
         throw new RuntimeException('Impossible de préparer le sol de stockage.');
     }
+
+    if (!is_writable($directory)) {
+        throw new RuntimeException('Le stockage des terres n’est pas accessible pour le moment.');
+    }
 }
 
 function land_file_path(string $slug): string
 {
     return lands_dir() . DIRECTORY_SEPARATOR . $slug . '.json';
+}
+
+function open_land_file_for_creation(string $path): mixed
+{
+    if (is_file($path)) {
+        throw new RuntimeException('Cette terre existe déjà.');
+    }
+
+    $directory = dirname($path);
+    if (!is_dir($directory) || !is_writable($directory)) {
+        throw new RuntimeException('Le stockage des terres n’est pas accessible pour le moment.');
+    }
+
+    $handle = @fopen($path, 'x');
+    if ($handle !== false) {
+        return $handle;
+    }
+
+    clearstatcache(true, $path);
+    if (is_file($path)) {
+        throw new RuntimeException('Cette terre existe déjà.');
+    }
+
+    $lastError = error_get_last();
+    $lastMessage = strtolower((string) ($lastError['message'] ?? ''));
+    if (str_contains($lastMessage, 'permission denied')) {
+        throw new RuntimeException('Le stockage des terres n’est pas accessible pour le moment.');
+    }
+
+    throw new RuntimeException('Impossible d’écrire cette terre pour le moment.');
 }
 
 function create_land(string $username, string $timezone): array
@@ -97,11 +135,7 @@ function create_land(string $username, string $timezone): array
     ];
 
     $path = land_file_path($slug);
-    $handle = @fopen($path, 'x');
-
-    if ($handle === false) {
-        throw new RuntimeException('Cette terre existe déjà.');
-    }
+    $handle = open_land_file_for_creation($path);
 
     $encoded = json_encode($land, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 

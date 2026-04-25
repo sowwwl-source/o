@@ -7,6 +7,7 @@
 # Env / secrets
 .env
 .env.*
+!.env.example
 
 # Runtime storage
 /storage/lands/*.json

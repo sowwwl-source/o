@@ -59,7 +59,17 @@ function send_security_headers(): void
 
 function site_origin(): string
 {
-    return SITE_ORIGIN;
+    $publicOriginOverride = trim((string) (getenv('SOWWWL_PUBLIC_ORIGIN') ?: ''));
+    if ($publicOriginOverride !== '') {
+        return rtrim($publicOriginOverride, '/');
+    }
+
+    $host = trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    if ($host === '') {
+        return SITE_ORIGIN;
+    }
+
+    return (request_is_secure() ? 'https://' : 'http://') . $host;
 }
 
 function remember_form_rendered_at(): void
@@ -116,18 +126,44 @@ function client_ip(): string
 
 function ensure_rate_limit_dir(): void
 {
-    if (is_dir(RATE_LIMIT_DIR)) {
-        return;
+    rate_limit_dir();
+}
+
+function rate_limit_dir(): string
+{
+    static $resolved = null;
+
+    if (is_string($resolved) && $resolved !== '') {
+        return $resolved;
     }
 
-    if (!mkdir(RATE_LIMIT_DIR, 0775, true) && !is_dir(RATE_LIMIT_DIR)) {
-        throw new RuntimeException('Impossible de préparer les garde-fous du formulaire.');
+    $candidates = [
+        RATE_LIMIT_DIR,
+        rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'sowwwl' . DIRECTORY_SEPARATOR . 'rate-limit',
+    ];
+
+    foreach ($candidates as $candidate) {
+        if ($candidate === '') {
+            continue;
+        }
+
+        if (is_dir($candidate) && is_writable($candidate)) {
+            $resolved = $candidate;
+            return $resolved;
+        }
+
+        if (@mkdir($candidate, 0775, true) && is_dir($candidate)) {
+            $resolved = $candidate;
+            return $resolved;
+        }
     }
+
+    throw new RuntimeException('Impossible de préparer les garde-fous du formulaire.');
 }
 
 function rate_limit_file_path(string $action): string
 {
-    return RATE_LIMIT_DIR . DIRECTORY_SEPARATOR . sha1($action . '|' . client_ip()) . '.json';
+    return rate_limit_dir() . DIRECTORY_SEPARATOR . sha1($action . '|' . client_ip()) . '.json';
 }
 
 function enforce_rate_limit(string $action, int $maxAttempts, int $windowSeconds): void
@@ -169,6 +205,10 @@ function guard_land_creation_request(?string $csrfToken, string $honeypot): void
 {
     if (trim($honeypot) !== '') {
         throw new RuntimeException('Impossible de valider la demande. Réessaie.');
+    }
+
+    if (!verify_csrf_token($csrfToken)) {
+        throw new RuntimeException('Session expirée. Recharge la page et réessaie.');
     }
 
     enforce_rate_limit(
