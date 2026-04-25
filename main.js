@@ -124,7 +124,7 @@ function resolveTorusProfile(canvas) {
 			signalMode: true,
 			signalColors: [
 				[255, 78, 58],
-				[72, 126, 255],
+				[255, 122, 200],
 				[246, 226, 76],
 			],
 			motion: mood === "nocturnal" ? 1.18 : 1.32,
