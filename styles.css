@@ -20,6 +20,9 @@
 	--land-accent-rgb: 126 158 186;
 	--land-secondary-rgb: 190 214 228;
 	--land-glow-rgb: 92 126 154;
+	--editorial-line: rgba(var(--fg-rgb) / 0.12);
+	--editorial-line-strong: rgba(var(--fg-rgb) / 0.28);
+	--editorial-halo: rgba(var(--land-secondary-rgb) / 0.08);
 }
 
 * {
@@ -442,6 +445,202 @@ body.home .layout.ui-overlay {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+/* minimal editorial override */
+.glass,
+.glass-section,
+.glass-footer {
+	background: transparent;
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
+	border: none;
+	box-shadow: none;
+	border-radius: 0;
+}
+
+.hero-archipelago {
+	gap: 2.2rem;
+}
+
+.world-intro,
+.land-signature,
+.minimal-auth,
+.glass-section,
+.glass-footer,
+.surface-panel,
+.str3m-panel,
+.island-card,
+.aza-archive-card,
+.land-c0r3-section {
+	position: relative;
+	padding-left: 1.4rem;
+	background: transparent;
+	border-radius: 0;
+	box-shadow: none;
+}
+
+.island-card,
+.aza-archive-card {
+	padding-left: 1.15rem;
+}
+
+.glass-footer,
+.land-c0r3-section,
+.surface-panel,
+.str3m-panel {
+	padding-left: 1.5rem;
+}
+
+.world-intro::before,
+.land-signature::before,
+.minimal-auth::before,
+.surface-panel::before,
+.str3m-panel::before,
+.island-card::before,
+.aza-archive-card::before,
+.land-c0r3-section::before,
+.glass-footer::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0.15rem;
+	bottom: 0.15rem;
+	width: 1px;
+	background: linear-gradient(180deg, rgba(var(--fg-rgb) / 0), var(--editorial-line-strong) 20%, var(--editorial-line) 72%, rgba(var(--fg-rgb) / 0));
+	transition: background 0.4s ease, transform 0.4s ease;
+}
+
+.world-intro:hover::before,
+.land-signature:hover::before,
+.minimal-auth:hover::before,
+.surface-panel:hover::before,
+.str3m-panel:hover::before,
+.island-card:hover::before,
+.aza-archive-card:hover::before,
+.land-c0r3-section:hover::before,
+.glass-footer:hover::before,
+.world-intro:focus-within::before,
+.land-signature:focus-within::before,
+.minimal-auth:focus-within::before,
+.surface-panel:focus-within::before,
+.str3m-panel:focus-within::before,
+.island-card:focus-within::before,
+.aza-archive-card:focus-within::before,
+.land-c0r3-section:focus-within::before {
+	background: linear-gradient(180deg, rgba(var(--fg-rgb) / 0), rgba(var(--land-secondary-rgb) / 0.42) 24%, rgba(var(--land-secondary-rgb) / 0.18) 72%, rgba(var(--fg-rgb) / 0));
+	transform: scaleY(1.02);
+}
+
+.world-intro {
+	background: radial-gradient(circle at 0% 22%, var(--editorial-halo), transparent 44%);
+}
+
+.badge-glass {
+	padding: 0 0 0.3rem;
+	border-radius: 0;
+	background: transparent;
+	border: none;
+	border-bottom: 1px solid rgba(var(--land-secondary-rgb) / 0.14);
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
+}
+
+.island-grid {
+	grid-template-columns: 1fr;
+	gap: 1.45rem;
+	align-content: end;
+	padding: 3.2rem 0.2rem 1rem 0.8rem;
+}
+
+.editorial-nav {
+	align-self: end;
+}
+
+.island-card {
+	min-height: 0;
+	background: radial-gradient(circle at 0% 50%, rgba(var(--land-secondary-rgb) / 0.06), transparent 70%);
+	animation: none;
+	transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.24s ease;
+}
+
+.island-card:nth-child(3) {
+	grid-column: auto;
+	min-height: 0;
+}
+
+.island-card:hover,
+.island-card:focus-visible {
+	transform: translateX(0.25rem);
+	opacity: 0.96;
+	box-shadow: none;
+}
+
+.signature-grid {
+	gap: 1rem;
+}
+
+.minimal-auth[open] {
+	padding-bottom: 0.4rem;
+}
+
+.auth-box {
+	padding-top: 0.35rem;
+}
+
+.section-topline {
+	margin-bottom: 1.2rem;
+}
+
+.panel {
+	margin-top: 2.8rem;
+}
+
+.surface-panel,
+.str3m-panel {
+	background: radial-gradient(circle at 0% 20%, rgba(var(--land-secondary-rgb) / 0.06), transparent 44%);
+}
+
+.str3m-figure {
+	border-radius: 0;
+	margin: 0;
+	padding: 1rem 0 0.6rem;
+	border: none;
+	border-top: 1px solid rgba(var(--fg-rgb) / 0.1);
+	background: transparent;
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
+}
+
+.bucket-marker,
+.card-date {
+	background: transparent;
+	padding: 0;
+	border: none;
+}
+
+.aza-archive-card {
+	border: none;
+	box-shadow: none;
+}
+
+.land-c0r3-section {
+	background: transparent;
+	border: none;
+}
+
+.str3m-joystick__ring {
+	background:
+		radial-gradient(circle at center, rgba(var(--panel-rgb) / 0.04) 0 32%, rgba(var(--panel-rgb) / 0.12) 66%, rgba(var(--panel-rgb) / 0.04) 100%),
+		conic-gradient(from 180deg, rgba(var(--land-accent-rgb) / 0.06), rgba(var(--land-secondary-rgb) / 0.12), rgba(var(--land-glow-rgb) / 0.1), rgba(var(--land-accent-rgb) / 0.06));
+	backdrop-filter: blur(6px) saturate(108%);
+	-webkit-backdrop-filter: blur(6px) saturate(108%);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.str3m-joystick__core-shell {
+	background: radial-gradient(circle at center, rgba(var(--panel-rgb) / 0.3), rgba(var(--panel-rgb) / 0.12) 66%, rgba(var(--land-glow-rgb) / 0.12));
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 @keyframes island-float {

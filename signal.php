@@ -26,9 +26,9 @@ $messageType = 'info';
 if ($errorCode !== '') {
     $messageType = 'warning';
     $message = match ($errorCode) {
-        'auth' => 'Ouvre d’abord une session de terre pour transmettre un signal.',
+        'auth' => 'Ouvre une terre pour transmettre un signal.',
         'csrf' => 'Le jeton de session a expiré. Recharge la page et réessaie.',
-        'validation' => 'Le signal n’a pas pu être validé. Vérifie surtout le contenu.',
+        'validation' => 'Le signal n’a pas pu être validé. Vérifie le contenu.',
         'storage' => 'Le signal n’a pas pu être écrit pour le moment.',
         default => 'Le signal n’a pas pu être transmis.',
     };
@@ -57,7 +57,7 @@ if ($errorCode !== '') {
             <strong>Émettre. Lire. Garder.</strong>
             <span>I inverse</span>
         </h1>
-        <p class="lead">Un flux sobre : des signaux publics, privés, ou non répertoriés, attachés à une terre.</p>
+        <p class="lead">Des signaux publics, privés ou non répertoriés, liés à une terre.</p>
 
         <div class="land-meta">
             <a class="meta-pill meta-pill-link" href="/">retour au noyau</a>
@@ -83,7 +83,7 @@ if ($errorCode !== '') {
             <div class="section-topline">
                 <div>
                     <h2 id="signal-compose-title">Émettre</h2>
-                    <p class="panel-copy"><?= $land ? 'Ta terre peut transmettre.' : 'Connecte une terre pour transmettre.' ?></p>
+                    <p class="panel-copy"><?= $land ? 'Ta terre peut transmettre.' : 'Ouvre une terre pour transmettre.' ?></p>
                 </div>
                 <?php if ($land): ?>
                     <span class="badge">session active</span>
@@ -146,7 +146,7 @@ if ($errorCode !== '') {
                     <div class="section-topline signal-subhead">
                         <div>
                             <h2>Mes signaux</h2>
-                            <p class="panel-copy">Tous les états, dans l’ordre inverse.</p>
+                            <p class="panel-copy">Tous les états, du plus récent au plus ancien.</p>
                         </div>
                         <span class="badge"><?= h((string) count($mySignals)) ?> entrée<?= count($mySignals) > 1 ? 's' : '' ?></span>
                     </div>
@@ -172,7 +172,7 @@ if ($errorCode !== '') {
                     <?php endif; ?>
                 </div>
             <?php else: ?>
-                <p class="panel-copy">Le flux public reste visible, mais l’émission demande une terre liée.</p>
+                <p class="panel-copy">Le flux public reste visible. Pour transmettre, ouvre une terre.</p>
                 <div class="action-row">
                     <a class="pill-link" href="/">Ouvrir une terre</a>
                 </div>
@@ -183,7 +183,7 @@ if ($errorCode !== '') {
             <div class="section-topline">
                 <div>
                     <h2 id="signal-public-title">Flux public</h2>
-                    <p class="panel-copy">Seulement les signaux publiés et publics.</p>
+                    <p class="panel-copy">Signaux publiés et publics.</p>
                 </div>
                 <span class="badge"><?= h((string) count($publicSignals)) ?> visible<?= count($publicSignals) > 1 ? 's' : '' ?></span>
             </div>

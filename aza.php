@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $imported = aza_import_zip_archive($_FILES['archive_zip'], $form);
             $form['owner_slug'] = (string) ($imported['owner_slug'] ?? $form['owner_slug']);
-            $message = 'Archive déposée. aZa garde le ZIP, résume sa structure, et n’ajoute aucun algorithme social.';
+            $message = 'Archive déposée. aZa garde le ZIP et résume sa structure.';
             $messageType = 'success';
         } catch (Throwable $exception) {
             $message = $exception->getMessage();
@@ -106,7 +106,7 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
         <div class="land-meta">
             <span class="meta-pill">ZIP seulement</span>
             <span class="meta-pill"><?= h(aza_format_bytes(AZA_MAX_UPLOAD_BYTES)) ?> max côté app</span>
-            <span class="meta-pill">archive légère / no algorithm</span>
+            <span class="meta-pill">archive légère</span>
             <?php if ($isDirectRequest): ?>
                 <span class="meta-pill aza-direct-pill">entrée directe active<?= $directHost ? ' · ' . h($directHost) : '' ?></span>
             <?php elseif ($directUploadUrl): ?>
@@ -134,7 +134,7 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
             <div class="section-topline">
                 <div>
                     <h2 id="aza-import-title">Dépôt</h2>
-                    <p class="panel-copy">Minimal.</p>
+                    <p class="panel-copy">Déposer une archive.</p>
                 </div>
                 <a class="ghost-link" href="<?= $form['owner_slug'] !== '' ? '/land.php?u=' . rawurlencode($form['owner_slug']) : '/' ?>">
                     <?= $form['owner_slug'] !== '' ? 'Retour à la terre' : 'Retour au noyau' ?>
@@ -175,13 +175,13 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
                     <input type="file" name="archive_zip" accept=".zip,application/zip" required>
                     <span class="input-hint">ZIP seulement.</span>
                     <?php if ($directUploadUrl && !$isDirectRequest): ?>
-                        <span class="input-hint">Pour un très gros ZIP, utilise plutôt <a class="ghost-link" href="<?= h($directUploadUrl) ?>">l’entrée directe</a>.</span>
+                        <span class="input-hint">Pour un très gros ZIP, utilise <a class="ghost-link" href="<?= h($directUploadUrl) ?>">l’entrée directe</a>.</span>
                     <?php endif; ?>
                 </label>
 
                 <label>
                     Note de contexte
-                    <textarea name="notes" rows="4" placeholder="Pourquoi cette archive compte, d’où elle vient, ce que tu veux garder."><?= h($form['notes']) ?></textarea>
+                    <textarea name="notes" rows="4" placeholder="Contexte, provenance, repères utiles."><?= h($form['notes']) ?></textarea>
                 </label>
 
                 <button type="submit">Déposer le ZIP</button>
@@ -211,7 +211,7 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
 
         <aside class="panel reveal" aria-labelledby="aza-principles-title">
             <h2 id="aza-principles-title">Principe</h2>
-            <p class="panel-copy">Pas de feed.</p>
+            <p class="panel-copy">Pas de feed. Juste des traces.</p>
             <div class="summary-grid aza-principles-grid">
                 <article class="summary-card">
                     <span class="summary-label">01</span>
@@ -235,8 +235,8 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
                 <h2 id="aza-list-title">Mémoire Temporelle</h2>
                 <p class="panel-copy">
                     <?= $form['owner_slug'] !== ''
-                        ? 'Filtre : ' . h($form['owner_slug']) . ' · lecture chronologique.'
-                        : 'Dépôts connus, rangés des premières traces vers les plus récentes.' ?>
+                        ? 'Filtre : ' . h($form['owner_slug']) . ' · ordre chronologique.'
+                        : 'Archives classées par date.' ?>
                 </p>
             </div>
             <div class="aza-stats" aria-label="Statistiques temporelles">
@@ -266,7 +266,7 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
         <?php endif; ?>
 
         <?php if (!$sortedArchives): ?>
-            <p class="panel-copy">Aucune archive légère pour l’instant. Le premier ZIP peut arriver maintenant.</p>
+            <p class="panel-copy">Aucune archive pour l’instant.</p>
         <?php else: ?>
             <div class="aza-timeline" aria-label="Chronologie des archives">
                 <div class="aza-timeline-track">

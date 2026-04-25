@@ -113,8 +113,8 @@ $activeLandSlug = $authenticatedLand ? (string) ($authenticatedLand['slug'] ?? '
 $activeLandUsername = $authenticatedLand ? (string) ($authenticatedLand['username'] ?? '') : '';
 $homeStatusLabel = $authenticatedLand ? 'terre liée' : 'surface collective';
 $homeLead = $authenticatedLand
-    ? 'Le torus traduit maintenant la signature chromatique de ta terre. Signal, Str3m et aZa flottent dans sa fréquence.'
-    : 'Le torus porte le str3m commun. Pose une terre plus tard si tu veux qu’il adopte une fréquence propre.';
+    ? 'Le torus suit la fréquence de ta terre. Signal, Str3m et aZa restent à portée.'
+    : 'Le torus reste public. Pose une terre si tu veux une fréquence à toi.';
 $homePrimaryActionHref = $authenticatedLand
     ? '/land.php?u=' . rawurlencode($activeLandSlug)
     : '#poser';
@@ -168,7 +168,7 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
     </header>
 
     <section class="hero-archipelago reveal">
-        <article class="world-intro glass">
+        <article class="world-intro">
             <span class="summary-label"><?= h($homeStatusLabel) ?></span>
             <h1><span><?= $authenticatedLand ? 'La terre colore le torus.' : 'Le torus porte le str3m.' ?></span> <em><?= h($activeLandTone) ?></em></h1>
             <p class="vortex" aria-hidden="true">(.λ.)</p>
@@ -180,26 +180,26 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
             </div>
         </article>
 
-        <section class="island-grid" aria-label="Archipel public">
-            <a href="/signal.php" class="island-card glass">
+        <nav class="island-grid editorial-nav" aria-label="Archipel public">
+            <a href="/signal.php" class="island-card">
                 <span class="summary-label">01</span>
                 <strong>Signal</strong>
-                <span>Flux, transmissions, état vivant du domaine.</span>
+                <span>Flux et transmissions.</span>
             </a>
-            <a href="#str3m-quotidien" class="island-card glass">
+            <a href="#str3m-quotidien" class="island-card">
                 <span class="summary-label">02</span>
                 <strong>Str3m</strong>
-                <span>Le courant du jour dans sa forme collective.</span>
+                <span>Le courant du jour.</span>
             </a>
-            <a href="/aza.php" class="island-card glass">
+            <a href="/aza.php" class="island-card">
                 <span class="summary-label">03</span>
                 <strong>aZa</strong>
-                <span>Archives, dépôts et strates consultables.</span>
+                <span>Archives et dépôts.</span>
             </a>
-        </section>
+        </nav>
 
         <aside class="land-anchor" id="poser">
-            <section class="land-signature glass" aria-label="Signature de la terre">
+            <section class="land-signature" aria-label="Signature de la terre">
                 <span class="summary-label">Signature</span>
                 <strong class="preview-title"><?= h($authenticatedLand ? $activeLandUsername : 'Str3m public') ?></strong>
                 <div class="signature-grid">
@@ -215,10 +215,10 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
                 <?php endif; ?>
             </section>
 
-            <details class="minimal-auth glass"<?= $message !== '' ? ' open' : '' ?>>
+            <details class="minimal-auth"<?= $message !== '' ? ' open' : '' ?>>
                 <summary class="signup-summary"><?= $authenticatedLand ? 'Relier une autre terre' : 'Poser une terre' ?></summary>
                 <div class="auth-box">
-                    <p class="panel-copy">Connexion optionnelle. Le torus peut rester public, mais il sait aussi vibrer à ta fréquence.</p>
+                    <p class="panel-copy">Connexion optionnelle.</p>
 
                     <?php if ($message !== ''): ?>
                         <div class="flash flash-<?= h($messageType) ?>" aria-live="polite">
@@ -249,7 +249,7 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
                                 value="<?= h($form['username']) ?>"
                                 data-username-input
                             >
-                            <span class="input-hint">Le nom devient une fréquence stable.</span>
+                            <span class="input-hint">Le nom devient ton repère.</span>
                         </label>
 
                         <label>
@@ -263,7 +263,7 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
                                 value="<?= h($form['password']) ?>"
                                 autocomplete="new-password"
                             >
-                            <span class="input-hint">Il garde l’entrée liée à ta terre.</span>
+                            <span class="input-hint">Il protège ta terre.</span>
                         </label>
 
                         <input
@@ -280,7 +280,7 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
                         <div class="signup-head auth-head">
                             <div>
                                 <h3 id="login-title">Connexion</h3>
-                                <p class="panel-copy">Revenir dans une terre existante.</p>
+                                <p class="panel-copy">Retrouver une terre.</p>
                             </div>
                         </div>
 
@@ -335,11 +335,11 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
     <?php endif; ?>
 
     <?php if (!$homeVisualOnly): ?>
-    <section class="panel reveal surface-panel glass-section" id="surface" aria-labelledby="surface-title">
+    <section class="panel reveal surface-panel" id="surface" aria-labelledby="surface-title">
         <div class="section-topline">
             <div>
                 <h2 id="surface-title">Temps</h2>
-                <p class="panel-copy">I inverse.</p>
+                <p class="panel-copy">Temps local.</p>
             </div>
             <span class="badge"><?= h($brandDomain) ?></span>
         </div>
@@ -351,14 +351,14 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
                     <p>&gt; DOMAINE : <span class="highlight"><?= h($brandDomain) ?></span></p>
                     <p>&gt; MODE : <span class="highlight">terre</span></p>
                     <p>&gt; TEMPS : <span class="highlight">local</span></p>
-                    <p class="bootline" id="bootline">[ L'aspiration est en cours... George Duke is ON. ]</p>
+                    <p class="bootline" id="bootline">[ L'aspiration est en cours... ]</p>
                 </div>
             </section>
 
             <section class="clock-shell" aria-labelledby="signals-title">
                 <div>
                     <h3 id="signals-title">Fuseau</h3>
-                    <p class="panel-copy">Aperçu vivant.</p>
+                    <p class="panel-copy">Heure locale.</p>
                 </div>
                 <div
                     class="clock"
@@ -375,11 +375,11 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
         </div>
     </section>
 
-    <section class="panel reveal str3m-panel glass-section" id="str3m-quotidien" aria-labelledby="str3m-title">
+    <section class="panel reveal str3m-panel" id="str3m-quotidien" aria-labelledby="str3m-title">
         <div class="section-topline">
             <div>
                 <h2 id="str3m-title">str3m du jour</h2>
-                <p class="panel-copy">Composition quotidienne déterministe, légère et réversible.</p>
+                <p class="panel-copy">Le courant du jour.</p>
             </div>
             <span class="badge"><?= h((string) ($dailyStream['mood'] ?? 'calm')) ?> / <?= h((string) ($dailyStream['template'] ?? 'empty')) ?></span>
         </div>
@@ -387,7 +387,7 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
         <div class="str3m-daily-grid">
             <section class="str3m-card str3m-card-text" aria-labelledby="str3m-text-title">
                 <p class="summary-label">Texte d'ancrage</p>
-                <h3 id="str3m-text-title"><?= $dailyTextItem ? h((string) $dailyTextItem['title']) : 'Aucun fragment publié' ?></h3>
+                <h3 id="str3m-text-title"><?= $dailyTextItem ? h((string) $dailyTextItem['title']) : 'Aucun texte publié' ?></h3>
                 <?php if ($dailyTextBody !== ''): ?>
                     <div class="str3m-text-body">
                         <p><?= nl2br(h($dailyTextBody)) ?></p>
@@ -395,19 +395,19 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
                 <?php elseif ($dailyTextExcerpt !== ''): ?>
                     <p class="str3m-fallback-copy"><?= h($dailyTextExcerpt) ?></p>
                 <?php else: ?>
-                    <p class="str3m-fallback-copy">Le moteur attend encore quelques fragments publiés pour remplir ce point d’ancrage.</p>
+                    <p class="str3m-fallback-copy">Pas encore de texte publié.</p>
                 <?php endif; ?>
             </section>
 
             <section class="str3m-card str3m-card-visual" aria-labelledby="str3m-visual-title">
                 <p class="summary-label">Surface</p>
-                <h3 id="str3m-visual-title"><?= $dailyImageItem ? h((string) $dailyImageItem['title']) : 'Image en attente' ?></h3>
+                <h3 id="str3m-visual-title"><?= $dailyImageItem ? h((string) $dailyImageItem['title']) : 'Aucune image' ?></h3>
                 <?php if ($dailyImagePath !== ''): ?>
                     <figure class="str3m-figure">
                         <img src="<?= h($dailyImagePath) ?>" alt="<?= h((string) ($dailyImageItem['meta']['alt'] ?? $dailyImageItem['title'] ?? 'Image str3m')) ?>" class="str3m-image">
                     </figure>
                 <?php else: ?>
-                    <p class="str3m-fallback-copy">Aucune image publique n’alimente encore la surface du jour.</p>
+                    <p class="str3m-fallback-copy">Aucune image publique pour l’instant.</p>
                 <?php endif; ?>
 
                 <?php if ($dailyAudioPath !== ''): ?>
