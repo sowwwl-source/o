@@ -146,9 +146,9 @@ $dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : 
                         data-torus-cloud
                         tabindex="0"
                         role="img"
-                        aria-label="Nuage thorique navigable : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Le centre ou un geste en O déclenchent aussi l'accès secret."
+                        aria-label="Nuage thorique navigable : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Swipe gauche vers Signal, haut vers Str3m, droite vers aZa, bas vers le noyau. Le centre ou un geste en O déclenchent aussi l'accès secret."
                     ></canvas>
-                    <p class="torus-hint">x11 · glisser / roulette / flèches / centre / O</p>
+                    <p class="torus-hint">x11 · glisser / roulette / flèches / ← signal / ↑ str3m / → aza / ↓ noyau / centre / O</p>
                 </div>
             </div>
 

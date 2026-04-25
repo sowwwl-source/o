@@ -107,6 +107,86 @@ function isSecretCircleGesture(points, totalDistance) {
 	return quadrants.size >= 4;
 }
 
+function isNearViewportEdge(event, margin = 28) {
+	const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+	const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+
+	return (
+		event.clientX <= margin ||
+		event.clientY <= margin ||
+		event.clientX >= viewportWidth - margin ||
+		event.clientY >= viewportHeight - margin
+	);
+}
+
+function detectSwipeDirection(deltaX, deltaY, distance, duration) {
+	const minimumDistance = 88;
+	const maximumDuration = 720;
+	const dominanceRatio = 1.24;
+
+	if (distance < minimumDistance || duration > maximumDuration) {
+		return null;
+	}
+
+	const absX = Math.abs(deltaX);
+	const absY = Math.abs(deltaY);
+
+	if (absX >= absY * dominanceRatio) {
+		return deltaX > 0 ? "right" : "left";
+	}
+
+	if (absY >= absX * dominanceRatio) {
+		return deltaY > 0 ? "down" : "up";
+	}
+
+	return null;
+}
+
+function swipeDestination(direction) {
+	switch (direction) {
+		case "left":
+			return "/signal.php";
+		case "right":
+			return "/aza.php";
+		case "up":
+			return "/#str3m-quotidien";
+		case "down":
+			return "/";
+		default:
+			return null;
+	}
+}
+
+function navigateFromSwipe(direction) {
+	const destination = swipeDestination(direction);
+	if (!destination) {
+		return false;
+	}
+
+	const current = `${window.location.pathname}${window.location.hash}`;
+	if (direction === "up" && window.location.pathname === "/") {
+		const target = document.getElementById("str3m-quotidien");
+		if (target) {
+			target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+			window.history.replaceState(null, "", "/#str3m-quotidien");
+			return true;
+		}
+	}
+
+	if (direction === "down" && (current === "/" || current === "/#" || current === "/#str3m-quotidien")) {
+		window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
+		window.history.replaceState(null, "", "/");
+		return true;
+	}
+
+	if (current !== destination) {
+		window.location.assign(destination);
+		return true;
+	}
+
+	return false;
+}
+
 function initTorusCloud(canvas) {
 	const context = canvas.getContext("2d");
 	if (!context) {
@@ -138,6 +218,9 @@ function initTorusCloud(canvas) {
 		keys: new Set(),
 		pointerStartX: 0,
 		pointerStartY: 0,
+		pointerStartedAt: 0,
+		pointerType: "",
+		pointerNearEdge: false,
 		gesturePoints: [],
 		gestureDistance: 0,
 	};
@@ -239,6 +322,18 @@ function initTorusCloud(canvas) {
 
 	function shouldToggleFromSecretGesture() {
 		return isSecretCircleGesture(state.gesturePoints, state.gestureDistance);
+	}
+
+	function shouldTriggerSwipe(event) {
+		if (state.pointerType !== "touch" || state.pointerNearEdge) {
+			return null;
+		}
+
+		const deltaX = event.clientX - state.pointerStartX;
+		const deltaY = event.clientY - state.pointerStartY;
+		const distance = Math.hypot(deltaX, deltaY);
+		const duration = Math.max(0, event.timeStamp - state.pointerStartedAt);
+		return detectSwipeDirection(deltaX, deltaY, distance, duration);
 	}
 
 	function applyKeyboardNavigation() {
@@ -390,10 +485,13 @@ function initTorusCloud(canvas) {
 
 	canvas.addEventListener("pointerdown", (event) => {
 		state.pointerId = event.pointerId;
+		state.pointerType = event.pointerType || "";
 		state.lastX = event.clientX;
 		state.lastY = event.clientY;
 		state.pointerStartX = event.clientX;
 		state.pointerStartY = event.clientY;
+		state.pointerStartedAt = event.timeStamp;
+		state.pointerNearEdge = isNearViewportEdge(event);
 		state.gesturePoints = [];
 		state.gestureDistance = 0;
 		recordGesturePoint(event.clientX, event.clientY);
@@ -426,6 +524,9 @@ function initTorusCloud(canvas) {
 		}
 
 		state.pointerId = null;
+		state.pointerType = "";
+		state.pointerStartedAt = 0;
+		state.pointerNearEdge = false;
 		state.dragging = false;
 		canvas.classList.remove("is-dragging");
 		refreshStaticFrame();
@@ -433,8 +534,11 @@ function initTorusCloud(canvas) {
 
 	canvas.addEventListener("pointerup", (event) => {
 		recordGesturePoint(event.clientX, event.clientY);
+		const swipeDirection = shouldTriggerSwipe(event);
 
-		if (shouldToggleFromCenterClick(event) || shouldToggleFromSecretGesture()) {
+		if (swipeDirection) {
+			navigateFromSwipe(swipeDirection);
+		} else if (shouldToggleFromCenterClick(event) || shouldToggleFromSecretGesture()) {
 			triggerSecretAccess();
 		}
 
