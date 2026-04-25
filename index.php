@@ -93,6 +93,7 @@ $originBase = site_origin();
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
 $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
+$homeVisualOnly = true;
 $dailyStream = str3m_build_daily_stream(null);
 $dailyTextItem = is_array($dailyStream['items']['text'] ?? null) ? $dailyStream['items']['text'] : null;
 $dailyImageItem = is_array($dailyStream['items']['image'] ?? null) ? $dailyStream['items']['image'] : null;
@@ -123,6 +124,7 @@ $dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : 
         <div class="hero-grid">
             <div class="hero-backdrop" aria-hidden="true"></div>
 
+            <?php if (!$homeVisualOnly): ?>
             <section class="hero-copy">
                 <span class="eyebrow eyebrow-pill"><?= h($brandDomain) ?> / terre</span>
                 <h1><span>Pose une terre.</span> <em>I pour inverser.</em></h1>
@@ -135,6 +137,7 @@ $dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : 
                     <a class="ghost-link" href="#surface">Temps</a>
                 </div>
             </section>
+            <?php endif; ?>
 
             <div class="hero-cloud">
                 <div class="torus-shell">
@@ -149,6 +152,7 @@ $dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : 
                 </div>
             </div>
 
+            <?php if (!$homeVisualOnly): ?>
             <aside class="hero-aside">
                 <div class="status-card status-card-primary">
                     <div class="status-label">Mode</div>
@@ -288,9 +292,11 @@ $dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : 
                     </div>
                 </section>
             </aside>
+            <?php endif; ?>
         </div>
     </header>
 
+    <?php if (!$homeVisualOnly): ?>
     <section class="panel reveal surface-panel" id="surface" aria-labelledby="surface-title">
         <div class="section-topline">
             <div>
@@ -377,10 +383,13 @@ $dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : 
             </section>
         </div>
     </section>
+    <?php endif; ?>
 
+    <?php if (!$homeVisualOnly): ?>
     <footer class="site-footer reveal">
         <p><?= (int) $pulse['count'] ?> terres / <?= (int) $pulse['timezones'] ?> fuseaux / I inverse</p>
     </footer>
+    <?php endif; ?>
 </main>
 </body>
 </html>
