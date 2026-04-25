@@ -13,6 +13,7 @@ const useLocalTimezoneButton = document.querySelector("[data-use-local-timezone]
 const bootline = document.getElementById("bootline");
 const copyButtons = Array.from(document.querySelectorAll("[data-copy-link]"));
 const torusCanvases = Array.from(document.querySelectorAll("[data-torus-cloud]"));
+const GLOBAL_SIGNAL_RADIAL_SRC = "/storage/str3m/images/flux-radial.svg";
 
 function applyThemeState(isInverted) {
 	document.body.classList.toggle("is-inverted", Boolean(isInverted));
@@ -230,12 +231,8 @@ function isNearViewportEdge(event, margin = 28) {
 	);
 }
 
-function detectSwipeDirection(deltaX, deltaY, distance, duration) {
-	const minimumDistance = 88;
-	const maximumDuration = 720;
-	const dominanceRatio = 1.24;
-
-	if (distance < minimumDistance || duration > maximumDuration) {
+function detectCardinalDirection(deltaX, deltaY, distance, minimumDistance = 24, dominanceRatio = 1.24) {
+	if (distance < minimumDistance) {
 		return null;
 	}
 
@@ -253,6 +250,17 @@ function detectSwipeDirection(deltaX, deltaY, distance, duration) {
 	return null;
 }
 
+function detectSwipeDirection(deltaX, deltaY, distance, duration) {
+	const minimumDistance = 88;
+	const maximumDuration = 720;
+
+	if (duration > maximumDuration) {
+		return null;
+	}
+
+	return detectCardinalDirection(deltaX, deltaY, distance, minimumDistance, 1.24);
+}
+
 function swipeDestination(direction) {
 	switch (direction) {
 		case "left":
@@ -268,14 +276,8 @@ function swipeDestination(direction) {
 	}
 }
 
-function navigateFromSwipe(direction) {
-	const destination = swipeDestination(direction);
-	if (!destination) {
-		return false;
-	}
-
-	const current = `${window.location.pathname}${window.location.hash}`;
-	if (direction === "up" && window.location.pathname === "/") {
+function navigateToStr3mSurface() {
+	if (window.location.pathname === "/") {
 		const target = document.getElementById("str3m-quotidien");
 		if (target) {
 			target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
@@ -284,18 +286,200 @@ function navigateFromSwipe(direction) {
 		}
 	}
 
-	if (direction === "down" && (current === "/" || current === "/#" || current === "/#str3m-quotidien")) {
+	window.location.assign("/#str3m-quotidien");
+	return true;
+}
+
+function navigateToCoreSurface() {
+	const current = `${window.location.pathname}${window.location.hash}`;
+	if (current === "/" || current === "/#" || current === "/#str3m-quotidien") {
 		window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
 		window.history.replaceState(null, "", "/");
 		return true;
 	}
 
+	window.location.assign("/");
+	return true;
+}
+
+function navigateFromSwipe(direction) {
+	const destination = swipeDestination(direction);
+	if (!destination) {
+		return false;
+	}
+
+	if (direction === "up") {
+		return navigateToStr3mSurface();
+	}
+
+	if (direction === "down") {
+		return navigateToCoreSurface();
+	}
+
+	const current = `${window.location.pathname}${window.location.hash}`;
 	if (current !== destination) {
 		window.location.assign(destination);
 		return true;
 	}
 
 	return false;
+}
+
+function initStr3mJoystick() {
+	if (!document.body || document.querySelector("[data-str3m-joystick]")) {
+		return;
+	}
+
+	const root = document.createElement("section");
+	root.className = "str3m-joystick";
+	root.dataset.str3mJoystick = "";
+	root.setAttribute("role", "region");
+	root.setAttribute("aria-label", "Joystick de navigation str3m");
+	root.innerHTML = `
+		<div class="str3m-joystick__ring" aria-hidden="true"></div>
+		<button type="button" class="str3m-joystick__edge str3m-joystick__edge--up" data-joystick-direction="up" aria-label="Ouvrir le str3m"><span>Str3m</span></button>
+		<button type="button" class="str3m-joystick__edge str3m-joystick__edge--right" data-joystick-direction="right" aria-label="Aller vers aZa"><span>aZa</span></button>
+		<button type="button" class="str3m-joystick__edge str3m-joystick__edge--down" data-joystick-direction="down" aria-label="Revenir au noyau"><span>Noyau</span></button>
+		<button type="button" class="str3m-joystick__edge str3m-joystick__edge--left" data-joystick-direction="left" aria-label="Aller vers Signal"><span>Signal</span></button>
+		<button type="button" class="str3m-joystick__core" aria-label="Signal radial : cliquer pour ouvrir le str3m, tirer pour naviguer">
+			<span class="str3m-joystick__core-shell">
+				<img class="str3m-joystick__image" src="${GLOBAL_SIGNAL_RADIAL_SRC}" alt="">
+				<span class="str3m-joystick__fallback" aria-hidden="true">(.λ.)</span>
+			</span>
+		</button>
+		<p class="str3m-joystick__caption">Tire le signal radial pour naviguer.</p>
+	`;
+
+	document.body.appendChild(root);
+
+	const core = root.querySelector(".str3m-joystick__core");
+	const image = root.querySelector(".str3m-joystick__image");
+	const edgeButtons = Array.from(root.querySelectorAll("[data-joystick-direction]"));
+	if (!(core instanceof HTMLButtonElement)) {
+		return;
+	}
+
+	if (image instanceof HTMLImageElement) {
+		image.addEventListener("error", () => {
+			image.hidden = true;
+		});
+	}
+
+	const state = {
+		pointerId: null,
+		startX: 0,
+		startY: 0,
+		dragging: false,
+		suppressClick: false,
+	};
+
+	function setVector(deltaX = 0, deltaY = 0, direction = "") {
+		root.style.setProperty("--joystick-x", `${Math.round(deltaX)}px`);
+		root.style.setProperty("--joystick-y", `${Math.round(deltaY)}px`);
+		if (direction) {
+			root.dataset.direction = direction;
+		} else {
+			delete root.dataset.direction;
+		}
+	}
+
+	function previewDirection(deltaX, deltaY) {
+		return detectCardinalDirection(deltaX, deltaY, Math.hypot(deltaX, deltaY), 22, 1.15);
+	}
+
+	function releasePointer(event) {
+		if (event && state.pointerId !== null && core.hasPointerCapture(state.pointerId)) {
+			core.releasePointerCapture(state.pointerId);
+		}
+
+		state.pointerId = null;
+		state.dragging = false;
+		root.classList.remove("is-dragging");
+		setVector(0, 0, "");
+	}
+
+	edgeButtons.forEach((button) => {
+		button.addEventListener("click", () => {
+			const direction = button.dataset.joystickDirection;
+			if (direction) {
+				navigateFromSwipe(direction);
+			}
+		});
+	});
+
+	core.addEventListener("click", () => {
+		if (state.suppressClick) {
+			state.suppressClick = false;
+			return;
+		}
+
+		navigateToStr3mSurface();
+	});
+
+	core.addEventListener("pointerdown", (event) => {
+		state.pointerId = event.pointerId;
+		state.startX = event.clientX;
+		state.startY = event.clientY;
+		state.dragging = true;
+		root.classList.add("is-dragging");
+		core.setPointerCapture(event.pointerId);
+		setVector(0, 0, "");
+	});
+
+	core.addEventListener("pointermove", (event) => {
+		if (!state.dragging || state.pointerId !== event.pointerId) {
+			return;
+		}
+
+		const deltaX = clampNumber(event.clientX - state.startX, -34, 34);
+		const deltaY = clampNumber(event.clientY - state.startY, -34, 34);
+		setVector(deltaX, deltaY, previewDirection(deltaX, deltaY) || "");
+	});
+
+	core.addEventListener("pointerup", (event) => {
+		const deltaX = event.clientX - state.startX;
+		const deltaY = event.clientY - state.startY;
+		const direction = detectCardinalDirection(deltaX, deltaY, Math.hypot(deltaX, deltaY), 26, 1.12);
+		state.suppressClick = Math.hypot(deltaX, deltaY) > 8;
+		releasePointer(event);
+
+		if (direction) {
+			navigateFromSwipe(direction);
+			return;
+		}
+
+		navigateToStr3mSurface();
+	});
+
+	core.addEventListener("pointercancel", (event) => {
+		state.suppressClick = false;
+		releasePointer(event);
+	});
+
+	core.addEventListener("keydown", (event) => {
+		const normalized = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+		const directionByKey = {
+			ArrowUp: "up",
+			ArrowRight: "right",
+			ArrowDown: "down",
+			ArrowLeft: "left",
+			w: "up",
+			d: "right",
+			s: "down",
+			a: "left",
+		};
+		const direction = directionByKey[normalized];
+		if (direction) {
+			event.preventDefault();
+			navigateFromSwipe(direction);
+			return;
+		}
+
+		if (normalized === "Enter" || normalized === " ") {
+			event.preventDefault();
+			navigateToStr3mSurface();
+		}
+	});
 }
 
 function initTorusCloud(canvas) {
@@ -747,6 +931,7 @@ function initTorusCloud(canvas) {
 }
 
 torusCanvases.forEach((canvas) => initTorusCloud(canvas));
+initStr3mJoystick();
 
 if ("IntersectionObserver" in window && reveals.length && !reducedMotion) {
 	const observer = new IntersectionObserver(
