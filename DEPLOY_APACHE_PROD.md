@@ -81,7 +81,13 @@ Le script :
 
 - vérifie que les fichiers locaux existent
 - les envoie dans `/tmp/` sur le serveur via `scp`
-- affiche les commandes exactes à exécuter ensuite sur le VPS pour installer les fichiers dans `/var/www/html`, vérifier PHP/Apache, puis recharger Apache
+- envoie aussi le script serveur `scripts/install_apache_prod.sh`
+- affiche la commande unique à exécuter ensuite sur le VPS
+
+Le flux recommandé devient donc :
+
+1. depuis le Mac : `scripts/deploy_apache_prod.sh ...`
+2. sur le serveur : `bash /tmp/install_apache_prod.sh ...`
 
 Il accepte aussi une liste manuelle de fichiers :
 
@@ -94,6 +100,37 @@ Et un hôte différent si nécessaire :
 ```bash
 scripts/deploy_apache_prod.sh --host user@server --profile homepage
 ```
+
+## Installer côté serveur avec le helper dédié
+
+Une fois les fichiers uploadés dans `/tmp/`, utiliser le script compagnon sur le VPS.
+
+Exemple homepage :
+
+```bash
+bash /tmp/install_apache_prod.sh --profile homepage
+```
+
+Exemple `aZa` :
+
+```bash
+bash /tmp/install_apache_prod.sh --profile aza
+```
+
+Exemple manuel :
+
+```bash
+bash /tmp/install_apache_prod.sh --files index.php styles.css
+```
+
+Le script serveur :
+
+- vérifie que les fichiers sont bien présents dans `/tmp/`
+- crée une sauvegarde horodatée dans `/root/backup-...`
+- installe les fichiers dans `/var/www/html`
+- lance les `php -l` utiles
+- fait `apachectl configtest`
+- fait `systemctl reload apache2`
 
 ## Copier manuellement avec `scp`
 

@@ -8,6 +8,7 @@ remote_host="root@161.35.157.37"
 remote_stage_dir="/tmp"
 profile=""
 declare -a selected_files=()
+server_script="$script_dir/install_apache_prod.sh"
 
 usage() {
 	cat <<'EOF'
@@ -28,7 +29,8 @@ Examples:
 What this script does:
   - validates that each selected local file exists under the o/ project root
   - uploads the files to the remote staging directory with scp
-  - prints the exact install/check/reload commands to run on the server
+	- uploads the companion server-side installer script
+	- prints the exact command to run on the server
 
 What this script does not do:
   - it does not modify /var/www/html remotely
@@ -103,6 +105,11 @@ fi
 
 declare -a absolute_files=()
 declare -a basenames=()
+if [[ ! -f "$server_script" ]]; then
+	echo "Missing server-side installer script: $server_script" >&2
+	exit 1
+fi
+
 for relative_path in "${selected_files[@]}"; do
 	if [[ "$relative_path" = /* ]]; then
 		echo "Use paths relative to the o/ project root, not absolute paths: $relative_path" >&2
@@ -124,28 +131,22 @@ printf 'Files:\n'
 for absolute_path in "${absolute_files[@]}"; do
 	printf '  - %s\n' "$absolute_path"
 done
+printf '  - %s\n' "$server_script"
 
-scp "${absolute_files[@]}" "$remote_host:$remote_stage_dir/"
+scp "${absolute_files[@]}" "$server_script" "$remote_host:$remote_stage_dir/"
 
 echo
 echo "Upload complete. Run the following on the server:"
 echo
-printf 'install commands:\n'
-for base in "${basenames[@]}"; do
-	printf 'install -m 644 %q %q\n' "$remote_stage_dir/$base" "/var/www/html/$base"
-done
-
-echo
-echo 'checks:'
-for base in "${basenames[@]}"; do
-	case "$base" in
-		*.php)
-			printf 'php -l %q\n' "/var/www/html/$base"
-			;;
-	esac
-done
-printf '%s\n' 'apachectl configtest'
-printf '%s\n' 'systemctl reload apache2'
+if [[ -n "$profile" ]]; then
+	printf 'bash %q --profile %q\n' "$remote_stage_dir/$(basename "$server_script")" "$profile"
+else
+	printf 'bash %q --files' "$remote_stage_dir/$(basename "$server_script")"
+	for base in "${basenames[@]}"; do
+		printf ' %q' "$base"
+	done
+	printf '\n'
+fi
 
 echo
 echo 'optional live checks:'
