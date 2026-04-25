@@ -209,6 +209,40 @@ h3 {
 	padding: 0.2rem 0 0;
 }
 
+.hero-cloud {
+	grid-column: 2;
+	position: relative;
+	display: grid;
+	place-items: center;
+	align-self: stretch;
+	min-height: 100%;
+	pointer-events: none;
+	padding: 1rem 0;
+	overflow: hidden;
+	mask-image: radial-gradient(circle at center, black 0 48%, transparent 94%);
+}
+
+.hero-cloud::before {
+	content: "";
+	position: absolute;
+	inset: 10% 8%;
+	border-radius: 50%;
+	border: 1px solid rgba(var(--fg-rgb) / 0.07);
+	opacity: 0.55;
+	filter: blur(0.2px);
+}
+
+.torus-cloud {
+	display: block;
+	width: min(32vw, 25rem);
+	height: min(68vh, 34rem);
+	max-width: 100%;
+	opacity: 0.9;
+	filter: saturate(0.92) contrast(1.04);
+	transform: translateY(2vh);
+	will-change: transform;
+}
+
 .hero-aside {
 	grid-column: 3;
 	display: grid;
@@ -957,6 +991,7 @@ button:hover,
 	}
 
 	.hero-copy,
+	.hero-cloud,
 	.hero-aside,
 	.surface-grid > :first-child,
 	.surface-grid > :last-child,
@@ -971,6 +1006,12 @@ button:hover,
 
 	h1 {
 		max-width: 11ch;
+	}
+
+	.torus-cloud {
+		width: min(70vw, 28rem);
+		height: min(42vh, 20rem);
+		transform: none;
 	}
 }
 
@@ -991,6 +1032,10 @@ button:hover,
 	.panel,
 	.page-header {
 		padding: 0;
+	}
+
+	.hero-cloud {
+		padding: 0.6rem 0 0.2rem;
 	}
 
 	.input-stack {

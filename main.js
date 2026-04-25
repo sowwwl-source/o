@@ -12,6 +12,7 @@ const previewShell = document.querySelector("[data-preview-shell]");
 const useLocalTimezoneButton = document.querySelector("[data-use-local-timezone]");
 const bootline = document.getElementById("bootline");
 const copyButtons = Array.from(document.querySelectorAll("[data-copy-link]"));
+const torusCanvases = Array.from(document.querySelectorAll("[data-torus-cloud]"));
 
 function applyThemeState(isInverted) {
 	document.body.classList.toggle("is-inverted", Boolean(isInverted));
@@ -31,6 +32,166 @@ function toggleThemeState() {
 }
 
 applyThemeState(readThemeState());
+
+function parseRgbTriplet(value, fallback) {
+	const match = value.match(/\d+(?:\.\d+)?/g);
+	if (!match || match.length < 3) {
+		return fallback;
+	}
+
+	return match.slice(0, 3).map((part) => Number(part));
+}
+
+function initTorusCloud(canvas) {
+	const context = canvas.getContext("2d");
+	if (!context) {
+		return;
+	}
+
+	const state = {
+		width: 0,
+		height: 0,
+		devicePixelRatio: 1,
+		animationFrame: 0,
+		points: [],
+	};
+
+	const ringCount = 42;
+	const tubeCount = 18;
+	const majorRadius = 1.9;
+	const minorRadius = 0.78;
+
+	for (let ringIndex = 0; ringIndex < ringCount; ringIndex += 1) {
+		for (let tubeIndex = 0; tubeIndex < tubeCount; tubeIndex += 1) {
+			const theta = (ringIndex / ringCount) * Math.PI * 2;
+			const phi = (tubeIndex / tubeCount) * Math.PI * 2;
+			const jitter = (Math.sin(ringIndex * 3.11 + tubeIndex * 1.73) + 1) * 0.5;
+			const radiusDrift = minorRadius + (jitter - 0.5) * 0.16;
+
+			state.points.push({
+				theta,
+				phi,
+				radiusDrift,
+				phase: (ringIndex * 0.19 + tubeIndex * 0.13) % (Math.PI * 2),
+			});
+		}
+	}
+
+	function resize() {
+		const rect = canvas.getBoundingClientRect();
+		state.devicePixelRatio = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+		state.width = Math.max(1, Math.round(rect.width));
+		state.height = Math.max(1, Math.round(rect.height));
+		canvas.width = Math.round(state.width * state.devicePixelRatio);
+		canvas.height = Math.round(state.height * state.devicePixelRatio);
+		context.setTransform(state.devicePixelRatio, 0, 0, state.devicePixelRatio, 0, 0);
+	}
+
+	function readPalette() {
+		const styles = getComputedStyle(document.body);
+		const fallback = document.body.classList.contains("is-inverted") ? [18, 69, 52] : [227, 219, 200];
+		return parseRgbTriplet(styles.getPropertyValue("--fg"), parseRgbTriplet(styles.color, fallback));
+	}
+
+	function drawFrame(time = 0) {
+		const width = state.width;
+		const height = state.height;
+		if (!width || !height) {
+			return;
+		}
+
+		const [red, green, blue] = readPalette();
+		const centerX = width * 0.5;
+		const centerY = height * 0.5;
+		const camera = 5.6;
+		const scale = Math.min(width, height) * 0.18;
+		const spinY = time * 0.00024;
+		const spinX = Math.sin(time * 0.00012) * 0.48 + 0.78;
+		const spinZ = Math.cos(time * 0.00009) * 0.14;
+
+		context.clearRect(0, 0, width, height);
+
+		const rendered = state.points.map((point) => {
+			const ripple = Math.sin(time * 0.0012 + point.phase) * 0.028;
+			const radial = point.radiusDrift + ripple;
+			const localX = (majorRadius + radial * Math.cos(point.phi)) * Math.cos(point.theta);
+			const localY = (majorRadius + radial * Math.cos(point.phi)) * Math.sin(point.theta);
+			const localZ = radial * Math.sin(point.phi);
+
+			const rotateYx = localX * Math.cos(spinY) + localZ * Math.sin(spinY);
+			const rotateYz = -localX * Math.sin(spinY) + localZ * Math.cos(spinY);
+			const rotateXy = localY * Math.cos(spinX) - rotateYz * Math.sin(spinX);
+			const rotateXz = localY * Math.sin(spinX) + rotateYz * Math.cos(spinX);
+			const finalX = rotateYx * Math.cos(spinZ) - rotateXy * Math.sin(spinZ);
+			const finalY = rotateYx * Math.sin(spinZ) + rotateXy * Math.cos(spinZ);
+			const depth = rotateXz + camera;
+			const perspective = scale / depth;
+
+			return {
+				x: centerX + finalX * perspective,
+				y: centerY + finalY * perspective,
+				alpha: Math.max(0.08, Math.min(0.72, 0.14 + ((camera - depth + 4.6) / 9.2) * 0.58)),
+				radius: Math.max(0.45, Math.min(1.9, 0.35 + ((camera - depth + 4.6) / 9.2) * 1.55)),
+				depth,
+			};
+		});
+
+		rendered.sort((left, right) => right.depth - left.depth);
+
+		rendered.forEach((point) => {
+			context.beginPath();
+			context.fillStyle = `rgba(${red}, ${green}, ${blue}, ${point.alpha})`;
+			context.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
+			context.fill();
+		});
+	}
+
+	function stop() {
+		if (!state.animationFrame) {
+			return;
+		}
+
+		window.cancelAnimationFrame(state.animationFrame);
+		state.animationFrame = 0;
+	}
+
+	function tick(time) {
+		drawFrame(time);
+		state.animationFrame = window.requestAnimationFrame(tick);
+	}
+
+	function start() {
+		stop();
+		if (reducedMotion || document.hidden) {
+			drawFrame(0);
+			return;
+		}
+
+		state.animationFrame = window.requestAnimationFrame(tick);
+	}
+
+	resize();
+	start();
+
+	window.addEventListener("resize", () => {
+		resize();
+		if (reducedMotion) {
+			drawFrame(0);
+		}
+	});
+
+	document.addEventListener("visibilitychange", () => {
+		if (document.hidden) {
+			stop();
+			drawFrame(0);
+			return;
+		}
+
+		start();
+	});
+}
+
+torusCanvases.forEach((canvas) => initTorusCloud(canvas));
 
 if ("IntersectionObserver" in window && reveals.length && !reducedMotion) {
 	const observer = new IntersectionObserver(

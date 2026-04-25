@@ -95,6 +95,10 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                 </div>
             </section>
 
+            <div class="hero-cloud" aria-hidden="true">
+                <canvas class="torus-cloud" data-torus-cloud></canvas>
+            </div>
+
             <aside class="hero-aside">
                 <div class="status-card status-card-primary">
                     <div class="status-label">Mode</div>
