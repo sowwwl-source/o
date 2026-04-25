@@ -163,7 +163,6 @@ if [[ ${#selected_files[@]} -eq 0 ]]; then
 fi
 
 declare -a absolute_files=()
-declare -a basenames=()
 if [[ ! -f "$server_script" ]]; then
 	echo "Missing server-side installer script: $server_script" >&2
 	exit 1
@@ -182,7 +181,6 @@ for relative_path in "${selected_files[@]}"; do
 	fi
 
 	absolute_files+=("$absolute_path")
-	basenames+=("$(basename "$relative_path")")
 done
 
 printf 'Uploading to %s:%s\n' "$remote_host" "$remote_stage_dir"
@@ -192,15 +190,27 @@ for absolute_path in "${absolute_files[@]}"; do
 done
 printf '  - %s\n' "$server_script"
 
-scp "${absolute_files[@]}" "$server_script" "$remote_host:$remote_stage_dir/"
+ssh "$remote_host" "mkdir -p $(printf '%q' "$remote_stage_dir")"
+
+for index in "${!absolute_files[@]}"; do
+	relative_path=${selected_files[$index]}
+	absolute_path=${absolute_files[$index]}
+	remote_parent=$(dirname "$relative_path")
+	if [[ "$remote_parent" != "." ]]; then
+		ssh "$remote_host" "mkdir -p $(printf '%q' "$remote_stage_dir/$remote_parent")"
+	fi
+	scp "$absolute_path" "$remote_host:$(printf '%q' "$remote_stage_dir/$relative_path")"
+done
+
+scp "$server_script" "$remote_host:$(printf '%q' "$remote_stage_dir/$(basename "$server_script")")"
 
 declare -a remote_cmd=("bash" "$remote_stage_dir/$(basename "$server_script")")
 if [[ -n "$profile" ]]; then
 	remote_cmd+=(--profile "$profile")
 else
 	remote_cmd+=(--files)
-	for base in "${basenames[@]}"; do
-		remote_cmd+=("$base")
+	for relative_path in "${selected_files[@]}"; do
+		remote_cmd+=("$relative_path")
 	done
 fi
 

@@ -119,12 +119,7 @@ declare -a php_targets=()
 echo "Installing into $docroot"
 echo "Backup directory: $backup_dir"
 for relative_path in "${selected_files[@]}"; do
-	if [[ "$relative_path" = */* ]]; then
-		echo "Use basenames or docroot-relative file names only: $relative_path" >&2
-		exit 1
-	fi
-
-	staged="$stage_dir/$(basename "$relative_path")"
+	staged="$stage_dir/$relative_path"
 	target="$docroot/$relative_path"
 
 	if [[ ! -f "$staged" ]]; then
@@ -132,10 +127,13 @@ for relative_path in "${selected_files[@]}"; do
 		exit 1
 	fi
 
+	mkdir -p "$(dirname "$target")"
+
 	if [[ ! -f "$target" ]]; then
 		echo "Warning: target does not exist yet, backup skipped for $target" >&2
 	else
-		cp "$target" "$backup_dir/$(basename "$relative_path")"
+		mkdir -p "$(dirname "$backup_dir/$relative_path")"
+		cp "$target" "$backup_dir/$relative_path"
 	fi
 
 	install -m 644 "$staged" "$target"
