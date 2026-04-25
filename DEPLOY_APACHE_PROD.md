@@ -63,18 +63,18 @@ cp /var/www/html/config.php "/root/backup-aza-$STAMP/config.php"
 
 Depuis la machine locale, envoyer les fichiers dans `/tmp/` du serveur.
 
-## Chemin recommandé : script local
+## Chemin recommandé : one-shot local
 
 Depuis la racine `o/`, utiliser le helper :
 
 ```bash
-scripts/deploy_apache_prod.sh --profile homepage
+scripts/deploy_apache_prod.sh --execute --profile homepage
 ```
 
 ou :
 
 ```bash
-scripts/deploy_apache_prod.sh --profile aza
+scripts/deploy_apache_prod.sh --execute --profile aza
 ```
 
 Le script :
@@ -82,9 +82,18 @@ Le script :
 - vérifie que les fichiers locaux existent
 - les envoie dans `/tmp/` sur le serveur via `scp`
 - envoie aussi le script serveur `scripts/install_apache_prod.sh`
-- affiche la commande unique à exécuter ensuite sur le VPS
+- lance automatiquement le script serveur via `ssh`
 
 Le flux recommandé devient donc :
+
+1. depuis le Mac : `scripts/deploy_apache_prod.sh --execute ...`
+2. vérification locale des URLs servies
+
+## Mode fallback : deux temps
+
+Si l’exécution distante automatique n’est pas souhaitée ou si la session SSH impose une étape manuelle, utiliser le mode sans `--execute`.
+
+Dans ce cas :
 
 1. depuis le Mac : `scripts/deploy_apache_prod.sh ...`
 2. sur le serveur : `bash /tmp/install_apache_prod.sh ...`
@@ -92,13 +101,13 @@ Le flux recommandé devient donc :
 Il accepte aussi une liste manuelle de fichiers :
 
 ```bash
-scripts/deploy_apache_prod.sh --files index.php styles.css
+scripts/deploy_apache_prod.sh --execute --files index.php styles.css
 ```
 
 Et un hôte différent si nécessaire :
 
 ```bash
-scripts/deploy_apache_prod.sh --host user@server --profile homepage
+scripts/deploy_apache_prod.sh --host user@server --execute --profile homepage
 ```
 
 ## Installer côté serveur avec le helper dédié

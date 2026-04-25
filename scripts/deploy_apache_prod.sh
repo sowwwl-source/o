@@ -7,6 +7,7 @@ project_root=$(cd -- "$script_dir/.." && pwd)
 remote_host="root@161.35.157.37"
 remote_stage_dir="/tmp"
 profile=""
+execute_remote=0
 declare -a selected_files=()
 server_script="$script_dir/install_apache_prod.sh"
 
@@ -16,6 +17,7 @@ Usage:
   scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --profile homepage
   scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --profile aza
   scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --files index.php main.js styles.css
+	scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --execute --profile homepage
 
 Profiles:
   homepage   Uploads index.php, main.js, styles.css
@@ -25,16 +27,18 @@ Examples:
   scripts/deploy_apache_prod.sh --profile homepage
   scripts/deploy_apache_prod.sh --profile aza
   scripts/deploy_apache_prod.sh --host root@161.35.157.37 --files index.php styles.css
+	scripts/deploy_apache_prod.sh --execute --profile homepage
 
 What this script does:
   - validates that each selected local file exists under the o/ project root
   - uploads the files to the remote staging directory with scp
 	- uploads the companion server-side installer script
 	- prints the exact command to run on the server
+	- optionally runs that command over ssh with --execute
 
 What this script does not do:
-  - it does not modify /var/www/html remotely
-  - it does not reload Apache automatically
+	- by default, it does not modify /var/www/html remotely
+	- without --execute, it does not reload Apache automatically
 EOF
 }
 
@@ -66,6 +70,10 @@ while [[ $# -gt 0 ]]; do
 		--profile)
 			profile=${2:?Missing value for --profile}
 			shift 2
+			;;
+		--execute|--remote-run)
+			execute_remote=1
+			shift
 			;;
 		--files)
 			shift
@@ -135,18 +143,39 @@ printf '  - %s\n' "$server_script"
 
 scp "${absolute_files[@]}" "$server_script" "$remote_host:$remote_stage_dir/"
 
-echo
-echo "Upload complete. Run the following on the server:"
-echo
+declare -a remote_cmd=("bash" "$remote_stage_dir/$(basename "$server_script")")
 if [[ -n "$profile" ]]; then
-	printf 'bash %q --profile %q\n' "$remote_stage_dir/$(basename "$server_script")" "$profile"
+	remote_cmd+=(--profile "$profile")
 else
-	printf 'bash %q --files' "$remote_stage_dir/$(basename "$server_script")"
+	remote_cmd+=(--files)
 	for base in "${basenames[@]}"; do
-		printf ' %q' "$base"
+		remote_cmd+=("$base")
 	done
-	printf '\n'
 fi
+
+echo
+echo "Upload complete."
+
+if [[ $execute_remote -eq 1 ]]; then
+	echo "Running remote installer via ssh..."
+	ssh "$remote_host" "$(printf '%q ' "${remote_cmd[@]}")"
+	echo
+	echo "Remote deployment finished."
+	if [[ "$profile" == "homepage" ]]; then
+		echo "Suggested local check:"
+		printf '%s\n' "curl -s https://sowwwl.com/ | grep -n 'hero-backdrop\\|torus-shell\\|data-torus-cloud'"
+	elif [[ "$profile" == "aza" ]]; then
+		echo "Suggested local checks:"
+		printf '%s\n' "curl -s https://sowwwl.com/aza.php | grep -n 'gros ZIP\\|entrée directe\\|upload.sowwwl.com'"
+		printf '%s\n' 'curl -I https://upload.sowwwl.com/aza.php'
+	fi
+	exit 0
+fi
+
+echo "Run the following on the server:"
+echo
+printf '%q ' "${remote_cmd[@]}"
+printf '\n'
 
 echo
 echo 'optional live checks:'
