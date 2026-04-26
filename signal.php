@@ -52,12 +52,12 @@ if ($errorCode !== '') {
 
 <main class="layout page-shell">
     <header class="hero page-header reveal">
-        <p class="eyebrow"><strong>signal</strong> <span>flux de transmission</span></p>
+        <p class="eyebrow"><strong>signal</strong> <span>transmission située</span></p>
         <h1 class="land-title signal-title">
-            <strong>Émettre. Lire. Garder.</strong>
+            <strong>Émettre. Recevoir. Laisser trace.</strong>
             <span>I inverse</span>
         </h1>
-        <p class="lead">Des signaux publics, privés ou non répertoriés, liés à une terre.</p>
+        <p class="lead">Une phrase peut circuler, rester close, ou se déposer au large d’une terre.</p>
 
         <div class="land-meta">
             <a class="meta-pill meta-pill-link" href="/">retour au noyau</a>
@@ -83,7 +83,7 @@ if ($errorCode !== '') {
             <div class="section-topline">
                 <div>
                     <h2 id="signal-compose-title">Émettre</h2>
-                    <p class="panel-copy"><?= $land ? 'Ta terre peut transmettre.' : 'Ouvre une terre pour transmettre.' ?></p>
+                    <p class="panel-copy"><?= $land ? 'Depuis ta terre, sans bruit inutile.' : 'Une terre ouvre la voix d’émission.' ?></p>
                 </div>
                 <?php if ($land): ?>
                     <span class="badge">session active</span>
@@ -146,7 +146,7 @@ if ($errorCode !== '') {
                     <div class="section-topline signal-subhead">
                         <div>
                             <h2>Mes signaux</h2>
-                            <p class="panel-copy">Tous les états, du plus récent au plus ancien.</p>
+                            <p class="panel-copy">Brouillons, retraits, publications : un même courant, plusieurs intensités.</p>
                         </div>
                         <span class="badge"><?= h((string) count($mySignals)) ?> entrée<?= count($mySignals) > 1 ? 's' : '' ?></span>
                     </div>
@@ -183,7 +183,7 @@ if ($errorCode !== '') {
             <div class="section-topline">
                 <div>
                     <h2 id="signal-public-title">Flux public</h2>
-                    <p class="panel-copy">Signaux publiés et publics.</p>
+                    <p class="panel-copy">Ce qui circule sans adresse fermée.</p>
                 </div>
                 <span class="badge"><?= h((string) count($publicSignals)) ?> visible<?= count($publicSignals) > 1 ? 's' : '' ?></span>
             </div>

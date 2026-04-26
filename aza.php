@@ -94,13 +94,13 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
 
 <main class="layout page-shell">
     <header class="hero page-header reveal">
-        <p class="eyebrow"><strong>aZa</strong> <span>archive personnelle légère</span></p>
+        <p class="eyebrow"><strong>aZa</strong> <span>mémoire légère</span></p>
         <h1 class="land-title">
             <strong>Déposer sans algorithme.</strong>
             <span>I inverse</span>
         </h1>
         <p class="lead">
-            ZIP. Trace. Rien de plus.
+            Déposer ce qui compte, sans rejouer le bruit.
         </p>
 
         <div class="land-meta">
@@ -134,7 +134,7 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
             <div class="section-topline">
                 <div>
                     <h2 id="aza-import-title">Dépôt</h2>
-                    <p class="panel-copy">Déposer une archive.</p>
+                    <p class="panel-copy">Un ZIP entre, une mémoire se forme.</p>
                 </div>
                 <a class="ghost-link" href="<?= $form['owner_slug'] !== '' ? '/land.php?u=' . rawurlencode($form['owner_slug']) : '/' ?>">
                     <?= $form['owner_slug'] !== '' ? 'Retour à la terre' : 'Retour au noyau' ?>
@@ -211,7 +211,7 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
 
         <aside class="panel reveal" aria-labelledby="aza-principles-title">
             <h2 id="aza-principles-title">Principe</h2>
-            <p class="panel-copy">Pas de feed. Juste des traces.</p>
+            <p class="panel-copy">Ni fil, ni score : une mémoire qu’on peut relire.</p>
             <div class="summary-grid aza-principles-grid">
                 <article class="summary-card">
                     <span class="summary-label">01</span>
@@ -232,11 +232,11 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
     <section class="panel reveal" aria-labelledby="aza-list-title">
         <div class="section-topline aza-timeline-header">
             <div>
-                <h2 id="aza-list-title">Mémoire Temporelle</h2>
+                <h2 id="aza-list-title">Chronologie</h2>
                 <p class="panel-copy">
                     <?= $form['owner_slug'] !== ''
-                        ? 'Filtre : ' . h($form['owner_slug']) . ' · ordre chronologique.'
-                        : 'Archives classées par date.' ?>
+                        ? 'Filtre : ' . h($form['owner_slug']) . ' · la mémoire se resserre sur cette terre.'
+                        : 'La mémoire prend date, puis distance.' ?>
                 </p>
             </div>
             <div class="aza-stats" aria-label="Statistiques temporelles">

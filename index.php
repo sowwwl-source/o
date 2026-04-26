@@ -113,8 +113,8 @@ $activeLandSlug = $authenticatedLand ? (string) ($authenticatedLand['slug'] ?? '
 $activeLandUsername = $authenticatedLand ? (string) ($authenticatedLand['username'] ?? '') : '';
 $homeStatusLabel = $authenticatedLand ? 'terre liée' : 'surface collective';
 $homeLead = $authenticatedLand
-    ? 'Le torus suit la fréquence de ta terre. Signal, Str3m et aZa restent à portée.'
-    : 'Le torus reste public. Pose une terre si tu veux une fréquence à toi.';
+    ? 'Le torus suit la fréquence de ta terre. Signal laisse passer, aZa retient, str3m affleure.'
+    : 'Le torus reste public. Pose une terre si tu veux un lieu à toi, discret et vivant.';
 $homePrimaryActionHref = $authenticatedLand
     ? '/land.php?u=' . rawurlencode($activeLandSlug)
     : '#poser';
@@ -194,17 +194,17 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
             <a href="/signal.php" class="island-card">
                 <span class="summary-label">01</span>
                 <strong>Signal</strong>
-                <span>Flux et transmissions.</span>
+                <span>Émettre, capter, laisser passer.</span>
             </a>
             <a href="#str3m-quotidien" class="island-card">
                 <span class="summary-label">02</span>
                 <strong>Str3m</strong>
-                <span>Le courant du jour.</span>
+                <span>Ce qui affleure aujourd’hui.</span>
             </a>
             <a href="/aza.php" class="island-card">
                 <span class="summary-label">03</span>
                 <strong>aZa</strong>
-                <span>Archives et dépôts.</span>
+                <span>Déposer, classer, retrouver.</span>
             </a>
         </nav>
 
@@ -348,8 +348,8 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
     <section class="panel reveal surface-panel" id="surface" aria-labelledby="surface-title">
         <div class="section-topline">
             <div>
-                <h2 id="surface-title">Temps</h2>
-                <p class="panel-copy">Temps local.</p>
+                <h2 id="surface-title">Temps situé</h2>
+                <p class="panel-copy">Ici, l’heure prend terre.</p>
             </div>
             <span class="badge"><?= h($brandDomain) ?></span>
         </div>
@@ -368,7 +368,7 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
             <section class="clock-shell" aria-labelledby="signals-title">
                 <div>
                     <h3 id="signals-title">Fuseau</h3>
-                    <p class="panel-copy">Heure locale.</p>
+                    <p class="panel-copy">Le temps n’est pas neutre.</p>
                 </div>
                 <div
                     class="clock"
@@ -388,8 +388,8 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
     <section class="panel reveal str3m-panel" id="str3m-quotidien" aria-labelledby="str3m-title">
         <div class="section-topline">
             <div>
-                <h2 id="str3m-title">str3m du jour</h2>
-                <p class="panel-copy">Le courant du jour.</p>
+                <h2 id="str3m-title">Str3m quotidien</h2>
+                <p class="panel-copy">Une présence choisie pour aujourd’hui.</p>
             </div>
             <span class="badge"><?= h((string) ($dailyStream['mood'] ?? 'calm')) ?> / <?= h((string) ($dailyStream['template'] ?? 'empty')) ?></span>
         </div>
