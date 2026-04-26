@@ -234,6 +234,131 @@ body.home .layout.ui-overlay {
 	opacity: 1;
 }
 
+.o-signature-mark {
+	position: fixed;
+	top: max(1rem, env(safe-area-inset-top));
+	right: max(1rem, env(safe-area-inset-right));
+	width: 4.4rem;
+	height: 2.9rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: rgb(var(--land-secondary-rgb));
+	text-decoration: none;
+	opacity: 0.92;
+	z-index: 42;
+	transition: transform 0.24s ease, opacity 0.24s ease, filter 0.24s ease;
+	filter: drop-shadow(0 0 1rem rgba(var(--land-secondary-rgb) / 0.12));
+	isolation: isolate;
+	pointer-events: auto;
+}
+
+.o-signature-mark:hover,
+.o-signature-mark:focus-visible {
+	opacity: 1;
+	transform: translateY(-0.05rem) scale(1.02);
+	filter: drop-shadow(0 0 1.2rem rgba(var(--land-secondary-rgb) / 0.2));
+	outline: none;
+}
+
+.o-signature-mark__glyph {
+	position: relative;
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.o-signature-mark__wave {
+	position: absolute;
+	left: 1.95rem;
+	top: 0.9rem;
+	width: 1.58rem;
+	height: 0.64rem;
+	overflow: visible;
+	pointer-events: none;
+	transition: transform 0.24s ease, opacity 0.24s ease, filter 0.24s ease;
+	transform-origin: left center;
+	opacity: 0.9;
+	filter: drop-shadow(0 0 0.55rem rgba(var(--land-secondary-rgb) / 0.08));
+}
+
+.o-signature-mark__wave path {
+	stroke: rgba(var(--land-secondary-rgb) / 0.78);
+	stroke-width: 1.15;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.o-signature-mark:hover .o-signature-mark__wave,
+.o-signature-mark:focus-visible .o-signature-mark__wave {
+	transform: scaleX(1.08) translateY(-0.01rem);
+	opacity: 1;
+	filter: drop-shadow(0 0 0.7rem rgba(var(--land-secondary-rgb) / 0.14));
+}
+
+.o-signature-mark__ring,
+.o-signature-mark__dot {
+	position: absolute;
+	border-radius: 50%;
+	border: 1px solid rgba(var(--land-secondary-rgb) / 0.9);
+	background: transparent;
+	box-shadow:
+		0 0 0 1px rgba(var(--fg-rgb) / 0.04),
+		inset 0 0 0 1px rgba(var(--land-glow-rgb) / 0.06);
+	transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+	pointer-events: none;
+}
+
+.o-signature-mark__ring--outer {
+	left: 0.52rem;
+	top: 0.28rem;
+	width: 1.95rem;
+	height: 1.95rem;
+	border-color: rgba(var(--land-secondary-rgb) / 0.9);
+}
+
+.o-signature-mark__ring--inner {
+	left: 0.9rem;
+	top: 0.66rem;
+	width: 1.2rem;
+	height: 1.2rem;
+	border-color: rgba(var(--land-secondary-rgb) / 0.42);
+	box-shadow: inset 0 0 0 1px rgba(var(--land-glow-rgb) / 0.08);
+}
+
+.o-signature-mark__dot {
+	left: 3.02rem;
+	top: 1.18rem;
+	width: 0.54rem;
+	height: 0.54rem;
+	border-color: rgba(var(--land-secondary-rgb) / 0.82);
+	box-shadow:
+		0 0 0 1px rgba(var(--fg-rgb) / 0.03),
+		0 0 0.75rem rgba(var(--land-secondary-rgb) / 0.08);
+	transform: translateX(-0.06rem);
+}
+
+.o-signature-mark:hover .o-signature-mark__ring--outer,
+.o-signature-mark:focus-visible .o-signature-mark__ring--outer {
+	transform: scale(1.02);
+	box-shadow:
+		0 0 0 1px rgba(var(--fg-rgb) / 0.06),
+		0 0 1rem rgba(var(--land-secondary-rgb) / 0.08),
+		inset 0 0 0 1px rgba(var(--land-glow-rgb) / 0.1);
+}
+
+.o-signature-mark:hover .o-signature-mark__ring--inner,
+.o-signature-mark:focus-visible .o-signature-mark__ring--inner {
+	transform: scale(0.98);
+	border-color: rgba(var(--land-secondary-rgb) / 0.54);
+}
+
+.o-signature-mark:hover .o-signature-mark__dot,
+.o-signature-mark:focus-visible .o-signature-mark__dot {
+	transform: translateX(0.02rem) scale(1.06);
+	border-color: rgba(var(--land-secondary-rgb) / 1);
+}
+
 .glass,
 .glass-section,
 .glass-footer {
@@ -667,20 +792,6 @@ body.home .layout.ui-overlay {
 .land-c0r3-section {
 	background: transparent;
 	border: none;
-}
-
-.str3m-joystick__ring {
-	background:
-		radial-gradient(circle at center, rgba(var(--panel-rgb) / 0.04) 0 32%, rgba(var(--panel-rgb) / 0.12) 66%, rgba(var(--panel-rgb) / 0.04) 100%),
-		conic-gradient(from 180deg, rgba(var(--land-accent-rgb) / 0.06), rgba(var(--land-secondary-rgb) / 0.12), rgba(var(--land-glow-rgb) / 0.1), rgba(var(--land-accent-rgb) / 0.06));
-	backdrop-filter: blur(6px) saturate(108%);
-	-webkit-backdrop-filter: blur(6px) saturate(108%);
-	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
-}
-
-.str3m-joystick__core-shell {
-	background: radial-gradient(circle at center, rgba(var(--panel-rgb) / 0.3), rgba(var(--panel-rgb) / 0.12) 66%, rgba(var(--land-glow-rgb) / 0.12));
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 @keyframes island-float {
@@ -2271,203 +2382,6 @@ button:hover,
 	border-color: rgba(var(--fg-rgb) / 0.22);
 }
 
-.str3m-joystick {
-	--joystick-x: 0px;
-	--joystick-y: 0px;
-	position: fixed;
-	right: max(1rem, env(safe-area-inset-right));
-	bottom: max(1rem, env(safe-area-inset-bottom));
-	width: clamp(6.6rem, 16vw, 8.8rem);
-	height: clamp(6.6rem, 16vw, 8.8rem);
-	z-index: 40;
-	pointer-events: none;
-	user-select: none;
-	-webkit-user-select: none;
-}
-
-.str3m-joystick__ring,
-.str3m-joystick__edge,
-.str3m-joystick__core,
-.str3m-joystick__caption {
-	position: absolute;
-	left: 50%;
-	top: 50%;
-	transform: translate(-50%, -50%);
-}
-
-.str3m-joystick__ring {
-	width: 100%;
-	height: 100%;
-	border-radius: 50%;
-	border: 1px solid rgba(var(--fg-rgb) / 0.16);
-	background:
-		radial-gradient(circle at center, rgba(var(--panel-rgb) / 0.16) 0 32%, rgba(var(--panel-rgb) / 0.42) 66%, rgba(var(--panel-rgb) / 0.18) 100%),
-		conic-gradient(from 180deg, rgba(var(--land-accent-rgb) / 0.06), rgba(var(--land-secondary-rgb) / 0.12), rgba(var(--land-glow-rgb) / 0.1), rgba(var(--land-accent-rgb) / 0.06));
-	backdrop-filter: blur(14px) saturate(120%);
-	-webkit-backdrop-filter: blur(14px) saturate(120%);
-	box-shadow:
-		0 1rem 2.4rem rgba(0, 0, 0, 0.28),
-		inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-	mask-image: radial-gradient(circle at center, transparent 0 34%, black 35% 100%);
-	opacity: 0.92;
-	transition: transform 0.24s ease, opacity 0.24s ease, border-color 0.24s ease;
-}
-
-.str3m-joystick__edge,
-.str3m-joystick__core {
-	pointer-events: auto;
-	border: none;
-	background: transparent;
-	color: inherit;
-	padding: 0;
-	margin: 0;
-	cursor: pointer;
-	outline: none;
-	box-shadow: none;
-	border-bottom: none;
-	appearance: none;
-	-webkit-appearance: none;
-}
-
-.str3m-joystick__edge {
-	min-width: 2.8rem;
-	min-height: 1.3rem;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 0.58rem;
-	letter-spacing: 0.18em;
-	text-transform: uppercase;
-	color: rgba(var(--fg-rgb) / 0.74);
-	opacity: 0.72;
-	transition: opacity 0.18s ease, transform 0.18s ease, color 0.18s ease;
-	text-shadow: 0 0 0.75rem rgba(var(--fg-rgb) / 0.18);
-}
-
-.str3m-joystick__edge--up {
-	top: 0.7rem;
-	left: 50%;
-	transform: translateX(-50%);
-}
-
-.str3m-joystick__edge--right {
-	left: auto;
-	right: -0.45rem;
-	transform: translateY(-50%);
-}
-
-.str3m-joystick__edge--down {
-	top: auto;
-	bottom: -0.1rem;
-	left: 50%;
-	transform: translateX(-50%);
-}
-
-.str3m-joystick__edge--left {
-	left: -0.45rem;
-	transform: translateY(-50%);
-}
-
-.str3m-joystick__core {
-	width: 52%;
-	height: 52%;
-	border-radius: 50%;
-	transform: translate(calc(-50% + var(--joystick-x)), calc(-50% + var(--joystick-y)));
-	transition: transform 0.16s ease, filter 0.2s ease;
-	z-index: 2;
-	will-change: transform;
-}
-
-.str3m-joystick.is-dragging .str3m-joystick__core {
-	transition: none;
-	filter: drop-shadow(0 0 1rem rgba(var(--land-secondary-rgb) / 0.28));
-}
-
-.str3m-joystick__core-shell {
-	display: grid;
-	place-items: center;
-	width: 100%;
-	height: 100%;
-	border-radius: 50%;
-	padding: 0.45rem;
-	background:
-		radial-gradient(circle at center, rgba(var(--panel-rgb) / 0.92), rgba(var(--panel-rgb) / 0.5) 66%, rgba(var(--land-glow-rgb) / 0.22));
-	border: 1px solid rgba(var(--fg-rgb) / 0.18);
-	box-shadow:
-		0 0.7rem 1.6rem rgba(0, 0, 0, 0.28),
-		inset 0 1px 0 rgba(255, 255, 255, 0.05);
-	overflow: hidden;
-}
-
-.str3m-joystick__image,
-.str3m-joystick__fallback {
-	grid-area: 1 / 1;
-}
-
-.str3m-joystick__image {
-	width: 100%;
-	height: 100%;
-	object-fit: contain;
-	filter: drop-shadow(0 0 0.8rem rgba(var(--fg-rgb) / 0.22));
-	transform: scale(1.04);
-}
-
-.str3m-joystick__fallback {
-	display: none;
-	font-size: 0.92rem;
-	letter-spacing: 0.12em;
-	color: rgb(var(--land-secondary-rgb));
-}
-
-.str3m-joystick__image[hidden] + .str3m-joystick__fallback {
-	display: block;
-}
-
-.str3m-joystick__caption {
-	top: auto;
-	bottom: -1.2rem;
-	width: max-content;
-	max-width: 12rem;
-	font-size: 0.54rem;
-	letter-spacing: 0.14em;
-	text-transform: uppercase;
-	color: rgba(var(--fg-rgb) / 0.6);
-	white-space: nowrap;
-	opacity: 0;
-	transition: opacity 0.2s ease;
-	pointer-events: none;
-}
-
-.str3m-joystick:hover .str3m-joystick__caption,
-.str3m-joystick:focus-within .str3m-joystick__caption,
-.str3m-joystick.is-dragging .str3m-joystick__caption {
-	opacity: 1;
-}
-
-.str3m-joystick:hover .str3m-joystick__ring,
-.str3m-joystick:focus-within .str3m-joystick__ring,
-.str3m-joystick.is-dragging .str3m-joystick__ring {
-	border-color: rgba(var(--fg-rgb) / 0.26);
-	opacity: 1;
-}
-
-.str3m-joystick[data-direction="up"] .str3m-joystick__edge--up,
-.str3m-joystick[data-direction="right"] .str3m-joystick__edge--right,
-.str3m-joystick[data-direction="down"] .str3m-joystick__edge--down,
-.str3m-joystick[data-direction="left"] .str3m-joystick__edge--left,
-.str3m-joystick__edge:hover,
-.str3m-joystick__edge:focus-visible {
-	opacity: 1;
-	color: rgb(var(--land-secondary-rgb));
-	text-decoration: underline;
-	text-underline-offset: 0.2rem;
-}
-
-.str3m-joystick__core:hover,
-.str3m-joystick__core:focus-visible {
-	filter: drop-shadow(0 0 1rem rgba(var(--land-secondary-rgb) / 0.28));
-}
-
 .reveal {
 	opacity: 1;
 	transform: none;
@@ -2575,16 +2489,47 @@ button:hover,
 		transform: none;
 	}
 
-	.str3m-joystick {
-		width: 7.3rem;
-		height: 7.3rem;
-	}
 }
 
 @media (max-width: 720px) {
 	.layout {
 		padding-top: 1rem;
 		width: min(100% - 1rem, 100%);
+	}
+
+	.o-signature-mark {
+		top: max(0.8rem, env(safe-area-inset-top));
+		right: max(0.8rem, env(safe-area-inset-right));
+		width: 3.9rem;
+		height: 2.55rem;
+	}
+
+	.o-signature-mark__wave {
+		left: 1.72rem;
+		top: 0.78rem;
+		width: 1.42rem;
+		height: 0.58rem;
+	}
+
+	.o-signature-mark__ring--outer {
+		left: 0.46rem;
+		top: 0.22rem;
+		width: 1.72rem;
+		height: 1.72rem;
+	}
+
+	.o-signature-mark__ring--inner {
+		left: 0.79rem;
+		top: 0.55rem;
+		width: 1.06rem;
+		height: 1.06rem;
+	}
+
+	.o-signature-mark__dot {
+		left: 2.7rem;
+		top: 1.01rem;
+		width: 0.48rem;
+		height: 0.48rem;
 	}
 
 	.world-container {
@@ -2651,25 +2596,10 @@ button:hover,
 		letter-spacing: 0.14em;
 	}
 
-	.str3m-joystick {
-		width: 6.8rem;
-		height: 6.8rem;
-		right: max(0.75rem, env(safe-area-inset-right));
-		bottom: max(0.75rem, env(safe-area-inset-bottom));
-	}
-
-	.str3m-joystick__caption {
-		display: none;
-	}
-
 	.torus-touch-hint {
 		max-width: min(52vw, 15rem);
 		font-size: 0.54rem;
 		letter-spacing: 0.14em;
-	}
-
-	.str3m-joystick__edge {
-		font-size: 0.52rem;
 	}
 
 	.input-stack {
@@ -2686,6 +2616,37 @@ button:hover,
 @media (max-width: 640px) {
 	h1 {
 		font-size: clamp(2.7rem, 12vw, 4rem);
+	}
+
+	.o-signature-mark {
+		width: 3.55rem;
+		height: 2.3rem;
+	}
+
+	.o-signature-mark__wave {
+		left: 1.56rem;
+		top: 0.71rem;
+		width: 1.24rem;
+		height: 0.52rem;
+	}
+
+	.o-signature-mark__ring--outer {
+		width: 1.54rem;
+		height: 1.54rem;
+	}
+
+	.o-signature-mark__ring--inner {
+		left: 0.75rem;
+		top: 0.51rem;
+		width: 0.92rem;
+		height: 0.92rem;
+	}
+
+	.o-signature-mark__dot {
+		left: 2.42rem;
+		top: 0.92rem;
+		width: 0.42rem;
+		height: 0.42rem;
 	}
 
 	.torus-touch-hint {
