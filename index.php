@@ -110,18 +110,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="global-styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="<?= htmlspecialchars(asset_url('/global-styles.css')) ?>">
+    <script src="<?= htmlspecialchars(asset_url('/main.js')) ?>" defer></script>
+    <link rel="icon" type="image/png" href="/icon-torsion.png">
 <title>O.</title>
     <style>
         body {
-            font-family: sans-serif;
-            background: #f5f5f5;
-            color: #111;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            margin: 0;
         }
         main {
             text-align: center;
@@ -134,10 +133,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-top: 1.2rem;
         }
         .panel {
-            background: #fff;
+            background: var(--o-fill);
+            border: 1px solid var(--o-line);
             padding: 1rem;
             border-radius: 8px;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+            box-shadow: var(--o-shadow);
         }
         input, button {
             width: 100%;
@@ -151,7 +151,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .message {
             margin: 1rem 0;
-            color: #a33;
+            padding: 0.75rem 0.9rem;
+            border: 1px solid var(--o-line);
+            background: var(--o-fill);
         }
         h2 {
             font-size: 1rem;

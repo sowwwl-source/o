@@ -3,181 +3,209 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SOWWWL Cloud</title>
-  <meta name="description" content="SOWWWL cloud hub: domains, product doors, and infrastructure status.">
+  <title>SOWWWL Cloud / m1tux</title>
+  <meta name="description" content="SOWWWL cloud hub with a unified visual system, domain map, API probe, and the m1tux control console.">
   <style>
     :root {
-      --bg: #07111f;
-      --bg-soft: #122338;
-      --ink: #edf4ff;
-      --muted: #9bb0c8;
-      --line: rgba(255, 255, 255, 0.14);
-      --glow: rgba(91, 187, 255, 0.35);
-      --accent: #90dbff;
-      --accent-2: #ffd28c;
-      --panel: rgba(8, 19, 31, 0.78);
-      --shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+      --bg: #04120b;
+      --bg-soft: #0a1c13;
+      --fg: #ffe7c7;
+      --muted: rgba(255, 231, 199, 0.66);
+      --line: rgba(255, 231, 199, 0.14);
+      --line-strong: rgba(255, 231, 199, 0.28);
+      --panel: rgba(5, 14, 10, 0.8);
+      --panel-soft: rgba(8, 20, 15, 0.9);
+      --accent: #f7ddb4;
+      --shadow: 0 30px 84px rgba(0, 0, 0, 0.4);
+      --space: 28px;
     }
 
     * { box-sizing: border-box; }
 
+    html, body { min-height: 100%; }
+
     body {
       margin: 0;
-      min-height: 100vh;
-      color: var(--ink);
+      color: var(--fg);
       background:
-        radial-gradient(circle at 20% 20%, rgba(74, 140, 199, 0.34), transparent 34%),
-        radial-gradient(circle at 80% 16%, rgba(255, 210, 140, 0.16), transparent 30%),
-        linear-gradient(160deg, #05101a 0%, #0a1625 52%, #09111d 100%);
-      font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
-      letter-spacing: 0.01em;
+        radial-gradient(circle at 18% 18%, rgba(255, 231, 199, 0.08), transparent 24%),
+        radial-gradient(circle at 82% 14%, rgba(255, 231, 199, 0.04), transparent 20%),
+        linear-gradient(180deg, #031008 0%, #07160e 48%, #04110a 100%);
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      letter-spacing: 0.06em;
+      overflow-x: hidden;
     }
 
-    body::before {
+    body::before,
+    body::after {
       content: "";
       position: fixed;
       inset: 0;
-      background-image:
-        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-      background-size: 42px 42px;
-      mask-image: radial-gradient(circle at center, black 40%, transparent 86%);
       pointer-events: none;
     }
 
-    main {
-      width: min(1180px, calc(100vw - 32px));
-      margin: 0 auto;
-      padding: 36px 0 64px;
+    body::before {
+      background:
+        linear-gradient(rgba(255, 231, 199, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 231, 199, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.55;
+      mask-image: radial-gradient(circle at center, black 44%, transparent 88%);
     }
 
-    .hero,
-    .panel {
+    body::after {
+      background: repeating-linear-gradient(
+        135deg,
+        transparent 0 18px,
+        rgba(255, 231, 199, 0.025) 18px 19px
+      );
+      opacity: 0.35;
+      mix-blend-mode: screen;
+    }
+
+    main {
+      width: min(1160px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: calc(var(--space) + env(safe-area-inset-top, 0px)) 0 calc(var(--space) + env(safe-area-inset-bottom, 0px));
+      position: relative;
+      z-index: 1;
+    }
+
+    .shell,
+    .panel,
+    .status-card,
+    .console-card {
       background: var(--panel);
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
       backdrop-filter: blur(14px);
     }
 
-    .hero {
-      border-radius: 28px;
-      padding: 28px;
-      overflow: hidden;
-      position: relative;
+    .shell {
+      border-radius: 30px;
+      padding: 26px;
     }
 
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      color: var(--accent);
-      font-size: 12px;
-      letter-spacing: 0.18em;
+    .topline,
+    .label,
+    .actions a,
+    .card-link,
+    .footer-note {
+      font-size: 11px;
+      letter-spacing: 0.22em;
       text-transform: uppercase;
     }
 
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+    }
+
     h1,
-    h2 {
-      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-      font-weight: 600;
-      letter-spacing: -0.03em;
+    h2,
+    h3 {
       margin: 0;
+      font-weight: 500;
+      text-transform: uppercase;
     }
 
     h1 {
-      font-size: clamp(3rem, 8vw, 5.8rem);
-      line-height: 0.94;
       margin-top: 18px;
-      max-width: 10ch;
+      font-size: clamp(3rem, 8vw, 6rem);
+      line-height: 0.88;
+      letter-spacing: 0.14em;
+      max-width: 11ch;
+    }
+
+    .lede,
+    .panel p,
+    .status-copy,
+    .card-copy,
+    .console-list li,
+    .terminal,
+    .footer-note {
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      line-height: 1.8;
+    }
+
+    .lede {
+      max-width: 64ch;
+      margin: 18px 0 0;
+      color: var(--muted);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .actions a,
+    .card-link {
+      color: var(--fg);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 12px 14px;
+      background: rgba(255, 231, 199, 0.03);
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+    }
+
+    .actions a:hover,
+    .card-link:hover,
+    .actions a:focus-visible,
+    .card-link:focus-visible {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+      background: rgba(255, 231, 199, 0.06);
+      outline: none;
+    }
+
+    .actions a.primary {
+      background: linear-gradient(120deg, rgba(255, 231, 199, 0.1), rgba(255, 231, 199, 0.03));
+      border-color: rgba(255, 231, 199, 0.24);
     }
 
     .hero-grid {
       display: grid;
-      grid-template-columns: 1.35fr 0.9fr;
-      gap: 24px;
-      margin-top: 22px;
-    }
-
-    .lede {
-      max-width: 62ch;
-      color: var(--muted);
-      font-size: 1.08rem;
-      line-height: 1.7;
-      margin: 18px 0 0;
-    }
-
-    .cta-row,
-    .card-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
+      grid-template-columns: 1.14fr 0.86fr;
+      gap: 16px;
       margin-top: 24px;
-    }
-
-    .btn,
-    .domain-card a,
-    .status-link {
-      color: var(--ink);
-      text-decoration: none;
-      border: 1px solid var(--line);
-      padding: 12px 16px;
-      border-radius: 16px;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      background: rgba(255, 255, 255, 0.04);
-      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
-    }
-
-    .btn:hover,
-    .domain-card a:hover,
-    .status-link:hover {
-      transform: translateY(-1px);
-      border-color: rgba(255, 255, 255, 0.35);
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    .btn.primary {
-      background: linear-gradient(120deg, rgba(144, 219, 255, 0.16), rgba(255, 210, 140, 0.14));
-      border-color: rgba(144, 219, 255, 0.38);
     }
 
     .status-stack {
       display: grid;
-      gap: 14px;
+      gap: 16px;
     }
 
-    .status-card {
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      padding: 18px;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-    }
-
-    .status-label {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.16em;
-      color: var(--muted);
+    .status-card,
+    .console-card,
+    .panel {
+      border-radius: 24px;
+      padding: 20px;
     }
 
     .status-value {
       margin-top: 10px;
-      font-size: 1.35rem;
+      font-size: 14px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
     }
 
     .status-value strong {
-      color: var(--accent-2);
+      color: var(--accent);
+      font-weight: 600;
     }
 
-    .status-meta {
-      color: var(--muted);
-      font-size: 0.95rem;
+    .status-copy,
+    .card-copy {
       margin-top: 12px;
-      line-height: 1.6;
+      color: var(--muted);
     }
 
     .section-head {
@@ -185,146 +213,180 @@
       justify-content: space-between;
       align-items: end;
       gap: 12px;
-      margin: 34px 0 18px;
+      margin: 30px 0 16px;
     }
 
-    .section-head p {
-      margin: 0;
+    .label {
       color: var(--muted);
-      max-width: 48ch;
     }
 
-    .grid {
+    .grid-3 {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 16px;
     }
 
-    .domain-card {
-      border-radius: 24px;
-      padding: 20px;
+    .panel h3,
+    .console-card h3 {
+      font-size: 14px;
+      letter-spacing: 0.22em;
     }
 
-    .domain-card h3 {
-      margin: 0;
-      font-size: 1.35rem;
-    }
-
-    .domain-card p {
-      color: var(--muted);
-      line-height: 1.65;
-      min-height: 6.4em;
-      margin: 12px 0 0;
-    }
-
-    .domain-meta {
-      display: inline-flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 14px;
-    }
-
-    .chip {
-      font-size: 12px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      padding: 7px 10px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      color: var(--accent);
-    }
-
-    .ops {
+    .console-shell {
       display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
+      grid-template-columns: 1.12fr 0.9fr 0.88fr;
       gap: 16px;
-      margin-top: 18px;
     }
 
-    .ops ul {
-      margin: 18px 0 0;
-      padding-left: 18px;
+    .terminal {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.34);
+      color: var(--accent);
+      white-space: pre-wrap;
+    }
+
+    .console-list {
+      list-style: none;
+      padding: 0;
+      margin: 16px 0 0;
+      display: grid;
+      gap: 12px;
+    }
+
+    .console-list li {
+      padding: 12px 0 0;
+      border-top: 1px solid var(--line);
       color: var(--muted);
-      line-height: 1.7;
     }
 
-    .ops code {
-      color: var(--accent-2);
-      font-family: Menlo, Consolas, monospace;
-      font-size: 0.95em;
+    .console-list strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--fg);
+      font-size: 11px;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    .register {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 231, 199, 0.04);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      overflow-wrap: anywhere;
+    }
+
+    .ops-grid {
+      display: grid;
+      grid-template-columns: 1.12fr 0.88fr;
+      gap: 16px;
+    }
+
+    .ops-list {
+      list-style: none;
+      padding: 0;
+      margin: 16px 0 0;
+      display: grid;
+      gap: 12px;
+      color: var(--muted);
+    }
+
+    .ops-list li {
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
     }
 
     .footer-note {
+      margin-top: 24px;
       color: var(--muted);
-      text-align: center;
-      margin-top: 26px;
-      font-size: 0.92rem;
+      text-align: right;
+    }
+
+    code {
+      color: var(--accent);
+      font-family: inherit;
+      font-size: inherit;
     }
 
     @media (max-width: 980px) {
       .hero-grid,
-      .grid,
-      .ops {
+      .grid-3,
+      .console-shell,
+      .ops-grid {
         grid-template-columns: 1fr;
-      }
-
-      .domain-card p {
-        min-height: 0;
       }
     }
 
     @media (max-width: 640px) {
-      main {
-        width: min(100vw - 18px, 100vw);
-        padding-top: 18px;
+      :root {
+        --space: 18px;
       }
 
-      .hero,
-      .panel {
+      main {
+        width: min(100vw - 16px, 100vw);
+      }
+
+      .shell,
+      .panel,
+      .status-card,
+      .console-card {
         border-radius: 22px;
       }
 
-      .hero {
-        padding: 20px;
+      .shell {
+        padding: 18px;
       }
     }
   </style>
 </head>
 <body>
   <main>
-    <section class="hero">
-      <span class="eyebrow">SOWWWL / cloud control surface</span>
+    <section class="shell">
+      <div class="topline">
+        <span>sowwwl.cloud / network hub</span>
+        <span>control surface / m1tux</span>
+      </div>
+
+      <h1>Hold the crossings. Keep the map readable.</h1>
+      <p class="lede">
+        This host is the calm center of the constellation. It should gather the doors, expose the
+        system state, and give the network one visual grammar shared by the cloud, user shell,
+        alternate ingress, and public frame. The goal is not decoration. The goal is legibility.
+      </p>
+
+      <div class="actions">
+        <a class="primary" href="https://sowwwl.com">Open the product</a>
+        <a href="#m1tux-console">Open m1tux console</a>
+        <a href="https://0.user.o.sowwwl.cloud/str3m">Reference /str3m</a>
+        <a href="https://api.sowwwl.cloud/docs">Read API docs</a>
+      </div>
+
       <div class="hero-grid">
-        <div>
-          <h1>One network. Multiple doors.</h1>
-          <p class="lede">
-            This host becomes the canonical hub for the SOWWWL constellation: public entry points,
-            product domains, API status, and deployment handoff. Keep the writing stack on
-            <strong>sowwwl.fr</strong> and <strong>sowwwl.net</strong>, keep the product on
-            <strong>sowwwl.com</strong>, and use this page as the map.
+        <div class="status-card">
+          <div class="label">Runtime</div>
+          <div class="status-value"><strong>Hub + app + API + user shell</strong></div>
+          <p class="status-copy">
+            The cloud layer stays responsible for the map, the handoff, and the control surface.
+            Product logic stays on <code>sowwwl.com</code>. Editorial work stays on
+            <code>sowwwl.fr</code> and <code>sowwwl.net</code>.
           </p>
-          <div class="cta-row">
-            <a class="btn primary" href="https://sowwwl.com">Open the product</a>
-            <a class="btn" href="https://api.sowwwl.cloud/docs">Read API docs</a>
-            <a class="btn" href="https://0.user.o.sowwwl.cloud/login">Open user cloud</a>
-          </div>
         </div>
+
         <div class="status-stack">
-          <div class="status-card">
-            <div class="status-label">Primary runtime</div>
-            <div class="status-value"><strong>Hub</strong> + reverse proxy + app + API</div>
-            <p class="status-meta">
-              Intended topology: Caddy in front, PHP app on <code>sowwwl.com</code>,
-              static hub on <code>sowwwl.cloud</code>, API on <code>api.sowwwl.cloud</code>.
-            </p>
-          </div>
           <div class="status-card" id="api-card">
-            <div class="status-label">API probe</div>
-            <div class="status-value" id="api-state">Checking api.sowwwl.cloud...</div>
-            <p class="status-meta" id="api-meta">The page will query the health endpoint from the browser.</p>
-            <div class="card-actions">
-              <a class="status-link" href="https://api.sowwwl.cloud/healthz">Health</a>
-              <a class="status-link" href="https://api.sowwwl.cloud/v1/status">Status</a>
+            <div class="label">API probe</div>
+            <div class="status-value" id="api-state"><strong>Checking api.sowwwl.cloud</strong></div>
+            <p class="status-copy" id="api-meta">The browser will query the health endpoint from this page.</p>
+            <div class="actions">
+              <a href="https://api.sowwwl.cloud/healthz">Health</a>
+              <a href="https://api.sowwwl.cloud/v1/status">Status</a>
             </div>
           </div>
         </div>
@@ -333,123 +395,165 @@
 
     <div class="section-head">
       <div>
-        <h2>Domain map</h2>
-        <p>Each host should have a single role. Avoid stacking editorial, product, API, and experiment traffic on the same domain.</p>
+        <div class="label">Domain map</div>
+        <h2>Single-purpose doors</h2>
       </div>
     </div>
 
-    <section class="grid">
-      <article class="panel domain-card">
+    <section class="grid-3">
+      <article class="panel">
         <h3>sowwwl.com</h3>
-        <p>The main O. product. This stack proxies the existing PHP app here so one deployment owns the main experience.</p>
-        <div class="domain-meta">
-          <span class="chip">product</span>
-          <span class="chip">php</span>
-          <span class="chip">mysql</span>
-        </div>
-        <div class="card-actions"><a href="https://sowwwl.com">Visit</a></div>
+        <p class="card-copy">Main O. product, live PHP app, real API-backed behavior.</p>
+        <div class="actions"><a class="card-link" href="https://sowwwl.com">Visit</a></div>
       </article>
 
-      <article class="panel domain-card">
+      <article class="panel">
         <h3>api.sowwwl.cloud</h3>
-        <p>A minimal AzA compatibility layer now has a real home. It exposes health, docs, status, and stubbed protected endpoints.</p>
-        <div class="domain-meta">
-          <span class="chip">api</span>
-          <span class="chip">stub</span>
-          <span class="chip">caddy</span>
-        </div>
-        <div class="card-actions"><a href="https://api.sowwwl.cloud/docs">Docs</a></div>
+        <p class="card-copy">AzA compatibility host with health, docs, and explicit status endpoints.</p>
+        <div class="actions"><a class="card-link" href="https://api.sowwwl.cloud/docs">Docs</a></div>
       </article>
 
-      <article class="panel domain-card">
+      <article class="panel">
         <h3>0.user.o.sowwwl.cloud</h3>
-        <p>User cloud shell with SPA fallback enabled. Deep links such as <code>/0</code> and <code>/login</code> can now resolve through <code>index.html</code>.</p>
-        <div class="domain-meta">
-          <span class="chip">spa</span>
-          <span class="chip">fallback</span>
-        </div>
-        <div class="card-actions"><a href="https://0.user.o.sowwwl.cloud">Open</a></div>
+        <p class="card-copy">User shell and route board, visually aligned with the stream reference.</p>
+        <div class="actions"><a class="card-link" href="https://0.user.o.sowwwl.cloud/str3m">Open</a></div>
       </article>
 
-      <article class="panel domain-card">
+      <article class="panel">
         <h3>sowwwl.org</h3>
-        <p>The public institution page: manifesto, method, links, and long-lived copy. Keep it static and legible.</p>
-        <div class="domain-meta">
-          <span class="chip">public face</span>
-          <span class="chip">static</span>
-        </div>
-        <div class="card-actions"><a href="https://sowwwl.org">Read</a></div>
+        <p class="card-copy">Public frame, manifesto, and durable explanation layer.</p>
+        <div class="actions"><a class="card-link" href="https://sowwwl.org">Read</a></div>
       </article>
 
-      <article class="panel domain-card">
+      <article class="panel">
+        <h3>sowwwl.me</h3>
+        <p class="card-copy">PFVEE en cours, resume 2011-2026 de l’elaboration du projet.</p>
+        <div class="actions"><a class="card-link" href="https://sowwwl.me">Open</a></div>
+      </article>
+
+      <article class="panel">
         <h3>0wlslw0.com</h3>
-        <p>An experimental landing and alternate door. The goal is to give the domain a valid HTTPS origin and a distinct visual identity.</p>
-        <div class="domain-meta">
-          <span class="chip">landing</span>
-          <span class="chip">experimental</span>
-        </div>
-        <div class="card-actions"><a href="https://0wlslw0.com">Launch</a></div>
+        <p class="card-copy">Alternate ingress and AI core of the 0wlslw0 branch inside the network.</p>
+        <div class="actions"><a class="card-link" href="https://0wlslw0.com">Launch</a></div>
       </article>
 
-      <article class="panel domain-card">
+      <article class="panel">
+        <h3>0wlslw0.fr</h3>
+        <p class="card-copy">Tentacular branch of the AI 0wlslw0.com, served from the same ingress layer.</p>
+        <div class="actions"><a class="card-link" href="https://0wlslw0.fr">Open</a></div>
+      </article>
+
+      <article class="panel">
         <h3>sowwwl.fr / sowwwl.net</h3>
-        <p>Editorial surfaces stay independent. The hub links to them, but the prod stack does not need to absorb their WordPress lifecycle.</p>
-        <div class="domain-meta">
-          <span class="chip">editorial</span>
-          <span class="chip">wordpress</span>
-        </div>
-        <div class="card-actions">
-          <a href="https://sowwwl.fr">sowwwl.fr</a>
-          <a href="https://sowwwl.net">sowwwl.net</a>
+        <p class="card-copy">Editorial and publishing surfaces, kept independent from the deployment stack.</p>
+        <div class="actions">
+          <a class="card-link" href="https://sowwwl.fr">sowwwl.fr</a>
+          <a class="card-link" href="https://sowwwl.net">sowwwl.net</a>
         </div>
       </article>
     </section>
 
     <div class="section-head">
       <div>
-        <h2>Ops notes</h2>
-        <p>Run the stack from the repository root with the production compose file under <code>deploy/</code>.</p>
+        <div class="label">m1tux control surface</div>
+        <h2>Visible, calm, and explicit</h2>
       </div>
     </div>
 
-    <section class="ops">
-      <article class="panel domain-card">
+    <section class="console-shell" id="m1tux-console">
+      <article class="console-card">
+        <div class="label">Control surface</div>
+        <h3>Console m1tux</h3>
+        <p class="card-copy">
+          The cloud home now exposes the front layer for the next user-specific workflow. Same
+          visual language, same runtime posture: fewer effects, more signal.
+        </p>
+        <div class="terminal">m1tux@sowwwl.cloud:~$ attach user-profile
+status: console visible / runtime pending
+scope: parametrage-individuel
+scope: setting-utilisateurs
+scope: abonnement
+register: registerHvrDwWwA23</div>
+      </article>
+
+      <article class="console-card">
+        <div class="label">Modules</div>
+        <h3>Entries online</h3>
+        <ul class="console-list">
+          <li>
+            <strong>Parametrage individuel</strong>
+            Identity, rhythm, private preferences, and per-user tuning.
+          </li>
+          <li>
+            <strong>Setting utilisateurs</strong>
+            User-facing settings layer for profile state, links, and permissions.
+          </li>
+          <li>
+            <strong>Abonnement</strong>
+            Subscription state, plan visibility, renewal logic, and billing checkpoints.
+          </li>
+        </ul>
+      </article>
+
+      <article class="console-card">
+        <div class="label">Register key</div>
+        <h3>Current handoff</h3>
+        <p class="card-copy">Registration marker exposed at the cloud layer for the next setup round.</p>
+        <div class="register">registerHvrDwWwA23</div>
+        <div class="actions">
+          <a class="card-link" href="#m1tux-console">Stay here</a>
+          <a class="card-link" href="https://0.user.o.sowwwl.cloud">User cloud</a>
+        </div>
+      </article>
+    </section>
+
+    <div class="section-head">
+      <div>
+        <div class="label">Ops notes</div>
+        <h2>Keep deployment plain</h2>
+      </div>
+    </div>
+
+    <section class="ops-grid">
+      <article class="panel">
         <h3>Deploy</h3>
-        <p>Use a single VPS, point DNS at it, keep Cloudflare in front, and let Caddy own certificates at the origin.</p>
-        <ul>
+        <ul class="ops-list">
           <li>Copy <code>deploy/.env.production.example</code> to <code>deploy/.env.production</code>.</li>
-          <li>Set strong database passwords and a real <code>AZA_API_TOKEN</code>.</li>
+          <li>Set a real <code>AZA_API_TOKEN</code> and strong secrets.</li>
           <li>Launch with <code>docker compose --env-file deploy/.env.production -f deploy/docker-compose.prod.yml up --build -d</code>.</li>
         </ul>
       </article>
-      <article class="panel domain-card">
+
+      <article class="panel">
         <h3>DNS</h3>
-        <p>Every domain in this stack should point to the same VPS origin. Add the apex records plus the subdomains below.</p>
-        <ul>
-          <li><code>sowwwl.cloud</code>, <code>0wlslw0.com</code>, <code>sowwwl.org</code>, <code>sowwwl.com</code></li>
-          <li><code>api.sowwwl.cloud</code>, <code>0.user.o.sowwwl.cloud</code></li>
-          <li>Redirect <code>www</code> variants at the proxy level, not in DNS only.</li>
+        <ul class="ops-list">
+          <li>Point the hub, API, user cloud, and alternate ingress at the same VPS.</li>
+          <li>Keep <code>www</code> redirects at the proxy layer.</li>
+          <li>Use Cloudflare <code>Full (strict)</code> once origin certificates are healthy.</li>
         </ul>
       </article>
     </section>
 
-    <p class="footer-note">SOWWWL Cloud is now the stable control layer. Keep each host single-purpose.</p>
+    <p class="footer-note">SOWWWL / cloud hub / unified signal language</p>
   </main>
   <script>
     (async function () {
       const state = document.getElementById("api-state");
       const meta = document.getElementById("api-meta");
+      const apiBase = window.location.hostname === "localhost" && window.location.port === "4280"
+        ? "http://localhost:4286"
+        : "https://api.sowwwl.cloud";
       try {
-        const response = await fetch("https://api.sowwwl.cloud/healthz", { mode: "cors" });
+        const response = await fetch(apiBase + "/healthz", { mode: "cors" });
         const data = await response.json();
         if (!response.ok || !data.ok) {
           throw new Error("Health probe returned an unexpected response.");
         }
-        state.textContent = "API reachable.";
+        state.innerHTML = "<strong>API reachable</strong>";
         meta.textContent = "Mode: " + (data.mode || "unknown") + " / time: " + (data.time || "n/a");
       } catch (error) {
-        state.textContent = "API not reachable from the browser yet.";
-        meta.textContent = "If this page is live but the probe fails, check DNS, origin TLS, and Cloudflare Full (strict).";
+        state.innerHTML = "<strong>API not reachable yet</strong>";
+        meta.textContent = "If the page is live but the probe fails, check DNS, origin TLS, and Cloudflare Full (strict).";
       }
     })();
   </script>

@@ -4,123 +4,182 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SOWWWL.org</title>
-  <meta name="description" content="SOWWWL.org is the public-facing manifesto, method, and map.">
+  <meta name="description" content="SOWWWL.org is the public frame, manifesto, and domain map for the network.">
   <style>
     :root {
-      --paper: #f3eee4;
-      --ink: #182438;
-      --muted: #5d6776;
-      --line: rgba(24, 36, 56, 0.14);
-      --accent: #114a79;
-      --accent-soft: #d9b36a;
-      --panel: rgba(255, 255, 255, 0.72);
-      --shadow: 0 26px 60px rgba(24, 36, 56, 0.12);
+      --bg: #05110b;
+      --bg-soft: #0b1a13;
+      --fg: #f6e5c8;
+      --muted: rgba(246, 229, 200, 0.66);
+      --line: rgba(246, 229, 200, 0.14);
+      --line-strong: rgba(246, 229, 200, 0.28);
+      --panel: rgba(6, 14, 10, 0.8);
+      --panel-soft: rgba(8, 18, 13, 0.9);
+      --accent: #edd0a1;
+      --shadow: 0 28px 76px rgba(0, 0, 0, 0.36);
+      --space: 28px;
     }
 
     * { box-sizing: border-box; }
 
+    html, body { min-height: 100%; }
+
     body {
       margin: 0;
-      color: var(--ink);
+      color: var(--fg);
       background:
-        radial-gradient(circle at top left, rgba(17, 74, 121, 0.12), transparent 30%),
-        linear-gradient(180deg, #f7f2e9 0%, #eee6d7 100%);
-      font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+        radial-gradient(circle at 18% 18%, rgba(246, 229, 200, 0.08), transparent 24%),
+        radial-gradient(circle at 82% 14%, rgba(246, 229, 200, 0.04), transparent 20%),
+        linear-gradient(180deg, #041008 0%, #07150e 48%, #041009 100%);
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      letter-spacing: 0.06em;
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    body::before {
+      background:
+        linear-gradient(rgba(246, 229, 200, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(246, 229, 200, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.5;
+      mask-image: radial-gradient(circle at center, black 44%, transparent 88%);
+    }
+
+    body::after {
+      background: repeating-linear-gradient(
+        135deg,
+        transparent 0 18px,
+        rgba(246, 229, 200, 0.02) 18px 19px
+      );
+      opacity: 0.32;
+      mix-blend-mode: screen;
     }
 
     main {
-      width: min(1060px, calc(100vw - 28px));
+      width: min(1120px, calc(100vw - 32px));
       margin: 0 auto;
-      padding: 30px 0 64px;
+      padding: calc(var(--space) + env(safe-area-inset-top, 0px)) 0 calc(var(--space) + env(safe-area-inset-bottom, 0px));
+      position: relative;
+      z-index: 1;
+    }
+
+    .shell,
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .shell {
+      border-radius: 30px;
+      padding: 26px;
+    }
+
+    .topline,
+    .label,
+    .actions a,
+    .footer-note {
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
     }
 
     h1,
     h2,
     h3 {
-      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-      font-weight: 600;
-      letter-spacing: -0.03em;
       margin: 0;
-    }
-
-    .hero,
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
-    }
-
-    .hero {
-      border-radius: 28px;
-      padding: 26px;
-    }
-
-    .eyebrow {
-      display: inline-block;
-      padding: 8px 11px;
-      border-radius: 999px;
-      background: rgba(17, 74, 121, 0.08);
-      color: var(--accent);
-      letter-spacing: 0.18em;
-      font-size: 12px;
+      font-weight: 500;
       text-transform: uppercase;
     }
 
     h1 {
-      font-size: clamp(2.8rem, 7vw, 5.2rem);
       margin-top: 18px;
-      max-width: 8ch;
-      line-height: 0.96;
+      font-size: clamp(2.8rem, 8vw, 5.6rem);
+      line-height: 0.9;
+      letter-spacing: 0.14em;
+      max-width: 11ch;
+    }
+
+    .lede,
+    .panel p,
+    .panel li,
+    .quote,
+    .domain-list span,
+    .footer-note {
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      line-height: 1.8;
     }
 
     .lede {
-      max-width: 58ch;
+      max-width: 62ch;
+      margin: 18px 0 0;
       color: var(--muted);
-      font-size: 1.05rem;
-      line-height: 1.75;
-      margin-top: 18px;
     }
 
     .actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 10px;
       margin-top: 22px;
     }
 
     .actions a {
+      color: var(--fg);
       text-decoration: none;
-      color: var(--ink);
       border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 12px 16px;
-      background: rgba(255, 255, 255, 0.5);
+      border-radius: 18px;
+      padding: 12px 14px;
+      background: rgba(246, 229, 200, 0.03);
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+    }
+
+    .actions a:hover,
+    .actions a:focus-visible {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+      background: rgba(246, 229, 200, 0.06);
+      outline: none;
     }
 
     .actions a.primary {
-      background: linear-gradient(120deg, rgba(17, 74, 121, 0.12), rgba(217, 179, 106, 0.16));
-      border-color: rgba(17, 74, 121, 0.24);
+      background: linear-gradient(120deg, rgba(246, 229, 200, 0.1), rgba(246, 229, 200, 0.03));
+      border-color: rgba(246, 229, 200, 0.24);
     }
 
-    .section-title {
+    .section-head {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
       align-items: end;
+      gap: 12px;
       margin: 30px 0 16px;
     }
 
-    .section-title p {
-      margin: 0;
+    .label {
       color: var(--muted);
-      max-width: 50ch;
     }
 
     .grid {
       display: grid;
-      gap: 16px;
       grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
     }
 
     .panel {
@@ -128,96 +187,106 @@
       padding: 20px;
     }
 
-    .panel p,
-    .panel li {
-      color: var(--muted);
-      line-height: 1.7;
+    .panel h3 {
+      font-size: 14px;
+      letter-spacing: 0.22em;
     }
 
-    .pillars {
-      counter-reset: pillar;
+    .commitments {
       list-style: none;
       padding: 0;
-      margin: 0;
-    }
-
-    .pillars li {
-      position: relative;
-      padding-left: 46px;
-      margin-top: 16px;
-    }
-
-    .pillars li::before {
-      counter-increment: pillar;
-      content: counter(pillar);
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
+      margin: 16px 0 0;
       display: grid;
-      place-items: center;
-      background: rgba(17, 74, 121, 0.1);
+      gap: 14px;
+    }
+
+    .commitments li {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .commitments strong {
       color: var(--accent);
-      font-weight: 700;
+      font-weight: 500;
     }
 
     .quote {
-      font-size: clamp(1.4rem, 4vw, 2.2rem);
-      line-height: 1.35;
-      color: var(--ink);
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--fg);
     }
 
     .domain-list {
-      display: grid;
-      gap: 10px;
-      padding: 0;
-      margin: 18px 0 0;
       list-style: none;
+      padding: 0;
+      margin: 16px 0 0;
+      display: grid;
+      gap: 12px;
     }
 
     .domain-list li {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      border-top: 1px solid var(--line);
+      display: grid;
+      gap: 6px;
       padding-top: 12px;
+      border-top: 1px solid var(--line);
     }
 
     .domain-list strong {
-      color: var(--ink);
+      font-size: 11px;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
     }
 
-    @media (max-width: 900px) {
+    .footer-note {
+      margin-top: 24px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    @media (max-width: 920px) {
       .grid {
         grid-template-columns: 1fr;
       }
     }
 
     @media (max-width: 640px) {
-      main {
-        width: min(100vw - 16px, 100vw);
-        padding-top: 16px;
+      :root {
+        --space: 18px;
       }
 
-      .hero,
+      main {
+        width: min(100vw - 16px, 100vw);
+      }
+
+      .shell,
       .panel {
         border-radius: 22px;
+      }
+
+      .shell {
+        padding: 18px;
       }
     }
   </style>
 </head>
 <body>
   <main>
-    <section class="hero">
-      <span class="eyebrow">SOWWWL / public face</span>
-      <h1>A public frame for a living network.</h1>
+    <section class="shell">
+      <div class="topline">
+        <span>SOWWWL.org / public frame</span>
+        <span>stable copy / clear roles</span>
+      </div>
+
+      <h1>A public frame for a readable network.</h1>
       <p class="lede">
-        SOWWWL.org is the stable layer for the outside world: what the project is,
-        how it operates, and which domain to use for which kind of experience. Keep it
-        slow, clear, and durable.
+        This host should not compete with the app. It should explain the structure around it,
+        name the purpose of each domain, and give the network a durable outer voice while still
+        feeling like it belongs to the same visual family as the cloud and stream layers.
       </p>
+
       <div class="actions">
         <a class="primary" href="https://sowwwl.cloud">Open the hub</a>
         <a href="https://sowwwl.com">Open the product</a>
@@ -225,47 +294,47 @@
       </div>
     </section>
 
-    <div class="section-title">
+    <div class="section-head">
       <div>
+        <div class="label">Manifesto layer</div>
         <h2>Three commitments</h2>
-        <p>This page should not try to be the product. It should explain the structure around it.</p>
       </div>
     </div>
 
     <section class="grid">
       <article class="panel">
         <h3>Clarity before scale</h3>
-        <ol class="pillars">
-          <li>One host, one role. Public copy, product, API, and experiments each get their own domain.</li>
-          <li>Infrastructure should be reversible. Static pages stay static. Dynamic services stay explicit.</li>
-          <li>The landing layer must tell visitors where to go next, not trap them in ambiguity.</li>
+        <ol class="commitments">
+          <li><strong>01</strong><span>One host, one role. Public copy, product, API, and experiments each keep their own door.</span></li>
+          <li><strong>02</strong><span>Infrastructure should stay reversible. Static pages remain light. Dynamic services remain explicit.</span></li>
+          <li><strong>03</strong><span>Every landing layer should orient the visitor instead of trapping them in ambiguity.</span></li>
         </ol>
       </article>
 
       <article class="panel">
         <h3>Method</h3>
         <p>
-          The project grows by separating durable surfaces from volatile ones. That means:
-          editorial work on the content domains, application logic on the product domain,
-          an API on its own host, and experiments on disposable doors.
+          The project gets stronger when durable surfaces and volatile ones stop sharing the same
+          room. Editorial work lives on content domains, application logic lives on the product
+          domain, the API gets its own host, and experiments stay disposable.
         </p>
-        <p class="quote">
-          A network becomes legible when each door names its purpose.
-        </p>
+        <p class="quote">A network becomes legible when each door names its purpose.</p>
       </article>
 
       <article class="panel">
         <h3>Domain map</h3>
         <ul class="domain-list">
-          <li><strong>sowwwl.cloud</strong><span>Hub and infrastructure entry</span></li>
-          <li><strong>sowwwl.com</strong><span>Main O. application</span></li>
-          <li><strong>api.sowwwl.cloud</strong><span>AzA API and docs</span></li>
-          <li><strong>0.user.o.sowwwl.cloud</strong><span>User cloud / SPA shell</span></li>
-          <li><strong>0wlslw0.com</strong><span>Experimental landing</span></li>
-          <li><strong>sowwwl.fr / sowwwl.net</strong><span>Editorial / publishing surfaces</span></li>
+          <li><strong>sowwwl.cloud</strong><span>Hub and infrastructure entry.</span></li>
+          <li><strong>sowwwl.com</strong><span>Main O. application.</span></li>
+          <li><strong>api.sowwwl.cloud</strong><span>AzA API and docs.</span></li>
+          <li><strong>0.user.o.sowwwl.cloud</strong><span>User cloud and route shell.</span></li>
+          <li><strong>0wlslw0.com</strong><span>Experimental landing and alternate ingress.</span></li>
+          <li><strong>sowwwl.fr / sowwwl.net</strong><span>Editorial and publishing surfaces.</span></li>
         </ul>
       </article>
     </section>
+
+    <p class="footer-note">SOWWWL / public frame / same signal family, slower voice</p>
   </main>
 </body>
 </html>

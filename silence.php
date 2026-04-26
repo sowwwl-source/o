@@ -14,13 +14,12 @@ $username = $_SESSION['username'];
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="global-styles.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="<?= htmlspecialchars(asset_url('/global-styles.css')) ?>">
+<script src="<?= htmlspecialchars(asset_url('/main.js')) ?>" defer></script>
 <title>SILENCE — O.</title>
 <style>
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #000;
-  color: #222;
   max-width: 720px;
   margin: 4rem auto;
   padding: 0 1.5rem;
@@ -37,9 +36,9 @@ body {
 h1 {
   font-size: 5rem;
   margin-bottom: 3rem;
-  color: #111;
   font-weight: 100;
   letter-spacing: 0.5em;
+  opacity: 0.25;
 }
 
 .breath {
@@ -65,8 +64,6 @@ h1 {
 }
 
 .nav a {
-  color: #333;
-  text-decoration: none;
   opacity: 0.4;
   transition: opacity 0.3s;
 }
@@ -85,9 +82,10 @@ h1 {
 </div>
 
 <div class="nav">
-  <a href="land.php">LAND</a>
-  <a href="shore.php">SHORE</a>
-  <a href="bato.php">BATO</a>
+  <a href="land.php" data-o-layer>LAND</a>
+  <a href="shore.php" data-o-layer>SHORE</a>
+  <a href="bato.php" data-o-layer>BATO</a>
+  <a href="aza.php" data-o-layer>AZA</a>
 </div>
 
 </body>

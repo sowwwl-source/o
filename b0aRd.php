@@ -38,13 +38,12 @@ $recent_users = $stmt->fetchAll();
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="global-styles.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="<?= htmlspecialchars(asset_url('/global-styles.css')) ?>">
+<script src="<?= htmlspecialchars(asset_url('/main.js')) ?>" defer></script>
 <title>Dashboard — O.</title>
 <style>
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #fafafa;
-  color: #111;
   max-width: 1200px;
   margin: 2rem auto;
   padding: 0 1.5rem;
@@ -72,8 +71,6 @@ h2 {
 }
 
 .nav a {
-  color: #111;
-  text-decoration: none;
   opacity: 0.7;
   transition: opacity 0.2s;
 }
@@ -90,17 +87,17 @@ h2 {
 }
 
 .stat-card {
-  background: #fff;
+  background: var(--o-fill);
+  border: 1px solid var(--o-line);
   padding: 1.5rem;
   border-radius: 8px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  box-shadow: var(--o-shadow);
 }
 
 .stat-value {
   font-size: 2.5rem;
   font-weight: 600;
   margin: 0.5rem 0;
-  color: #111;
 }
 
 .stat-label {
@@ -117,16 +114,21 @@ h2 {
 }
 
 .chart-container {
-  background: #fff;
+  background: var(--o-fill);
+  border: 1px solid var(--o-line);
   padding: 2rem;
   border-radius: 8px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  box-shadow: var(--o-shadow);
   margin: 2rem 0;
 }
 
 .bar {
   height: 30px;
-  background: linear-gradient(90deg, #111 0%, #666 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(var(--o-fg-rgb) / 0.35) 0%,
+    rgba(var(--o-fg-rgb) / 0.95) 100%
+  );
   border-radius: 4px;
   margin: 0.5rem 0;
   position: relative;
@@ -143,21 +145,22 @@ h2 {
   left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: #fff;
+  color: var(--o-bg);
   font-size: 0.85rem;
   font-weight: 500;
 }
 
 .recent-list {
-  background: #fff;
+  background: var(--o-fill);
+  border: 1px solid var(--o-line);
   padding: 1.5rem;
   border-radius: 8px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  box-shadow: var(--o-shadow);
 }
 
 .recent-item {
   padding: 0.75rem 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid rgba(var(--o-fg-rgb) / 0.14);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -201,10 +204,11 @@ h2 {
 <h1>Dashboard</h1>
 
 <div class="nav">
-  <a href="land.php">← LAND</a>
-  <a href="shore.php">SHORE</a>
-  <a href="bato.php">BATO</a>
-  <a href="silence.php">SILENCE</a>
+  <a href="land.php" data-o-layer>← LAND</a>
+  <a href="shore.php" data-o-layer>SHORE</a>
+  <a href="bato.php" data-o-layer>BATO</a>
+  <a href="aza.php" data-o-layer>AZA</a>
+  <a href="silence.php" data-o-layer>SILENCE</a>
 </div>
 
 <h2>Mes Statistiques</h2>

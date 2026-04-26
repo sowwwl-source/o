@@ -1,5 +1,87 @@
 <?php
 
+function load_dotenv(string $path): void
+{
+    if (!is_readable($path) || is_dir($path)) {
+        return;
+    }
+
+    $lines = @file($path, FILE_IGNORE_NEW_LINES);
+    if ($lines === false) {
+        return;
+    }
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || (isset($line[0]) && $line[0] === '#')) {
+            continue;
+        }
+
+        if (strncmp($line, 'export ', 7) === 0) {
+            $line = trim(substr($line, 7));
+        }
+
+        $eq = strpos($line, '=');
+        if ($eq === false) {
+            continue;
+        }
+
+        $key = trim(substr($line, 0, $eq));
+        if ($key === '') {
+            continue;
+        }
+
+        // Only accept typical ENV keys (avoid weird injections).
+        if (!preg_match('/^[A-Z0-9_]+$/i', $key)) {
+            continue;
+        }
+
+        // Do not override values coming from the server / Docker.
+        if (getenv($key) !== false) {
+            continue;
+        }
+
+        $value = trim(substr($line, $eq + 1));
+        if ($value === '') {
+            $value = '';
+        } else {
+            $q = $value[0];
+            if (($q === '"' || $q === "'") && strlen($value) >= 2 && substr($value, -1) === $q) {
+                $value = substr($value, 1, -1);
+            }
+        }
+
+        if (function_exists('putenv')) {
+            @putenv($key . '=' . $value);
+        }
+        $_ENV[$key] = $value;
+        $_SERVER[$key] = $value;
+    }
+}
+
+load_dotenv(__DIR__ . '/.env');
+
+function asset_url(string $path): string
+{
+    $path = '/' . ltrim($path, '/');
+
+    $qpos = strpos($path, '?');
+    $clean = $qpos === false ? $path : substr($path, 0, $qpos);
+
+    $fs_path = __DIR__ . $clean;
+    if (!is_file($fs_path)) {
+        return $path;
+    }
+
+    $mtime = @filemtime($fs_path);
+    if (!$mtime) {
+        return $path;
+    }
+
+    $sep = $qpos === false ? '?' : '&';
+    return $path . $sep . 'v=' . $mtime;
+}
+
 $host = getenv('DB_HOST') ?: 'localhost';
 $db   = getenv('DB_NAME') ?: 'test';
 $user = getenv('DB_USER') ?: 'root';

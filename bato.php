@@ -27,14 +27,12 @@ if (!$land) {
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="global-styles.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="<?= htmlspecialchars(asset_url('/global-styles.css')) ?>">
+<script src="<?= htmlspecialchars(asset_url('/main.js')) ?>" defer></script>
 <title>BATO — O.</title>
-<link rel="stylesheet" href="styles.css">
 <style>
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #0a0a0a;
-  color: #f5f5f5;
   max-width: 720px;
   margin: 4rem auto;
   padding: 0 1.5rem;
@@ -47,7 +45,6 @@ section {
 h1 {
   font-size: 3rem;
   margin-bottom: 0.5rem;
-  color: #fff;
 }
 
 h2 {
@@ -73,8 +70,6 @@ h2 {
 }
 
 .nav a {
-  color: #f5f5f5;
-  text-decoration: none;
   opacity: 0.7;
   transition: opacity 0.2s;
 }
@@ -84,7 +79,8 @@ h2 {
 }
 
 .voyage-log {
-  background: rgba(255,255,255,0.05);
+  background: rgba(var(--o-fg-rgb) / 0.06);
+  border: 1px solid var(--o-line);
   padding: 1.5rem;
   border-radius: 8px;
   margin-top: 2rem;
@@ -97,7 +93,6 @@ h2 {
 }
 
 .coordinates {
-  font-family: 'Courier New', monospace;
   font-size: 0.85rem;
   opacity: 0.5;
   margin-top: 2rem;
@@ -116,9 +111,10 @@ h2 {
   </p>
   
   <div class="nav">
-    <a href="land.php">← Retour à LAND</a>
-    <a href="shore.php">SHORE</a>
-    <a href="silence.php">SILENCE</a>
+    <a href="land.php" data-o-layer>← Retour à LAND</a>
+    <a href="shore.php" data-o-layer>SHORE</a>
+    <a href="aza.php" data-o-layer>AZA</a>
+    <a href="silence.php" data-o-layer>SILENCE</a>
   </div>
 </section>
 

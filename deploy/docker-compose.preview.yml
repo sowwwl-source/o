@@ -1,0 +1,37 @@
+services:
+  caddy-preview:
+    image: caddy:2.8
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "4280:8080"
+      - "4281:8081"
+      - "4282:8082"
+      - "4283:8083"
+      - "4284:8084"
+      - "4286:8086"
+    volumes:
+      - ./Caddyfile.preview:/etc/caddy/Caddyfile:ro
+      - ./sites:/srv/sites:ro
+    restart: unless-stopped
+    networks:
+      - sowwwl-preview
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/api/Dockerfile
+    environment:
+      API_BEARER_TOKEN: ${AZA_API_TOKEN:-CHANGE_ME_API_TOKEN}
+      API_PUBLIC_BASE_URL: http://localhost:4286
+      API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-http://localhost:4280,http://localhost:4281,http://localhost:4282,http://localhost:4283,http://localhost:4284}
+    expose:
+      - "80"
+    restart: unless-stopped
+    networks:
+      - sowwwl-preview
+
+networks:
+  sowwwl-preview:
+    driver: bridge

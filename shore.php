@@ -56,13 +56,12 @@ if (!$land) {
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="global-styles.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="<?= htmlspecialchars(asset_url('/global-styles.css')) ?>">
+<script src="<?= htmlspecialchars(asset_url('/main.js')) ?>" defer></script>
 <title>SHORE — O.</title>
 <style>
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f0f4f8;
-  color: #111;
   max-width: 720px;
   margin: 4rem auto;
   padding: 0 1.5rem;
@@ -86,10 +85,11 @@ h2 {
 }
 
 .shore-content {
-  background: #fff;
+  background: var(--o-fill);
+  border: 1px solid var(--o-line);
   padding: 2rem;
   border-radius: 8px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  box-shadow: var(--o-shadow);
   margin: 2rem 0;
 }
 
@@ -107,8 +107,6 @@ h2 {
 }
 
 .nav a {
-  color: #111;
-  text-decoration: none;
   opacity: 0.7;
   transition: opacity 0.2s;
 }
@@ -137,7 +135,7 @@ textarea {
   font-size: 1rem;
   font-family: inherit;
   line-height: 1.8;
-  border: 1px solid #ddd;
+  border: 1px solid var(--o-line);
   border-radius: 4px;
   box-sizing: border-box;
   resize: vertical;
@@ -148,34 +146,33 @@ button {
   margin-right: 0.5rem;
   padding: 0.7rem 1.5rem;
   font-size: 0.9rem;
-  background: #111;
-  color: #fff;
-  border: none;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--o-line);
   border-radius: 4px;
   cursor: pointer;
 }
 
 button:hover {
-  background: #333;
+  background: var(--o-fg);
+  color: var(--o-bg);
+  border-color: transparent;
 }
 
 button[type="button"] {
-  background: #ddd;
-  color: #111;
+  opacity: 0.8;
 }
 
 button[type="button"]:hover {
-  background: #ccc;
+  opacity: 1;
 }
 
 .success {
-  color: #2a7;
   margin: 0.5rem 0;
   font-size: 0.9rem;
 }
 
 .error {
-  color: #a33;
   margin: 0.5rem 0;
   font-size: 0.9rem;
 }
@@ -210,9 +207,10 @@ button[type="button"]:hover {
   </div>
   
   <div class="nav">
-    <a href="land.php">← Retour à LAND</a>
-    <a href="bato.php">BATO</a>
-    <a href="silence.php">SILENCE</a>
+    <a href="land.php" data-o-layer>← Retour à LAND</a>
+    <a href="bato.php" data-o-layer>BATO</a>
+    <a href="aza.php" data-o-layer>AZA</a>
+    <a href="silence.php" data-o-layer>SILENCE</a>
   </div>
 </section>
 

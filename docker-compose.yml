@@ -23,10 +23,10 @@ services:
   db:
     image: mysql:8.0
     environment:
-      MYSQL_DATABASE: ${DB_NAME:-land_db}
-      MYSQL_USER: ${DB_USER:-user}
-      MYSQL_PASSWORD: ${DB_PASS:-password}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: "${DB_NAME}"
+      MYSQL_USER: "${DB_USER}"
+      MYSQL_PASSWORD: "${DB_PASS}"
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
     volumes:
       - db_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro

@@ -23,16 +23,13 @@
 	}
 }
 
-www.sowwwl.cloud {
-	redir https://sowwwl.cloud{uri} 308
-}
-
-sowwwl.cloud {
-	import common_headers
-	import static_security_headers
-	root * /srv/sites/sowwwl.cloud
-	file_server
-}
+# Cutover-ready subset as of 2026-04-26.
+# Intentionally excludes hosts that were failing DNS or HTTPS checks:
+# - sowwwl.cloud
+# - api.sowwwl.cloud
+# - 0.user.o.sowwwl.cloud
+# - 0wlslw0.com
+# - 0wlslw0.fr
 
 www.sowwwl.me {
 	redir https://sowwwl.me{uri} 308
@@ -45,24 +42,6 @@ sowwwl.me {
 	file_server
 }
 
-api.sowwwl.cloud {
-	encode zstd gzip
-	header {
-		X-Content-Type-Options nosniff
-		Referrer-Policy no-referrer
-		-Server
-	}
-	reverse_proxy api:80
-}
-
-0.user.o.sowwwl.cloud {
-	import common_headers
-	import static_security_headers
-	root * /srv/sites/0.user.o.sowwwl.cloud
-	try_files {path} {path}/ /index.html
-	file_server
-}
-
 www.sowwwl.org {
 	redir https://sowwwl.org{uri} 308
 }
@@ -71,28 +50,6 @@ sowwwl.org {
 	import common_headers
 	import static_security_headers
 	root * /srv/sites/sowwwl.org
-	file_server
-}
-
-www.0wlslw0.com {
-	redir https://0wlslw0.com{uri} 308
-}
-
-0wlslw0.com {
-	import common_headers
-	import static_security_headers
-	root * /srv/sites/0wlslw0.com
-	file_server
-}
-
-www.0wlslw0.fr {
-	redir https://0wlslw0.fr{uri} 308
-}
-
-0wlslw0.fr {
-	import common_headers
-	import static_security_headers
-	root * /srv/sites/0wlslw0.com
 	file_server
 }
 

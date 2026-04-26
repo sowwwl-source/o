@@ -3,10 +3,12 @@
 This directory adds a production-oriented stack for:
 
 - `sowwwl.cloud`
+- `sowwwl.me`
 - `api.sowwwl.cloud`
 - `0.user.o.sowwwl.cloud`
 - `sowwwl.org`
 - `0wlslw0.com`
+- `0wlslw0.fr`
 - `sowwwl.com`
 - `sowwwl.art`
 
@@ -18,7 +20,7 @@ and one minimal API compatibility container.
 - `docker-compose.prod.yml` - production stack
 - `Caddyfile` - domain routing and redirects
 - `api/` - minimal AzA API stub with docs and health endpoints
-- `sites/` - static sites for the hub, org, alternate landing, and SPA shell
+- `sites/` - static sites for the hub, PFVEE layer, org, alternate landing, and SPA shell
 
 ## Prepare
 
@@ -26,22 +28,27 @@ and one minimal API compatibility container.
 2. Copy `.env.production.example` to `.env.production`.
 3. Replace all `CHANGE_ME_*` values.
 4. Point DNS records at the VPS public IP.
+5. Adjust `API_ALLOWED_ORIGINS` if you later add or remove browser-facing hosts.
 
 ## DNS records
 
 Required apex records:
 
 - `sowwwl.cloud`
+- `sowwwl.me`
 - `sowwwl.org`
 - `0wlslw0.com`
+- `0wlslw0.fr`
 - `sowwwl.com`
 - `sowwwl.art`
 
 Required subdomain records:
 
 - `www.sowwwl.cloud`
+- `www.sowwwl.me`
 - `www.sowwwl.org`
 - `www.0wlslw0.com`
+- `www.0wlslw0.fr`
 - `www.sowwwl.com`
 - `www.sowwwl.art`
 - `api.sowwwl.cloud`

@@ -8,11 +8,39 @@ $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 $baseUrl = rtrim((string)(getenv('API_PUBLIC_BASE_URL') ?: 'https://api.sowwwl.cloud'), '/');
 $bearerToken = (string)(getenv('API_BEARER_TOKEN') ?: '');
+$allowedOrigins = array_values(array_filter(array_map(
+    static fn(string $origin): string => rtrim(trim($origin), '/'),
+    explode(',', (string)(getenv('API_ALLOWED_ORIGINS') ?: implode(',', [
+        'https://sowwwl.cloud',
+        'https://sowwwl.me',
+        'https://sowwwl.com',
+        'https://0.user.o.sowwwl.cloud',
+        'https://sowwwl.org',
+        'https://0wlslw0.com',
+        'https://0wlslw0.fr',
+        'https://sowwwl.art',
+    ])))
+)));
 
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Headers: Authorization, Content-Type');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Vary: Origin');
 header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: no-referrer');
+
+$requestOrigin = rtrim((string)($_SERVER['HTTP_ORIGIN'] ?? ''), '/');
+if ($requestOrigin !== '' && in_array($requestOrigin, $allowedOrigins, true)) {
+    header('Access-Control-Allow-Origin: ' . $requestOrigin);
+    header('Access-Control-Allow-Headers: Authorization, Content-Type');
+    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+}
+
+if (!in_array($method, ['GET', 'POST', 'OPTIONS'], true)) {
+    json_response(405, [
+        'ok' => false,
+        'error' => 'method_not_allowed',
+        'method' => $method,
+    ]);
+}
 
 if ($method === 'OPTIONS') {
     http_response_code(204);
@@ -23,6 +51,7 @@ function json_response(int $status, array $payload): void
 {
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
     echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -31,6 +60,7 @@ function html_response(int $status, string $html): void
 {
     http_response_code($status);
     header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
     echo $html;
     exit;
 }

@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SOWWWL.me / PFVEE</title>
+  <meta name="description" content="SOWWWL.me devient le PFVEE en cours: résumé 2011-2026 de l’élaboration du projet SOWWWL.">
+  <style>
+    :root {
+      --bg: #04120b;
+      --bg-soft: #0a1c13;
+      --fg: #ffe7c7;
+      --muted: rgba(255, 231, 199, 0.66);
+      --line: rgba(255, 231, 199, 0.14);
+      --line-strong: rgba(255, 231, 199, 0.28);
+      --panel: rgba(5, 14, 10, 0.82);
+      --panel-soft: rgba(8, 20, 15, 0.92);
+      --accent: #f7ddb4;
+      --shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+      --space: 28px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      color: var(--fg);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255, 231, 199, 0.08), transparent 24%),
+        radial-gradient(circle at 82% 14%, rgba(255, 231, 199, 0.04), transparent 20%),
+        linear-gradient(180deg, #031008 0%, #07160e 48%, #04110a 100%);
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      letter-spacing: 0.06em;
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    body::before {
+      background:
+        linear-gradient(rgba(255, 231, 199, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 231, 199, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.55;
+      mask-image: radial-gradient(circle at center, black 44%, transparent 88%);
+    }
+
+    body::after {
+      background: repeating-linear-gradient(
+        135deg,
+        transparent 0 18px,
+        rgba(255, 231, 199, 0.025) 18px 19px
+      );
+      opacity: 0.35;
+      mix-blend-mode: screen;
+    }
+
+    main {
+      width: min(1120px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: calc(var(--space) + env(safe-area-inset-top, 0px)) 0 calc(var(--space) + env(safe-area-inset-bottom, 0px));
+      position: relative;
+      z-index: 1;
+    }
+
+    .shell,
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .shell {
+      border-radius: 30px;
+      padding: 26px;
+    }
+
+    .topline,
+    .actions a,
+    .footer-note,
+    .label,
+    .year {
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin-top: 18px;
+      font-size: clamp(2.8rem, 8vw, 5.6rem);
+      line-height: 0.9;
+      letter-spacing: 0.14em;
+      max-width: 12ch;
+    }
+
+    .lede,
+    .panel p,
+    .footer-note,
+    .terminal,
+    .timeline li {
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      line-height: 1.8;
+    }
+
+    .lede {
+      max-width: 64ch;
+      margin: 18px 0 0;
+      color: var(--muted);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .actions a {
+      color: var(--fg);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 12px 14px;
+      background: rgba(255, 231, 199, 0.03);
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+    }
+
+    .actions a:hover,
+    .actions a:focus-visible {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+      background: rgba(255, 231, 199, 0.06);
+      outline: none;
+    }
+
+    .actions a.primary {
+      background: linear-gradient(120deg, rgba(255, 231, 199, 0.1), rgba(255, 231, 199, 0.03));
+      border-color: rgba(255, 231, 199, 0.24);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 12px;
+      margin: 30px 0 16px;
+    }
+
+    .label {
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .panel {
+      border-radius: 24px;
+      padding: 20px;
+    }
+
+    .panel h2 {
+      font-size: 14px;
+      letter-spacing: 0.22em;
+    }
+
+    .year {
+      display: inline-block;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .timeline {
+      list-style: none;
+      padding: 0;
+      margin: 16px 0 0;
+      display: grid;
+      gap: 12px;
+    }
+
+    .timeline li {
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+    }
+
+    .timeline strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--fg);
+      font-size: 11px;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    .terminal {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.34);
+      color: var(--accent);
+      white-space: pre-wrap;
+    }
+
+    .footer-note {
+      margin-top: 24px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    code {
+      color: var(--accent);
+      font-family: inherit;
+    }
+
+    @media (max-width: 920px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      :root { --space: 18px; }
+      main { width: min(100vw - 16px, 100vw); }
+      .shell, .panel { border-radius: 22px; }
+      .shell { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="shell">
+      <div class="topline">
+        <span>sowwwl.me / pfvee en cours</span>
+        <span>resume 2011-2026 / elaboration du projet</span>
+      </div>
+
+      <h1>PFVEE. Memoire active du projet.</h1>
+      <p class="lede">
+        <code>sowwwl.me</code> devient la surface de lecture personnelle du projet: une mise en
+        perspective du travail, des bifurcations, des strates et des formes prises entre 2011 et
+        2026. Moins un profil, plus un fil de construction vivant.
+      </p>
+
+      <div class="actions">
+        <a class="primary" href="https://sowwwl.cloud">Open the hub</a>
+        <a href="https://sowwwl.com">Open O.</a>
+        <a href="https://0.user.o.sowwwl.cloud">Open user cloud</a>
+      </div>
+    </section>
+
+    <div class="section-head">
+      <div>
+        <div class="label">Chronologie</div>
+        <h2>2011 → 2026</h2>
+      </div>
+    </div>
+
+    <section class="grid">
+      <article class="panel">
+        <span class="year">2011 → 2016</span>
+        <h2>Premieres formes</h2>
+        <p>
+          Noyaux initiaux, gestes fondateurs, premières structures, premières tensions entre forme,
+          son, écriture, image et présence. La matière du projet se constitue avant même que son
+          nom et son architecture soient stabilisés.
+        </p>
+        <ul class="timeline">
+          <li><strong>Origines</strong> Recherche de langage, premiers formats, premières machines.</li>
+          <li><strong>Milieu</strong> Croisement entre pratique artistique, systèmes et espaces vécus.</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <span class="year">2017 → 2022</span>
+        <h2>Systemes et ramifications</h2>
+        <p>
+          Le projet s’outille, se distribue, se relie à des plateformes, à des automations, à des
+          environnements plus complexes. Les intuitions deviennent des architectures.
+        </p>
+        <ul class="timeline">
+          <li><strong>Ramification</strong> Réseaux, prototypes, essais de formes applicatives et performatives.</li>
+          <li><strong>Consolidation</strong> Le champ SOWWWL prend corps comme constellation et non comme objet unique.</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <span class="year">2023 → 2026</span>
+        <h2>Convergence et lisibilite</h2>
+        <p>
+          La période actuelle ne cherche plus seulement à produire. Elle cherche à rendre lisible:
+          clarifier les rôles des domaines, articuler le wearable, l’installation, les interfaces,
+          et donner au projet une couche de mémoire, de pilotage et de narration.
+        </p>
+        <ul class="timeline">
+          <li><strong>Convergence</strong> Mise en cohérence des surfaces, des flux, des outils et des identités.</li>
+          <li><strong>PFVEE</strong> `sowwwl.me` devient le résumé en cours de cette élaboration longue.</li>
+        </ul>
+      </article>
+    </section>
+
+    <div class="section-head">
+      <div>
+        <div class="label">Etat de surface</div>
+        <h2>Position dans le reseau</h2>
+      </div>
+    </div>
+
+    <section class="grid">
+      <article class="panel">
+        <h2>Fonction</h2>
+        <p>
+          Cette adresse n’a pas besoin de devenir une application. Elle peut rester une couche
+          personnelle, curatoriale, réflexive et chronologique, à côté du hub, du produit et des
+          branches expérimentales.
+        </p>
+      </article>
+
+      <article class="panel">
+        <h2>Liens</h2>
+        <ul class="timeline">
+          <li><strong>sowwwl.cloud</strong> Hub, cartographie et contrôle.</li>
+          <li><strong>sowwwl.com</strong> Produit principal et logique applicative.</li>
+          <li><strong>0.user.o.sowwwl.cloud</strong> Shell utilisateur et charte de référence.</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h2>Activation</h2>
+        <div class="terminal">[dns] point apex + www to vps
+[tls] let caddy issue cert
+[proxy] Cloudflare Full (strict)
+[state] replace OVH placeholder
+[role] PFVEE 2011-2026 online</div>
+      </article>
+    </section>
+
+    <p class="footer-note">SOWWWL / PFVEE en cours / memoire active 2011-2026</p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,65 @@
+:8080 {
+	import common_headers
+	import static_security_headers
+	root * /srv/sites/sowwwl.cloud
+	file_server
+}
+
+:8081 {
+	import common_headers
+	import static_security_headers
+	root * /srv/sites/sowwwl.me
+	file_server
+}
+
+:8082 {
+	import common_headers
+	import static_security_headers
+	root * /srv/sites/0.user.o.sowwwl.cloud
+	try_files {path} {path}/ /index.html
+	file_server
+}
+
+:8083 {
+	import common_headers
+	import static_security_headers
+	root * /srv/sites/sowwwl.org
+	file_server
+}
+
+:8084 {
+	import common_headers
+	import static_security_headers
+	root * /srv/sites/0wlslw0.com
+	file_server
+}
+
+:8086 {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+	reverse_proxy api:80
+}
+
+(common_headers) {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), geolocation=(), microphone=()"
+		-Server
+	}
+}
+
+(static_security_headers) {
+	header {
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:4286 https://api.sowwwl.cloud; font-src 'self' data:; form-action 'self'; upgrade-insecure-requests"
+		Cross-Origin-Opener-Policy same-origin
+		Cross-Origin-Resource-Policy same-origin
+		Origin-Agent-Cluster ?1
+	}
+}

@@ -23,7 +23,8 @@ if (isset($_GET['logout'])) {
 }
 
 if (!isset($_SESSION['username'])) {
-    die('Non connecté. <a href="index.php">S\'inscrire</a>');
+    header('Location: index.php');
+    exit;
 }
 
 $username = $_SESSION['username'];
@@ -312,6 +313,7 @@ $chaloupes = [
     ['label' => 'SHORE', 'url' => 'shore.php', 'description' => 'Le rivage où tu écris'],
     ['label' => 'BATO', 'url' => 'bato.php', 'description' => 'Le bateau qui tangue'],
     ['label' => 'DASHBOARD', 'url' => 'dashboard.php', 'description' => 'Statistiques et activité'],
+    ['label' => 'AZA', 'url' => 'aza.php', 'description' => 'Les portails (entrée machine)'],
     ['label' => 'SILENCE', 'url' => 'silence.php', 'description' => 'Le vide qui respire'],
 ];
 
@@ -320,7 +322,9 @@ $chaloupes = [
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="global-styles.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="<?= htmlspecialchars(asset_url('/global-styles.css')) ?>">
+<script src="<?= htmlspecialchars(asset_url('/main.js')) ?>" defer></script>
 <title>O.</title>
 
 <style>
@@ -329,9 +333,6 @@ $chaloupes = [
    =============================== */
 
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #fafafa;
-  color: #111;
   max-width: 720px;
   margin: 4rem auto;
   padding: 0 1.5rem;
@@ -342,7 +343,7 @@ section {
 }
 
 section:hover {
-  background: rgba(0,0,0,0.02);
+  background: rgba(var(--o-fg-rgb) / 0.03);
 }
 
 h1 {
@@ -383,7 +384,7 @@ h2 {
   font-size: 1rem;
   font-family: inherit;
   line-height: 1.6;
-  border: 1px solid #ddd;
+  border: 1px solid var(--o-line);
   border-radius: 4px;
   box-sizing: border-box;
   resize: vertical;
@@ -393,25 +394,25 @@ h2 {
   margin-top: 0.5rem;
   padding: 0.6rem 1.5rem;
   font-size: 0.9rem;
-  background: #111;
-  color: #fff;
-  border: none;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--o-line);
   border-radius: 4px;
   cursor: pointer;
 }
 
 .shore button:hover {
-  background: #333;
+  background: var(--o-fg);
+  color: var(--o-bg);
+  border-color: transparent;
 }
 
 .shore .success {
-  color: #2a7;
   margin: 0.5rem 0;
   font-size: 0.9rem;
 }
 
 .shore .error {
-  color: #a33;
   margin: 0.5rem 0;
   font-size: 0.9rem;
 }
@@ -440,17 +441,18 @@ h2 {
 .chaloupes a {
   display: block;
   padding: 1rem;
-  background: #fff;
+  background: var(--o-fill);
+  border: 1px solid var(--o-line);
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: var(--o-shadow);
   text-decoration: none;
-  color: #111;
+  color: inherit;
   transition: all 0.2s;
 }
 
 .chaloupes a:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+  box-shadow: 0 14px 34px rgba(var(--o-fg-rgb) / 0.16);
 }
 
 .chaloupes .chaloupe-label {
@@ -474,10 +476,11 @@ h2 {
 
 .aza form {
   margin: 0;
-  background: #fff;
+  background: var(--o-fill);
+  border: 1px solid var(--o-line);
   padding: 0.9rem;
   border-radius: 8px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  box-shadow: var(--o-shadow);
 }
 
 .aza h3 {
@@ -521,8 +524,8 @@ h2 {
 }
 
 .aza pre {
-  background: #111;
-  color: #f2f2f2;
+  background: var(--o-fg);
+  color: var(--o-bg);
   padding: 0.75rem;
   border-radius: 6px;
   overflow: auto;
@@ -530,7 +533,9 @@ h2 {
 }
 
 .aza .message {
-  color: #a33;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--o-line);
+  background: var(--o-fill);
   margin: 0.5rem 0 1rem;
 }
 </style>
@@ -549,7 +554,7 @@ h2 {
     Fuseau horaire : <?= htmlspecialchars($land['timezone']) ?><br>
     Zone : <?= htmlspecialchars($land['zone_code']) ?>
   </p>
-  <p class="land-meta"><a href="land.php?logout=1">Se déconnecter</a></p>
+  <p class="land-meta"><a href="land.php?logout=1" data-o-nozoom>Se déconnecter</a></p>
 </section>
 
 <!-- ===============================
@@ -603,7 +608,7 @@ function toggleShoreEdit(event) {
   <ul>
     <?php foreach ($chaloupes as $c): ?>
       <li>
-        <a href="<?= htmlspecialchars($c['url']) ?>">
+        <a href="<?= htmlspecialchars($c['url']) ?>" data-o-layer>
           <div class="chaloupe-label"><?= htmlspecialchars($c['label']) ?></div>
           <div class="chaloupe-desc"><?= htmlspecialchars($c['description']) ?></div>
         </a>
@@ -615,7 +620,7 @@ function toggleShoreEdit(event) {
 <!-- ===============================
      AZA API
      =============================== -->
-<section class="aza">
+<section class="aza" id="aza">
   <h2>AZA</h2>
   <p class="land-meta">Connexion API via token serveur.</p>
   <p class="hint">Listes séparées par virgules. JSON libre pour policy/events.</p>
