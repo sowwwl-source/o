@@ -1,10 +1,14 @@
 # Git
 .git
 .gitignore
+.github/
 
 # Documentation
 README*.md
 README*.txt
+docs/
+deploy/
+NEXT_SESSION.md
 
 # Docker files
 Dockerfile
@@ -14,6 +18,7 @@ docker-compose*.yml
 # Environment files
 .env
 .env.*
+.venv/
 
 # OS files
 .DS_Store
@@ -31,6 +36,13 @@ Thumbs.db
 *.tar
 *.tar.gz
 *.tgz
+
+# Local-only folders and assets
+o/
+o-dot-empty/
+baco.work/
+AzA_v0.6.1_migrations_pack/
+*.gif
 
 # Keys
 *.ppk

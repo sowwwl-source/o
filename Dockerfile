@@ -1,16 +1,13 @@
-# syntax=docker/dockerfile:1
-
 FROM php:8.2-apache AS base
 
 # Install system dependencies and PHP extensions
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && \
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         libcurl4-openssl-dev \
     && docker-php-ext-install -j$(nproc) \
         curl \
-        pdo_mysql
+        pdo_mysql \
+    && rm -rf /var/lib/apt/lists/*
 
 # Configure Apache
 RUN a2enmod headers rewrite && \
@@ -23,16 +20,7 @@ FROM base AS production
 WORKDIR /var/www/html
 
 # Copy application files
-COPY --chown=www-data:www-data \
-    --exclude=.git \
-    --exclude=.gitignore \
-    --exclude=README*.md \
-    --exclude=README*.txt \
-    --exclude=docs \
-    --exclude=deploy \
-    --exclude=Dockerfile \
-    --exclude=docker-compose*.yml \
-    . .
+COPY --chown=www-data:www-data . .
 
 # Set proper permissions
 RUN find . -type d -exec chmod 755 {} \; && \
