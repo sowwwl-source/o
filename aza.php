@@ -75,6 +75,8 @@ $groupedArchives = $chronology['grouped'];
 $chronoSummary = $chronology['summary'];
 $sources = aza_supported_sources();
 $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['owner_slug'] : $ownerSlug);
+$ambientLand = $ownerLand ?: current_authenticated_land();
+$ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collective_profile('nocturnal');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -91,6 +93,7 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
 <body class="experience aza-view">
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
+<?= render_negative_merge_overlay($ambientProfile, 'nocturnal', 'aza') ?>
 
 <main class="layout page-shell">
     <header class="hero page-header reveal">
@@ -133,7 +136,7 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
         <section class="panel reveal" aria-labelledby="aza-import-title">
             <div class="section-topline">
                 <div>
-                    <h2 id="aza-import-title">Dépôt</h2>
+                    <h2 id="aza-import-title">Sédimentation</h2>
                     <p class="panel-copy">Un ZIP entre, une mémoire se forme.</p>
                 </div>
                 <a class="ghost-link" href="<?= $form['owner_slug'] !== '' ? '/land.php?u=' . rawurlencode($form['owner_slug']) : '/' ?>">
@@ -184,7 +187,7 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
                     <textarea name="notes" rows="4" placeholder="Contexte, provenance, repères utiles."><?= h($form['notes']) ?></textarea>
                 </label>
 
-                <button type="submit">Déposer le ZIP</button>
+                <button type="submit">Sédimenter l'archive</button>
             </form>
 
             <?php if ($imported): ?>
@@ -266,7 +269,7 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
         <?php endif; ?>
 
         <?php if (!$sortedArchives): ?>
-            <p class="panel-copy">Aucune archive pour l’instant.</p>
+            <p class="panel-copy">La mémoire est vierge.</p>
         <?php else: ?>
             <div class="aza-timeline" aria-label="Chronologie des archives">
                 <div class="aza-timeline-track">
@@ -346,7 +349,7 @@ $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['own
                                             </details>
                                         <?php endif; ?>
                                         <div class="card-actions aza-meta-list">
-                                            <a class="meta-pill aza-download btn-download" href="/<?= h((string) $archive['stored_file']) ?>" download>Extraire (ZIP)</a>
+                                            <a class="meta-pill aza-download btn-download" href="/<?= h((string) $archive['stored_file']) ?>" download>Extraire la trace</a>
                                         </div>
                                     </article>
                                 <?php endforeach; ?>

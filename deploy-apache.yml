@@ -1,0 +1,36 @@
+name: Deploy to Production (Apache)
+
+on:
+  # Se déclenche à chaque push sur la branche 'main'
+  push:
+    branches:
+      - main
+  # Permet aussi un déclenchement manuel depuis l'interface GitHub
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to DigitalOcean Droplet
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+
+      - name: Add remote host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.PROD_SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy files using the project script
+        run: |
+          # Le script a besoin des droits d'exécution
+          chmod +x o/scripts/deploy_apache_prod.sh
+          # On utilise --no-verify car les checks live peuvent être complexes depuis un runner CI
+          # Le script gère lui-même le scp et l'exécution distante via ssh
+          o/scripts/deploy_apache_prod.sh --host ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} --execute --no-verify --profile full-web

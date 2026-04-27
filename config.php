@@ -114,4 +114,38 @@ require_once __DIR__ . '/lib/lands.php';
 require_once __DIR__ . '/lib/aza_archive.php';
 require_once __DIR__ . '/lib/security.php';
 
+function render_negative_merge_overlay(?array $visualProfile = null, string $streamMood = 'calm', string $view = 'generic'): string
+{
+    $resolvedMood = trim($streamMood) !== '' ? trim($streamMood) : 'calm';
+    $profile = is_array($visualProfile) ? $visualProfile : land_collective_profile($resolvedMood);
+    $program = h(trim((string) ($profile['program'] ?? 'collective')));
+    $label = h(trim((string) ($profile['label'] ?? 'collectif')));
+    $lambda = (int) ($profile['lambda_nm'] ?? 548);
+    $viewToken = h(preg_replace('/[^a-z0-9_-]+/i', '-', trim($view)) ?: 'generic');
+    $streamImage = h('/storage/str3m/images/flux-radial.svg');
+    $mood = h($resolvedMood);
+
+    return <<<HTML
+<div class="page-ambient-merge page-ambient-merge--{$viewToken}" aria-hidden="true">
+    <div class="page-ambient-merge__stream page-ambient-merge__stream--primary">
+        <img src="{$streamImage}" alt="" decoding="async">
+    </div>
+    <div class="page-ambient-merge__stream page-ambient-merge__stream--secondary">
+        <img src="{$streamImage}" alt="" decoding="async">
+    </div>
+    <div class="page-ambient-merge__torus-shell">
+        <canvas
+            class="page-ambient-merge__torus"
+            data-torus-cloud
+            data-torus-passive="1"
+            data-land-type="{$program}"
+            data-land-label="{$label}"
+            data-lambda="{$lambda}"
+            data-stream-mood="{$mood}"
+        ></canvas>
+    </div>
+</div>
+HTML;
+}
+
 bootstrap_request();

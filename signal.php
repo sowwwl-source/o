@@ -16,6 +16,7 @@ $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ .
 $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $csrfToken = csrf_token();
 $land = current_authenticated_land();
+$ambientProfile = $land ? land_visual_profile($land) : land_collective_profile('dense');
 $publicSignals = list_public_signals();
 $mySignals = $land ? list_signals((string) $land['slug']) : [];
 
@@ -49,6 +50,7 @@ if ($errorCode !== '') {
 <body class="experience signal-view">
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
+<?= render_negative_merge_overlay($ambientProfile, 'dense', 'signal') ?>
 
 <main class="layout page-shell">
     <header class="hero page-header reveal">
@@ -96,13 +98,13 @@ if ($errorCode !== '') {
 
                     <label>
                         Titre
-                        <input type="text" name="title" maxlength="120" placeholder="Nouvelle transmission…">
+                        <input type="text" name="title" maxlength="120" placeholder="Nouvelle trace…">
                         <span class="input-hint">Optionnel.</span>
                     </label>
 
                     <label>
                         Contenu
-                        <textarea name="body" rows="6" required placeholder="Ce que tu souhaites transmettre."></textarea>
+                        <textarea name="body" rows="6" required placeholder="L'empreinte à laisser."></textarea>
                     </label>
 
                     <div class="signal-form-grid">
@@ -145,14 +147,14 @@ if ($errorCode !== '') {
                 <div class="signal-list-block">
                     <div class="section-topline signal-subhead">
                         <div>
-                            <h2>Mes signaux</h2>
+                            <h2>Mes traces</h2>
                             <p class="panel-copy">Brouillons, retraits, publications : un même courant, plusieurs intensités.</p>
                         </div>
                         <span class="badge"><?= h((string) count($mySignals)) ?> entrée<?= count($mySignals) > 1 ? 's' : '' ?></span>
                     </div>
 
                     <?php if (!$mySignals): ?>
-                        <p class="panel-copy">Aucun signal émis pour l’instant.</p>
+                        <p class="panel-copy">Aucune trace émise.</p>
                     <?php else: ?>
                         <div class="signal-cards">
                             <?php foreach ($mySignals as $signal): ?>
@@ -172,7 +174,7 @@ if ($errorCode !== '') {
                     <?php endif; ?>
                 </div>
             <?php else: ?>
-                <p class="panel-copy">Le flux public reste visible. Pour transmettre, ouvre une terre.</p>
+                <p class="panel-copy">Le flux public s'écoule. Pose une terre pour y laisser une trace.</p>
                 <div class="action-row">
                     <a class="pill-link" href="/">Ouvrir une terre</a>
                 </div>

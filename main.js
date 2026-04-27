@@ -349,7 +349,8 @@ function initTorusCloud(canvas) {
 		return;
 	}
 
-	const touchHint = ensureTorusTouchHint();
+	const isPassiveCanvas = canvas.dataset.torusPassive === "1";
+	const touchHint = isPassiveCanvas ? null : ensureTorusTouchHint();
 
 	const state = {
 		width: 0,
@@ -396,6 +397,12 @@ function initTorusCloud(canvas) {
 	const minorRadius = 0.78 * torusScale;
 	const zoomMin = 6.5;
 	const zoomMax = 17.5;
+
+	if (isPassiveCanvas) {
+		state.pitch = 0.82;
+		state.roll = 0.04;
+		state.zoom = 10.4;
+	}
 
 	for (let ringIndex = 0; ringIndex < ringCount; ringIndex += 1) {
 		for (let tubeIndex = 0; tubeIndex < tubeCount; tubeIndex += 1) {
@@ -477,6 +484,10 @@ function initTorusCloud(canvas) {
 	}
 
 	function updateTouchHint(direction = "") {
+		if (isPassiveCanvas) {
+			return;
+		}
+
 		const shouldShow = coarsePointer && window.innerWidth <= 820;
 		if (!shouldShow) {
 			setHintState("", false);
@@ -747,59 +758,6 @@ function initTorusCloud(canvas) {
 		}
 	}
 
-	canvas.addEventListener("pointerdown", (event) => {
-		resetLongPressState();
-		state.pointerId = event.pointerId;
-		state.pointerType = event.pointerType || "";
-		state.lastX = event.clientX;
-		state.lastY = event.clientY;
-		state.pointerStartX = event.clientX;
-		state.pointerStartY = event.clientY;
-		state.pointerStartedAt = event.timeStamp;
-		state.pointerNearEdge = isNearViewportEdge(event);
-		state.gesturePoints = [];
-		state.gestureDistance = 0;
-		state.longPressEligible = state.pointerType === "touch" && !state.pointerNearEdge;
-		state.longPressActive = false;
-		setLongPressDirection("");
-		recordGesturePoint(event.clientX, event.clientY);
-		state.dragging = true;
-		canvas.classList.add("is-dragging");
-		canvas.focus({ preventScroll: true });
-		canvas.setPointerCapture(event.pointerId);
-		queueLongPress(event.pointerId);
-	});
-
-	canvas.addEventListener("pointermove", (event) => {
-		if (!state.dragging || state.pointerId !== event.pointerId) {
-			return;
-		}
-
-		const travelX = event.clientX - state.pointerStartX;
-		const travelY = event.clientY - state.pointerStartY;
-		const travelDistance = Math.hypot(travelX, travelY);
-		if (!state.longPressActive && travelDistance > 14) {
-			clearLongPressTimer();
-		}
-
-		if (state.longPressActive) {
-			const direction = detectCardinalDirection(travelX, travelY, travelDistance, 18, 1.08);
-			setLongPressDirection(direction || "");
-			return;
-		}
-
-		const deltaX = event.clientX - state.lastX;
-		const deltaY = event.clientY - state.lastY;
-		state.lastX = event.clientX;
-		state.lastY = event.clientY;
-		recordGesturePoint(event.clientX, event.clientY);
-		state.velocityYaw += deltaX * 0.00058;
-		state.velocityPitch += deltaY * 0.00042;
-		state.velocityPanX += deltaX * 0.0022;
-		state.velocityPanY += deltaY * 0.0016;
-		refreshStaticFrame();
-	});
-
 	function releasePointer(event) {
 		if (event && state.pointerId !== null && canvas.hasPointerCapture(state.pointerId)) {
 			canvas.releasePointerCapture(state.pointerId);
@@ -816,88 +774,143 @@ function initTorusCloud(canvas) {
 		refreshStaticFrame();
 	}
 
-	canvas.addEventListener("pointerup", (event) => {
-		recordGesturePoint(event.clientX, event.clientY);
-		if (state.longPressActive) {
-			const deltaX = event.clientX - state.pointerStartX;
-			const deltaY = event.clientY - state.pointerStartY;
-			const direction = state.longPressDirection || detectCardinalDirection(deltaX, deltaY, Math.hypot(deltaX, deltaY), 18, 1.08);
+	if (!isPassiveCanvas) {
+		canvas.addEventListener("pointerdown", (event) => {
+			resetLongPressState();
+			state.pointerId = event.pointerId;
+			state.pointerType = event.pointerType || "";
+			state.lastX = event.clientX;
+			state.lastY = event.clientY;
+			state.pointerStartX = event.clientX;
+			state.pointerStartY = event.clientY;
+			state.pointerStartedAt = event.timeStamp;
+			state.pointerNearEdge = isNearViewportEdge(event);
+			state.gesturePoints = [];
+			state.gestureDistance = 0;
+			state.longPressEligible = state.pointerType === "touch" && !state.pointerNearEdge;
+			state.longPressActive = false;
+			setLongPressDirection("");
+			recordGesturePoint(event.clientX, event.clientY);
+			state.dragging = true;
+			canvas.classList.add("is-dragging");
+			canvas.focus({ preventScroll: true });
+			canvas.setPointerCapture(event.pointerId);
+			queueLongPress(event.pointerId);
+		});
+
+		canvas.addEventListener("pointermove", (event) => {
+			if (!state.dragging || state.pointerId !== event.pointerId) {
+				return;
+			}
+
+			const travelX = event.clientX - state.pointerStartX;
+			const travelY = event.clientY - state.pointerStartY;
+			const travelDistance = Math.hypot(travelX, travelY);
+			if (!state.longPressActive && travelDistance > 14) {
+				clearLongPressTimer();
+			}
+
+			if (state.longPressActive) {
+				const direction = detectCardinalDirection(travelX, travelY, travelDistance, 18, 1.08);
+				setLongPressDirection(direction || "");
+				return;
+			}
+
+			const deltaX = event.clientX - state.lastX;
+			const deltaY = event.clientY - state.lastY;
+			state.lastX = event.clientX;
+			state.lastY = event.clientY;
+			recordGesturePoint(event.clientX, event.clientY);
+			state.velocityYaw += deltaX * 0.00058;
+			state.velocityPitch += deltaY * 0.00042;
+			state.velocityPanX += deltaX * 0.0022;
+			state.velocityPanY += deltaY * 0.0016;
+			refreshStaticFrame();
+		});
+
+		canvas.addEventListener("pointerup", (event) => {
+			recordGesturePoint(event.clientX, event.clientY);
+			if (state.longPressActive) {
+				const deltaX = event.clientX - state.pointerStartX;
+				const deltaY = event.clientY - state.pointerStartY;
+				const direction = state.longPressDirection || detectCardinalDirection(deltaX, deltaY, Math.hypot(deltaX, deltaY), 18, 1.08);
+				resetLongPressState();
+				releasePointer(event);
+
+				if (direction) {
+					navigateFromSwipe(direction);
+				}
+				return;
+			}
+
+			const swipeDirection = shouldTriggerSwipe(event);
+
+			if (swipeDirection) {
+				navigateFromSwipe(swipeDirection);
+			} else if (shouldToggleFromCenterClick(event) || shouldToggleFromSecretGesture()) {
+				triggerSecretAccess();
+			}
+
+			releasePointer(event);
+		});
+		canvas.addEventListener("pointercancel", (event) => {
 			resetLongPressState();
 			releasePointer(event);
-
-			if (direction) {
-				navigateFromSwipe(direction);
+		});
+		canvas.addEventListener("pointerleave", () => {
+			if (!state.dragging) {
+				canvas.classList.remove("is-dragging");
 			}
-			return;
-		}
+		});
 
-		const swipeDirection = shouldTriggerSwipe(event);
+		canvas.addEventListener(
+			"wheel",
+			(event) => {
+				event.preventDefault();
+				state.velocityZoom += event.deltaY > 0 ? -0.26 : 0.26;
+				refreshStaticFrame();
+			},
+			{ passive: false }
+		);
 
-		if (swipeDirection) {
-			navigateFromSwipe(swipeDirection);
-		} else if (shouldToggleFromCenterClick(event) || shouldToggleFromSecretGesture()) {
-			triggerSecretAccess();
-		}
+		canvas.addEventListener("keydown", (event) => {
+			const key = normalizeKey(event.key);
+			if (![
+				"ArrowLeft",
+				"ArrowRight",
+				"ArrowUp",
+				"ArrowDown",
+				"a",
+				"d",
+				"w",
+				"s",
+				"q",
+				"e",
+				"z",
+				"x",
+				"+",
+				"-",
+				"_",
+			].includes(key)) {
+				return;
+			}
 
-		releasePointer(event);
-	});
-	canvas.addEventListener("pointercancel", (event) => {
-		resetLongPressState();
-		releasePointer(event);
-	});
-	canvas.addEventListener("pointerleave", () => {
-		if (!state.dragging) {
-			canvas.classList.remove("is-dragging");
-		}
-	});
-
-	canvas.addEventListener(
-		"wheel",
-		(event) => {
 			event.preventDefault();
-			state.velocityZoom += event.deltaY > 0 ? -0.26 : 0.26;
+			state.keys.add(key);
 			refreshStaticFrame();
-		},
-		{ passive: false }
-	);
+		});
 
-	canvas.addEventListener("keydown", (event) => {
-		const key = normalizeKey(event.key);
-		if (![
-			"ArrowLeft",
-			"ArrowRight",
-			"ArrowUp",
-			"ArrowDown",
-			"a",
-			"d",
-			"w",
-			"s",
-			"q",
-			"e",
-			"z",
-			"x",
-			"+",
-			"-",
-			"_",
-		].includes(key)) {
-			return;
-		}
+		canvas.addEventListener("keyup", (event) => {
+			state.keys.delete(normalizeKey(event.key));
+			refreshStaticFrame();
+		});
 
-		event.preventDefault();
-		state.keys.add(key);
-		refreshStaticFrame();
-	});
-
-	canvas.addEventListener("keyup", (event) => {
-		state.keys.delete(normalizeKey(event.key));
-		refreshStaticFrame();
-	});
-
-	canvas.addEventListener("blur", () => {
-		state.keys.clear();
-		resetLongPressState();
-		releasePointer();
-	});
+		canvas.addEventListener("blur", () => {
+			state.keys.clear();
+			resetLongPressState();
+			releasePointer();
+		});
+	}
 
 	resize();
 	updateTouchHint();

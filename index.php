@@ -220,7 +220,7 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
                 <?php if ($authenticatedLand): ?>
                     <div class="action-row auth-action-row">
                         <a class="pill-link" href="/land.php?u=<?= rawurlencode($activeLandSlug) ?>">Ouvrir la terre</a>
-                        <a class="ghost-link" href="/logout.php">Fermer la session</a>
+                        <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
                     </div>
                 <?php endif; ?>
             </section>
@@ -283,7 +283,7 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
                             data-timezone-input
                         >
 
-                        <button type="submit">Créer ma terre</button>
+                        <button type="submit">Poser la terre</button>
                     </form>
 
                     <div class="signup-preview auth-login-preview" aria-labelledby="login-title">
@@ -321,7 +321,7 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
                                 >
                             </label>
 
-                            <button type="submit">Se connecter</button>
+                            <button type="submit">Affirmer sa présence</button>
                         </form>
                     </div>
 
@@ -397,7 +397,7 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
         <div class="str3m-daily-grid">
             <section class="str3m-card str3m-card-text" aria-labelledby="str3m-text-title">
                 <p class="summary-label">Texte d'ancrage</p>
-                <h3 id="str3m-text-title"><?= $dailyTextItem ? h((string) $dailyTextItem['title']) : 'Aucun texte publié' ?></h3>
+                <h3 id="str3m-text-title"><?= $dailyTextItem ? h((string) $dailyTextItem['title']) : 'La surface est vierge' ?></h3>
                 <?php if ($dailyTextBody !== ''): ?>
                     <div class="str3m-text-body">
                         <p><?= nl2br(h($dailyTextBody)) ?></p>
@@ -405,19 +405,19 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
                 <?php elseif ($dailyTextExcerpt !== ''): ?>
                     <p class="str3m-fallback-copy"><?= h($dailyTextExcerpt) ?></p>
                 <?php else: ?>
-                    <p class="str3m-fallback-copy">Pas encore de texte publié.</p>
+                    <p class="str3m-fallback-copy">Le str3m attend sa première trace.</p>
                 <?php endif; ?>
             </section>
 
             <section class="str3m-card str3m-card-visual" aria-labelledby="str3m-visual-title">
                 <p class="summary-label">Surface</p>
-                <h3 id="str3m-visual-title"><?= $dailyImageItem ? h((string) $dailyImageItem['title']) : 'Aucune image' ?></h3>
+                <h3 id="str3m-visual-title"><?= $dailyImageItem ? h((string) $dailyImageItem['title']) : 'Surface en suspens' ?></h3>
                 <?php if ($dailyImagePath !== ''): ?>
                     <figure class="str3m-figure">
                         <img src="<?= h($dailyImagePath) ?>" alt="<?= h((string) ($dailyImageItem['meta']['alt'] ?? $dailyImageItem['title'] ?? 'Image str3m')) ?>" class="str3m-image">
                     </figure>
                 <?php else: ?>
-                    <p class="str3m-fallback-copy">Aucune image publique pour l’instant.</p>
+                    <p class="str3m-fallback-copy">Le str3m visuel attend sa trace.</p>
                 <?php endif; ?>
 
                 <?php if ($dailyAudioPath !== ''): ?>

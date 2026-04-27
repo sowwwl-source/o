@@ -41,6 +41,7 @@ $archiveSources = aza_supported_sources();
 $authenticatedLand = current_authenticated_land();
 $isAuthenticatedHere = $land && $authenticatedLand && auth_is_land_session_for((string) $land['slug']);
 $visualProfile = $land ? land_visual_profile($land) : null;
+$ambientProfile = $visualProfile ?? land_collective_profile('calm');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -57,6 +58,7 @@ $visualProfile = $land ? land_visual_profile($land) : null;
 <body class="experience land-view">
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
+<?= render_negative_merge_overlay($ambientProfile, 'calm', 'land') ?>
 
 <main class="layout page-shell">
     <?php if ($land): ?>
@@ -141,13 +143,13 @@ $visualProfile = $land ? land_visual_profile($land) : null;
                     <a class="pill-link" href="/">Retour au noyau</a>
                     <a class="ghost-link" href="/aza.php?u=<?= rawurlencode((string) $land['slug']) ?>">Ouvrir aZa</a>
                     <?php if ($isAuthenticatedHere): ?>
-                        <a class="ghost-link" href="/logout.php">Fermer la session</a>
+                        <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
                     <?php endif; ?>
                     <button
                         type="button"
                         class="copy-button"
                         data-copy-link="<?= h($shareUrl) ?>"
-                    >Copier l'adresse</button>
+                    >Copier les coordonnées</button>
                 </div>
             </aside>
         </section>
@@ -171,7 +173,7 @@ $visualProfile = $land ? land_visual_profile($land) : null;
             </header>
 
             <?php if (!$landSummary['count']): ?>
-                <p class="panel-copy">Aucune archive dans le c0r3 pour l’instant. Le premier ZIP peut venir maintenant.</p>
+                <p class="panel-copy">La mémoire du c0r3 est vierge. La première archive attend de sédimenter.</p>
             <?php else: ?>
                 <div class="c0r3-chronology" aria-label="Chronologie du c0r3">
                     <?php foreach ($landGrouped as $bucket => $archives): ?>
@@ -190,7 +192,7 @@ $visualProfile = $land ? land_visual_profile($land) : null;
                                             <p class="c0r3-note"><?= h((string) $archive['human_summary']) ?></p>
                                         <?php endif; ?>
                                         <a href="/<?= h((string) $archive['stored_file']) ?>" class="c0r3-download" download>
-                                            [ ↓ pull ]
+                                            [ extraire ]
                                         </a>
                                     </article>
                                 <?php endforeach; ?>

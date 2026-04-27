@@ -25,6 +25,17 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
 $created = isset($_GET['created']) && $_GET['created'] === '1';
 $isOwner = $signal ? signal_is_owner($signal, $currentLand) : false;
 $signalDate = $signal ? human_created_label((string) (($signal['published_at'] ?? '') ?: ($signal['created_at'] ?? ''))) : null;
+$signalLand = null;
+
+if ($signal && !empty($signal['land_slug'])) {
+    try {
+        $signalLand = find_land((string) $signal['land_slug']);
+    } catch (InvalidArgumentException $exception) {
+        $signalLand = null;
+    }
+}
+
+$ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collective_profile('dense');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -41,6 +52,7 @@ $signalDate = $signal ? human_created_label((string) (($signal['published_at'] ?
 <body class="experience signal-view">
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
+<?= render_negative_merge_overlay($ambientProfile, 'dense', 'signal') ?>
 
 <main class="layout page-shell">
     <?php if ($signal): ?>
