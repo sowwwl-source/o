@@ -140,16 +140,6 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une te
 >
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
-<a class="o-signature-mark" href="/" aria-label="Retour au noyau O.">
-    <span class="o-signature-mark__glyph" aria-hidden="true">
-        <span class="o-signature-mark__ring o-signature-mark__ring--outer"></span>
-        <span class="o-signature-mark__ring o-signature-mark__ring--inner"></span>
-        <svg class="o-signature-mark__wave" viewBox="0 0 72 18" fill="none" aria-hidden="true" focusable="false">
-            <path d="M2 9C12 9 16 5 24 5C31 5 35 12.5 43 12.5C52 12.5 56 8 70 8" vector-effect="non-scaling-stroke" />
-        </svg>
-        <span class="o-signature-mark__dot"></span>
-    </span>
-</a>
 
 <div class="world-container" aria-hidden="true">
     <canvas

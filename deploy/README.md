@@ -57,6 +57,9 @@ Required subdomain records:
 - `www.sowwwl.art`
 - `api.sowwwl.cloud`
 - `0.user.o.sowwwl.cloud`
+- `upload.sowwwl.com`
+
+`upload.sowwwl.com` should stay DNS-only if you want aZa direct uploads to bypass proxy upload limits.
 
 ## Deploy
 

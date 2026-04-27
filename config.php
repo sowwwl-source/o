@@ -114,16 +114,29 @@ require_once __DIR__ . '/lib/lands.php';
 require_once __DIR__ . '/lib/aza_archive.php';
 require_once __DIR__ . '/lib/security.php';
 
-function render_negative_merge_overlay(?array $visualProfile = null, string $streamMood = 'calm', string $view = 'generic'): string
+function visual_profile_tokens(?array $visualProfile = null, string $streamMood = 'calm'): array
 {
     $resolvedMood = trim($streamMood) !== '' ? trim($streamMood) : 'calm';
     $profile = is_array($visualProfile) ? $visualProfile : land_collective_profile($resolvedMood);
-    $program = h(trim((string) ($profile['program'] ?? 'collective')));
-    $label = h(trim((string) ($profile['label'] ?? 'collectif')));
-    $lambda = (int) ($profile['lambda_nm'] ?? 548);
+
+    return [
+        'profile' => $profile,
+        'mood' => $resolvedMood,
+        'program' => trim((string) ($profile['program'] ?? 'collective')) ?: 'collective',
+        'label' => trim((string) ($profile['label'] ?? 'collectif')) ?: 'collectif',
+        'lambda' => (int) ($profile['lambda_nm'] ?? 548),
+    ];
+}
+
+function render_negative_merge_overlay(?array $visualProfile = null, string $streamMood = 'calm', string $view = 'generic'): string
+{
+    $tokens = visual_profile_tokens($visualProfile, $streamMood);
+    $program = h($tokens['program']);
+    $label = h($tokens['label']);
+    $lambda = $tokens['lambda'];
     $viewToken = h(preg_replace('/[^a-z0-9_-]+/i', '-', trim($view)) ?: 'generic');
     $streamImage = h('/storage/str3m/images/flux-radial.svg');
-    $mood = h($resolvedMood);
+    $mood = h($tokens['mood']);
 
     return <<<HTML
 <div class="page-ambient-merge page-ambient-merge--{$viewToken}" aria-hidden="true">

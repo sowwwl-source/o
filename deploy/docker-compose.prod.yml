@@ -26,6 +26,7 @@ services:
       dockerfile: deploy/app/Dockerfile
     environment:
       SOWWWL_PUBLIC_ORIGIN: https://sowwwl.xyz
+      SOWWWL_AZA_DIRECT_ORIGIN: ${SOWWWL_AZA_DIRECT_ORIGIN:-https://upload.sowwwl.com}
       SOWWWL_STORAGE_DIR: /var/www/runtime/lands
       SOWWWL_RATE_LIMIT_DIR: /var/www/runtime/rate-limit
       SOWWWL_ADMIN_PIN: ${SOWWWL_ADMIN_PIN:-CHANGE_ME_ADMIN_PIN}

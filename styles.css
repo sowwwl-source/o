@@ -286,21 +286,21 @@ body.home {
 	overflow-x: hidden;
 }
 
-body.home[data-land-program="collective"] {
+body[data-land-program="collective"] {
 	--panel-rgb: 10 16 19;
 	--land-accent-rgb: 126 158 186;
 	--land-secondary-rgb: 190 214 228;
 	--land-glow-rgb: 92 126 154;
 }
 
-body.home[data-land-program="culbu1on"] {
+body[data-land-program="culbu1on"] {
 	--panel-rgb: 16 20 28;
 	--land-accent-rgb: 123 150 180;
 	--land-secondary-rgb: 194 212 226;
 	--land-glow-rgb: 98 128 158;
 }
 
-body.home[data-land-program="dur3rb"] {
+body[data-land-program="dur3rb"] {
 	--panel-rgb: 10 10 12;
 	--land-accent-rgb: 226 226 230;
 	--land-secondary-rgb: 132 132 138;
@@ -308,7 +308,7 @@ body.home[data-land-program="dur3rb"] {
 	--ui-border: rgba(255, 255, 255, 0.12);
 }
 
-body.home[data-land-program="tocu"] {
+body[data-land-program="tocu"] {
 	--panel-rgb: 20 10 13;
 	--land-accent-rgb: 255 78 58;
 	--land-secondary-rgb: 255 122 200;
