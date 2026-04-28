@@ -46,9 +46,9 @@
 
 ### 2) Déploiement
 1. Copie le repo sur le serveur (git clone / rsync / scp).
-2. Crée un `.env` à côté de `docker-compose.yml` (exemple : `.env.example`).
+2. Configure ton environnement dans `deploy/.env.production` (le script le créera depuis l'example si manquant).
 3. Lance :
-   - `docker compose up --build -d`
+   - `./start.sh`
 
 ### 3) Reverse proxy (recommandé)
 - Mets Caddy/Nginx devant et proxy vers `127.0.0.1:8080`.
@@ -60,4 +60,3 @@
 - `AZA_API_TOKEN` réel (si utilisé)
 - Mots de passe DB forts
 - Pas de clés/archives uploadées par erreur (la `.htaccess` bloque déjà `.env`, `.git`, etc.)
-

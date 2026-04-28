@@ -142,6 +142,24 @@ function start_secure_session(): void
     }
 }
 
+function send_echo_notification(string $to_email, string $sender_username, string $receiver_username): void
+{
+    if ($to_email === '' || !filter_var($to_email, FILTER_VALIDATE_EMAIL)) {
+        return;
+    }
+    $domain = getenv('SOWWWL_PUBLIC_ORIGIN') ?: 'https://sowwwl.com';
+    $link = rtrim($domain, '/') . '/echo.php?u=' . rawurlencode($sender_username);
+    $subject = '=?UTF-8?B?' . base64_encode('Nouvel écho de ' . $sender_username . ' sur O.') . '?=';
+    $body = "Tu as reçu un écho de {$sender_username}.\n\nLire et répondre :\n{$link}\n\n—\nO. réseau minimal";
+    $headers = implode("\r\n", [
+        'From: noreply@sowwwl.com',
+        'Reply-To: noreply@sowwwl.com',
+        'Content-Type: text/plain; charset=UTF-8',
+        'X-Mailer: O.',
+    ]);
+    @mail($to_email, $subject, $body, $headers);
+}
+
 function aza_api_request(string $path, array $payload, string $method = 'POST'): array
 {
     $base = rtrim(getenv('AZA_API_BASE_URL') ?: 'https://api.sowwwl.cloud', '/');

@@ -305,13 +305,45 @@ if (!$land) {
     die('LAND introuvable for ' . htmlspecialchars($username));
 }
 
+// Notification email save
+$notif_message = '';
+$notif_success = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_notification_email'])) {
+    $posted_token = $_POST['csrf_token'] ?? '';
+    if (!hash_equals($csrf_token, $posted_token)) {
+        $notif_message = "Session expirée. Réessaie.";
+    } else {
+        $notif_email = trim($_POST['notification_email'] ?? '');
+        if ($notif_email !== '' && !filter_var($notif_email, FILTER_VALIDATE_EMAIL)) {
+            $notif_message = "Adresse email invalide.";
+        } else {
+            $pdo->prepare("UPDATE lands SET notification_email = ? WHERE username = ?")
+                ->execute([$notif_email ?: null, $username]);
+            $stmt->execute([$username]);
+            $land = $stmt->fetch();
+            $notif_success = true;
+            $notif_message = $notif_email !== '' ? "Email de notification enregistré." : "Email de notification supprimé.";
+        }
+    }
+}
+
+// Unread echo count
+$unread_echoes = 0;
+try {
+    $stmtUnread = $pdo->prepare("SELECT COUNT(*) FROM echoes WHERE receiver_username = ? AND is_read = 0");
+    $stmtUnread->execute([$username]);
+    $unread_echoes = (int) $stmtUnread->fetchColumn();
+} catch (\Exception $e) {}
+
 /* ===============================
    CHALOUPES (placeholder)
    =============================== */
 
+$echo_label = $unread_echoes > 0 ? 'ÉCHO (' . $unread_echoes . ')' : 'ÉCHO';
 $chaloupes = [
     ['label' => 'SHORE', 'url' => 'shore.php', 'description' => 'Le rivage où tu écris'],
     ['label' => 'BATO', 'url' => 'bato.php', 'description' => 'Le bateau qui tangue'],
+    ['label' => $echo_label, 'url' => 'echo.php', 'description' => 'Résonance directe entre terres'],
     ['label' => 'DASHBOARD', 'url' => 'dashboard.php', 'description' => 'Statistiques et activité'],
     ['label' => 'AZA', 'url' => 'aza.php', 'description' => 'Les portails (entrée machine)'],
     ['label' => 'SILENCE', 'url' => 'silence.php', 'description' => 'Le vide qui respire'],
@@ -598,6 +630,33 @@ function toggleShoreEdit(event) {
   }
 }
 </script>
+
+<!-- ===============================
+     NOTIFICATION EMAIL
+     =============================== -->
+<section class="shore">
+  <h2>NOTIFICATIONS</h2>
+
+  <?php if ($notif_success): ?>
+    <p class="success"><?= htmlspecialchars($notif_message) ?></p>
+  <?php elseif ($notif_message): ?>
+    <p class="error"><?= htmlspecialchars($notif_message) ?></p>
+  <?php endif; ?>
+
+  <form method="post">
+    <input type="hidden" name="update_notification_email" value="1">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+    <input type="email"
+           name="notification_email"
+           placeholder="ton@email.réel (optionnel)"
+           value="<?= htmlspecialchars((string) ($land['notification_email'] ?? '')) ?>"
+           style="width:100%;padding:0.6em;font-size:1em;box-sizing:border-box;margin-bottom:0.5rem;">
+    <p style="font-size:0.82rem;opacity:0.6;margin:0.25rem 0 0.75rem;">
+      Reçois un email quand quelqu'un t'envoie un écho. Laisse vide pour ne pas être notifié.
+    </p>
+    <button type="submit" style="padding:0.5em 1.1em;font-size:0.95em;cursor:pointer;">Enregistrer</button>
+  </form>
+</section>
 
 <!-- ===============================
      CHALOUPES

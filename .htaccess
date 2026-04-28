@@ -28,6 +28,8 @@ Options -Indexes
   RewriteRule ^silence\.php$ /silence [R=302,L]
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*dashboard\.php(?:\?|\s) [NC]
   RewriteRule ^dashboard\.php$ /dashboard [R=302,L]
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*echo\.php(?:\?|\s) [NC]
+  RewriteRule ^echo\.php$ /echo [R=302,L]
 
   # AZA: canonicalize query-step URL to /aza/<n>
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*aza\.php\?p=([0-9]{1,2}) [NC]
@@ -37,7 +39,7 @@ Options -Indexes
   RewriteRule ^aza\.php$ /aza [R=302,L]
 
   # Canonicalize trailing slash on entry paths
-  RewriteRule ^(install|land|shore|bato|silence|dashboard|aza)/$ /$1 [R=302,L,NC]
+  RewriteRule ^(install|land|shore|bato|silence|dashboard|aza|echo)/$ /$1 [R=302,L,NC]
 
   # If the request is an existing file/dir, serve it as-is.
   RewriteCond %{REQUEST_FILENAME} -f [OR]
@@ -57,6 +59,7 @@ Options -Indexes
   RewriteRule ^silence$ silence.php [L,NC]
   RewriteRule ^dashboard$ dashboard.php [L,NC]
   RewriteRule ^aza$ aza.php [L,NC]
+  RewriteRule ^echo$ echo.php [L,NC,QSA]
 
   # AZA steps: /aza/1 .. /aza/5
   RewriteRule ^aza/0*([0-9]{1,2})$ aza.php?p=$1 [L,NC,QSA]
