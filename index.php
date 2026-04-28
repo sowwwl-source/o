@@ -3,6 +3,11 @@ require __DIR__ . '/config.php';
 
 start_secure_session();
 
+if (isset($_SESSION['username'])) {
+    header('Location: land.php');
+    exit;
+}
+
 $message = '';
 
 function invite_codes(): array

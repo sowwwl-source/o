@@ -49,7 +49,7 @@ services:
     environment:
       API_BEARER_TOKEN: ${AZA_API_TOKEN:-CHANGE_ME_API_TOKEN}
       API_PUBLIC_BASE_URL: https://api.sowwwl.cloud
-      API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-https://sowwwl.cloud,https://sowwwl.me,https://sowwwl.com,https://0.user.o.sowwwl.cloud,https://sowwwl.org,https://0wlslw0.com,https://0wlslw0.fr,https://sowwwl.art}
+      API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-https://sowwwl.cloud,https://sowwwl.me,https://sowwwl.com,https://0.user.o.sowwwl.cloud,https://sowwwl.org,https://0wlslw0.com,https://0wlslw0.fr}
     expose:
       - "80"
     restart: unless-stopped

@@ -554,7 +554,6 @@ h2 {
     Fuseau horaire : <?= htmlspecialchars($land['timezone']) ?><br>
     Zone : <?= htmlspecialchars($land['zone_code']) ?>
   </p>
-  <p class="land-meta"><a href="land.php?logout=1" data-o-nozoom>Se déconnecter</a></p>
 </section>
 
 <!-- ===============================

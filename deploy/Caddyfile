@@ -23,13 +23,44 @@
 	}
 }
 
-# Cutover-ready subset as of 2026-04-26.
-# Intentionally excludes hosts that were failing DNS or HTTPS checks:
-# - sowwwl.cloud
-# - api.sowwwl.cloud
+# Domaines actifs. DNS manquant : api.sowwwl.cloud (ajouter A → 161.35.157.37).
+# Exclus volontairement (pas de DNS / pas de contenu) :
 # - 0.user.o.sowwwl.cloud
 # - 0wlslw0.com
 # - 0wlslw0.fr
+
+www.sowwwl.cloud {
+	redir https://sowwwl.cloud{uri} 308
+}
+
+sowwwl.cloud {
+	import common_headers
+	reverse_proxy app:80
+
+	handle_errors {
+	    rewrite * /error.html
+	    file_server
+	}
+}
+
+www.o.sowwwl.cloud {
+	redir https://o.sowwwl.cloud{uri} 308
+}
+
+o.sowwwl.cloud {
+	import common_headers
+	reverse_proxy app:80
+
+	handle_errors {
+	    rewrite * /error.html
+	    file_server
+	}
+}
+
+api.sowwwl.cloud {
+	import common_headers
+	reverse_proxy api:80
+}
 
 www.sowwwl.me {
 	redir https://sowwwl.me{uri} 308
@@ -76,4 +107,18 @@ sowwwl.art {
 	import static_security_headers
 	root * /srv/sites/0wlslw0.com
 	file_server
+}
+
+sowwwl.tech {
+	import common_headers
+	reverse_proxy app:80
+
+	handle_errors {
+	    rewrite * /error.html
+	    file_server
+	}
+}
+
+www.sowwwl.tech {
+	redir https://sowwwl.tech{uri} 308
 }

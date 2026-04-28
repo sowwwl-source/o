@@ -6,8 +6,6 @@
 # Documentation
 README*.md
 README*.txt
-docs/
-deploy/
 NEXT_SESSION.md
 
 # Docker files

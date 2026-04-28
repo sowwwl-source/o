@@ -123,6 +123,23 @@ function start_secure_session(): void
 
     ini_set('session.use_strict_mode', '1');
     session_start();
+
+    // Auto-login to remove mandatory login
+    if (!isset($_SESSION['username'])) {
+        global $pdo;
+        try {
+            $stmt = $pdo->query("SELECT username FROM lands ORDER BY id ASC LIMIT 1");
+            $first_user = $stmt->fetchColumn();
+            if (!$first_user) {
+                // Création d'un premier utilisateur par défaut pour que l'app soit ouverte
+                $pdo->exec("INSERT INTO lands (username, password_hash, email_virtual, timezone, zone_code, shore_text) VALUES ('visiteur', '', 'visiteur@o.local', 'Europe/Paris', 'Europe/Paris', 'Silence.')");
+                $first_user = 'visiteur';
+            }
+            if ($first_user) {
+                $_SESSION['username'] = $first_user;
+            }
+        } catch (\Exception $e) {}
+    }
 }
 
 function aza_api_request(string $path, array $payload, string $method = 'POST'): array
