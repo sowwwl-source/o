@@ -57,12 +57,12 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
 <main class="layout page-shell">
     <?php if ($signal): ?>
         <header class="hero page-header reveal">
-            <p class="eyebrow"><strong>signal</strong> <span><?= h((string) $signal['kind']) ?></span></p>
+            <p class="eyebrow"><strong>ferry 01</strong> <span>Flux / <?= h((string) $signal['kind']) ?></span></p>
             <h1 class="land-title signal-title">
                 <strong><?= h((string) $signal['title']) ?></strong>
                 <span><?= h((string) $signal['land_username']) ?></span>
             </h1>
-            <p class="lead">Transmission simple. Visible selon sa portée.</p>
+            <p class="lead">Trace isolée dans l'océan public.</p>
 
             <div class="land-meta">
                 <a class="meta-pill meta-pill-link" href="/signal.php">retour au flux</a>
@@ -71,7 +71,12 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
                 <?php if ($isOwner): ?>
                     <span class="meta-pill"><?= h((string) $signal['visibility']) ?></span>
                     <span class="meta-pill"><?= h((string) $signal['status']) ?></span>
-                    <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $signal['land_slug']) ?>">ouvrir la terre</a>
+                    <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $signal['land_slug']) ?>">gérer ma terre</a>
+                <?php else: ?>
+                    <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $signal['land_slug']) ?>">explorer l'île</a>
+                    <?php if ($currentLand): ?>
+                        <a class="meta-pill meta-pill-link" style="color: rgb(var(--land-secondary-rgb)); border-color: rgba(var(--land-secondary-rgb)/0.5);" href="/echo.php?u=<?= rawurlencode((string) $signal['land_username']) ?>">écho direct</a>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </header>
@@ -79,8 +84,8 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
         <section class="panel reveal signal-detail-shell" aria-labelledby="signal-detail-title">
             <div class="section-topline">
                 <div>
-                    <h2 id="signal-detail-title">Corps</h2>
-                    <p class="panel-copy">Lecture pleine.</p>
+                    <h2 id="signal-detail-title">Empreinte</h2>
+                    <p class="panel-copy">Trace laissée dans le flux.</p>
                 </div>
                 <?php if ($created): ?>
                     <span class="badge">signal transmis</span>

@@ -134,16 +134,20 @@ $ambientProfile = $visualProfile ?? land_collective_profile('calm');
             </section>
 
             <aside class="panel reveal" aria-labelledby="ritual-title">
-                <h2 id="ritual-title">Retour</h2>
-                <p class="panel-copy">Trois gestes.</p>
+                <h2 id="ritual-title">Liaisons</h2>
+                <p class="panel-copy">Réseau local.</p>
                 <p class="land-note">
-                    Revenir. Déposer. Copier.
+                    Emprunter un ferry ou copier les coordonnées de l'île.
                 </p>
                 <div class="action-row">
                     <a class="pill-link" href="/">Retour au noyau</a>
-                    <a class="ghost-link" href="/aza.php?u=<?= rawurlencode((string) $land['slug']) ?>">Ouvrir aZa</a>
                     <?php if ($isAuthenticatedHere): ?>
+                        <a class="ghost-link" href="/signal.php">Ferry 01 : Flux</a>
+                        <a class="ghost-link" href="/aza.php?u=<?= rawurlencode((string) $land['slug']) ?>">Ferry 03 : Fichiers</a>
+                        <a class="ghost-link" href="/echo.php">Ferry 04 : Écho</a>
                         <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
+                    <?php else: ?>
+                        <a class="ghost-link" href="/echo.php?u=<?= rawurlencode((string) $land['username']) ?>">Ferry 04 : Envoyer un écho</a>
                     <?php endif; ?>
                     <button
                         type="button"
@@ -169,7 +173,7 @@ $ambientProfile = $visualProfile ?? land_collective_profile('calm');
                         <p class="c0r3-summary-text">[ Aucune mémoire sédimentée ]</p>
                     <?php endif; ?>
                 </div>
-                <a class="ghost-link" href="/aza.php?u=<?= rawurlencode((string) $land['slug']) ?>">Déposer / ouvrir aZa</a>
+                <a class="ghost-link" href="/aza.php?u=<?= rawurlencode((string) $land['slug']) ?>">Sédimenter via Fichiers (Ferry 03)</a>
             </header>
 
             <?php if (!$landSummary['count']): ?>

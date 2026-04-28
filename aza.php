@@ -75,7 +75,8 @@ $groupedArchives = $chronology['grouped'];
 $chronoSummary = $chronology['summary'];
 $sources = aza_supported_sources();
 $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['owner_slug'] : $ownerSlug);
-$ambientLand = $ownerLand ?: current_authenticated_land();
+$authenticatedLand = current_authenticated_land();
+$ambientLand = $ownerLand ?: $authenticatedLand;
 $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collective_profile('nocturnal');
 ?>
 <!DOCTYPE html>
@@ -83,9 +84,9 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="aZa — importer des archives ZIP de réseaux existants pour en faire une archive personnelle légère sur <?= h($brandDomain) ?>.">
+    <meta name="description" content="Ferry 03 — Fichiers et sédimentation d'archives sur <?= h($brandDomain) ?>.">
     <meta name="theme-color" content="#09090b">
-    <title>aZa — archive légère — <?= h($brandDomain) ?></title>
+    <title>Fichiers (aZa) — <?= h($brandDomain) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
@@ -97,7 +98,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
 
 <main class="layout page-shell">
     <header class="hero page-header reveal">
-        <p class="eyebrow"><strong>aZa</strong> <span>mémoire légère</span></p>
+        <p class="eyebrow"><strong>ferry 03</strong> <span>Fichiers / mémoire légère</span></p>
         <h1 class="land-title">
             <strong>Déposer sans algorithme.</strong>
             <span>I inverse</span>
@@ -117,6 +118,10 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
             <?php endif; ?>
             <?php if ($ownerLand): ?>
                 <span class="meta-pill">terre liée : <?= h((string) $ownerLand['slug']) ?></span>
+            <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">explorer l'île</a>
+            <?php if ($authenticatedLand && $ownerLand['slug'] !== $authenticatedLand['slug']): ?>
+                <a class="meta-pill meta-pill-link" style="color: rgb(var(--land-secondary-rgb)); border-color: rgba(var(--land-secondary-rgb)/0.5);" href="/echo.php?u=<?= rawurlencode((string) $ownerLand['username']) ?>">écho direct</a>
+            <?php endif; ?>
             <?php endif; ?>
         </div>
 

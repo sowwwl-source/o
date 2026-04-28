@@ -286,21 +286,21 @@ body.home {
 	overflow-x: hidden;
 }
 
-body[data-land-program="collective"] {
+body.home[data-land-program="collective"] {
 	--panel-rgb: 10 16 19;
 	--land-accent-rgb: 126 158 186;
 	--land-secondary-rgb: 190 214 228;
 	--land-glow-rgb: 92 126 154;
 }
 
-body[data-land-program="culbu1on"] {
+body.home[data-land-program="culbu1on"] {
 	--panel-rgb: 16 20 28;
 	--land-accent-rgb: 123 150 180;
 	--land-secondary-rgb: 194 212 226;
 	--land-glow-rgb: 98 128 158;
 }
 
-body[data-land-program="dur3rb"] {
+body.home[data-land-program="dur3rb"] {
 	--panel-rgb: 10 10 12;
 	--land-accent-rgb: 226 226 230;
 	--land-secondary-rgb: 132 132 138;
@@ -308,7 +308,7 @@ body[data-land-program="dur3rb"] {
 	--ui-border: rgba(255, 255, 255, 0.12);
 }
 
-body[data-land-program="tocu"] {
+body.home[data-land-program="tocu"] {
 	--panel-rgb: 20 10 13;
 	--land-accent-rgb: 255 78 58;
 	--land-secondary-rgb: 255 122 200;
@@ -1816,6 +1816,7 @@ button:hover,
 	max-height: 18rem;
 	object-fit: contain;
 	filter: drop-shadow(0 0 1.2rem rgba(var(--fg-rgb) / 0.12));
+	will-change: transform;
 }
 
 .str3m-audio-shell {
@@ -2136,6 +2137,204 @@ button:hover,
 	padding: 1.5rem;
 	margin-bottom: 1.5rem;
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+/* --- STR3M ISLAND CARDS --- */
+.str3m-island-card {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	padding: 1.4rem;
+	background: radial-gradient(circle at top left, rgba(var(--land-secondary-rgb) / 0.06), transparent 60%), rgba(var(--panel-rgb) / 0.3);
+	border: 1px solid rgba(var(--fg-rgb) / 0.08);
+	transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.24s ease, box-shadow 0.24s ease;
+}
+
+.str3m-island-card:hover,
+.str3m-island-card:focus-within {
+	transform: translateY(-0.35rem);
+	border-color: rgba(var(--land-secondary-rgb) / 0.24);
+	box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.15);
+}
+
+.str3m-island-card .summary-value {
+	font-size: 1.3rem;
+	color: rgb(var(--land-secondary-rgb));
+	margin-top: 0.2rem;
+}
+
+.str3m-island-card .island-meta {
+	font-size: 0.85rem;
+	color: var(--muted);
+	margin: 0;
+	line-height: 1.4;
+}
+
+.str3m-island-card .pill-link {
+	margin-top: auto;
+	justify-content: center;
+}
+
+.str3m-island-card.is-glowing {
+	border-color: rgba(var(--land-secondary-rgb) / 0.5);
+	animation: island-pulse 4s infinite alternate ease-in-out;
+}
+
+.str3m-island-card.is-glowing .summary-value {
+	text-shadow: 0 0 12px rgba(var(--land-secondary-rgb) / 0.4);
+}
+
+@keyframes island-pulse {
+	0% {
+		box-shadow: 0 0 1rem rgba(var(--land-glow-rgb) / 0.1), inset 0 0 1rem rgba(var(--land-secondary-rgb) / 0.05);
+	}
+	100% {
+		box-shadow: 0 0 3rem rgba(var(--land-glow-rgb) / 0.35), inset 0 0 2rem rgba(var(--land-secondary-rgb) / 0.15);
+		border-color: rgba(var(--land-secondary-rgb) / 0.8);
+	}
+}
+
+/* --- ARCHIPELAGO 3D VIEWER --- */
+.archipelago-3d-container {
+	position: relative;
+	width: 100%;
+	height: 65vh;
+	min-height: 450px;
+	overflow: hidden;
+	border: 1px solid rgba(var(--fg-rgb) / 0.12);
+	border-radius: 1.2rem;
+	background: radial-gradient(circle at center, rgba(var(--land-glow-rgb) / 0.05), rgba(var(--panel-rgb) / 0.85) 80%);
+	cursor: grab;
+	perspective: 1200px;
+	margin-top: 1.5rem;
+	box-shadow: inset 0 0 4rem rgba(0, 0, 0, 0.4);
+}
+
+.archipelago-3d-container:active {
+	cursor: grabbing;
+}
+
+.archipelago-scene {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 0;
+	height: 0;
+	transform-style: preserve-3d;
+	will-change: transform;
+}
+
+.archipelago-node {
+	position: absolute;
+	transform-style: preserve-3d;
+}
+
+.archipelago-card-wrapper {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 260px;
+	will-change: transform;
+}
+
+.archipelago-node .str3m-island-card {
+	width: 100%;
+	margin: 0;
+}
+
+.archipelago-instructions {
+	position: absolute;
+	bottom: 1.5rem;
+	left: 50%;
+	transform: translateX(-50%);
+	color: rgba(var(--fg-rgb) / 0.6);
+	font-size: 0.75rem;
+	letter-spacing: 0.15em;
+	text-transform: uppercase;
+	pointer-events: none;
+	z-index: 10;
+	background: rgba(var(--bg-rgb) / 0.7);
+	padding: 0.5rem 1.2rem;
+	border-radius: 99px;
+	backdrop-filter: blur(8px);
+	border: 1px solid rgba(var(--fg-rgb) / 0.1);
+	white-space: nowrap;
+}
+
+/* --- ECHO (MESSAGERIE) --- */
+.echo-grid {
+	display: grid;
+	grid-template-columns: minmax(14rem, 20rem) 1fr;
+	gap: 2rem;
+	align-items: start;
+	margin-top: 3rem;
+}
+
+.echo-contacts {
+	display: grid;
+	gap: 0.6rem;
+}
+
+.echo-contact {
+	padding: 1.2rem;
+	background: rgba(var(--panel-rgb) / 0.4);
+	border: 1px solid rgba(var(--fg-rgb) / 0.08);
+	text-decoration: none;
+	transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.echo-contact:hover, .echo-contact.is-active {
+	background: rgba(var(--land-secondary-rgb) / 0.08);
+	border-color: rgba(var(--land-secondary-rgb) / 0.3);
+	transform: translateX(4px);
+}
+
+.echo-conversation {
+	display: grid;
+	gap: 1.5rem;
+	padding: 2rem;
+	margin-top: 0;
+}
+
+.echo-history {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	max-height: 60vh;
+	overflow-y: auto;
+}
+
+.echo-msg {
+	max-width: 85%;
+	padding: 1rem 1.2rem;
+	line-height: 1.6;
+}
+
+.echo-msg--sent {
+	align-self: flex-end;
+	border-right: 2px solid rgba(var(--land-secondary-rgb) / 0.6);
+	color: var(--fg);
+}
+
+.echo-msg--received {
+	align-self: flex-start;
+	border-left: 2px solid rgba(var(--fg-rgb) / 0.3);
+	color: var(--muted);
+}
+
+.echo-msg-meta {
+	font-size: 0.7rem;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	opacity: 0.6;
+	margin-bottom: 0.4rem;
+	display: block;
+}
+
+.echo-form {
+	margin-top: 1rem;
+	padding-top: 2rem;
+	border-top: 1px solid rgba(var(--fg-rgb) / 0.1);
 }
 
 .aza-archive-chronology {
@@ -2618,6 +2817,10 @@ button:hover,
 	.aza-archive-grid,
 	.c0r3-cards-list,
 	.aza-folders {
+		grid-template-columns: 1fr;
+	}
+
+	.echo-grid {
 		grid-template-columns: 1fr;
 	}
 

@@ -13,7 +13,6 @@ This stack covers:
 - `sowwwl.org` as the public-facing static site
 - `0wlslw0.com` as the alternate landing page
 - `sowwwl.com` as a temporary product shell
-- `sowwwl.art` as a static landing alias
 
 ## Why this layout
 
@@ -57,8 +56,6 @@ Point these hosts to the VPS:
 - `www.0wlslw0.com`
 - `sowwwl.com`
 - `www.sowwwl.com`
-- `sowwwl.art`
-- `www.sowwwl.art`
 
 ## Cloudflare checklist
 
