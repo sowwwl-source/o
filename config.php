@@ -286,3 +286,105 @@ function aza_api_upload(string $file_path, string $file_name, string $user_id, ?
         'body' => $decoded ?? $body,
     ];
 }
+
+// ─── DO Spaces (AWS Sig V4) ───────────────────────────────────────────────────
+
+function spaces_upload(string $local_path, string $remote_key): array
+{
+    if (!function_exists('curl_init')) {
+        return ['ok' => false, 'error' => 'curl not available'];
+    }
+
+    $access_key = getenv('DO_SPACES_KEY')    ?: '';
+    $secret_key = getenv('DO_SPACES_SECRET') ?: '';
+    $bucket     = getenv('DO_SPACES_BUCKET') ?: 'sc34u-x';
+    $region     = getenv('DO_SPACES_REGION') ?: 'ams3';
+
+    if ($access_key === '' || $secret_key === '') {
+        return ['ok' => false, 'error' => 'DO_SPACES_KEY / DO_SPACES_SECRET not configured'];
+    }
+
+    $host         = "{$bucket}.{$region}.digitaloceanspaces.com";
+    $url          = "https://{$host}/{$remote_key}";
+    $size         = (int)filesize($local_path);
+    $datetime     = gmdate('Ymd\THis\Z');
+    $date         = substr($datetime, 0, 8);
+    $payload_hash = hash_file('sha256', $local_path);
+
+    // Signed headers — sorted alphabetically
+    $signed = [
+        'content-type'         => 'application/zip',
+        'host'                 => $host,
+        'x-amz-acl'            => 'public-read',
+        'x-amz-content-sha256' => $payload_hash,
+        'x-amz-date'           => $datetime,
+    ];
+    ksort($signed);
+
+    $headers_canon  = '';
+    $signed_headers = '';
+    foreach ($signed as $k => $v) {
+        $headers_canon  .= "{$k}:{$v}\n";
+        $signed_headers .= ($signed_headers ? ';' : '') . $k;
+    }
+
+    $canonical = implode("\n", [
+        'PUT',
+        '/' . $remote_key,
+        '',
+        $headers_canon,
+        $signed_headers,
+        $payload_hash,
+    ]);
+
+    $scope          = "{$date}/{$region}/s3/aws4_request";
+    $string_to_sign = implode("\n", [
+        'AWS4-HMAC-SHA256',
+        $datetime,
+        $scope,
+        hash('sha256', $canonical),
+    ]);
+
+    $k_date    = hash_hmac('sha256', $date,          'AWS4' . $secret_key, true);
+    $k_region  = hash_hmac('sha256', $region,        $k_date,              true);
+    $k_service = hash_hmac('sha256', 's3',           $k_region,            true);
+    $k_signing = hash_hmac('sha256', 'aws4_request', $k_service,           true);
+    $signature = hash_hmac('sha256', $string_to_sign, $k_signing);
+
+    $auth = "AWS4-HMAC-SHA256 Credential={$access_key}/{$scope}, SignedHeaders={$signed_headers}, Signature={$signature}";
+
+    $fh = fopen($local_path, 'rb');
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_PUT            => true,
+        CURLOPT_INFILE         => $fh,
+        CURLOPT_INFILESIZE     => $size,
+        CURLOPT_HTTPHEADER     => [
+            "Authorization: {$auth}",
+            "Content-Type: application/zip",
+            "x-amz-acl: public-read",
+            "x-amz-content-sha256: {$payload_hash}",
+            "x-amz-date: {$datetime}",
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 120,
+    ]);
+
+    $body   = curl_exec($ch);
+    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    fclose($fh);
+
+    if ($status >= 200 && $status < 300) {
+        return ['ok' => true, 'url' => $url, 'key' => $remote_key];
+    }
+
+    return ['ok' => false, 'status' => $status, 'error' => (string)$body];
+}
+
+function spaces_url(string $key): string
+{
+    $bucket = getenv('DO_SPACES_BUCKET') ?: 'sc34u-x';
+    $region = getenv('DO_SPACES_REGION') ?: 'ams3';
+    return "https://{$bucket}.{$region}.digitaloceanspaces.com/{$key}";
+}

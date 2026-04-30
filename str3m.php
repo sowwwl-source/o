@@ -63,7 +63,7 @@ try {
             if (!isset($zips_map[$by])) $zips_map[$by] = [];
             $zips_map[$by][] = [
                 'name' => $z['original_name'],
-                'url'  => 'uploads/ports/' . $z['port_id'] . '/' . $z['stored_name'],
+                'url'  => spaces_url($z['stored_name']),
             ];
         }
     }

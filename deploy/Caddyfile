@@ -26,8 +26,7 @@
 # Domaines actifs. DNS manquant : api.sowwwl.cloud (ajouter A → 161.35.157.37).
 # Exclus volontairement (pas de DNS / pas de contenu) :
 # - 0.user.o.sowwwl.cloud
-# - 0wlslw0.com
-# - 0wlslw0.fr
+# - 0wlslw0.fr  (second droplet 164.92.220.248 — Caddyfile séparé)
 
 www.sowwwl.cloud {
 	redir https://sowwwl.cloud{uri} 308
@@ -89,6 +88,22 @@ www.sowwwl.com {
 }
 
 sowwwl.com {
+	import common_headers
+	reverse_proxy app:80
+
+	handle_errors {
+	    rewrite * /error.html
+	    file_server
+	}
+}
+
+# 0wlslw0.com — surdomaine global (même app)
+# DNS requis : A 0wlslw0.com → 161.35.157.37 + A www.0wlslw0.com → 161.35.157.37
+www.0wlslw0.com {
+	redir https://0wlslw0.com{uri} 308
+}
+
+0wlslw0.com {
 	import common_headers
 	reverse_proxy app:80
 

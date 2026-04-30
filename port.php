@@ -82,24 +82,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'file_upload') {
-        $file      = $_FILES['zipfile'] ?? null;
-        $upload_dir = __DIR__ . '/uploads/ports/' . $port['id'] . '/';
-        $max_size   = 20 * 1024 * 1024; // 20 MB
+        $file     = $_FILES['zipfile'] ?? null;
+        $max_size = 20 * 1024 * 1024; // 20 MB
 
         if ($file && $file['error'] === UPLOAD_ERR_OK) {
             $ext = strtolower(pathinfo((string)$file['name'], PATHINFO_EXTENSION));
             if ($file['size'] <= $max_size && $ext === 'zip') {
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0755, true);
-                    // Block direct directory listing
-                    file_put_contents($upload_dir . '.htaccess', "Options -Indexes\n");
-                }
-                $stored = bin2hex(random_bytes(10)) . '.zip';
-                if (move_uploaded_file($file['tmp_name'], $upload_dir . $stored)) {
+                $remote_key = 'ports/' . $port['id'] . '/' . bin2hex(random_bytes(10)) . '.zip';
+                $result     = spaces_upload($file['tmp_name'], $remote_key);
+
+                if ($result['ok']) {
                     $pdo->prepare("
                         INSERT INTO port_files (port_id, uploaded_by, original_name, stored_name, size_bytes)
                         VALUES (?, ?, ?, ?, ?)
-                    ")->execute([$port['id'], $username, basename((string)$file['name']), $stored, (int)$file['size']]);
+                    ")->execute([$port['id'], $username, basename((string)$file['name']), $remote_key, (int)$file['size']]);
                     $pdo->prepare("
                         INSERT INTO port_messages (port_id, username, body, type) VALUES (?, ?, ?, 'file_upload')
                     ")->execute([$port['id'], $username, basename((string)$file['name'])]);
@@ -364,7 +360,7 @@ body { max-width: 800px; margin: 3rem auto; padding: 0 1.5rem; }
             <span class="file-name"><?= htmlspecialchars($f['original_name']) ?></span>
             <span class="file-meta"> · par <?= htmlspecialchars($f['uploaded_by']) ?> · <?= fmt_size((int)$f['size_bytes']) ?> · <?= htmlspecialchars(date('d/m/Y', strtotime($f['created_at']))) ?></span>
           </span>
-          <a href="uploads/ports/<?= (int)$port['id'] ?>/<?= htmlspecialchars($f['stored_name']) ?>" download="<?= htmlspecialchars($f['original_name']) ?>">↓ télécharger</a>
+          <a href="<?= htmlspecialchars(spaces_url($f['stored_name'])) ?>" download="<?= htmlspecialchars($f['original_name']) ?>" target="_blank" rel="noopener">↓ télécharger</a>
         </li>
       <?php endforeach; ?>
     </ul>
