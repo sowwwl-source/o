@@ -49,7 +49,9 @@ if ($shore_success) {
 }
 
 if (!$land) {
-    die('LAND introuvable');
+    session_destroy();
+    header('Location: index.php');
+    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -188,7 +190,7 @@ button[type="button"]:hover {
   <?php if ($shore_success): ?>
     <p class="success"><?= htmlspecialchars($shore_message) ?></p>
   <?php elseif ($shore_message): ?>
-    <p class="error"><?= htmlspecialchars($shore_message) ?></p>
+    <p class="error"><?= htmlspecialchars($shore_message) ?> — <a href="shore.php">Actualiser</a></p>
   <?php endif; ?>
   
   <div class="shore-content">

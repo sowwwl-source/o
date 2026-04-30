@@ -302,7 +302,9 @@ if ($shore_success) {
 }
 
 if (!$land) {
-    die('LAND introuvable for ' . htmlspecialchars($username));
+    session_destroy();
+    header('Location: index.php');
+    exit;
 }
 
 // Notification email save
@@ -335,6 +337,28 @@ try {
     $unread_echoes = (int) $stmtUnread->fetchColumn();
 } catch (\Exception $e) {}
 
+// Pending t0cs (received, awaiting response)
+$pending_tocs = [];
+try {
+    $stmtTocs = $pdo->prepare("SELECT * FROM liaisons WHERE land_b = ? AND status = 'pending' ORDER BY created_at DESC");
+    $stmtTocs->execute([$username]);
+    $pending_tocs = $stmtTocs->fetchAll();
+} catch (\Exception $e) {}
+
+// Active liaisons with port slug
+$active_liaisons = [];
+try {
+    $stmtAL = $pdo->prepare("
+        SELECT l.id, l.land_a, l.land_b, l.status, l.created_at, p.slug AS port_slug
+        FROM liaisons l
+        LEFT JOIN ports p ON p.liaison_id = l.id
+        WHERE (l.land_a = ? OR l.land_b = ?) AND l.status = 'on'
+        ORDER BY l.updated_at DESC
+    ");
+    $stmtAL->execute([$username, $username]);
+    $active_liaisons = $stmtAL->fetchAll();
+} catch (\Exception $e) {}
+
 /* ===============================
    CHALOUPES (placeholder)
    =============================== */
@@ -344,6 +368,7 @@ $chaloupes = [
     ['label' => 'SHORE', 'url' => 'shore.php', 'description' => 'Le rivage où tu écris'],
     ['label' => 'BATO', 'url' => 'bato.php', 'description' => 'Le bateau qui tangue'],
     ['label' => $echo_label, 'url' => 'echo.php', 'description' => 'Résonance directe entre terres'],
+    ['label' => 'STR3M', 'url' => 'str3m.php', 'description' => "L'archipel en temps réel"],
     ['label' => 'DASHBOARD', 'url' => 'dashboard.php', 'description' => 'Statistiques et activité'],
     ['label' => 'AZA', 'url' => 'aza.php', 'description' => 'Les portails (entrée machine)'],
     ['label' => 'SILENCE', 'url' => 'silence.php', 'description' => 'Le vide qui respire'],
@@ -589,6 +614,62 @@ h2 {
 </section>
 
 <!-- ===============================
+     LIAISONS
+     =============================== -->
+<?php if (!empty($pending_tocs) || !empty($active_liaisons)): ?>
+<section id="liaisons">
+  <h2>LIAISONS</h2>
+
+  <?php if (!empty($pending_tocs)): ?>
+    <?php foreach ($pending_tocs as $toc): ?>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:0.75rem 0;border-bottom:1px solid var(--o-line);flex-wrap:wrap;">
+        <span style="font-size:0.9rem;">
+          <strong><?= htmlspecialchars($toc['land_a']) ?></strong>
+          frappe à ta porte
+          <span style="font-size:0.75rem;opacity:0.5;margin-left:0.5rem;"><?= htmlspecialchars(date('d/m H:i', strtotime($toc['created_at']))) ?></span>
+        </span>
+        <span style="display:flex;gap:0.5rem;">
+          <form method="post" action="toc.php" style="margin:0">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+            <input type="hidden" name="action" value="accept">
+            <input type="hidden" name="liaison_id" value="<?= (int)$toc['id'] ?>">
+            <button type="submit" style="padding:0.35rem 0.8rem;font-size:0.8rem;">liaisOn</button>
+          </form>
+          <form method="post" action="toc.php" style="margin:0">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+            <input type="hidden" name="action" value="decline">
+            <input type="hidden" name="liaison_id" value="<?= (int)$toc['id'] ?>">
+            <button type="submit" style="padding:0.35rem 0.8rem;font-size:0.8rem;opacity:0.5;">liaisOff</button>
+          </form>
+        </span>
+      </div>
+    <?php endforeach; ?>
+  <?php endif; ?>
+
+  <?php foreach ($active_liaisons as $al): ?>
+    <?php $other = $al['land_a'] === $username ? $al['land_b'] : $al['land_a']; ?>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:0.75rem 0;border-bottom:1px solid var(--o-line);flex-wrap:wrap;">
+      <span style="font-size:0.9rem;">
+        <strong><?= htmlspecialchars($other) ?></strong>
+        <span style="font-size:0.75rem;opacity:0.5;margin-left:0.5rem;">liaisOn</span>
+      </span>
+      <span style="display:flex;gap:0.5rem;align-items:center;">
+        <?php if ($al['port_slug']): ?>
+          <a href="port.php?slug=<?= htmlspecialchars($al['port_slug']) ?>" style="padding:0.35rem 0.8rem;font-size:0.8rem;border:1px solid var(--o-line);border-radius:3px;">→ p0rt</a>
+        <?php endif; ?>
+        <form method="post" action="toc.php" style="margin:0">
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+          <input type="hidden" name="action" value="cut">
+          <input type="hidden" name="liaison_id" value="<?= (int)$al['id'] ?>">
+          <button type="submit" style="padding:0.35rem 0.8rem;font-size:0.8rem;opacity:0.4;">couper</button>
+        </form>
+      </span>
+    </div>
+  <?php endforeach; ?>
+</section>
+<?php endif; ?>
+
+<!-- ===============================
      SHORE
      =============================== -->
 <section class="shore">
@@ -597,7 +678,7 @@ h2 {
   <?php if ($shore_success): ?>
     <p class="success"><?= htmlspecialchars($shore_message) ?></p>
   <?php elseif ($shore_message): ?>
-    <p class="error"><?= htmlspecialchars($shore_message) ?></p>
+    <p class="error"><?= htmlspecialchars($shore_message) ?> — <a href="land.php">Actualiser</a></p>
   <?php endif; ?>
   
   <div id="shore-view">
@@ -640,7 +721,7 @@ function toggleShoreEdit(event) {
   <?php if ($notif_success): ?>
     <p class="success"><?= htmlspecialchars($notif_message) ?></p>
   <?php elseif ($notif_message): ?>
-    <p class="error"><?= htmlspecialchars($notif_message) ?></p>
+    <p class="error"><?= htmlspecialchars($notif_message) ?> — <a href="land.php">Actualiser</a></p>
   <?php endif; ?>
 
   <form method="post">
@@ -684,7 +765,7 @@ function toggleShoreEdit(event) {
   <p class="hint">Listes séparées par virgules. JSON libre pour policy/events.</p>
 
   <?php if ($aza_message): ?>
-    <p class="message"><?= htmlspecialchars($aza_message) ?></p>
+    <p class="message"><?= htmlspecialchars($aza_message) ?> — <a href="land.php#aza">Réessayer</a></p>
   <?php endif; ?>
 
   <div class="aza-grid">

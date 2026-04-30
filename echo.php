@@ -194,7 +194,7 @@ h2 {
 <a class="back" href="land.php">← retour à la terre</a>
 
 <?php if ($message): ?>
-<p class="message"><?= htmlspecialchars($message) ?></p>
+<p class="message"><?= htmlspecialchars($message) ?> — <a href="echo.php<?= $target !== '' ? '?u=' . rawurlencode($target) : '' ?>">Actualiser</a></p>
 <?php endif; ?>
 
 <div class="echo-grid">

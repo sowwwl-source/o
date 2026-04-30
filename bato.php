@@ -20,7 +20,9 @@ $stmt->execute([$username]);
 $land = $stmt->fetch();
 
 if (!$land) {
-    die('LAND introuvable');
+    session_destroy();
+    header('Location: index.php');
+    exit;
 }
 ?>
 <!DOCTYPE html>

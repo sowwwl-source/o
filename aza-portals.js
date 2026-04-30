@@ -31,6 +31,52 @@
     sessionStorage.setItem(KEY_VISITED_MAX, String(clamp(n, 0, COUNT)));
   }
 
+  // Show a persistent, dismissible message in the viewer.
+  function showViewerMessage(html) {
+    const viewer = document.querySelector('.viewer-inner');
+    if (!viewer) return;
+
+    // Remove any existing message first.
+    viewer.querySelectorAll('.aza-lock-msg').forEach(el => el.remove());
+
+    const msg = document.createElement('div');
+    msg.className = 'aza-lock-msg';
+    msg.setAttribute('role', 'status');
+    Object.assign(msg.style, {
+      marginBottom: '1rem',
+      padding: '0.75rem 0.9rem',
+      border: '1px solid var(--o-line)',
+      background: 'var(--o-fill)',
+      boxShadow: 'var(--o-shadow)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '0.75rem',
+    });
+
+    const text = document.createElement('span');
+    text.innerHTML = html;
+
+    const close = document.createElement('button');
+    close.textContent = '×';
+    Object.assign(close.style, {
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: '1.1rem',
+      lineHeight: '1',
+      opacity: '0.5',
+      padding: '0',
+      flexShrink: '0',
+    });
+    close.setAttribute('aria-label', 'Fermer');
+    close.addEventListener('click', () => msg.remove());
+
+    msg.appendChild(text);
+    msg.appendChild(close);
+    viewer.prepend(msg);
+  }
+
   const p = currentPortal();
   let visitedMax = readVisitedMax();
   let unlocked = clamp(visitedMax + 1, 1, COUNT);
@@ -52,14 +98,16 @@
       a.setAttribute('aria-disabled', 'true');
       a.removeAttribute('data-o-layer');
       a.dataset.locked = '1';
+      a.title = `Portail verrouillé — ouvre d'abord le portail ${String(unlocked).padStart(2, '0')}.`;
     } else {
       a.setAttribute('aria-disabled', 'false');
       a.setAttribute('data-o-layer', '');
       delete a.dataset.locked;
+      a.removeAttribute('title');
     }
   }
 
-  // Optional: soft guidance if user tries to click a locked portal.
+  // Guidance when user clicks a locked portal.
   document.addEventListener(
     'click',
     (e) => {
@@ -83,20 +131,9 @@
         );
       }
 
-      const msg = document.createElement('div');
-      msg.setAttribute('role', 'status');
-      msg.style.marginTop = '1rem';
-      msg.style.padding = '0.75rem 0.9rem';
-      msg.style.border = '1px solid var(--o-line)';
-      msg.style.background = 'var(--o-fill)';
-      msg.style.boxShadow = 'var(--o-shadow)';
-      msg.textContent = `Ouvre d’abord le portail ${String(required).padStart(2, '0')}.`;
-
-      const viewer = document.querySelector('.viewer-inner');
-      if (viewer) {
-        viewer.prepend(msg);
-        window.setTimeout(() => msg.remove(), 1800);
-      }
+      showViewerMessage(
+        `Portail verrouillé. Ouvre d'abord le portail <strong>${String(required).padStart(2, '0')}</strong>.`
+      );
     },
     { capture: true }
   );
@@ -109,11 +146,13 @@
       a.setAttribute('aria-disabled', 'false');
       a.setAttribute('data-o-layer', '');
       delete a.dataset.locked;
+      a.removeAttribute('title');
       continue;
     }
     a.setAttribute('aria-disabled', 'true');
     a.removeAttribute('data-o-layer');
     a.dataset.locked = '1';
+    a.title = `Accès verrouillé — ouvre les ${String(COUNT).padStart(2, '0')} portails pour entrer.`;
   }
 
   document.addEventListener(
@@ -126,20 +165,10 @@
       e.preventDefault();
       bumpBlocked();
 
-      const msg = document.createElement('div');
-      msg.setAttribute('role', 'status');
-      msg.style.marginTop = '1rem';
-      msg.style.padding = '0.75rem 0.9rem';
-      msg.style.border = '1px solid var(--o-line)';
-      msg.style.background = 'var(--o-fill)';
-      msg.style.boxShadow = 'var(--o-shadow)';
-      msg.textContent = `Ouvre d’abord les ${String(COUNT).padStart(2, '0')} portails.`;
-
-      const viewer = document.querySelector('.viewer-inner');
-      if (viewer) {
-        viewer.prepend(msg);
-        window.setTimeout(() => msg.remove(), 1800);
-      }
+      const remaining = COUNT - visitedMax;
+      showViewerMessage(
+        `Accès verrouillé. Il reste <strong>${remaining}</strong> portail${remaining > 1 ? 's' : ''} à ouvrir.`
+      );
     },
     { capture: true }
   );
