@@ -14,6 +14,8 @@ $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
 $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $csrfToken = csrf_token();
+$guideHref = '/0wlslw0.php';
+$echoGuide = guide_path('echo');
 
 $land = current_authenticated_land();
 if (!$land) {
@@ -103,8 +105,19 @@ if ($targetUsername !== '') {
         <div class="land-meta">
             <a class="meta-pill meta-pill-link" href="/">retour au noyau</a>
             <span class="meta-pill">terre liée : <?= h((string) $land['slug']) ?></span>
+            <a class="meta-pill meta-pill-link" href="<?= h($guideHref) ?>">0wlslw0</a>
         </div>
     </header>
+
+    <section class="panel reveal meaning-panel" aria-labelledby="echo-meaning-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="echo-meaning-title">Pourquoi cette porte existe</h2>
+                <p class="panel-copy"><?= h((string) ($echoGuide['copy'] ?? 'Relier deux terres sans passer par le bruit public.')) ?></p>
+            </div>
+            <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0 : me guider</a>
+        </div>
+    </section>
 
     <section class="echo-grid reveal">
         <aside class="echo-contacts">

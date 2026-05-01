@@ -19,6 +19,8 @@ $ownerLand = null;
 $directHost = aza_direct_host();
 $isDirectRequest = aza_is_direct_request($host);
 $authenticatedLand = current_authenticated_land();
+$guideHref = '/0wlslw0.php';
+$azaGuide = guide_path('aza');
 
 if ($ownerSlug !== '') {
     try {
@@ -121,6 +123,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
             <span class="meta-pill">ZIP seulement</span>
             <span class="meta-pill"><?= h(aza_format_bytes(AZA_MAX_UPLOAD_BYTES)) ?> max côté app</span>
             <span class="meta-pill">archive légère</span>
+            <a class="meta-pill meta-pill-link" href="<?= h($guideHref) ?>">0wlslw0</a>
             <?php if ($isDirectRequest): ?>
                 <span class="meta-pill aza-direct-pill">entrée directe active<?= $directHost ? ' · ' . h($directHost) : '' ?></span>
             <?php elseif ($directUploadUrl): ?>
@@ -156,6 +159,16 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
             </p>
         <?php endif; ?>
     </header>
+
+    <section class="panel reveal meaning-panel" aria-labelledby="aza-meaning-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="aza-meaning-title">Pourquoi cette porte existe</h2>
+                <p class="panel-copy"><?= h((string) ($azaGuide['copy'] ?? 'Déposer, lire et retrouver des archives sans transformer la mémoire en flux opaque.')) ?></p>
+            </div>
+            <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0 : me guider</a>
+        </div>
+    </section>
 
     <section class="panel-shell aza-shell">
         <section class="panel reveal" aria-labelledby="aza-import-title">

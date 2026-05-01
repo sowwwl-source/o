@@ -127,6 +127,7 @@ $homePrimaryActionHref = $authenticatedLand
     ? '/land.php?u=' . rawurlencode($activeLandSlug)
     : '#poser';
 $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Rejoindre le peuple de l\'O';
+$guideHref = '/0wlslw0.php';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -199,11 +200,17 @@ $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Rejoindre le
             <div class="hero-actions">
                 <a class="pill-link" href="/signal.php">Flux</a>
                 <a class="ghost-link" href="/str3m.php">Str3m</a>
+                <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0</a>
                 <a class="ghost-link" href="<?= h($homePrimaryActionHref) ?>"><?= h($homePrimaryActionLabel) ?></a>
             </div>
         </article>
 
         <nav class="island-grid editorial-nav" aria-label="Ferries (Applications)">
+            <a href="<?= h($guideHref) ?>" class="island-card">
+                <span class="summary-label">Porte 00</span>
+                <strong>0wlslw0</strong>
+                <span>Comprendre O., choisir un passage, poser une terre.</span>
+            </a>
             <a href="/signal.php" class="island-card">
                 <span class="summary-label">Ferry 01</span>
                 <strong>Flux</strong>

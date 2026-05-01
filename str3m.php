@@ -18,6 +18,8 @@ $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ .
 $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 
 $authenticatedLand = current_authenticated_land();
+$guideHref = '/0wlslw0.php';
+$str3mGuide = guide_path('str3m');
 
 // 1. Chargement du courant quotidien (Str3m)
 $dailyStream = str3m_build_daily_stream(null);
@@ -73,12 +75,23 @@ $ambientProfile = land_collective_profile((string) ($dailyStream['mood'] ?? 'cal
 
         <div class="land-meta">
             <a class="meta-pill meta-pill-link" href="/">retour au noyau</a>
+            <a class="meta-pill meta-pill-link" href="<?= h($guideHref) ?>">0wlslw0</a>
             <?php if ($authenticatedLand): ?>
                 <span class="meta-pill">terre liée : <?= h((string) $authenticatedLand['slug']) ?></span>
             <?php endif; ?>
             <span class="meta-pill">humeur : <?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></span>
         </div>
     </header>
+
+    <section class="panel reveal meaning-panel" aria-labelledby="str3m-meaning-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="str3m-meaning-title">Pourquoi cette porte existe</h2>
+                <p class="panel-copy"><?= h((string) ($str3mGuide['copy'] ?? 'Explorer le courant public sans forcer l’entrée.')) ?></p>
+            </div>
+            <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0 : me guider</a>
+        </div>
+    </section>
 
     <section class="panel reveal str3m-panel" aria-labelledby="str3m-title">
         <div class="section-topline">

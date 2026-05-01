@@ -148,10 +148,12 @@ $ambientProfile = $visualProfile ?? land_collective_profile('calm');
                         <a class="ghost-link" href="/signal.php">Ferry 01 : Flux</a>
                         <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
                         <a class="ghost-link" href="/echo.php">Ferry 04 : Écho</a>
+                        <a class="ghost-link" href="/0wlslw0.php">0wlslw0</a>
                         <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
                     <?php else: ?>
                         <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
                         <a class="ghost-link" href="/echo.php?u=<?= rawurlencode((string) $land['username']) ?>">Ferry 04 : Envoyer un écho</a>
+                        <a class="ghost-link" href="/0wlslw0.php">0wlslw0 : se repérer</a>
                     <?php endif; ?>
                     <button
                         type="button"

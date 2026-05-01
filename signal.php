@@ -16,6 +16,8 @@ $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ .
 $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $csrfToken = csrf_token();
 $land = current_authenticated_land();
+$guideHref = '/0wlslw0.php';
+$signalGuide = guide_path('signal');
 $ambientProfile = $land ? land_visual_profile($land) : land_collective_profile('dense');
 $publicSignals = list_public_signals();
 $mySignals = $land ? list_signals((string) $land['slug']) : [];
@@ -63,6 +65,7 @@ if ($errorCode !== '') {
 
         <div class="land-meta">
             <a class="meta-pill meta-pill-link" href="/">retour au noyau</a>
+            <a class="meta-pill meta-pill-link" href="<?= h($guideHref) ?>">0wlslw0</a>
             <?php if ($land): ?>
                 <span class="meta-pill">terre liée : <?= h((string) $land['slug']) ?></span>
                 <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $land['slug']) ?>">ouvrir la terre</a>
@@ -71,6 +74,16 @@ if ($errorCode !== '') {
             <?php endif; ?>
         </div>
     </header>
+
+    <section class="panel reveal meaning-panel" aria-labelledby="signal-meaning-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="signal-meaning-title">Pourquoi cette porte existe</h2>
+                <p class="panel-copy"><?= h((string) ($signalGuide['copy'] ?? 'Émettre une trace depuis une terre ou lire ce qui circule publiquement.')) ?></p>
+            </div>
+            <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0 : me guider</a>
+        </div>
+    </section>
 
     <?php if ($message !== ''): ?>
         <section class="panel reveal">

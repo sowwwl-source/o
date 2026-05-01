@@ -1919,6 +1919,177 @@ button:hover,
 	padding: 0;
 }
 
+.guide-grid,
+.guide-cards {
+	display: grid;
+	gap: 1.4rem;
+}
+
+.guide-grid {
+	grid-template-columns: minmax(0, 1.12fr) minmax(18rem, 0.88fr);
+	align-items: start;
+}
+
+.guide-cards {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.guide-panel,
+.guide-card {
+	position: relative;
+	padding-left: 1.4rem;
+	background: transparent;
+	border-radius: 0;
+	box-shadow: none;
+}
+
+.guide-panel::before,
+.guide-card::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0.15rem;
+	bottom: 0.15rem;
+	width: 1px;
+	background: linear-gradient(180deg, rgba(var(--fg-rgb) / 0), var(--editorial-line-strong) 20%, var(--editorial-line) 72%, rgba(var(--fg-rgb) / 0));
+	transition: background 0.4s ease, transform 0.4s ease;
+}
+
+.guide-panel:hover::before,
+.guide-card:hover::before,
+.guide-panel:focus-within::before,
+.guide-card:focus-within::before {
+	background: linear-gradient(180deg, rgba(var(--fg-rgb) / 0), rgba(var(--land-secondary-rgb) / 0.42) 24%, rgba(var(--land-secondary-rgb) / 0.18) 72%, rgba(var(--fg-rgb) / 0));
+	transform: scaleY(1.02);
+}
+
+.guide-card {
+	display: grid;
+	gap: 0.55rem;
+	text-decoration: none;
+	color: inherit;
+	min-height: 0;
+}
+
+.guide-card strong {
+	font-size: 1.05rem;
+	line-height: 1.18;
+}
+
+.guide-card-static {
+	text-decoration: none;
+}
+
+.guide-card p {
+	margin: 0;
+	color: rgba(var(--fg-rgb) / 0.76);
+	line-height: 1.65;
+}
+
+.guide-card .ghost-link {
+	justify-self: start;
+	margin-top: 0.1rem;
+}
+
+.guide-card:hover,
+.guide-card:focus-visible {
+	transform: translateX(0.25rem);
+	opacity: 0.96;
+}
+
+.guide-summary-grid {
+	margin-top: 1.15rem;
+}
+
+.guide-glossary-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 1rem;
+	margin-top: 1rem;
+}
+
+.guide-glossary-card {
+	align-content: start;
+}
+
+.guide-glossary-card p {
+	margin: 0.55rem 0 0;
+	color: rgba(var(--fg-rgb) / 0.78);
+	line-height: 1.62;
+}
+
+.guide-list,
+.guide-steps,
+.guide-prompt-list,
+.guide-faq {
+	display: grid;
+	gap: 0.95rem;
+	margin: 1rem 0 0;
+	padding: 0;
+}
+
+.guide-list,
+.guide-prompt-list {
+	list-style: none;
+}
+
+.guide-list li,
+.guide-prompt-list li {
+	margin: 0;
+	color: rgba(var(--fg-rgb) / 0.84);
+	line-height: 1.68;
+}
+
+.guide-steps {
+	list-style: none;
+	counter-reset: guide-step;
+}
+
+.guide-steps li {
+	display: grid;
+	gap: 0.3rem;
+	margin: 0;
+}
+
+.guide-steps strong {
+	font-size: 1rem;
+}
+
+.guide-steps p {
+	margin: 0;
+	color: rgba(var(--fg-rgb) / 0.76);
+	line-height: 1.62;
+}
+
+.guide-faq .panel-copy {
+	margin-top: 0.2rem;
+}
+
+.guide-console {
+	display: grid;
+	gap: 0.3rem;
+	margin-top: 1rem;
+	padding: 0.1rem 0 0.1rem 1.15rem;
+	border-left: 1px solid rgba(var(--fg-rgb) / 0.18);
+	font-family: Menlo, Consolas, monospace;
+	font-size: 0.88rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: color-mix(in srgb, var(--fg) 74%, var(--bg) 26%);
+}
+
+.guide-console p {
+	margin: 0;
+}
+
+.guide-embed-note {
+	margin-top: 1.1rem;
+}
+
+.meaning-panel {
+	padding-left: 1.4rem;
+}
+
 .page-header .eyebrow {
 	display: inline-flex;
 	align-items: center;
@@ -2810,6 +2981,9 @@ button:hover,
 	.surface-grid,
 	.panel-shell,
 	.signal-grid,
+	.guide-grid,
+	.guide-cards,
+	.guide-glossary-grid,
 	.steps-grid,
 	.metric-grid,
 	.summary-grid,
