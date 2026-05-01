@@ -10,6 +10,7 @@ $logged_in = isset($_SESSION['username']);
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="<?= htmlspecialchars(asset_url('/global-styles.css')) ?>">
+<script src="<?= htmlspecialchars(asset_url('/main.js')) ?>" defer></script>
 <title>Page introuvable — O.</title>
 <style>
 body {
@@ -35,18 +36,18 @@ p { opacity: 0.7; margin-bottom: 2rem; }
 .actions a:hover { background: var(--o-fg); color: var(--o-bg); border-color: transparent; }
 </style>
 </head>
-<body>
+<body data-o-recovery-context="404" data-o-recovery-home="<?= htmlspecialchars($logged_in ? '/land' : '/') ?>">
 <main>
   <h1>O.</h1>
   <p class="code">404 — Page introuvable</p>
-  <p>La page demandée n'existe pas ou a été déplacée.</p>
+  <p>La page demandée n'existe pas ou a quitté cette couche. Une autre entrée reste possible.</p>
   <div class="actions">
     <?php if ($logged_in): ?>
-      <a href="/land">← Retour à la terre</a>
+      <a href="/land" data-o-layer>← Retour à la terre</a>
     <?php else: ?>
-      <a href="/">← Retour à l'accueil</a>
+      <a href="/" data-o-layer>← Retour à l'accueil</a>
     <?php endif; ?>
-    <a href="/aza">AZA</a>
+    <a href="/aza" data-o-layer>AZA</a>
   </div>
 </main>
 </body>

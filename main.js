@@ -6,6 +6,9 @@
   const NEGATIVE_KEY = 'o:layer:negative';
   const APPARITIONS_LAST_AT_KEY = 'o:apparitions:last_at';
   const FLASH_LAST_BLACK_AT_KEY = 'o:flash:last_black_at';
+  const RECOVERY_LAST_SHOWN_AT_KEY = 'o:recovery:last_shown_at';
+  const RECOVERY_DISMISSED_UNTIL_KEY = 'o:recovery:dismissed_until';
+  const AZA_VISITED_MAX_KEY = 'o:aza:visited_max';
 
   const SCORE_START_AT_KEY = 'o:score:start_at';
   const SCORE_NAV_COUNT_KEY = 'o:score:nav_count';
@@ -19,6 +22,7 @@
   let baseParity = '0';
   let apparitionTimer = null;
   let apparitionHideTimer = null;
+  let recoveryTimer = null;
   let audioContext = null;
   let audioMaster = null;
 
@@ -108,6 +112,12 @@
 
   function clamp01(n) {
     return clamp(n, 0, 1);
+  }
+
+  function normalizedPathname(urlLike = window.location.href) {
+    const url = urlLike instanceof URL ? urlLike : new URL(String(urlLike), window.location.href);
+    const path = url.pathname.replace(/\/+$/, '') || '/';
+    return path === '/' ? '/install' : path;
   }
 
   function readNumber(key) {
@@ -203,6 +213,21 @@
     sessionStorage.setItem(entrySeenKey(id), String(ms));
   }
 
+  function readDismissedRecoveryUntil() {
+    return Math.max(0, readNumber(RECOVERY_DISMISSED_UNTIL_KEY));
+  }
+
+  function setDismissedRecoveryUntil(ms) {
+    writeNumber(RECOVERY_DISMISSED_UNTIL_KEY, Math.max(0, ms));
+  }
+
+  function readAzaVisitedMax() {
+    const raw = sessionStorage.getItem(AZA_VISITED_MAX_KEY);
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) return 0;
+    return Math.floor(n);
+  }
+
   function rarityWeight(rarity) {
     if (rarity === 'common') return 12;
     if (rarity === 'uncommon') return 5;
@@ -266,18 +291,18 @@
 
   function pickApparitionTargets() {
     const entrypoints = [
-      { id: 'install', label: 'INSTALL', href: '/install', rarity: 'common' },
       { id: 'land', label: 'LAND', href: '/land', rarity: 'common' },
       { id: 'shore', label: 'SHORE', href: '/shore', rarity: 'common' },
       { id: 'bato', label: 'BATO', href: '/bato', rarity: 'uncommon' },
       { id: 'dashboard', label: 'DASHBOARD', href: '/dashboard', rarity: 'uncommon' },
       { id: 'aza', label: 'AZA', href: '/aza', rarity: 'rare' },
       { id: 'silence', label: 'SILENCE', href: '/silence', rarity: 'rare' },
+      { id: 'install', label: 'INSTALL', href: '/install', rarity: 'mythic' },
     ];
 
     const now = Date.now();
-    const path = window.location.pathname.replace(/\/+$/, '') || '/';
-    const normalized = path === '/' ? '/install' : path;
+    const blockedCount = Math.max(0, Math.floor(readNumber(SCORE_BLOCKED_KEY)));
+    const normalized = normalizedPathname();
 
     const filtered = entrypoints.filter((e) => {
       if (normalized === e.href) return false;
@@ -290,7 +315,14 @@
     function materialize(candidates) {
       return candidates.map((e) => ({
         ...e,
-        weight: rarityWeight(e.rarity),
+        weight: (() => {
+          let weight = rarityWeight(e.rarity);
+          if (blockedCount >= 2) {
+            if (e.id === 'land' || e.id === 'shore' || e.id === 'aza' || e.id === 'silence') weight *= 1.8;
+            if (e.id === 'dashboard') weight *= 0.75;
+          }
+          return weight;
+        })(),
       }));
     }
 
@@ -317,6 +349,226 @@
 
     const picked = sampleWeightedWithoutReplacement(materialize(candidates), targetCount);
     return picked;
+  }
+
+  function recoveryTargetsForCurrentPath() {
+    const normalized = normalizedPathname();
+    const recoveryContext = document.body?.dataset?.oRecoveryContext || '';
+    const recoveryHome = document.body?.dataset?.oRecoveryHome || '/land';
+    const blockedCount = Math.max(0, Math.floor(readNumber(SCORE_BLOCKED_KEY)));
+    const targets = [];
+
+    function pushTarget(href, label, detail) {
+      if (!href) return;
+      const canonical = href === '/' ? '/install' : href.replace(/\/+$/, '') || '/';
+      if (canonical === normalized) return;
+      if (normalized.startsWith('/aza/') && canonical === '/aza') return;
+      if (targets.some((target) => target.href === href)) return;
+      targets.push({ href, label, detail });
+    }
+
+    if (recoveryContext === '404') {
+      pushTarget(recoveryHome, recoveryHome === '/' ? 'ACCUEIL' : 'LAND', 'reprendre un chemin connu');
+      pushTarget('/aza', 'AZA', 'ouvrir un passage guidé');
+      pushTarget('/silence', 'SILENCE', 'respirer avant de repartir');
+      return targets;
+    }
+
+    if (normalized === '/aza' || normalized.startsWith('/aza/')) {
+      const nextPortal = clamp(readAzaVisitedMax() + 1, 1, Number(document.body?.dataset?.azaCount || 5));
+      pushTarget(`/aza/${nextPortal}`, `PORTAIL ${String(nextPortal).padStart(2, '0')}`, 'continuer le fil');
+      if (readAzaVisitedMax() >= Number(document.body?.dataset?.azaCount || 5)) {
+        pushTarget('/land#aza', 'ENTRER', 'ouvrir la suite depuis LAND');
+      }
+      pushTarget('/land', 'LAND', 'revenir au centre');
+      pushTarget('/silence', 'SILENCE', 'reprendre souffle');
+      return targets;
+    }
+
+    if (normalized === '/silence') {
+      pushTarget('/land', 'LAND', 'retrouver le point d’ancrage');
+      pushTarget('/shore', 'SHORE', 'écrire pour relancer');
+      pushTarget('/aza', 'AZA', 'passer par une autre couche');
+      pushTarget('/str3m', 'SIGNAL', 'reprendre une vue large');
+      return targets;
+    }
+
+    if (normalized === '/shore') {
+      pushTarget('/land', 'LAND', 'revenir au centre');
+      pushTarget('/silence', 'SILENCE', 'ralentir');
+      pushTarget('/aza', 'AZA', 'ouvrir les portails');
+      return targets;
+    }
+
+    if (normalized === '/land') {
+      pushTarget('/shore', 'SHORE', 'poser une phrase');
+      pushTarget('/aza', 'AZA', 'ouvrir une séquence guidée');
+      pushTarget('/str3m', 'SIGNAL', 'voir l’archipel');
+      if (blockedCount >= 2) pushTarget('/silence', 'SILENCE', 'desserrer la tension');
+      return targets;
+    }
+
+    if (normalized === '/str3m') {
+      pushTarget('/land', 'LAND', 'revenir à la terre');
+      pushTarget('/aza', 'AZA', 'changer de plan');
+      pushTarget('/silence', 'SILENCE', 'revenir au calme');
+      return targets;
+    }
+
+    if (normalized.startsWith('/port')) {
+      pushTarget('/land', 'LAND', 'revenir à la terre');
+      pushTarget('/echo', 'ECHO', 'continuer autrement');
+      pushTarget('/str3m', 'SIGNAL', 'reprendre la carte');
+      return targets;
+    }
+
+    pushTarget('/land', 'LAND', 'reprendre au centre');
+    pushTarget('/aza', 'AZA', 'ouvrir un passage');
+    pushTarget('/silence', 'SILENCE', 'repartir plus doucement');
+    return targets;
+  }
+
+  function recoveryLeadForCurrentPath() {
+    const normalized = normalizedPathname();
+    const recoveryContext = document.body?.dataset?.oRecoveryContext || '';
+    const blockedCount = Math.max(0, Math.floor(readNumber(SCORE_BLOCKED_KEY)));
+
+    if (recoveryContext === '404') {
+      return "Cette voie s'arrête ici. On peut repartir sans perdre le fil.";
+    }
+    if (normalized === '/aza' || normalized.startsWith('/aza/')) {
+      return blockedCount > 0
+        ? "Le passage se resserre. Voici la prochaine porte utile."
+        : "Les portails restent ouverts dans l'ordre. On garde le fil.";
+    }
+    if (normalized === '/silence') {
+      return "Le calme peut rester un passage, pas une impasse.";
+    }
+    if (blockedCount >= 3) {
+      return "On peut quitter l'impasse sans casser le rythme.";
+    }
+    return "Une autre trajectoire peut s'ouvrir depuis ici.";
+  }
+
+  function hideRecoveryPrompt() {
+    const root = document.getElementById('o-recovery');
+    if (!root) return;
+    root.classList.add('is-hidden');
+    window.setTimeout(() => root.remove(), 220);
+  }
+
+  function mountRecoveryPrompt() {
+    const targets = recoveryTargetsForCurrentPath();
+    if (targets.length === 0) return;
+
+    const existing = document.getElementById('o-recovery');
+    if (existing) existing.remove();
+
+    const root = document.createElement('aside');
+    root.id = 'o-recovery';
+    root.className = 'is-hidden';
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-live', 'polite');
+    root.setAttribute('aria-label', 'Reprise de trajectoire');
+
+    const head = document.createElement('div');
+    head.className = 'o-recovery__head';
+
+    const copy = document.createElement('div');
+    copy.className = 'o-recovery__copy';
+
+    const title = document.createElement('div');
+    title.className = 'o-recovery__title';
+    title.textContent = 'Reprendre';
+    copy.appendChild(title);
+
+    const body = document.createElement('p');
+    body.className = 'o-recovery__body';
+    body.textContent = recoveryLeadForCurrentPath();
+    copy.appendChild(body);
+
+    const close = document.createElement('button');
+    close.className = 'o-recovery__close';
+    close.type = 'button';
+    close.textContent = '×';
+    close.setAttribute('aria-label', 'Masquer cette aide');
+    close.addEventListener('click', () => {
+      setDismissedRecoveryUntil(Date.now() + 2 * 60_000);
+      hideRecoveryPrompt();
+    });
+
+    head.appendChild(copy);
+    head.appendChild(close);
+    root.appendChild(head);
+
+    const actions = document.createElement('div');
+    actions.className = 'o-recovery__actions';
+    for (const target of targets.slice(0, 4)) {
+      const a = document.createElement('a');
+      a.className = 'o-recovery__link';
+      a.href = target.href;
+      a.setAttribute('data-o-layer', '');
+
+      const label = document.createElement('span');
+      label.className = 'o-recovery__label';
+      label.textContent = target.label;
+      a.appendChild(label);
+
+      if (target.detail) {
+        const detail = document.createElement('span');
+        detail.className = 'o-recovery__detail';
+        detail.textContent = target.detail;
+        a.appendChild(detail);
+      }
+
+      actions.appendChild(a);
+    }
+    root.appendChild(actions);
+
+    document.body.appendChild(root);
+    writeNumber(RECOVERY_LAST_SHOWN_AT_KEY, Date.now());
+    requestAnimationFrame(() => root.classList.remove('is-hidden'));
+  }
+
+  function scheduleRecovery(forceFast = false) {
+    if (recoveryTimer) {
+      window.clearTimeout(recoveryTimer);
+      recoveryTimer = null;
+    }
+
+    if (Date.now() < readDismissedRecoveryUntil()) return;
+
+    const blockedCount = Math.max(0, Math.floor(readNumber(SCORE_BLOCKED_KEY)));
+    const recoveryContext = document.body?.dataset?.oRecoveryContext || '';
+    const normalized = normalizedPathname();
+    const lastShownAt = readNumber(RECOVERY_LAST_SHOWN_AT_KEY);
+    const sinceShownMs = Date.now() - lastShownAt;
+    const minRepeatMs = forceFast ? 2_500 : 20_000;
+
+    if (sinceShownMs < minRepeatMs) return;
+
+    let delayMs = null;
+    if (recoveryContext === '404') {
+      delayMs = 900;
+    } else if ((normalized === '/aza' || normalized.startsWith('/aza/')) && blockedCount >= 1) {
+      delayMs = forceFast ? 320 : 1200;
+    } else if (blockedCount >= 3) {
+      delayMs = forceFast ? 320 : 2200;
+    } else if (blockedCount >= 2) {
+      delayMs = forceFast ? 450 : 7000;
+    } else if (normalized === '/silence') {
+      delayMs = 15000;
+    }
+
+    if (delayMs === null) return;
+
+    recoveryTimer = window.setTimeout(() => {
+      if (document.hidden || isTextEntryFocused()) {
+        scheduleRecovery(forceFast);
+        return;
+      }
+      mountRecoveryPrompt();
+    }, delayMs);
   }
 
   function mountApparitions(targets) {
@@ -453,8 +705,9 @@
 
     const lastAt = readLastApparitionAt();
     const now = Date.now();
-    const minGapMs = 18000;
-    const initialDelayMs = randomInt(2600, 7200);
+    const blockedCount = Math.max(0, Math.floor(readNumber(SCORE_BLOCKED_KEY)));
+    const minGapMs = blockedCount >= 2 ? 7000 : 18000;
+    const initialDelayMs = blockedCount >= 2 ? randomInt(900, 2400) : randomInt(2600, 7200);
     const waitMs = Math.max(initialDelayMs, minGapMs - (now - lastAt));
 
     apparitionTimer = window.setTimeout(() => {
@@ -712,6 +965,7 @@
   // Back/forward cache: restore parity and clean up.
   window.addEventListener('pageshow', () => {
     cancelZoomArtifacts();
+    hideRecoveryPrompt();
     const url = new URL(window.location.href);
     const forced = forcedParityFromDom();
     if (forced) {
@@ -720,11 +974,18 @@
       sessionStorage.setItem(LAST_KEY, baseParity);
       applyParity(baseParity);
       scheduleApparitions();
+      scheduleRecovery();
       return;
     }
     baseParity = readParityForUrl(url);
     applyParity(baseParity);
     scheduleApparitions();
+    scheduleRecovery();
+  });
+
+  document.addEventListener('o:blocked', () => {
+    setDismissedRecoveryUntil(0);
+    scheduleRecovery(true);
   });
 
   // Try to unlock audio as early as possible (still requires a user gesture in most browsers).
@@ -740,4 +1001,5 @@
   window.addEventListener('keydown', tryUnlock, true);
 
   scheduleApparitions();
+  scheduleRecovery();
 })();

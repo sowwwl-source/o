@@ -12,6 +12,7 @@
     const n = Number(raw);
     const next = (Number.isFinite(n) ? Math.floor(n) : 0) + 1;
     sessionStorage.setItem(SCORE_BLOCKED_KEY, String(next));
+    document.dispatchEvent(new CustomEvent('o:blocked'));
   }
 
   function currentPortal() {
@@ -32,7 +33,7 @@
   }
 
   // Show a persistent, dismissible message in the viewer.
-  function showViewerMessage(html) {
+  function showViewerMessage({ html, actions = [] }) {
     const viewer = document.querySelector('.viewer-inner');
     if (!viewer) return;
 
@@ -54,8 +55,46 @@
       gap: '0.75rem',
     });
 
+    const box = document.createElement('div');
+    Object.assign(box.style, {
+      display: 'grid',
+      gap: '0.6rem',
+      justifyItems: 'start',
+    });
+
     const text = document.createElement('span');
     text.innerHTML = html;
+    box.appendChild(text);
+
+    if (actions.length > 0) {
+      const row = document.createElement('div');
+      Object.assign(row.style, {
+        display: 'flex',
+        gap: '0.5rem',
+        flexWrap: 'wrap',
+      });
+
+      for (const action of actions) {
+        if (!action || !action.href || !action.label) continue;
+        const link = document.createElement('a');
+        link.href = action.href;
+        link.textContent = action.label;
+        link.setAttribute('data-o-layer', '');
+        Object.assign(link.style, {
+          padding: '0.45rem 0.7rem',
+          border: '1px solid var(--o-line)',
+          textDecoration: 'none',
+          color: 'inherit',
+          background: 'var(--o-bg)',
+          fontSize: '0.82rem',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+        });
+        row.appendChild(link);
+      }
+
+      if (row.childElementCount > 0) box.appendChild(row);
+    }
 
     const close = document.createElement('button');
     close.textContent = '×';
@@ -72,7 +111,7 @@
     close.setAttribute('aria-label', 'Fermer');
     close.addEventListener('click', () => msg.remove());
 
-    msg.appendChild(text);
+    msg.appendChild(box);
     msg.appendChild(close);
     viewer.prepend(msg);
   }
@@ -131,9 +170,13 @@
         );
       }
 
-      showViewerMessage(
-        `Portail verrouillé. Ouvre d'abord le portail <strong>${String(required).padStart(2, '0')}</strong>.`
-      );
+      showViewerMessage({
+        html: `Portail verrouillé. Ouvre d'abord le portail <strong>${String(required).padStart(2, '0')}</strong>.`,
+        actions: [
+          { label: `Portail ${String(required).padStart(2, '0')}`, href: `/aza/${required}` },
+          { label: 'LAND', href: '/land' },
+        ],
+      });
     },
     { capture: true }
   );
@@ -166,9 +209,13 @@
       bumpBlocked();
 
       const remaining = COUNT - visitedMax;
-      showViewerMessage(
-        `Accès verrouillé. Il reste <strong>${remaining}</strong> portail${remaining > 1 ? 's' : ''} à ouvrir.`
-      );
+      showViewerMessage({
+        html: `Accès verrouillé. Il reste <strong>${remaining}</strong> portail${remaining > 1 ? 's' : ''} à ouvrir.`,
+        actions: [
+          { label: `Portail ${String(clamp(visitedMax + 1, 1, COUNT)).padStart(2, '0')}`, href: `/aza/${clamp(visitedMax + 1, 1, COUNT)}` },
+          { label: 'LAND', href: '/land' },
+        ],
+      });
     },
     { capture: true }
   );

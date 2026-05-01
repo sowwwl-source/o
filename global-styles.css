@@ -171,6 +171,109 @@ input:focus, textarea:focus, select:focus {
 }
 
 /* =====================================
+   Recovery prompts
+   ===================================== */
+
+#o-recovery {
+  position: fixed;
+  right: 1rem;
+  bottom: 4.75rem;
+  width: min(380px, calc(100vw - 2rem));
+  display: grid;
+  gap: 0.9rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--o-line);
+  background: rgba(var(--o-bg-rgb) / 0.94);
+  box-shadow: 0 18px 60px rgba(0,0,0,0.24);
+  backdrop-filter: blur(10px);
+  z-index: 10002;
+  opacity: 1;
+  transform: translateY(0px);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+#o-recovery.is-hidden {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
+
+.o-recovery__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.o-recovery__copy {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.o-recovery__title {
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.62;
+}
+
+.o-recovery__body {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  opacity: 0.84;
+}
+
+.o-recovery__close {
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1.15rem;
+  line-height: 1;
+  opacity: 0.45;
+  padding: 0;
+}
+
+.o-recovery__close:hover {
+  opacity: 1;
+  background: none;
+}
+
+.o-recovery__actions {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.o-recovery__link {
+  display: grid;
+  gap: 0.14rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--o-line);
+  background: var(--o-fill);
+  box-shadow: 0 10px 24px rgba(var(--o-fg-rgb) / 0.10);
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.o-recovery__link:hover {
+  color: inherit;
+  background: var(--o-fill-2);
+  border-color: rgba(var(--o-fg-rgb) / 0.55);
+  transform: translateY(-1px);
+}
+
+.o-recovery__label {
+  font-size: 0.83rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.o-recovery__detail {
+  font-size: 0.78rem;
+  opacity: 0.68;
+}
+
+/* =====================================
    Apparitions (discovery links)
    ===================================== */
 
@@ -265,11 +368,22 @@ input:focus, textarea:focus, select:focus {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  #o-recovery,
   #o-apparitions {
     transition: none;
   }
+  .o-recovery__link,
   .o-apparition-link,
   .o-flip-char.is-locked {
     transition: none;
+  }
+}
+
+@media (max-width: 700px) {
+  #o-recovery {
+    right: 1rem;
+    left: 1rem;
+    width: auto;
+    bottom: 5.25rem;
   }
 }

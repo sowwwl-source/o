@@ -98,6 +98,7 @@ function render_portal_content(array $portals, int $portal): void
   data-o-parity="<?= htmlspecialchars($o_parity) ?>"
   data-aza-count="5"
   data-aza-portal="<?= htmlspecialchars((string)$portal) ?>"
+  data-o-recovery-context="aza"
 >
   <main class="hero">
     <h1>AZA</h1>
@@ -133,7 +134,7 @@ function render_portal_content(array $portals, int $portal): void
     </section>
 
     <div class="footer">
-      <a class="pill" href="/install" data-o-layer>S’installer</a>
+      <a class="pill" href="/silence" data-o-layer>SILENCE</a>
       <a class="pill" href="/land" data-o-layer>Aller à LAND</a>
       <a class="pill" href="/land#aza" data-aza-requires="complete" data-o-layer>Entrer en machine</a>
     </div>
