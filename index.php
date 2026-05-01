@@ -27,6 +27,20 @@ function valid_username(string $username): bool
 
 $invite_codes = invite_codes();
 
+$pdoConn = null;
+if (isset($pdo) && $pdo instanceof PDO) {
+    $pdoConn = $pdo;
+} elseif (function_exists('get_pdo')) {
+    try {
+        $candidate = get_pdo();
+        if ($candidate instanceof PDO) {
+            $pdoConn = $candidate;
+        }
+    } catch (Throwable $exception) {
+        $pdoConn = null;
+    }
+}
+
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -55,9 +69,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = "Fuseau horaire invalide.";
             } elseif (!in_array($invite_code, $invite_codes, true)) {
                 $message = "Code d’invitation invalide.";
+            } elseif (!$pdoConn instanceof PDO) {
+                $message = "Connexion base indisponible. Réessaie dans un instant.";
             } else {
                 try {
-                    $stmt = $pdo->prepare("
+                    $stmt = $pdoConn->prepare("
                         INSERT INTO lands (username, password_hash, email_virtual, timezone, zone_code)
                         VALUES (:username, :password_hash, :email_virtual, :timezone, :zone_code)
                     ");
@@ -92,8 +108,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($username === '' || $password === '') {
                 $message = "Identifiants invalides.";
+            } elseif (!$pdoConn instanceof PDO) {
+                $message = "Connexion base indisponible. Réessaie dans un instant.";
             } else {
-                $stmt = $pdo->prepare("SELECT username, password_hash FROM lands WHERE username = ?");
+                $stmt = $pdoConn->prepare("SELECT username, password_hash FROM lands WHERE username = ?");
                 $stmt->execute([$username]);
                 $land = $stmt->fetch();
 

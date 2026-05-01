@@ -23,6 +23,26 @@
 	}
 }
 
+(dead_end_recovery) {
+	handle_errors {
+		root * /srv/sites/_errors
+		rewrite * /error.html
+		file_server
+	}
+}
+
+(app_proxy_with_recovery) {
+	reverse_proxy app:80 {
+		@dead_end_status status 401 403 404 405 410 429 500 502 503 504
+		handle_response @dead_end_status {
+			root * /srv/sites/_errors
+			rewrite * /error.html
+			file_server
+		}
+	}
+	import dead_end_recovery
+}
+
 # Domaines actifs. DNS manquant : api.sowwwl.cloud (ajouter A → 161.35.157.37).
 # Exclus volontairement (pas de DNS / pas de contenu) :
 # - 0.user.o.sowwwl.cloud
@@ -34,12 +54,7 @@ www.sowwwl.cloud {
 
 sowwwl.cloud {
 	import common_headers
-	reverse_proxy app:80
-
-	handle_errors {
-	    rewrite * /error.html
-	    file_server
-	}
+	import app_proxy_with_recovery
 }
 
 www.o.sowwwl.cloud {
@@ -48,12 +63,7 @@ www.o.sowwwl.cloud {
 
 o.sowwwl.cloud {
 	import common_headers
-	reverse_proxy app:80
-
-	handle_errors {
-	    rewrite * /error.html
-	    file_server
-	}
+	import app_proxy_with_recovery
 }
 
 api.sowwwl.cloud {
@@ -69,6 +79,7 @@ sowwwl.me {
 	import common_headers
 	import static_security_headers
 	root * /srv/sites/sowwwl.me
+	import dead_end_recovery
 	file_server
 }
 
@@ -80,6 +91,7 @@ sowwwl.org {
 	import common_headers
 	import static_security_headers
 	root * /srv/sites/sowwwl.org
+	import dead_end_recovery
 	file_server
 }
 
@@ -89,12 +101,7 @@ www.sowwwl.com {
 
 sowwwl.com {
 	import common_headers
-	reverse_proxy app:80
-
-	handle_errors {
-	    rewrite * /error.html
-	    file_server
-	}
+	import app_proxy_with_recovery
 }
 
 # 0wlslw0.com — surdomaine global (même app)
@@ -105,12 +112,7 @@ www.0wlslw0.com {
 
 0wlslw0.com {
 	import common_headers
-	reverse_proxy app:80
-
-	handle_errors {
-	    rewrite * /error.html
-	    file_server
-	}
+	import app_proxy_with_recovery
 }
 
 www.sowwwl.art {
@@ -121,17 +123,13 @@ sowwwl.art {
 	import common_headers
 	import static_security_headers
 	root * /srv/sites/0wlslw0.com
+	import dead_end_recovery
 	file_server
 }
 
 sowwwl.tech {
 	import common_headers
-	reverse_proxy app:80
-
-	handle_errors {
-	    rewrite * /error.html
-	    file_server
-	}
+	import app_proxy_with_recovery
 }
 
 www.sowwwl.tech {

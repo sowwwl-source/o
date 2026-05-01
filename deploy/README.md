@@ -21,6 +21,7 @@ and one minimal API compatibility container.
 - `Caddyfile` - domain routing and redirects
 - `api/` - minimal AzA API stub with docs and health endpoints
 - `sites/` - static sites for the hub, PFVEE layer, org, alternate landing, and SPA shell
+- `sites/_errors/error.html` - shared recovery page used by Caddy `handle_errors` to avoid UX dead ends
 
 ## Prepare
 

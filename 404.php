@@ -47,6 +47,8 @@ p { opacity: 0.7; margin-bottom: 2rem; }
     <?php else: ?>
       <a href="/" data-o-layer>← Retour à l'accueil</a>
     <?php endif; ?>
+    <a href="/signal" data-o-layer>Flux</a>
+    <a href="/str3m" data-o-layer>Str3m</a>
     <a href="/aza" data-o-layer>AZA</a>
   </div>
 </main>

@@ -23,6 +23,26 @@
 	}
 }
 
+(dead_end_recovery) {
+	handle_errors {
+		root * /srv/sites/_errors
+		rewrite * /error.html
+		file_server
+	}
+}
+
+(app_proxy_with_recovery) {
+	reverse_proxy app:80 {
+		@dead_end_status status 401 403 404 405 410 429 500 502 503 504
+		handle_response @dead_end_status {
+			root * /srv/sites/_errors
+			rewrite * /error.html
+			file_server
+		}
+	}
+	import dead_end_recovery
+}
+
 # Cutover-ready subset as of 2026-04-26.
 # Intentionally excludes hosts that were failing DNS or HTTPS checks:
 # - sowwwl.cloud
@@ -39,6 +59,7 @@ sowwwl.me {
 	import common_headers
 	import static_security_headers
 	root * /srv/sites/sowwwl.me
+	import dead_end_recovery
 	file_server
 }
 
@@ -50,6 +71,7 @@ sowwwl.org {
 	import common_headers
 	import static_security_headers
 	root * /srv/sites/sowwwl.org
+	import dead_end_recovery
 	file_server
 }
 
@@ -59,7 +81,7 @@ www.sowwwl.com {
 
 sowwwl.com {
 	import common_headers
-	reverse_proxy app:80
+	import app_proxy_with_recovery
 }
 
 www.sowwwl.art {
@@ -70,5 +92,6 @@ sowwwl.art {
 	import common_headers
 	import static_security_headers
 	root * /srv/sites/0wlslw0.com
+	import dead_end_recovery
 	file_server
 }
