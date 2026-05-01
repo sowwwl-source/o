@@ -18,6 +18,7 @@ $ownerSlug = trim((string) ($_GET['u'] ?? $_POST['owner_slug'] ?? ''));
 $ownerLand = null;
 $directHost = aza_direct_host();
 $isDirectRequest = aza_is_direct_request($host);
+$authenticatedLand = current_authenticated_land();
 
 if ($ownerSlug !== '') {
     try {
@@ -29,6 +30,11 @@ if ($ownerSlug !== '') {
         $ownerLand = null;
     }
 }
+
+$isAuthenticatedHere = $ownerLand && $authenticatedLand && auth_is_land_session_for((string) $ownerLand['slug']);
+$canEditArchives = $authenticatedLand && ($ownerLand === null || $isAuthenticatedHere);
+$publicReadOnly = !$canEditArchives;
+$editLand = $ownerLand ?: $authenticatedLand;
 
 $message = '';
 $messageType = 'info';
@@ -47,7 +53,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form['notes'] = trim((string) ($_POST['notes'] ?? ''));
     $csrfCandidate = (string) ($_POST['csrf_token'] ?? '');
 
-    if (!verify_csrf_token($csrfCandidate)) {
+    if ($publicReadOnly) {
+        $message = $ownerLand
+            ? 'Lecture publique seulement. Ouvre la Terre liée pour déposer ou modifier cette mémoire.'
+            : 'Lecture publique seulement. Ouvre une Terre pour déposer une archive.';
+        $messageType = 'warning';
+    } elseif (!verify_csrf_token($csrfCandidate)) {
         $message = 'Session expirée. Recharge la page et réessaie.';
         $messageType = 'warning';
     } elseif (!isset($_FILES['archive_zip'])) {
@@ -75,7 +86,6 @@ $groupedArchives = $chronology['grouped'];
 $chronoSummary = $chronology['summary'];
 $sources = aza_supported_sources();
 $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['owner_slug'] : $ownerSlug);
-$authenticatedLand = current_authenticated_land();
 $ambientLand = $ownerLand ?: $authenticatedLand;
 $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collective_profile('nocturnal');
 ?>
@@ -118,10 +128,20 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
             <?php endif; ?>
             <?php if ($ownerLand): ?>
                 <span class="meta-pill">terre liée : <?= h((string) $ownerLand['slug']) ?></span>
-            <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">explorer l'île</a>
-            <?php if ($authenticatedLand && $ownerLand['slug'] !== $authenticatedLand['slug']): ?>
-                <a class="meta-pill meta-pill-link" style="color: rgb(var(--land-secondary-rgb)); border-color: rgba(var(--land-secondary-rgb)/0.5);" href="/echo.php?u=<?= rawurlencode((string) $ownerLand['username']) ?>">écho direct</a>
-            <?php endif; ?>
+                <?php if ($isAuthenticatedHere): ?>
+                    <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">édition Terre</a>
+                <?php else: ?>
+                    <span class="meta-pill">lecture publique seulement</span>
+                    <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">Terre</a>
+                <?php endif; ?>
+                <?php if ($authenticatedLand && $ownerLand['slug'] !== $authenticatedLand['slug']): ?>
+                    <a class="meta-pill meta-pill-link" style="color: rgb(var(--land-secondary-rgb)); border-color: rgba(var(--land-secondary-rgb)/0.5);" href="/echo.php?u=<?= rawurlencode((string) $ownerLand['username']) ?>">écho direct</a>
+                <?php endif; ?>
+            <?php elseif ($authenticatedLand): ?>
+                <span class="meta-pill">session liée : <?= h((string) $authenticatedLand['slug']) ?></span>
+                <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">édition Terre</a>
+            <?php else: ?>
+                <span class="meta-pill">lecture publique seulement</span>
             <?php endif; ?>
         </div>
 
@@ -142,10 +162,16 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
             <div class="section-topline">
                 <div>
                     <h2 id="aza-import-title">Sédimentation</h2>
-                    <p class="panel-copy">Un ZIP entre, une mémoire se forme.</p>
+                    <p class="panel-copy">
+                        <?= $publicReadOnly ? 'La mémoire reste lisible ici. Le dépôt passe par la Terre liée.' : 'Un ZIP entre, une mémoire se forme.' ?>
+                    </p>
                 </div>
-                <a class="ghost-link" href="<?= $form['owner_slug'] !== '' ? '/land.php?u=' . rawurlencode($form['owner_slug']) : '/' ?>">
-                    <?= $form['owner_slug'] !== '' ? 'Retour à la terre' : 'Retour au noyau' ?>
+                <a class="ghost-link" href="<?=
+                    $editLand
+                        ? '/land.php?u=' . rawurlencode((string) $editLand['slug'])
+                        : ($form['owner_slug'] !== '' ? '/land.php?u=' . rawurlencode($form['owner_slug']) : '/')
+                ?>">
+                    <?= $editLand ? 'Terre' : ($form['owner_slug'] !== '' ? 'Retour à la terre' : 'Retour au noyau') ?>
                 </a>
             </div>
 
@@ -155,45 +181,67 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                 </div>
             <?php endif; ?>
 
-            <form method="post" enctype="multipart/form-data" class="land-form aza-form">
-                <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+            <?php if ($publicReadOnly): ?>
+                <div class="signup-preview aza-preview">
+                    <span class="summary-label">Mode</span>
+                    <strong class="preview-title">Lecture publique seulement</strong>
+                    <p class="land-note">
+                        <?= $ownerLand
+                            ? 'Cette mémoire reste ouverte à la lecture, mais l’écriture passe par la Terre liée.'
+                            : 'La mémoire collective reste visible ici, mais l’écriture demande une Terre active.' ?>
+                    </p>
+                    <div class="action-row">
+                        <?php if ($ownerLand): ?>
+                            <a class="pill-link" href="/land.php?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">Terre</a>
+                        <?php else: ?>
+                            <a class="pill-link" href="/">Ouvrir une Terre</a>
+                        <?php endif; ?>
+                        <?php if ($authenticatedLand): ?>
+                            <a class="ghost-link" href="/land.php?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">Retour à mon édition</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php else: ?>
+                <form method="post" enctype="multipart/form-data" class="land-form aza-form">
+                    <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
 
-                <label>
-                    Terre liée
-                    <input type="text" name="owner_slug" placeholder="ex: nox" value="<?= h($form['owner_slug']) ?>">
-                    <span class="input-hint">Optionnel.</span>
-                </label>
+                    <label>
+                        Terre liée
+                        <input type="text" name="owner_slug" placeholder="ex: nox" value="<?= h($form['owner_slug']) ?>">
+                        <span class="input-hint">Optionnel.</span>
+                    </label>
 
-                <label>
-                    Nom de l’archive
-                    <input type="text" name="label" placeholder="ex: export-instagram-2024" value="<?= h($form['label']) ?>">
-                </label>
+                    <label>
+                        Nom de l’archive
+                        <input type="text" name="label" placeholder="ex: export-instagram-2024" value="<?= h($form['label']) ?>">
+                    </label>
 
-                <label>
-                    Source probable
-                    <select name="source_hint">
-                        <?php foreach ($sources as $value => $label): ?>
-                            <option value="<?= h($value) ?>" <?= $form['source_hint'] === $value ? 'selected' : '' ?>><?= h($label) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
+                    <label>
+                        Source probable
+                        <select name="source_hint">
+                            <?php foreach ($sources as $value => $label): ?>
+                                <option value="<?= h($value) ?>" <?= $form['source_hint'] === $value ? 'selected' : '' ?>><?= h($label) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
 
-                <label>
-                    Archive ZIP
-                    <input type="file" name="archive_zip" accept=".zip,application/zip" required>
-                    <span class="input-hint">ZIP seulement.</span>
-                    <?php if ($directUploadUrl && !$isDirectRequest): ?>
-                        <span class="input-hint">Pour un très gros ZIP, utilise <a class="ghost-link" href="<?= h($directUploadUrl) ?>">l’entrée directe</a>.</span>
-                    <?php endif; ?>
-                </label>
+                    <label>
+                        Archive ZIP
+                        <input type="file" name="archive_zip" accept=".zip,application/zip" required>
+                        <span class="input-hint">ZIP seulement.</span>
+                        <?php if ($directUploadUrl && !$isDirectRequest): ?>
+                            <span class="input-hint">Pour un très gros ZIP, utilise <a class="ghost-link" href="<?= h($directUploadUrl) ?>">l’entrée directe</a>.</span>
+                        <?php endif; ?>
+                    </label>
 
-                <label>
-                    Note de contexte
-                    <textarea name="notes" rows="4" placeholder="Contexte, provenance, repères utiles."><?= h($form['notes']) ?></textarea>
-                </label>
+                    <label>
+                        Note de contexte
+                        <textarea name="notes" rows="4" placeholder="Contexte, provenance, repères utiles."><?= h($form['notes']) ?></textarea>
+                    </label>
 
-                <button type="submit">Sédimenter l'archive</button>
-            </form>
+                    <button type="submit">Sédimenter l'archive</button>
+                </form>
+            <?php endif; ?>
 
             <?php if ($imported): ?>
                 <div class="signup-preview aza-preview">

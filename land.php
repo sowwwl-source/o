@@ -40,6 +40,9 @@ $landSummary = $landChronology['summary'];
 $archiveSources = aza_supported_sources();
 $authenticatedLand = current_authenticated_land();
 $isAuthenticatedHere = $land && $authenticatedLand && auth_is_land_session_for((string) $land['slug']);
+$azaLandHref = $land ? '/aza.php?u=' . rawurlencode((string) $land['slug']) : '/aza.php';
+$azaLandLinkLabel = $isAuthenticatedHere ? 'Ferry 03 : aZa' : 'Ferry 03 : aZa · lecture publique';
+$azaLandEditLabel = $isAuthenticatedHere ? 'Édition Terre via aZa' : 'aZa · lecture publique seulement';
 $visualProfile = $land ? land_visual_profile($land) : null;
 $ambientProfile = $visualProfile ?? land_collective_profile('calm');
 ?>
@@ -143,10 +146,11 @@ $ambientProfile = $visualProfile ?? land_collective_profile('calm');
                     <a class="pill-link" href="/">Retour au noyau</a>
                     <?php if ($isAuthenticatedHere): ?>
                         <a class="ghost-link" href="/signal.php">Ferry 01 : Flux</a>
-                        <a class="ghost-link" href="/aza.php?u=<?= rawurlencode((string) $land['slug']) ?>">Ferry 03 : Fichiers</a>
+                        <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
                         <a class="ghost-link" href="/echo.php">Ferry 04 : Écho</a>
                         <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
                     <?php else: ?>
+                        <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
                         <a class="ghost-link" href="/echo.php?u=<?= rawurlencode((string) $land['username']) ?>">Ferry 04 : Envoyer un écho</a>
                     <?php endif; ?>
                     <button
@@ -173,7 +177,7 @@ $ambientProfile = $visualProfile ?? land_collective_profile('calm');
                         <p class="c0r3-summary-text">[ Aucune mémoire sédimentée ]</p>
                     <?php endif; ?>
                 </div>
-                <a class="ghost-link" href="/aza.php?u=<?= rawurlencode((string) $land['slug']) ?>">Sédimenter via Fichiers (Ferry 03)</a>
+                <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandEditLabel) ?></a>
             </header>
 
             <?php if (!$landSummary['count']): ?>
