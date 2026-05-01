@@ -12,6 +12,12 @@ if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
     exit;
 }
 
+$requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/';
+if (($host === '0wlslw0.com' || $host === 'www.0wlslw0.com') && ($requestPath === '/' || $requestPath === '/index.php')) {
+    header('Location: /0wlslw0.php', true, 302);
+    exit;
+}
+
 $message = '';
 $messageType = 'info';
 $timezoneSuggestions = [
