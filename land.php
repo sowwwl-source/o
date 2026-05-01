@@ -145,7 +145,7 @@ $ambientProfile = $visualProfile ?? land_collective_profile('calm');
                 <div class="action-row">
                     <a class="pill-link" href="/">Retour au noyau</a>
                     <?php if ($isAuthenticatedHere): ?>
-                        <a class="ghost-link" href="/signal.php">Ferry 01 : Flux</a>
+                        <a class="ghost-link" href="/signal">Ferry 01 : Flux</a>
                         <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
                         <a class="ghost-link" href="/echo.php">Ferry 04 : Écho</a>
                         <a class="ghost-link" href="/0wlslw0.php">0wlslw0</a>

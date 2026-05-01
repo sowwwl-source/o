@@ -103,7 +103,7 @@ $promptSeeds = guide_prompt_seeds();
 
             <div class="action-row">
                 <a class="pill-link" href="<?= h($canonicalOrigin . '/#poser') ?>">Commencer la creation</a>
-                <a class="ghost-link" href="<?= h($canonicalOrigin . '/str3m.php') ?>">Visiter publiquement</a>
+                <a class="ghost-link" href="<?= h($canonicalOrigin . '/str3m') ?>">Visiter publiquement</a>
                 <a class="ghost-link" href="<?= h($canonicalOrigin . '/aza.php') ?>">Lire aZa</a>
                 <?php if ($agentUrl !== ''): ?>
                     <a class="ghost-link" href="<?= h($agentUrl) ?>" target="_blank" rel="noopener">Parler a 0wlslw0</a>

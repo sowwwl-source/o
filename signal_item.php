@@ -65,7 +65,7 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
             <p class="lead">Trace isolée dans l'océan public.</p>
 
             <div class="land-meta">
-                <a class="meta-pill meta-pill-link" href="/signal.php">retour au flux</a>
+                <a class="meta-pill meta-pill-link" href="/signal">retour au flux</a>
                 <span class="meta-pill"><?= h($signalDate ?? 'maintenant') ?></span>
                 <span class="meta-pill"><?= h((string) $signal['kind']) ?></span>
                 <?php if ($isOwner): ?>
@@ -118,7 +118,7 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
             <h1>Cette transmission n’est pas lisible ici.</h1>
             <p class="lead">Elle est peut-être privée, brouillon, ou simplement absente.</p>
             <div class="hero-actions">
-                <a class="pill-link" href="/signal.php">Retour au flux</a>
+                <a class="pill-link" href="/signal">Retour au flux</a>
             </div>
         </section>
     <?php endif; ?>

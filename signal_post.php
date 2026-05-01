@@ -6,7 +6,7 @@ require_once __DIR__ . '/lib/signals.php';
 
 $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
 if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
-    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/signal.php');
+    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/signal');
     header('Location: https://sowwwl.com' . $path, true, 302);
     exit;
 }
@@ -19,13 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $land = current_authenticated_land();
 if (!$land) {
-    header('Location: /signal.php?error=auth', true, 303);
+    header('Location: /signal?error=auth', true, 303);
     exit;
 }
 
 $token = (string) ($_POST['csrf_token'] ?? '');
 if (!verify_csrf_token($token)) {
-    header('Location: /signal.php?error=csrf', true, 303);
+    header('Location: /signal?error=csrf', true, 303);
     exit;
 }
 
@@ -34,9 +34,9 @@ try {
     header('Location: /signal_item.php?id=' . rawurlencode((string) $signal['id']) . '&created=1', true, 303);
     exit;
 } catch (InvalidArgumentException $exception) {
-    header('Location: /signal.php?error=validation', true, 303);
+    header('Location: /signal?error=validation', true, 303);
     exit;
 } catch (RuntimeException $exception) {
-    header('Location: /signal.php?error=storage', true, 303);
+    header('Location: /signal?error=storage', true, 303);
     exit;
 }

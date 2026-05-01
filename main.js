@@ -264,7 +264,7 @@ function detectSwipeDirection(deltaX, deltaY, distance, duration) {
 function swipeDestination(direction) {
 	switch (direction) {
 		case "left":
-			return "/signal.php";
+			return "/signal";
 		case "right":
 			return "/aza.php";
 		case "up":

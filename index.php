@@ -204,8 +204,8 @@ $guideHref = '/0wlslw0.php';
             <p class="vortex" aria-hidden="true">(.λ.)</p>
             <p class="lead"><?= h($homeLead) ?></p>
             <div class="hero-actions">
-                <a class="pill-link" href="/signal.php">Flux</a>
-                <a class="ghost-link" href="/str3m.php">Str3m</a>
+                <a class="pill-link" href="/signal">Flux</a>
+                <a class="ghost-link" href="/str3m">Str3m</a>
                 <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0</a>
                 <a class="ghost-link" href="<?= h($homePrimaryActionHref) ?>"><?= h($homePrimaryActionLabel) ?></a>
             </div>
@@ -217,12 +217,12 @@ $guideHref = '/0wlslw0.php';
                 <strong>0wlslw0</strong>
                 <span>Comprendre O., choisir un passage, poser une terre.</span>
             </a>
-            <a href="/signal.php" class="island-card">
+            <a href="/signal" class="island-card">
                 <span class="summary-label">Ferry 01</span>
                 <strong>Flux</strong>
                 <span>Émettre, capter, laisser passer.</span>
             </a>
-            <a href="/str3m.php" class="island-card">
+            <a href="/str3m" class="island-card">
                 <span class="summary-label">Ferry 02</span>
                 <strong>Str3m</strong>
                 <span>Explorer les îles des autres utilisateurs.</span>

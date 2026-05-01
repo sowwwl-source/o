@@ -6,7 +6,7 @@ require_once __DIR__ . '/lib/signals.php';
 
 $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
 if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
-    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/signal.php');
+    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/signal');
     header('Location: https://sowwwl.com' . $path, true, 302);
     exit;
 }
