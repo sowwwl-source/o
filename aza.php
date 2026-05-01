@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/config.php';
 
-$host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+$host = request_host();
 if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
     $path = (string) ($_SERVER['REQUEST_URI'] ?? '/aza.php');
     header('Location: https://sowwwl.com' . $path, true, 302);
@@ -19,7 +19,7 @@ $ownerLand = null;
 $directHost = aza_direct_host();
 $isDirectRequest = aza_is_direct_request($host);
 $authenticatedLand = current_authenticated_land();
-$guideHref = '/0wlslw0.php';
+$guideHref = '/0wlslw0';
 $azaGuide = guide_path('aza');
 
 if ($ownerSlug !== '') {

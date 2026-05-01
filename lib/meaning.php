@@ -17,7 +17,7 @@ function guide_paths(): array
             'label' => 'Ferry 01',
             'key' => 'signal',
             'title' => 'Signal',
-            'copy' => 'Émettre une trace. Public si on publie, privé si on garde la phrase pour sa terre.',
+            'copy' => 'Ouvrir une boîte liée à sa terre, écrire à une autre adresse du réseau et valider une identité de notification.',
             'href' => '/signal',
             'cta' => 'Ouvrir Signal',
             'public' => true,
@@ -74,12 +74,12 @@ function guide_principles(): array
         [
             'label' => 'Principe',
             'title' => 'Public quand il faut, privé quand ça compte',
-            'copy' => 'Str3m et certaines traces se lisent publiquement. L’écriture, l’archive et l’adresse intime passent par une terre liée.',
+            'copy' => 'Str3m se lit publiquement. L’écriture adressée, l’archive et l’identité de contact passent par une terre liée.',
         ],
         [
             'label' => 'Principe',
             'title' => 'Chaque ferry a un rôle',
-            'copy' => 'Signal fait circuler, Str3m fait découvrir, aZa sédimente, Écho relie. 0wlslw0 explique sans remplacer.',
+            'copy' => 'Signal adresse, Str3m fait découvrir, aZa sédimente, Écho résonne encore en direct. 0wlslw0 explique sans remplacer.',
         ],
     ];
 }
@@ -97,7 +97,7 @@ function guide_glossary(): array
         ],
         [
             'term' => 'Signal',
-            'meaning' => 'Une trace textuelle qui peut rester brouillon, devenir publique ou rester close.',
+            'meaning' => 'La boîte aux lettres d’une terre : adresse virtuelle, validation d’identité et conversation située.',
         ],
         [
             'term' => 'Str3m',
@@ -134,7 +134,7 @@ function guide_creation_steps(): array
         [
             'label' => '03',
             'title' => 'Entrer par le bon ferry',
-            'copy' => 'Signal pour émettre, Str3m pour explorer, aZa pour sédimenter, Écho pour parler à une autre terre.',
+            'copy' => 'Signal pour écrire à une autre terre, Str3m pour explorer, aZa pour sédimenter, Écho pour une liaison directe.',
         ],
     ];
 }

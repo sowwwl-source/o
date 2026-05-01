@@ -32,8 +32,8 @@ Each ferry should be explained clearly.
 
 ### Signal
 
-Signal is for emitting traces.
-A trace can be draft, private, unlisted, or public.
+Signal is the situated mailbox.
+It gives each land a virtual address, a private inbox, and a lightweight identity validation flow.
 
 ### Str3m
 
@@ -73,11 +73,11 @@ Typical intents:
 
 - `/` : home and land creation
 - `/#poser` : direct land creation anchor
-- `/signal.php` : emit and read traces
-- `/str3m.php` : public current and island discovery
+- `/signal` : situated mailbox, conversations, and identity validation
+- `/str3m` : public current and island discovery
 - `/aza.php` : memory and archives
 - `/echo.php` : direct messages between lands
-- `/0wlslw0.php` : onboarding and orientation
+- `/0wlslw0` : onboarding and orientation
 
 ## How 0wlslw0 should speak
 

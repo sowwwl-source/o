@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 
-$host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+$host = request_host();
 if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
     $path = (string) ($_SERVER['REQUEST_URI'] ?? '/echo.php');
     header('Location: https://sowwwl.com' . $path, true, 302);
@@ -14,7 +14,7 @@ $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
 $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $csrfToken = csrf_token();
-$guideHref = '/0wlslw0.php';
+$guideHref = '/0wlslw0';
 $echoGuide = guide_path('echo');
 
 $land = current_authenticated_land();
@@ -28,6 +28,18 @@ $myUsername = (string) $land['username'];
 $targetUsername = trim((string) ($_GET['u'] ?? ''));
 $message = '';
 $messageType = 'info';
+$pdoConn = isset($pdo) && $pdo instanceof PDO ? $pdo : null;
+$messagingReady = false;
+
+if ($pdoConn instanceof PDO) {
+    try {
+        $pdoConn->query('SELECT 1 FROM echoes LIMIT 1');
+        $messagingReady = true;
+    } catch (Throwable $exception) {
+        $messagingReady = false;
+        $pdoConn = null;
+    }
+}
 
 // Traitement de l'envoi d'un écho
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -35,12 +47,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($csrfToken, $postedToken)) {
         $message = "La résonance s'est dissipée. Réessaie.";
         $messageType = 'warning';
+    } elseif (!$messagingReady) {
+        $message = "Écho attend encore sa base de messagerie. Déploie la couche SQL pour ouvrir cette liaison.";
+        $messageType = 'warning';
     } else {
         $body = trim((string) ($_POST['body'] ?? ''));
         $receiver = trim((string) ($_POST['receiver_username'] ?? ''));
         
-        if ($body !== '' && $receiver !== '') {
-            $stmt = $pdo->prepare("INSERT INTO echoes (sender_username, receiver_username, body) VALUES (?, ?, ?)");
+        if ($body !== '' && $receiver !== '' && $pdoConn instanceof PDO) {
+            $stmt = $pdoConn->prepare("INSERT INTO echoes (sender_username, receiver_username, body) VALUES (?, ?, ?)");
             $stmt->execute([$myUsername, $receiver, $body]);
             header("Location: /echo.php?u=" . urlencode($receiver));
             exit;
@@ -49,24 +64,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Récupération des contacts (Terres existantes, excluant soi-même)
-$stmtContacts = $pdo->prepare("
-    SELECT username, slug,
-           (SELECT COUNT(*) FROM echoes WHERE sender_username = lands.username AND receiver_username = ? AND is_read = 0) as unread_count
-    FROM lands 
-    WHERE username != ? 
-    ORDER BY created_at DESC
-");
-$stmtContacts->execute([$myUsername, $myUsername]);
-$contacts = $stmtContacts->fetchAll();
+$unreadByUsername = [];
+if ($messagingReady && $pdoConn instanceof PDO) {
+    $stmtUnreadBySender = $pdoConn->prepare("SELECT sender_username, COUNT(*) AS unread_count FROM echoes WHERE receiver_username = ? AND is_read = 0 GROUP BY sender_username");
+    $stmtUnreadBySender->execute([$myUsername]);
+    foreach ($stmtUnreadBySender->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+        $sender = trim((string) ($row['sender_username'] ?? ''));
+        if ($sender !== '') {
+            $unreadByUsername[$sender] = (int) ($row['unread_count'] ?? 0);
+        }
+    }
+}
+
+$contacts = [];
+foreach (land_snapshot() as $candidate) {
+    $username = trim((string) ($candidate['username'] ?? ''));
+    if ($username === '' || $username === $myUsername) {
+        continue;
+    }
+
+    $contacts[] = [
+        'username' => $username,
+        'slug' => trim((string) ($candidate['slug'] ?? '')),
+        'unread_count' => (int) ($unreadByUsername[$username] ?? 0),
+    ];
+}
 
 // Récupération de l'historique si une Terre est ciblée
 $history = [];
-if ($targetUsername !== '') {
+if ($targetUsername !== '' && $messagingReady && $pdoConn instanceof PDO) {
     // Marquer les messages entrants comme lus
-    $stmtRead = $pdo->prepare("UPDATE echoes SET is_read = 1 WHERE sender_username = ? AND receiver_username = ?");
+    $stmtRead = $pdoConn->prepare("UPDATE echoes SET is_read = 1 WHERE sender_username = ? AND receiver_username = ?");
     $stmtRead->execute([$targetUsername, $myUsername]);
 
-    $stmtHistory = $pdo->prepare("
+    $stmtHistory = $pdoConn->prepare("
         SELECT * FROM echoes 
         WHERE (sender_username = ? AND receiver_username = ?) 
            OR (sender_username = ? AND receiver_username = ?)
@@ -105,6 +136,7 @@ if ($targetUsername !== '') {
         <div class="land-meta">
             <a class="meta-pill meta-pill-link" href="/">retour au noyau</a>
             <span class="meta-pill">terre liée : <?= h((string) $land['slug']) ?></span>
+            <a class="meta-pill meta-pill-link" href="/signal">signal / boîte</a>
             <a class="meta-pill meta-pill-link" href="<?= h($guideHref) ?>">0wlslw0</a>
         </div>
     </header>
@@ -137,7 +169,9 @@ if ($targetUsername !== '') {
         </aside>
 
         <div class="echo-conversation panel">
-            <?php if ($targetUsername === ''): ?>
+            <?php if (!$messagingReady): ?>
+                <p class="panel-copy">Écho reste en veille tant que la base SQL de messagerie n’est pas active.</p>
+            <?php elseif ($targetUsername === ''): ?>
                 <p class="panel-copy">Sélectionne une Terre pour établir la liaison.</p>
             <?php else: ?>
                 <div class="section-topline">

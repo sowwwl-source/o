@@ -1,0 +1,54 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  RewriteRule (^|/)\.env(?:\..*)?$ - [F,L,NC]
+  RewriteRule (^|/)\.git - [F,L,NC]
+  RewriteRule (^|/)\.DS_Store$ - [F,L,NC]
+  RewriteRule \.ppk$ - [F,L,NC]
+  RewriteRule \.pem$ - [F,L,NC]
+  RewriteRule \.key$ - [F,L,NC]
+  RewriteRule ^(?:Dockerfile|docker-compose.*\.yml|\.dockerignore|init\.sql)$ - [F,L,NC]
+
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*index\.php(?:\?|\s) [NC]
+  RewriteRule ^index\.php$ / [R=302,L]
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*land\.php(?:\?|\s) [NC]
+  RewriteRule ^land\.php$ /land [R=302,L]
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*echo\.php(?:\?|\s) [NC]
+  RewriteRule ^echo\.php$ /echo [R=302,L]
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*map\.php(?:\?|\s) [NC]
+  RewriteRule ^map\.php$ /map [R=302,L]
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*signal\.php(?:\?|\s) [NC]
+  RewriteRule ^signal\.php$ /signal [R=302,L]
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*str3m\.php(?:\?|\s) [NC]
+  RewriteRule ^str3m\.php$ /str3m [R=302,L]
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*aza\.php(?:\?|\s) [NC]
+  RewriteRule ^aza\.php$ /aza [R=302,L]
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*0wlslw0\.php(?:\?|\s) [NC]
+  RewriteRule ^0wlslw0\.php$ /0wlslw0 [R=302,L]
+
+  RewriteRule ^(land|echo|map|signal|str3m|aza|0wlslw0)/$ /$1 [R=302,L,NC]
+
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  RewriteRule ^$ index.php [L]
+  RewriteRule ^land$ land.php [L,NC,QSA]
+  RewriteRule ^echo$ echo.php [L,NC,QSA]
+  RewriteRule ^map/points/?$ map_points.php [L,NC,QSA]
+  RewriteRule ^map$ map.php [L,NC,QSA]
+  RewriteRule ^signal$ signal.php [L,NC,QSA]
+  RewriteRule ^str3m$ str3m.php [L,NC,QSA]
+  RewriteRule ^aza$ aza.php [L,NC,QSA]
+  RewriteRule ^0wlslw0$ 0wlslw0.php [L,NC,QSA]
+  RewriteRule ^aza/0*([0-9]{1,2})$ aza.php?p=$1 [L,NC,QSA]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "DENY"
+  Header set Referrer-Policy "no-referrer"
+</IfModule>

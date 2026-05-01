@@ -110,10 +110,54 @@ define(
         : ''
 );
 
+function get_pdo(): PDO
+{
+    static $pdo = null;
+
+    if ($pdo instanceof PDO) {
+        return $pdo;
+    }
+
+    $host = getenv('DB_HOST') ?: 'localhost';
+    $db = getenv('DB_NAME') ?: 'test';
+    $user = getenv('DB_USER') ?: 'root';
+    $pass = getenv('DB_PASS') ?: '';
+    $charset = 'utf8mb4';
+
+    $dsn = "mysql:host={$host};dbname={$db};charset={$charset}";
+    $options = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+    ];
+
+    $pdo = new PDO($dsn, $user, $pass, $options);
+    return $pdo;
+}
+
+function request_host(?string $host = null): string
+{
+    $candidate = strtolower(trim((string) ($host ?? ($_SERVER['HTTP_HOST'] ?? ''))));
+    if ($candidate === '') {
+        return '';
+    }
+
+    return (string) preg_replace('/:\d+$/', '', $candidate);
+}
+
+$pdo = null;
+try {
+    $pdo = get_pdo();
+} catch (Throwable $exception) {
+    $pdo = null;
+}
+
 require_once __DIR__ . '/lib/lands.php';
 require_once __DIR__ . '/lib/aza_archive.php';
+require_once __DIR__ . '/lib/mailer.php';
 require_once __DIR__ . '/lib/security.php';
 require_once __DIR__ . '/lib/meaning.php';
+require_once __DIR__ . '/lib/signal_mail.php';
 
 function visual_profile_tokens(?array $visualProfile = null, string $streamMood = 'calm'): array
 {

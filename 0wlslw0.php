@@ -3,10 +3,16 @@ declare(strict_types=1);
 
 require __DIR__ . '/config.php';
 
-$host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+$host = request_host();
 if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
-    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/0wlslw0.php');
+    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/0wlslw0');
     header('Location: https://sowwwl.com' . $path, true, 302);
+    exit;
+}
+
+$requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/0wlslw0'), PHP_URL_PATH) ?: '/0wlslw0';
+if ($requestPath === '/0wlslw0.php') {
+    header('Location: /0wlslw0', true, 302);
     exit;
 }
 

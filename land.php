@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/config.php';
 
-$host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+$host = request_host();
 if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
     $path = (string) ($_SERVER['REQUEST_URI'] ?? '/');
     header('Location: https://sowwwl.com' . $path, true, 302);
@@ -45,6 +45,23 @@ $azaLandLinkLabel = $isAuthenticatedHere ? 'Ferry 03 : aZa' : 'Ferry 03 : aZa ·
 $azaLandEditLabel = $isAuthenticatedHere ? 'Édition Terre via aZa' : 'aZa · lecture publique seulement';
 $visualProfile = $land ? land_visual_profile($land) : null;
 $ambientProfile = $visualProfile ?? land_collective_profile('calm');
+$signalTablesReady = false;
+$signalUnread = 0;
+$signalIdentityLabel = '';
+if ($land && $isAuthenticatedHere) {
+    try {
+        $signalTablesReady = signal_mail_tables_ready();
+        if ($signalTablesReady) {
+            $signalMailbox = signal_mailbox_for_land($land);
+            $signalUnread = signal_unread_total($land);
+            $signalIdentityLabel = signal_identity_status_label((string) ($signalMailbox['identity_status'] ?? SIGNAL_IDENTITY_UNVERIFIED));
+        }
+    } catch (Throwable $exception) {
+        $signalTablesReady = false;
+        $signalUnread = 0;
+        $signalIdentityLabel = '';
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -85,6 +102,10 @@ $ambientProfile = $visualProfile ?? land_collective_profile('calm');
                 <span class="meta-pill"><?= h(human_created_label((string) ($land['created_at'] ?? '')) ?? 'maintenant') ?></span>
                 <?php if ($isAuthenticatedHere): ?>
                     <span class="meta-pill aza-direct-pill">session liée</span>
+                    <?php if ($signalTablesReady && $signalIdentityLabel !== ''): ?>
+                        <span class="meta-pill"><?= h($signalIdentityLabel) ?></span>
+                        <span class="meta-pill"><?= $signalUnread ?> signal<?= $signalUnread > 1 ? 's' : '' ?> non lu<?= $signalUnread > 1 ? 's' : '' ?></span>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </header>
@@ -145,15 +166,15 @@ $ambientProfile = $visualProfile ?? land_collective_profile('calm');
                 <div class="action-row">
                     <a class="pill-link" href="/">Retour au noyau</a>
                     <?php if ($isAuthenticatedHere): ?>
-                        <a class="ghost-link" href="/signal">Ferry 01 : Flux</a>
+                        <a class="ghost-link" href="/signal">Ferry 01 : Signal<?= $signalUnread > 0 ? ' · ' . $signalUnread . ' non lu' . ($signalUnread > 1 ? 's' : '') : '' ?></a>
                         <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
                         <a class="ghost-link" href="/echo.php">Ferry 04 : Écho</a>
-                        <a class="ghost-link" href="/0wlslw0.php">0wlslw0</a>
+                        <a class="ghost-link" href="/0wlslw0">0wlslw0</a>
                         <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
                     <?php else: ?>
                         <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
                         <a class="ghost-link" href="/echo.php?u=<?= rawurlencode((string) $land['username']) ?>">Ferry 04 : Envoyer un écho</a>
-                        <a class="ghost-link" href="/0wlslw0.php">0wlslw0 : se repérer</a>
+                        <a class="ghost-link" href="/0wlslw0">0wlslw0 : se repérer</a>
                     <?php endif; ?>
                     <button
                         type="button"

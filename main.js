@@ -560,10 +560,16 @@ function initTorusCloud(canvas) {
 	}
 
 	function triggerSecretAccess() {
-		toggleThemeState();
 		canvas.classList.add("is-secret-open");
+		const guidePath = "/0wlslw0";
 		window.setTimeout(() => {
 			canvas.classList.remove("is-secret-open");
+			if (window.location.pathname === guidePath) {
+				toggleThemeState();
+				return;
+			}
+
+			window.location.assign(guidePath);
 		}, 900);
 	}
 

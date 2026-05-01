@@ -22,7 +22,7 @@ function sowwwl_try_require_vendor_autoload(): void
     }
 }
 
-function sowwwl_send_magic_link_email(string $toEmail, string $link, ?string &$error = null): bool
+function sowwwl_send_email(string $toEmail, string $subject, string $body, ?string &$error = null): bool
 {
     $error = null;
 
@@ -35,9 +35,6 @@ function sowwwl_send_magic_link_email(string $toEmail, string $link, ?string &$e
     $from = trim((string) (getenv('SOWWWL_MAGIC_LINK_FROM') ?: ''));
     $fromName = trim((string) (getenv('SOWWWL_MAGIC_LINK_FROM_NAME') ?: ''));
 
-    $subject = 'Lien de connexion sowwwl.com';
-    $body = "Bonjour,\n\nVoici ton lien de connexion (valide ~15 minutes) :\n\n" . $link . "\n\nSi tu n’es pas à l’origine de cette demande, ignore cet email.\n";
-
     $host = trim((string) (getenv('SOWWWL_SMTP_HOST') ?: ''));
     $portRaw = trim((string) (getenv('SOWWWL_SMTP_PORT') ?: ''));
     $port = $portRaw !== '' && ctype_digit($portRaw) ? (int) $portRaw : 587;
@@ -45,7 +42,6 @@ function sowwwl_send_magic_link_email(string $toEmail, string $link, ?string &$e
     $password = (string) (getenv('SOWWWL_SMTP_PASSWORD') ?: '');
     $encryption = strtolower(trim((string) (getenv('SOWWWL_SMTP_ENCRYPTION') ?: 'tls')));
 
-    // If SMTP is configured, use PHPMailer.
     if ($host !== '') {
         sowwwl_try_require_vendor_autoload();
 
@@ -81,14 +77,12 @@ function sowwwl_send_magic_link_email(string $toEmail, string $link, ?string &$e
             if ($from !== '') {
                 $mail->setFrom($from, $fromName !== '' ? $fromName : $from);
             } else {
-                // PHPMailer requires a from; use a safe placeholder.
                 $mail->setFrom('no-reply@' . (string) ($_SERVER['HTTP_HOST'] ?? 'sowwwl.com'), 'sowwwl');
             }
 
             $mail->addAddress($toEmail);
             $mail->Subject = $subject;
             $mail->Body = $body;
-
             $mail->send();
             return true;
         } catch (Throwable $e) {
@@ -97,7 +91,6 @@ function sowwwl_send_magic_link_email(string $toEmail, string $link, ?string &$e
         }
     }
 
-    // Fallback to PHP mail(). Note: many containers do not ship with sendmail.
     $headers = [
         'Content-Type: text/plain; charset=UTF-8',
     ];
@@ -113,4 +106,23 @@ function sowwwl_send_magic_link_email(string $toEmail, string $link, ?string &$e
     }
 
     return $ok;
+}
+
+function sowwwl_send_magic_link_email(string $toEmail, string $link, ?string &$error = null): bool
+{
+    $error = null;
+
+    $toEmail = trim($toEmail);
+    if ($toEmail === '') {
+        $error = 'Missing recipient.';
+        return false;
+    }
+
+    $from = trim((string) (getenv('SOWWWL_MAGIC_LINK_FROM') ?: ''));
+    $fromName = trim((string) (getenv('SOWWWL_MAGIC_LINK_FROM_NAME') ?: ''));
+
+    $subject = 'Lien de connexion sowwwl.com';
+    $body = "Bonjour,\n\nVoici ton lien de connexion (valide ~15 minutes) :\n\n" . $link . "\n\nSi tu n’es pas à l’origine de cette demande, ignore cet email.\n";
+
+    return sowwwl_send_email($toEmail, $subject, $body, $error);
 }

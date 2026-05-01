@@ -1,3 +1,5 @@
+name: sowwwl-o
+
 services:
   caddy:
     image: caddy:2.8
@@ -24,8 +26,15 @@ services:
     build:
       context: ..
       dockerfile: deploy/app/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
-      SOWWWL_PUBLIC_ORIGIN: https://sowwwl.xyz
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-o}
+      DB_USER: ${DB_USER:-user}
+      DB_PASS: ${DB_PASS:-CHANGE_ME_DB_PASSWORD}
+      SOWWWL_PUBLIC_ORIGIN: ${SOWWWL_PUBLIC_ORIGIN:-https://sowwwl.com}
       SOWWWL_AZA_DIRECT_ORIGIN: ${SOWWWL_AZA_DIRECT_ORIGIN:-https://upload.sowwwl.com}
       SOWWWL_STORAGE_DIR: /var/www/runtime/lands
       SOWWWL_RATE_LIMIT_DIR: /var/www/runtime/rate-limit
@@ -55,6 +64,29 @@ services:
     networks:
       - sowwwl-edge
 
+  db:
+    image: mysql:8.0
+    command:
+      - --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-o}
+      MYSQL_USER: ${DB_USER:-user}
+      MYSQL_PASSWORD: ${DB_PASS:-CHANGE_ME_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-CHANGE_ME_ROOT_DB_PASSWORD}
+    volumes:
+      - sowwwl_xyz_db_data:/var/lib/mysql
+      - ../../init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+      - ../../migrations/2026_05_02_signal_mail.sql:/docker-entrypoint-initdb.d/2026_05_02_signal_mail.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - sowwwl-edge
+
   api:
     build:
       context: .
@@ -72,6 +104,7 @@ volumes:
   caddy_data:
   caddy_config:
   sowwwl_xyz_runtime:
+  sowwwl_xyz_db_data:
 
 networks:
   sowwwl-edge:

@@ -76,8 +76,13 @@ www.0wlslw0.com {
 
 0wlslw0.com {
 	import common_headers
-	root * /srv/sites/0wlslw0.com
-	file_server
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
+		Cross-Origin-Opener-Policy same-origin
+		Cross-Origin-Resource-Policy same-origin
+		X-Permitted-Cross-Domain-Policies none
+	}
+	reverse_proxy app:80
 }
 
 www.sowwwl.com {

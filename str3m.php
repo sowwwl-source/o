@@ -6,7 +6,7 @@ require_once __DIR__ . '/lib/str3m_media.php';
 require_once __DIR__ . '/lib/str3m_daily.php';
 require_once __DIR__ . '/lib/signals.php';
 
-$host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+$host = request_host();
 if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
     $path = (string) ($_SERVER['REQUEST_URI'] ?? '/str3m');
     header('Location: https://sowwwl.com' . $path, true, 302);
@@ -18,7 +18,7 @@ $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ .
 $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 
 $authenticatedLand = current_authenticated_land();
-$guideHref = '/0wlslw0.php';
+$guideHref = '/0wlslw0';
 $str3mGuide = guide_path('str3m');
 
 // 1. Chargement du courant quotidien (Str3m)

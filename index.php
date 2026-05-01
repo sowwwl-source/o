@@ -5,7 +5,7 @@ require __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/str3m_media.php';
 require_once __DIR__ . '/lib/str3m_daily.php';
 
-$host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+$host = request_host();
 if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
     $path = (string) ($_SERVER['REQUEST_URI'] ?? '/');
     header('Location: https://sowwwl.com' . $path, true, 302);
@@ -14,7 +14,7 @@ if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
 
 $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/';
 if (($host === '0wlslw0.com' || $host === 'www.0wlslw0.com') && ($requestPath === '/' || $requestPath === '/index.php')) {
-    header('Location: /0wlslw0.php', true, 302);
+    header('Location: /0wlslw0', true, 302);
     exit;
 }
 
@@ -118,22 +118,59 @@ $activeLambda = (int) ($activeVisualProfile['lambda_nm'] ?? 548);
 $activeLandSlug = $authenticatedLand ? (string) ($authenticatedLand['slug'] ?? '') : '';
 $activeLandUsername = $authenticatedLand ? (string) ($authenticatedLand['username'] ?? '') : '';
 
+$pdoConn = null;
+if (isset($pdo) && $pdo instanceof PDO) {
+    $pdoConn = $pdo;
+} elseif (function_exists('get_pdo')) {
+    try {
+        $candidate = get_pdo();
+        if ($candidate instanceof PDO) {
+            $pdoConn = $candidate;
+        }
+    } catch (Throwable $exception) {
+        $pdoConn = null;
+    }
+}
+
 $unreadEchoes = 0;
+if ($authenticatedLand && $pdoConn instanceof PDO) {
+    try {
+        $stmtUnread = $pdoConn->prepare("SELECT COUNT(*) FROM echoes WHERE receiver_username = ? AND is_read = 0");
+        $stmtUnread->execute([$activeLandUsername]);
+        $unreadEchoes = (int) $stmtUnread->fetchColumn();
+    } catch (Throwable $exception) {
+        $unreadEchoes = 0;
+    }
+}
+
+$signalReady = false;
+$unreadSignal = 0;
+$signalIdentityLabel = '';
 if ($authenticatedLand) {
-    $stmtUnread = $pdo->prepare("SELECT COUNT(*) FROM echoes WHERE receiver_username = ? AND is_read = 0");
-    $stmtUnread->execute([$activeLandUsername]);
-    $unreadEchoes = (int) $stmtUnread->fetchColumn();
+    try {
+        $signalReady = signal_mail_tables_ready();
+        if ($signalReady) {
+            $unreadSignal = signal_unread_total($authenticatedLand);
+            $signalMailbox = signal_mailbox_for_land($authenticatedLand);
+            $signalIdentityLabel = signal_identity_status_label((string) ($signalMailbox['identity_status'] ?? SIGNAL_IDENTITY_UNVERIFIED));
+        }
+    } catch (Throwable $exception) {
+        $signalReady = false;
+        $unreadSignal = 0;
+        $signalIdentityLabel = '';
+    }
 }
 
 $homeStatusLabel = $authenticatedLand ? 'terre liée' : 'surface collective';
 $homeLead = $authenticatedLand
-    ? 'Le torus suit la fréquence de ta terre. Signal laisse passer, aZa retient, str3m affleure.'
+    ? 'Le torus suit la fréquence de ta terre. Signal adresse, aZa retient, Str3m affleure.'
     : 'Un espace numérique épuré, public et partagé. Rejoins le mouvement pour un lieu à toi, discret et vivant.';
 $homePrimaryActionHref = $authenticatedLand
     ? '/land.php?u=' . rawurlencode($activeLandSlug)
     : '#poser';
 $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Rejoindre le peuple de l\'O';
-$guideHref = '/0wlslw0.php';
+$guideHref = '/0wlslw0';
+$promptSeeds = guide_prompt_seeds();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -177,7 +214,7 @@ $guideHref = '/0wlslw0.php';
         data-stream-mood="<?= h((string) ($dailyStream['mood'] ?? 'calm')) ?>"
         tabindex="0"
         role="img"
-        aria-label="Torus ambiant : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Sur mobile, un appui long puis une glisse permettent aussi de naviguer. Swipe gauche vers Signal, haut vers Str3m, droite vers aZa, bas vers le noyau. Le centre ou un geste en O déclenchent aussi l'accès secret."
+        aria-label="Torus ambiant : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Sur mobile, un appui long puis une glisse permettent aussi de naviguer. Swipe gauche vers Signal, haut vers Str3m, droite vers aZa, bas vers le noyau. Le centre ou un geste en O ouvrent aussi 0wlslw0."
     ></canvas>
 </div>
 
@@ -186,6 +223,11 @@ $guideHref = '/0wlslw0.php';
     <header class="top-bar reveal">
         <span class="eyebrow eyebrow-pill"><?= h($brandDomain) ?></span>
         <div class="top-bar-cluster">
+            <?php if ($unreadSignal > 0): ?>
+                <a href="/signal" class="badge badge-glass" style="border-color: rgba(var(--land-secondary-rgb) / 0.8); color: rgba(var(--land-secondary-rgb) / 0.9); text-decoration: none;">
+                    <?= $unreadSignal ?> SIGNAL<?= $unreadSignal > 1 ? 'S' : '' ?> EN ATTENTE
+                </a>
+            <?php endif; ?>
             <?php if ($unreadEchoes > 0): ?>
                 <a href="/echo.php" class="badge badge-glass" style="border-color: rgba(var(--land-secondary-rgb) / 0.8); color: rgba(var(--land-secondary-rgb) / 0.9); text-decoration: none;">
                     <?= $unreadEchoes ?> ÉCHO<?= $unreadEchoes > 1 ? 'S' : '' ?> EN ATTENTE
@@ -204,8 +246,9 @@ $guideHref = '/0wlslw0.php';
             <p class="vortex" aria-hidden="true">(.λ.)</p>
             <p class="lead"><?= h($homeLead) ?></p>
             <div class="hero-actions">
-                <a class="pill-link" href="/signal">Flux</a>
+                <a class="pill-link" href="/signal">Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal : '' ?></a>
                 <a class="ghost-link" href="/str3m">Str3m</a>
+                <a class="ghost-link" href="/map">Map</a>
                 <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0</a>
                 <a class="ghost-link" href="<?= h($homePrimaryActionHref) ?>"><?= h($homePrimaryActionLabel) ?></a>
             </div>
@@ -219,13 +262,22 @@ $guideHref = '/0wlslw0.php';
             </a>
             <a href="/signal" class="island-card">
                 <span class="summary-label">Ferry 01</span>
-                <strong>Flux</strong>
-                <span>Émettre, capter, laisser passer.</span>
+                <strong>Signal</strong>
+                <span>
+                    <?= $authenticatedLand && $signalReady && $signalIdentityLabel !== ''
+                        ? h('Écrire, recevoir · ' . $signalIdentityLabel)
+                        : 'Écrire, recevoir, valider une adresse située.' ?>
+                </span>
             </a>
             <a href="/str3m" class="island-card">
                 <span class="summary-label">Ferry 02</span>
                 <strong>Str3m</strong>
                 <span>Explorer les îles des autres utilisateurs.</span>
+            </a>
+            <a href="/map" class="island-card">
+                <span class="summary-label">Ferry 02b</span>
+                <strong>Map</strong>
+                <span>Voir les points du réseau sur une carte.</span>
             </a>
             <a href="/aza.php" class="island-card">
                 <span class="summary-label">Ferry 03</span>
@@ -377,6 +429,41 @@ $guideHref = '/0wlslw0.php';
                 </div>
             </details>
         </aside>
+    </section>
+    <?php endif; ?>
+
+    <?php if (!$homeVisualOnly): ?>
+    <section class="panel reveal guide-panel guide-home-callout" aria-labelledby="guide-home-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="guide-home-title">Porte 00 · 0wlslw0</h2>
+                <p class="panel-copy">Le projet entier gagne en clarté quand l’entrée n’est pas un simple formulaire mais une intelligence d’orientation. 0wlslw0 est cette couche-là : le seuil qui comprend avant d’envoyer.</p>
+            </div>
+            <a class="pill-link" href="<?= h($guideHref) ?>">Ouvrir 0wlslw0</a>
+        </div>
+
+        <div class="guide-grid">
+            <article class="guide-panel">
+                <span class="summary-label">Rôle</span>
+                <strong>Faire tenir ensemble les ferries.</strong>
+                <p class="panel-copy">Signal adresse, Str3m montre, aZa sédimente, Écho relie — mais 0wlslw0 donne la bonne première phrase au visiteur pour qu’il ne dérive pas avant même d’avoir commencé.</p>
+                <div class="action-row">
+                    <a class="ghost-link" href="<?= h($guideHref) ?>">Voir le guide complet</a>
+                    <a class="ghost-link" href="/str3m">Entrer publiquement</a>
+                    <a class="ghost-link" href="/#poser">Poser une terre</a>
+                </div>
+            </article>
+
+            <article class="guide-panel">
+                <span class="summary-label">Phrases de départ</span>
+                <ul class="guide-prompt-list">
+                    <?php foreach (array_slice($promptSeeds, 0, 3) as $prompt): ?>
+                        <li><code><?= h($prompt) ?></code></li>
+                    <?php endforeach; ?>
+                </ul>
+                <p class="panel-copy guide-embed-note">Le centre du torus et le geste en O ouvrent aussi cette porte. Pour une fois, le secret sert à éclaircir plutôt qu’à obscurcir.</p>
+            </article>
+        </div>
     </section>
     <?php endif; ?>
 
