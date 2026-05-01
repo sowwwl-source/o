@@ -103,8 +103,8 @@ $promptSeeds = guide_prompt_seeds();
 
             <div class="action-row">
                 <a class="pill-link" href="<?= h($canonicalOrigin . '/#poser') ?>">Commencer la creation</a>
-                <a class="ghost-link" href="/str3m.php">Visiter publiquement</a>
-                <a class="ghost-link" href="/aza.php">Lire aZa</a>
+                <a class="ghost-link" href="<?= h($canonicalOrigin . '/str3m.php') ?>">Visiter publiquement</a>
+                <a class="ghost-link" href="<?= h($canonicalOrigin . '/aza.php') ?>">Lire aZa</a>
                 <?php if ($agentUrl !== ''): ?>
                     <a class="ghost-link" href="<?= h($agentUrl) ?>" target="_blank" rel="noopener">Parler a 0wlslw0</a>
                 <?php endif; ?>
@@ -164,7 +164,13 @@ $promptSeeds = guide_prompt_seeds();
 
         <div class="guide-cards">
             <?php foreach ($paths as $path): ?>
-                <a class="guide-card" href="<?= h($path['href']) ?>">
+                <?php
+                $pathHref = (string) ($path['href'] ?? '/');
+                if ($pathHref !== '' && $pathHref[0] === '/') {
+                    $pathHref = $canonicalOrigin . $pathHref;
+                }
+                ?>
+                <a class="guide-card" href="<?= h($pathHref) ?>">
                     <span class="summary-label"><?= h($path['label']) ?></span>
                     <strong><?= h($path['title']) ?></strong>
                     <p><?= h($path['copy']) ?></p>
