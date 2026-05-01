@@ -17,9 +17,10 @@ $authenticatedLand = current_authenticated_land();
 $ambientProfile = $authenticatedLand ? land_visual_profile($authenticatedLand) : land_collective_profile('calm');
 $agentUrl = trim((string) ((getenv('SOWWWL_0WLSLW0_CHAT_URL') ?: getenv('SOWWWL_0WLSLW0_AGENT_URL')) ?: ''));
 $guideMode = $agentUrl !== '' ? 'agent relaye' : 'guide local';
+$canonicalOrigin = rtrim((string) (getenv('SOWWWL_PUBLIC_ORIGIN') ?: 'https://sowwwl.com'), '/');
 $openLandHref = $authenticatedLand
     ? '/land.php?u=' . rawurlencode((string) $authenticatedLand['slug'])
-    : '/#poser';
+    : $canonicalOrigin . '/#poser';
 $openLandLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une terre';
 $paths = guide_paths();
 $principles = guide_principles();
@@ -55,7 +56,7 @@ $promptSeeds = guide_prompt_seeds();
         <p class="lead">0wlslw0 accueille les visiteurs, explique le projet, puis les oriente vers la bonne porte avant qu’ils n’ouvrent une terre.</p>
 
         <div class="land-meta">
-            <a class="meta-pill meta-pill-link" href="/">retour au noyau</a>
+            <a class="meta-pill meta-pill-link" href="<?= h($canonicalOrigin . '/') ?>">retour au noyau</a>
             <a class="meta-pill meta-pill-link" href="<?= h($openLandHref) ?>"><?= h($openLandLabel) ?></a>
             <?php if ($authenticatedLand): ?>
                 <span class="meta-pill">terre liee : <?= h((string) $authenticatedLand['slug']) ?></span>
@@ -101,7 +102,7 @@ $promptSeeds = guide_prompt_seeds();
             </ul>
 
             <div class="action-row">
-                <a class="pill-link" href="/#poser">Commencer la creation</a>
+                <a class="pill-link" href="<?= h($canonicalOrigin . '/#poser') ?>">Commencer la creation</a>
                 <a class="ghost-link" href="/str3m.php">Visiter publiquement</a>
                 <a class="ghost-link" href="/aza.php">Lire aZa</a>
                 <?php if ($agentUrl !== ''): ?>
@@ -193,11 +194,11 @@ $promptSeeds = guide_prompt_seeds();
             </ol>
 
             <div class="action-row">
-                <a class="pill-link" href="/#poser">Ouvrir le formulaire</a>
+                <a class="pill-link" href="<?= h($canonicalOrigin . '/#poser') ?>">Ouvrir le formulaire</a>
                 <?php if ($authenticatedLand): ?>
                     <a class="ghost-link" href="<?= h($openLandHref) ?>">Retour à ma terre</a>
                 <?php else: ?>
-                    <a class="ghost-link" href="/">Voir le noyau avant de choisir</a>
+                    <a class="ghost-link" href="<?= h($canonicalOrigin . '/') ?>">Voir le noyau avant de choisir</a>
                 <?php endif; ?>
             </div>
         </section>
