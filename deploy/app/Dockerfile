@@ -5,6 +5,7 @@ WORKDIR /var/www/html
 # Dependencies for Composer installs.
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends unzip ca-certificates \
+	&& docker-php-ext-install pdo_mysql \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Install Composer.

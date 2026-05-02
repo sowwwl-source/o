@@ -24,28 +24,105 @@ function t0k_ensure_storage(): void
     }
 }
 
+function t0k_normalize_token(string $token): string
+{
+    return strtoupper(str_replace(['-', ' '], '', $token));
+}
+
+function t0k_normalize_land_slug(string $slug): string
+{
+    $slug = trim($slug);
+    if ($slug === '') {
+        return '';
+    }
+
+    try {
+        return normalize_username($slug);
+    } catch (Throwable) {
+        return strtolower(trim($slug));
+    }
+}
+
+function t0k_normalize_entry(array $entry): array
+{
+    if (isset($entry['id'])) {
+        $entry['id'] = trim((string) $entry['id']);
+    }
+
+    if (isset($entry['from_land'])) {
+        $entry['from_land'] = t0k_normalize_land_slug((string) $entry['from_land']);
+    }
+
+    if (isset($entry['to_land'])) {
+        $entry['to_land'] = t0k_normalize_land_slug((string) $entry['to_land']);
+    }
+
+    if (isset($entry['token'])) {
+        $entry['token'] = t0k_normalize_token((string) $entry['token']);
+    }
+
+    if (isset($entry['status'])) {
+        $entry['status'] = strtolower(trim((string) $entry['status']));
+    }
+
+    return $entry;
+}
+
 function t0k_read_index(): array
 {
     $path = t0k_index_path();
     if (!is_file($path)) {
         return [];
     }
+
     $raw = file_get_contents($path);
     if ($raw === false || $raw === '') {
         return [];
     }
+
     $decoded = json_decode($raw, true);
-    return is_array($decoded) ? $decoded : [];
+    if (!is_array($decoded)) {
+        return [];
+    }
+
+    $normalized = [];
+    $hasChanges = false;
+
+    foreach ($decoded as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+
+        $normalizedEntry = t0k_normalize_entry($entry);
+        if ($normalizedEntry !== $entry) {
+            $hasChanges = true;
+        }
+
+        $normalized[] = $normalizedEntry;
+    }
+
+    if ($hasChanges) {
+        t0k_write_index($normalized);
+    }
+
+    return $normalized;
 }
 
 function t0k_write_index(array $entries): void
 {
     t0k_ensure_storage();
-    $path  = t0k_index_path();
-    $json  = json_encode($entries, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+    $path = t0k_index_path();
+    $entries = array_values(array_map(
+        static fn (array $entry): array => t0k_normalize_entry($entry),
+        array_filter($entries, 'is_array')
+    ));
+
+    $json = json_encode($entries, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     if ($json === false) {
         throw new RuntimeException('Impossible de sérialiser l\'index des t0ks.');
     }
+
     if (file_put_contents($path, $json, LOCK_EX) === false) {
         throw new RuntimeException('Impossible d\'écrire l\'index des t0ks.');
     }
@@ -69,11 +146,6 @@ function t0k_format_token(string $token): string
 {
     $clean = strtoupper(str_replace('-', '', $token));
     return strlen($clean) === 8 ? substr($clean, 0, 4) . '-' . substr($clean, 4) : $clean;
-}
-
-function t0k_normalize_token(string $token): string
-{
-    return strtoupper(str_replace(['-', ' '], '', $token));
 }
 
 function t0k_generate_id(): string
@@ -106,7 +178,7 @@ function t0k_find_by_token(string $token): ?array
 
 function t0k_list_for_land(string $slug): array
 {
-    $slug  = strtolower(trim($slug));
+    $slug  = t0k_normalize_land_slug($slug);
     $items = [];
     foreach (t0k_read_index() as $entry) {
         if (($entry['from_land'] ?? '') === $slug || ($entry['to_land'] ?? '') === $slug) {
@@ -118,7 +190,7 @@ function t0k_list_for_land(string $slug): array
 
 function t0k_pending_for_land(string $slug): array
 {
-    $slug  = strtolower(trim($slug));
+    $slug  = t0k_normalize_land_slug($slug);
     $items = [];
     foreach (t0k_read_index() as $entry) {
         if (($entry['to_land'] ?? '') === $slug && ($entry['status'] ?? '') === 'pending') {
@@ -130,7 +202,7 @@ function t0k_pending_for_land(string $slug): array
 
 function t0k_active_for_land(string $slug): array
 {
-    $slug  = strtolower(trim($slug));
+    $slug  = t0k_normalize_land_slug($slug);
     $items = [];
     foreach (t0k_read_index() as $entry) {
         if (
@@ -156,8 +228,8 @@ function t0k_recent_public(int $limit = 20): array
 
 function t0k_send(string $fromSlug, string $toSlug, string $notes = ''): array
 {
-    $fromSlug = strtolower(trim($fromSlug));
-    $toSlug   = strtolower(trim($toSlug));
+    $fromSlug = t0k_normalize_land_slug($fromSlug);
+    $toSlug   = t0k_normalize_land_slug($toSlug);
 
     if ($fromSlug === '') {
         throw new InvalidArgumentException('La land émettrice est requise.');
@@ -171,7 +243,10 @@ function t0k_send(string $fromSlug, string $toSlug, string $notes = ''): array
 
     $existing = t0k_read_index();
     foreach ($existing as $entry) {
-        $lands = [(string) ($entry['from_land'] ?? ''), (string) ($entry['to_land'] ?? '')];
+        $lands = [
+            t0k_normalize_land_slug((string) ($entry['from_land'] ?? '')),
+            t0k_normalize_land_slug((string) ($entry['to_land'] ?? '')),
+        ];
         if (
             in_array($fromSlug, $lands, true)
             && in_array($toSlug, $lands, true)
@@ -208,11 +283,13 @@ function t0k_update_status(string $id, string $newStatus, ?string $actorSlug = n
             continue;
         }
 
-        $from = (string) ($entry['from_land'] ?? '');
-        $to   = (string) ($entry['to_land'] ?? '');
+        $from = t0k_normalize_land_slug((string) ($entry['from_land'] ?? ''));
+        $to   = t0k_normalize_land_slug((string) ($entry['to_land'] ?? ''));
+        $entry['from_land'] = $from;
+        $entry['to_land'] = $to;
 
         if ($actorSlug !== null) {
-            $actor = strtolower(trim($actorSlug));
+            $actor = t0k_normalize_land_slug($actorSlug);
             match ($newStatus) {
                 'active'    => $actor !== $to
                     ? throw new InvalidArgumentException('Seule la land destinataire peut accepter.')
@@ -274,12 +351,17 @@ function t0k_status_label(string $status): string
 
 function t0k_partner_slug(array $t0k, string $mySlag): string
 {
-    return ($t0k['from_land'] ?? '') === $mySlag
-        ? (string) ($t0k['to_land'] ?? '')
-        : (string) ($t0k['from_land'] ?? '');
+    $mySlug = t0k_normalize_land_slug($mySlag);
+    $from = t0k_normalize_land_slug((string) ($t0k['from_land'] ?? ''));
+    $to = t0k_normalize_land_slug((string) ($t0k['to_land'] ?? ''));
+
+    return $from === $mySlug ? $to : $from;
 }
 
 function t0k_is_actor(array $t0k, string $slug): bool
 {
-    return ($t0k['from_land'] ?? '') === $slug || ($t0k['to_land'] ?? '') === $slug;
+    $actorSlug = t0k_normalize_land_slug($slug);
+
+    return t0k_normalize_land_slug((string) ($t0k['from_land'] ?? '')) === $actorSlug
+        || t0k_normalize_land_slug((string) ($t0k['to_land'] ?? '')) === $actorSlug;
 }
