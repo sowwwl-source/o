@@ -28,6 +28,16 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml restart app
 ```
 
+## 3b. If p0rt schema changed or was never applied
+
+Only when the DB volume already existed before the liaisons+p0rts migration:
+
+```bash
+cd /root/O_installation_FRESH/o/deploy
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < /root/O_installation_FRESH/migrations/004_liaisons_ports.sql
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml restart app
+```
+
 For a fuller schema-state checklist, see `DB_MIGRATION_PROTOCOL.md`.
 
 ## 4. Verify the container contents

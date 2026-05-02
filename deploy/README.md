@@ -28,6 +28,7 @@ It uses one VPS, one Caddy reverse proxy, one PHP app container for the `o/` exp
 - `api/` - minimal AzA API stub with docs and health endpoints
 - `app/` - PHP runtime image for `sowwwl.xyz`
 - `../../init.sql` - base SQL schema mounted into MySQL on first boot
+- `../../migrations/004_liaisons_ports.sql` - liaison/p0rt schema mounted into MySQL on first boot
 - `../../migrations/2026_05_02_signal_mail.sql` - Signal mailbox/message schema mounted into MySQL on first boot
 - `sites/` - static sites for the hub, org, alternate landing, SPA shell, and temporary product shell
 
@@ -82,9 +83,14 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 
 Using an explicit project name avoids clashing with the sibling top-level `deploy/` directory, which would otherwise also default to the Compose project name `deploy`.
 
-On a fresh MySQL volume, both `init.sql` and the Signal mailbox migration are imported automatically.
+On a fresh MySQL volume, `init.sql`, the liaisons+p0rts migration, and the Signal mailbox migration are imported automatically.
 
-If the database already exists and predates Signal, apply the migration manually:
+If the database already exists and predates p0rts or Signal, apply the missing migration manually:
+
+```bash
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db \
+	mysql -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" < ../../migrations/004_liaisons_ports.sql
+```
 
 ```bash
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db \

@@ -9,6 +9,7 @@ If the DB volume is new, init scripts mounted into `/docker-entrypoint-initdb.d/
 
 For the live O. stack, that includes:
 - `../../init.sql`
+- `../../migrations/004_liaisons_ports.sql`
 - `../../migrations/2026_05_02_signal_mail.sql`
 
 ### Existing MySQL volume
@@ -25,6 +26,11 @@ Typical signs:
 - code path checks for tables and falls back to degraded behavior
 
 Examples in this app:
+- `liaisons`
+- `ports`
+- `port_members`
+- `port_messages`
+- `port_files`
 - `signal_mailboxes`
 - `signal_messages`
 - new columns such as `lands.notification_email`
@@ -49,6 +55,13 @@ cd /root/O_installation_FRESH/o/deploy
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SHOW TABLES LIKE \"signal_mailboxes\"; SHOW TABLES LIKE \"signal_messages\"; SHOW COLUMNS FROM lands LIKE \"notification_email\";"'
 ```
 
+For the p0rt schema:
+
+```bash
+cd /root/O_installation_FRESH/o/deploy
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SHOW TABLES LIKE \"liaisons\"; SHOW TABLES LIKE \"ports\"; SHOW TABLES LIKE \"port_members\"; SHOW TABLES LIKE \"port_messages\"; SHOW TABLES LIKE \"port_files\";"'
+```
+
 Interpretation:
 - if tables/column exist, schema is at least partially applied
 - if they do not exist, the migration is missing on this DB volume
@@ -63,6 +76,14 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml restart app
 ```
 
+For the liaisons + p0rts migration:
+
+```bash
+cd /root/O_installation_FRESH/o/deploy
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < /root/O_installation_FRESH/migrations/004_liaisons_ports.sql
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml restart app
+```
+
 ## 6. Verify after migration
 
 Run the schema checks again:
@@ -70,6 +91,13 @@ Run the schema checks again:
 ```bash
 cd /root/O_installation_FRESH/o/deploy
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SHOW TABLES LIKE \"signal_mailboxes\"; SHOW TABLES LIKE \"signal_messages\"; SHOW COLUMNS FROM lands LIKE \"notification_email\";"'
+```
+
+And for p0rts if inter-land communication is involved:
+
+```bash
+cd /root/O_installation_FRESH/o/deploy
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SHOW TABLES LIKE \"liaisons\"; SHOW TABLES LIKE \"ports\"; SHOW TABLES LIKE \"port_members\"; SHOW TABLES LIKE \"port_messages\"; SHOW TABLES LIKE \"port_files\";"'
 ```
 
 Then verify feature behavior from the app:
@@ -134,6 +162,7 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 ## 9. Golden rules
 
 - mounted init scripts do not replay on an existing MySQL volume
+- `004_liaisons_ports.sql` is required for inter-land communication via p0rts
 - code can be correct while schema is stale
 - after manual migration, restart the app container
 - verify schema state with SQL, not assumption
