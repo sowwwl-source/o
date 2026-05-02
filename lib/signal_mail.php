@@ -267,21 +267,26 @@ function signal_conversation_summaries(array $land): array
     $sql = <<<'SQL'
 SELECT
     CASE
-        WHEN sender_land_slug = :slug THEN receiver_land_slug
+            WHEN sender_land_slug = :sender_slug_case THEN receiver_land_slug
         ELSE sender_land_slug
     END AS counterpart_slug,
     MAX(created_at) AS last_message_at,
-    SUM(CASE WHEN receiver_land_slug = :slug AND read_at IS NULL THEN 1 ELSE 0 END) AS unread_count,
+        SUM(CASE WHEN receiver_land_slug = :receiver_slug_unread AND read_at IS NULL THEN 1 ELSE 0 END) AS unread_count,
     SUBSTRING_INDEX(GROUP_CONCAT(subject ORDER BY created_at DESC SEPARATOR '\n'), '\n', 1) AS last_subject,
     SUBSTRING_INDEX(GROUP_CONCAT(body ORDER BY created_at DESC SEPARATOR '\n---\n'), '\n---\n', 1) AS last_body
 FROM signal_messages
-WHERE sender_land_slug = :slug OR receiver_land_slug = :slug
+    WHERE sender_land_slug = :sender_slug_filter OR receiver_land_slug = :receiver_slug_filter
 GROUP BY counterpart_slug
 ORDER BY last_message_at DESC
 SQL;
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute(['slug' => $slug]);
+        $stmt->execute([
+            'sender_slug_case' => $slug,
+            'receiver_slug_unread' => $slug,
+            'sender_slug_filter' => $slug,
+            'receiver_slug_filter' => $slug,
+        ]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     $landsBySlug = [];
