@@ -39,6 +39,10 @@ Use it for:
 Open:
 - `LIVE_VERIFICATION.md`
 
+### I am bootstrapping the 3ternet lab
+Open:
+- `3TERNET_LAB_BOOTSTRAP.md`
+
 Use it for:
 - public `curl` checks
 - expected live behavior
@@ -72,6 +76,10 @@ Start with:
 Start with:
 - `COMMIT_PROTOCOL.md`
 
+### “I want to turn 164.92.220.248 into the lab droplet”
+Start with:
+- `3TERNET_LAB_BOOTSTRAP.md`
+
 ### “The code is pushed, now how do I roll it out?”
 Start with:
 - `DEPLOY_QUICKREF.md`
@@ -103,6 +111,11 @@ Only when needed:
 6. `DB_MIGRATION_PROTOCOL.md`
 7. `ROLLBACK_PROTOCOL.md`
 
+3ternet / lab work:
+
+- `3TERNET_ARCHITECTURE.md`
+- `3TERNET_LAB_BOOTSTRAP.md`
+
 ## Short map
 
 - **before work** → `SESSION_RITUAL.md`
@@ -110,6 +123,7 @@ Only when needed:
 - **before deploy** → `DEPLOY_QUICKREF.md`
 - **just before / just after prod** → `PROD_CHECKLIST.md`
 - **after deploy** → `LIVE_VERIFICATION.md`
+- **for the lab droplet** → `3TERNET_LAB_BOOTSTRAP.md`
 - **if DB feels stale** → `DB_MIGRATION_PROTOCOL.md`
 - **if production is degraded** → `ROLLBACK_PROTOCOL.md`
 

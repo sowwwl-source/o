@@ -2,6 +2,7 @@ const DEFAULT_TIMEZONE = "Europe/Paris";
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const coarsePointer = window.matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints || 0) > 0;
 const THEME_KEY = "o-theme-inverted";
+const GUIDE_VOICE_MUTE_KEY = "o-guide-voice-muted-v1";
 
 const reveals = Array.from(document.querySelectorAll(".reveal"));
 const usernameInput = document.querySelector("[data-username-input]");
@@ -39,7 +40,49 @@ function toggleThemeState() {
 	writeThemeState(!readThemeState());
 }
 
+function readGuideVoiceMutedState() {
+	return window.localStorage.getItem(GUIDE_VOICE_MUTE_KEY) === "1";
+}
+
+function writeGuideVoiceMutedState(isMuted) {
+	window.localStorage.setItem(GUIDE_VOICE_MUTE_KEY, isMuted ? "1" : "0");
+	window.dispatchEvent(new CustomEvent("o:guide-voice-mute-change", {
+		detail: { muted: Boolean(isMuted) },
+	}));
+}
+
+function toggleGuideVoiceMutedState() {
+	const next = !readGuideVoiceMutedState();
+	writeGuideVoiceMutedState(next);
+	return next;
+}
+
+function toggleInversionAndGuideVoiceMute() {
+	toggleThemeState();
+	return toggleGuideVoiceMutedState();
+}
+
 applyThemeState(readThemeState());
+
+function isInteractiveElementTarget(target) {
+	return target instanceof Element && Boolean(target.closest("a, button, input, textarea, select, summary, label, details, [contenteditable=\"true\"]"));
+}
+
+function canToggleInversionFromTarget(target) {
+	if (!(target instanceof Element)) {
+		return false;
+	}
+
+	if (isInteractiveElementTarget(target)) {
+		return false;
+	}
+
+	if (target.closest("[data-torus-cloud], .main-torus, canvas")) {
+		return false;
+	}
+
+	return true;
+}
 
 function parseRgbTriplet(value, fallback) {
 	const match = value.match(/\d+(?:\.\d+)?/g);
@@ -95,6 +138,169 @@ function lambdaToRgb(lambda) {
 	const toChannel = (channel) => Math.round(255 * Math.pow(clampNumber(channel * attenuation, 0, 1), gamma));
 
 	return [toChannel(red), toChannel(green), toChannel(blue)];
+}
+
+function emitLandSignatureChange() {
+	window.dispatchEvent(new CustomEvent("o:land-signature-change"));
+}
+
+function spectralLambdaValue(candidate, fallback = 548) {
+	const parsed = Number.parseFloat(candidate);
+	return clampNumber(Number.isFinite(parsed) ? parsed : fallback, 380, 780);
+}
+
+function normalizeGuideSpeechText(value) {
+	return (value || "")
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase();
+}
+
+function detectGuideSpeechLanguage(text) {
+	const normalized = normalizeGuideSpeechText(text);
+	if (!normalized) {
+		return "fr-FR";
+	}
+
+	const markers = {
+		"en-US": ["hello", "please", "take me", "guide me", "what is", "public entry"],
+		"es-ES": ["hola", "quiero", "llevame", "explica", "puerta", "publico"],
+		"pt-PT": ["ola", "quero", "leva-me", "leva me", "porta", "publico", "terra"],
+		"it-IT": ["ciao", "voglio", "portami", "spiega", "porta", "terra"],
+		"fr-FR": ["bonjour", "salut", "terre", "porte", "projet", "visiter"],
+	};
+
+	let bestLanguage = "fr-FR";
+	let bestScore = 0;
+
+	Object.entries(markers).forEach(([language, needles]) => {
+		let score = 0;
+		needles.forEach((needle) => {
+			if (normalized.includes(needle)) {
+				score += 1;
+			}
+		});
+
+		if (score > bestScore) {
+			bestScore = score;
+			bestLanguage = language;
+		}
+	});
+
+	return bestLanguage;
+}
+
+function pickGuideSpeechVoice(synth, languageCode = "fr-FR") {
+	if (!synth || typeof synth.getVoices !== "function") {
+		return null;
+	}
+
+	const prefix = languageCode.split("-")[0].toLowerCase();
+	const preferredNames = /(premium|natural|enhanced|siri|google|audrey|amelie|thomas|paulina|monica|jorge|joana|alice|anna)/i;
+	const voices = synth.getVoices().filter((voice) => {
+		return typeof voice.lang === "string" && voice.lang.toLowerCase().startsWith(prefix);
+	});
+
+	if (!voices.length) {
+		return null;
+	}
+
+	const ranked = voices
+		.map((voice) => {
+			let score = 0;
+			if (voice.default) {
+				score += 3;
+			}
+			if (voice.localService) {
+				score += 2;
+			}
+			if (preferredNames.test(voice.name || "")) {
+				score += 4;
+			}
+
+			return { voice, score };
+		})
+		.sort((left, right) => right.score - left.score);
+
+	return ranked[0]?.voice || voices[0] || null;
+}
+
+function resolveGuideVoiceSpectralProfile(program = "collective", lambdaCandidate = 548, tone = "", label = "") {
+	const lambda = spectralLambdaValue(lambdaCandidate, 548);
+	const normalized = (lambda - 380) / (780 - 380);
+	const frequencyBias = 1 - normalized;
+	let pitch = 0.82 + frequencyBias * 0.34;
+	let rate = 0.86 + frequencyBias * 0.18;
+	let volume = 0.94;
+
+	switch ((program || "collective").toLowerCase()) {
+		case "dur3rb":
+			pitch -= 0.08;
+			rate -= 0.06;
+			volume += 0.02;
+			break;
+		case "tocu":
+			pitch += 0.07;
+			rate += 0.06;
+			break;
+		case "culbu1on":
+			pitch += 0.02;
+			rate += 0.01;
+			break;
+		default:
+			break;
+	}
+
+	pitch = clampNumber(pitch, 0.74, 1.24);
+	rate = clampNumber(rate, 0.82, 1.14);
+	volume = clampNumber(volume, 0.86, 1);
+
+	let registerLabel = "medium soyeux";
+	if (frequencyBias >= 0.82) {
+		registerLabel = "aigu clair";
+	} else if (frequencyBias >= 0.64) {
+		registerLabel = "haut satine";
+	} else if (frequencyBias >= 0.24) {
+		registerLabel = "grave souple";
+	} else if (frequencyBias < 0.24) {
+		registerLabel = "grave velours";
+	}
+
+	let tempoLabel = "tempo pose";
+	if (rate >= 1.08) {
+		tempoLabel = "tempo vif";
+	} else if (rate >= 1) {
+		tempoLabel = "tempo fluide";
+	} else if (rate < 0.89) {
+		tempoLabel = "tempo lent";
+	} else if (rate < 0.95) {
+		tempoLabel = "tempo retenu";
+	}
+
+	return {
+		program: program || "collective",
+		label: label || program || "collectif",
+		tone: tone || "",
+		lambda,
+		pitch,
+		rate,
+		volume,
+		registerLabel,
+		tempoLabel,
+		orbPulseDuration: clampNumber(2.14 - rate * 0.76, 1.18, 1.72),
+		coreScale: clampNumber(0.98 + (pitch - 0.74) * 0.42, 1.02, 1.2),
+	};
+}
+
+function readGuideVoiceSpectralProfile(root) {
+	const body = document.body?.dataset || {};
+	const rootData = root?.dataset || {};
+	const program = body.landProgram || rootData.guideVoiceProgram || "collective";
+	const label = body.landLabel || rootData.guideVoiceLabel || program || "collectif";
+	const tone = body.landTone || rootData.guideVoiceTone || "";
+	const lambdaCandidate = body.landLambda || rootData.guideVoiceLambda || "548";
+
+	return resolveGuideVoiceSpectralProfile(program, lambdaCandidate, tone, label);
 }
 
 function resolveTorusProfile(canvas) {
@@ -572,7 +778,7 @@ function initTorusCloud(canvas) {
 		window.setTimeout(() => {
 			canvas.classList.remove("is-secret-open");
 			if (window.location.pathname === guidePath) {
-				toggleThemeState();
+				toggleInversionAndGuideVoiceMute();
 				return;
 			}
 
@@ -1134,6 +1340,7 @@ function syncSignupSpectrum(resetLambda = false) {
 		canvas.dataset.landType = programKey;
 		canvas.dataset.lambda = String(lambda);
 	});
+	emitLandSignatureChange();
 
 	return { programKey, programLabel, programTone, lambda };
 }
@@ -1253,20 +1460,19 @@ document.addEventListener("keydown", (event) => {
 	}
 
 	const target = event.target;
-	if (target instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) {
+	if (
+		target instanceof HTMLElement
+		&& (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable)
+	) {
 		return;
 	}
 
-	toggleThemeState();
+	toggleInversionAndGuideVoiceMute();
 });
 
 document.addEventListener("dblclick", (event) => {
 	const target = event.target;
-	if (!(target instanceof Element)) {
-		return;
-	}
-
-	if (target.closest("a, button, input, textarea, select, summary, label")) {
+	if (!(target instanceof Element) || !canToggleInversionFromTarget(target)) {
 		return;
 	}
 
@@ -1276,9 +1482,63 @@ document.addEventListener("dblclick", (event) => {
 		target.classList.contains("aurora") ||
 		target === document.documentElement
 	) {
-		toggleThemeState();
+		toggleInversionAndGuideVoiceMute();
 	}
 });
+
+if (coarsePointer) {
+	let inversionLongTouchTimer = 0;
+	let inversionLongTouchPointerId = null;
+	let inversionLongTouchStartX = 0;
+	let inversionLongTouchStartY = 0;
+
+	const clearInversionLongTouch = () => {
+		if (inversionLongTouchTimer) {
+			window.clearTimeout(inversionLongTouchTimer);
+			inversionLongTouchTimer = 0;
+		}
+		inversionLongTouchPointerId = null;
+	};
+
+	document.addEventListener("pointerdown", (event) => {
+		if ((event.pointerType || "") !== "touch" || !canToggleInversionFromTarget(event.target)) {
+			return;
+		}
+
+		inversionLongTouchStartX = event.clientX;
+		inversionLongTouchStartY = event.clientY;
+		clearInversionLongTouch();
+		inversionLongTouchPointerId = event.pointerId;
+		inversionLongTouchTimer = window.setTimeout(() => {
+			toggleInversionAndGuideVoiceMute();
+			clearInversionLongTouch();
+		}, 580);
+	}, true);
+
+	document.addEventListener("pointermove", (event) => {
+		if (inversionLongTouchPointerId === null || event.pointerId !== inversionLongTouchPointerId) {
+			return;
+		}
+
+		const travel = Math.hypot(
+			event.clientX - inversionLongTouchStartX,
+			event.clientY - inversionLongTouchStartY
+		);
+		if (travel > 16) {
+			clearInversionLongTouch();
+		}
+	}, true);
+
+	["pointerup", "pointercancel", "pointerleave"].forEach((eventName) => {
+		document.addEventListener(eventName, (event) => {
+			if (inversionLongTouchPointerId !== null && event.pointerId === inversionLongTouchPointerId) {
+				clearInversionLongTouch();
+			}
+		}, true);
+	});
+
+	window.addEventListener("scroll", clearInversionLongTouch, true);
+}
 
 if (bootline) {
 	const fullText = bootline.textContent;
@@ -1492,6 +1752,7 @@ function initSpectralTuner() {
 		if (torusCanvas instanceof HTMLCanvasElement) {
 			torusCanvas.dataset.lambda = String(mode.lambda);
 		}
+		emitLandSignatureChange();
 	}
 
 	function syncExpiryBadge() {
@@ -1641,7 +1902,12 @@ function createGuideVoiceDock(config = {}) {
 	shell.dataset.guideVoiceGreeting = config.greeting || "Je suis 0wlslw0. Je te suis d’une page à l’autre.";
 	shell.dataset.guideVoiceUpstream = config.upstream_configured ? "1" : "0";
 	shell.dataset.guideVoiceChatUrl = config.chat_url || "";
+	shell.dataset.guideVoiceProgram = config.land_program || document.body?.dataset?.landProgram || "collective";
+	shell.dataset.guideVoiceLabel = config.land_label || document.body?.dataset?.landLabel || "collectif";
+	shell.dataset.guideVoiceLambda = String(config.land_lambda || document.body?.dataset?.landLambda || "548");
+	shell.dataset.guideVoiceTone = config.land_tone || document.body?.dataset?.landTone || "";
 	shell.dataset.voiceState = "idle";
+	shell.dataset.voiceMuted = readGuideVoiceMutedState() ? "1" : "0";
 	shell.setAttribute("aria-label", "Dock vocal 0wlslw0");
 	shell.innerHTML = `
 		<div class="guide-voice-dock-head">
@@ -1656,6 +1922,12 @@ function createGuideVoiceDock(config = {}) {
 			<p class="guide-voice-status" data-guide-voice-status>0wlslw0 peut te suivre ici.</p>
 			<p class="guide-voice-transcript" data-guide-voice-transcript>La continuité vocale se réamorce après navigation.</p>
 			<p class="guide-voice-reply" data-guide-voice-reply>Active la voix une fois, puis continue ta traversée.</p>
+			<div class="guide-voice-signature" aria-live="polite">
+				<span class="summary-label">Signature vocale</span>
+				<strong data-guide-voice-signature>Voix spectrale · λ 548 nm</strong>
+				<span class="guide-voice-profile" data-guide-voice-profile>tempo ajusté · collectif</span>
+				<span class="guide-voice-mute-indicator" data-guide-voice-mute-indicator>voix active · I inverse + voix · appui long tactile</span>
+			</div>
 			<div class="action-row guide-voice-actions">
 				<button type="button" class="pill-link" data-guide-voice-start>Réactiver la voix</button>
 				<button type="button" class="ghost-link" data-guide-voice-stop hidden>Couper</button>
@@ -1985,6 +2257,9 @@ function mountGuideVoice(root) {
 	const statusNode = root.querySelector("[data-guide-voice-status]");
 	const transcriptNode = root.querySelector("[data-guide-voice-transcript]");
 	const replyNode = root.querySelector("[data-guide-voice-reply]");
+	const signatureNode = root.querySelector("[data-guide-voice-signature]");
+	const profileNode = root.querySelector("[data-guide-voice-profile]");
+	const muteIndicatorNode = root.querySelector("[data-guide-voice-mute-indicator]");
 	const routeLink = root.querySelector("[data-guide-voice-route]");
 	const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 	const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
@@ -1997,6 +2272,7 @@ function mountGuideVoice(root) {
 	const persisted = readGuideVoiceSession();
 	let recognition = null;
 	let isActive = Boolean(persisted.active);
+	let isMuted = readGuideVoiceMutedState();
 	let isSpeaking = false;
 	let isWaitingReply = false;
 	let interactionsBound = false;
@@ -2028,6 +2304,38 @@ function mountGuideVoice(root) {
 			updatedAt: Date.now(),
 			...overrides,
 		});
+	}
+
+	function updateMuteUI(nextMuted = isMuted) {
+		isMuted = Boolean(nextMuted);
+		root.dataset.voiceMuted = isMuted ? "1" : "0";
+		if (muteIndicatorNode instanceof HTMLElement) {
+			muteIndicatorNode.textContent = isMuted
+				? "voix muette · I ou appui long pour la relancer"
+				: "voix active · I inverse + voix · appui long tactile";
+		}
+	}
+
+	function applyGuideVoiceSignature() {
+		const spectral = readGuideVoiceSpectralProfile(root);
+		root.dataset.guideVoiceProgram = spectral.program;
+		root.dataset.guideVoiceLabel = spectral.label;
+		root.dataset.guideVoiceLambda = String(Math.round(spectral.lambda));
+		root.dataset.guideVoiceTone = spectral.tone;
+		root.style.setProperty("--guide-voice-pulse-duration", `${spectral.orbPulseDuration.toFixed(2)}s`);
+		root.style.setProperty("--guide-voice-core-scale", spectral.coreScale.toFixed(3));
+
+		if (signatureNode instanceof HTMLElement) {
+			const register = spectral.registerLabel.charAt(0).toUpperCase() + spectral.registerLabel.slice(1);
+			signatureNode.textContent = `${register} · λ ${Math.round(spectral.lambda)} nm`;
+		}
+
+		if (profileNode instanceof HTMLElement) {
+			profileNode.textContent = `${spectral.tempoLabel} · ${spectral.label}`;
+		}
+
+		updateMuteUI(isMuted);
+		return spectral;
 	}
 
 	function setState(state, statusText = "") {
@@ -2117,7 +2425,16 @@ function mountGuideVoice(root) {
 	}
 
 	function speakReply(text, onDone) {
-		if (!text || !synth || typeof window.SpeechSynthesisUtterance !== "function") {
+		const spectral = applyGuideVoiceSignature();
+		if (!text) {
+			onDone?.();
+			return;
+		}
+
+		if (isMuted || !synth || typeof window.SpeechSynthesisUtterance !== "function") {
+			if (isMuted) {
+				setState("idle", "Voix muette. 0wlslw0 continue en texte lisible.");
+			}
 			onDone?.();
 			return;
 		}
@@ -2126,10 +2443,13 @@ function mountGuideVoice(root) {
 		setState("speaking", "Je te réponds à voix haute.");
 		synth.cancel();
 
+		const languageCode = detectGuideSpeechLanguage(text);
 		const utterance = new window.SpeechSynthesisUtterance(text);
-		utterance.lang = "fr-FR";
-		utterance.rate = 1;
-		utterance.pitch = 1;
+		utterance.lang = languageCode;
+		utterance.voice = pickGuideSpeechVoice(synth, languageCode);
+		utterance.rate = spectral.rate;
+		utterance.pitch = spectral.pitch;
+		utterance.volume = spectral.volume;
 		utterance.onend = () => {
 			isSpeaking = false;
 			onDone?.();
@@ -2327,6 +2647,11 @@ function mountGuideVoice(root) {
 		return;
 	}
 
+	if (synth && typeof synth.getVoices === "function") {
+		synth.getVoices();
+	}
+
+	applyGuideVoiceSignature();
 	hideRoute();
 	bindNavigationCarry();
 
@@ -2451,6 +2776,31 @@ function mountGuideVoice(root) {
 			prepareNavigation(routeLink.href || "");
 		});
 	}
+
+	window.addEventListener("o:land-signature-change", () => {
+		applyGuideVoiceSignature();
+	});
+
+	window.addEventListener("o:guide-voice-mute-change", (event) => {
+		const nextMuted = Boolean(event?.detail?.muted ?? readGuideVoiceMutedState());
+		const wasSpeaking = isSpeaking;
+		updateMuteUI(nextMuted);
+		if (nextMuted && synth) {
+			synth.cancel();
+			isSpeaking = false;
+		}
+
+		if (statusNode instanceof HTMLElement) {
+			statusNode.textContent = nextMuted
+				? "Voix muette. 0wlslw0 reste lisible et continue d’écouter."
+				: (isActive ? "Voix audible. 0wlslw0 peut repasser du grave à l’aigu." : "Voix audible. Active-la si tu veux l’entendre.");
+		}
+		persistSession();
+
+		if (wasSpeaking && nextMuted && isActive && !isWaitingReply) {
+			window.setTimeout(beginListening, 140);
+		}
+	});
 
 	const navigationCarry = Boolean(persisted.active);
 	if (navigationCarry) {

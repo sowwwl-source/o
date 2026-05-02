@@ -47,6 +47,8 @@ If the upstream agent is unreachable, `0wlslw0` falls back to a local orientatio
 Start here depending on the situation:
 
 - `OPS_INDEX.md` — master entry point
+- `3TERNET_ARCHITECTURE.md` — target architecture note for pocket lands / carried data centers
+- `3TERNET_LAB_BOOTSTRAP.md` — exact bootstrap path for `164.92.220.248`
 - `SESSION_RITUAL.md` — begin a session cleanly
 - `COMMIT_PROTOCOL.md` — prepare commits and pushes
 - `DEPLOY_QUICKREF.md` — shortest deploy path

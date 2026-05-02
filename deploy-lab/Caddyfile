@@ -1,0 +1,54 @@
+{
+	email {$ACME_EMAIL:ops@sowwwl.cloud}
+}
+
+(common_headers) {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), geolocation=(), microphone=()"
+		-Server
+	}
+}
+
+(app_headers) {
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
+		Cross-Origin-Opener-Policy same-origin
+		Cross-Origin-Resource-Policy same-origin
+		X-Permitted-Cross-Domain-Policies none
+	}
+}
+
+lab.sowwwl.cloud {
+	import common_headers
+	import app_headers
+	reverse_proxy app:80
+}
+
+www.lab.sowwwl.cloud {
+	redir https://lab.sowwwl.cloud{uri} 308
+}
+
+api.lab.sowwwl.cloud {
+	encode zstd gzip
+	header {
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Headers "Authorization, Content-Type"
+		Access-Control-Allow-Methods "GET, POST, OPTIONS"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+	@preflight method OPTIONS
+	respond @preflight 204
+	reverse_proxy api:80
+}
+
+pocket.lab.sowwwl.cloud {
+	import common_headers
+	import app_headers
+	reverse_proxy pocket:80
+}

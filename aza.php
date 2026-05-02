@@ -113,7 +113,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
         <p class="eyebrow"><strong>ferry 03</strong> <span>Fichiers / mémoire légère</span></p>
         <h1 class="land-title">
             <strong>Déposer sans algorithme.</strong>
-            <span>I inverse</span>
+            <span>I inverse + voix</span>
         </h1>
         <p class="lead">
             Déposer ce qui compte, sans rejouer le bruit.

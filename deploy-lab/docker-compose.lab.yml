@@ -1,0 +1,133 @@
+name: sowwwl-o-lab
+
+x-app-env: &app-env
+  DB_HOST: db
+  DB_NAME: ${DB_NAME:-o_lab}
+  DB_USER: ${DB_USER:-user}
+  DB_PASS: ${DB_PASS:-CHANGE_ME_LAB_DB_PASSWORD}
+  SOWWWL_AZA_DIRECT_ORIGIN: ${SOWWWL_AZA_DIRECT_ORIGIN:-https://lab.sowwwl.cloud}
+  SOWWWL_ADMIN_PIN: ${SOWWWL_ADMIN_PIN:-CHANGE_ME_LAB_ADMIN_PIN}
+  SOWWWL_ADMIN_EMAIL: ${SOWWWL_ADMIN_EMAIL:-pablo@sowwwl.com}
+  SOWWWL_0WLSLW0_CHAT_URL: ${SOWWWL_0WLSLW0_CHAT_URL:-}
+  SOWWWL_0WLSLW0_AGENT_ENDPOINT: ${SOWWWL_0WLSLW0_AGENT_ENDPOINT:-}
+  SOWWWL_0WLSLW0_AGENT_KEY: ${SOWWWL_0WLSLW0_AGENT_KEY:-}
+  SOWWWL_0WLSLW0_AGENT_AUTH_HEADER: ${SOWWWL_0WLSLW0_AGENT_AUTH_HEADER:-Authorization}
+  SOWWWL_0WLSLW0_AGENT_AUTH_SCHEME: ${SOWWWL_0WLSLW0_AGENT_AUTH_SCHEME:-Bearer}
+  SOWWWL_0WLSLW0_AGENT_MODE: ${SOWWWL_0WLSLW0_AGENT_MODE:-chat}
+  SOWWWL_0WLSLW0_AGENT_INPUT_FIELD: ${SOWWWL_0WLSLW0_AGENT_INPUT_FIELD:-message}
+  SOWWWL_0WLSLW0_AGENT_EXTRA_HEADERS_JSON: ${SOWWWL_0WLSLW0_AGENT_EXTRA_HEADERS_JSON:-}
+  SOWWWL_0WLSLW0_AGENT_TIMEOUT_SECONDS: ${SOWWWL_0WLSLW0_AGENT_TIMEOUT_SECONDS:-18}
+  SOWWWL_MAGIC_LINK_EMAILS: ${SOWWWL_MAGIC_LINK_EMAILS:-pablo@sowwwl.com,0wlslw0@protonmail.com}
+  SOWWWL_MAGIC_LINK_SECRET: ${SOWWWL_MAGIC_LINK_SECRET:-CHANGE_ME_LAB_MAGIC_LINK_SECRET}
+  SOWWWL_MAGIC_LINK_DELIVERY: ${SOWWWL_MAGIC_LINK_DELIVERY:-log}
+  SOWWWL_MAGIC_LINK_FROM: ${SOWWWL_MAGIC_LINK_FROM:-}
+  SOWWWL_MAGIC_LINK_FROM_NAME: ${SOWWWL_MAGIC_LINK_FROM_NAME:-}
+  SOWWWL_SMTP_HOST: ${SOWWWL_SMTP_HOST:-}
+  SOWWWL_SMTP_PORT: ${SOWWWL_SMTP_PORT:-587}
+  SOWWWL_SMTP_USERNAME: ${SOWWWL_SMTP_USERNAME:-}
+  SOWWWL_SMTP_PASSWORD: ${SOWWWL_SMTP_PASSWORD:-}
+  SOWWWL_SMTP_ENCRYPTION: ${SOWWWL_SMTP_ENCRYPTION:-tls}
+
+x-app-common: &app-common
+  image: sowwwl-o-app:lab
+  build:
+    context: ..
+    dockerfile: deploy/app/Dockerfile
+  depends_on:
+    db:
+      condition: service_healthy
+  expose:
+    - "80"
+  restart: unless-stopped
+  networks:
+    - sowwwl-lab-edge
+
+services:
+  caddy:
+    image: caddy:2.8
+    depends_on:
+      app:
+        condition: service_started
+      pocket:
+        condition: service_started
+      api:
+        condition: service_started
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:-ops@sowwwl.cloud}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    networks:
+      - sowwwl-lab-edge
+
+  app:
+    <<: *app-common
+    environment:
+      <<: *app-env
+      SOWWWL_PUBLIC_ORIGIN: ${SOWWWL_PUBLIC_ORIGIN:-https://lab.sowwwl.cloud}
+      SOWWWL_STORAGE_DIR: /var/www/runtime/lands
+      SOWWWL_RATE_LIMIT_DIR: /var/www/runtime/rate-limit
+    volumes:
+      - sowwwl_lab_runtime:/var/www/runtime
+
+  pocket:
+    <<: *app-common
+    environment:
+      <<: *app-env
+      SOWWWL_PUBLIC_ORIGIN: ${SOWWWL_POCKET_PUBLIC_ORIGIN:-https://pocket.lab.sowwwl.cloud}
+      SOWWWL_STORAGE_DIR: /var/www/runtime/lands
+      SOWWWL_RATE_LIMIT_DIR: /var/www/runtime/rate-limit
+    volumes:
+      - sowwwl_lab_pocket_runtime:/var/www/runtime
+
+  db:
+    image: mysql:8.0
+    command:
+      - --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-o_lab}
+      MYSQL_USER: ${DB_USER:-user}
+      MYSQL_PASSWORD: ${DB_PASS:-CHANGE_ME_LAB_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-CHANGE_ME_LAB_ROOT_DB_PASSWORD}
+    volumes:
+      - sowwwl_lab_db_data:/var/lib/mysql
+      - ../init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+      - ../migrations/2026_05_02_signal_mail.sql:/docker-entrypoint-initdb.d/2026_05_02_signal_mail.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - sowwwl-lab-edge
+
+  api:
+    build:
+      context: ../deploy
+      dockerfile: api/Dockerfile
+    environment:
+      API_BEARER_TOKEN: ${AZA_API_TOKEN:-CHANGE_ME_LAB_API_TOKEN}
+      API_PUBLIC_BASE_URL: https://api.lab.sowwwl.cloud
+    expose:
+      - "80"
+    restart: unless-stopped
+    networks:
+      - sowwwl-lab-edge
+
+volumes:
+  caddy_data:
+  caddy_config:
+  sowwwl_lab_runtime:
+  sowwwl_lab_pocket_runtime:
+  sowwwl_lab_db_data:
+
+networks:
+  sowwwl-lab-edge:
+    driver: bridge

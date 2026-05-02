@@ -69,7 +69,7 @@ $ambientProfile = land_collective_profile((string) ($dailyStream['mood'] ?? 'cal
         <p class="eyebrow"><strong>str3m</strong> <span>océan public</span></p>
         <h1 class="land-title signal-title">
             <strong>Le courant et les îles.</strong>
-            <span>I inverse</span>
+            <span>I inverse + voix</span>
         </h1>
         <p class="lead">Ce qui affleure aujourd'hui, et les terres qui résonnent.</p>
 

@@ -80,6 +80,11 @@ $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ .
 $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $authenticatedLand = current_authenticated_land();
 $ambientProfile = $authenticatedLand ? land_visual_profile($authenticatedLand) : land_collective_profile('calm');
+$ambientTokens = visual_profile_tokens($ambientProfile, 'calm');
+$guideLandProgram = (string) ($ambientTokens['program'] ?? 'collective');
+$guideLandLabel = (string) ($ambientTokens['label'] ?? 'collectif');
+$guideLandLambda = (int) ($ambientTokens['lambda'] ?? 548);
+$guideLandTone = (string) ($ambientProfile['tone'] ?? 'str3m public');
 $agentUrl = trim((string) ((getenv('SOWWWL_0WLSLW0_CHAT_URL') ?: getenv('SOWWWL_0WLSLW0_AGENT_URL')) ?: ''));
 $voiceState = guide_voice_browser_state($authenticatedLand);
 $guideMode = guide_voice_mode_label();
@@ -125,7 +130,13 @@ $guideVoiceNotes = [
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>
-<body class="experience guide-view">
+<body
+    class="experience guide-view"
+    data-land-program="<?= h($guideLandProgram) ?>"
+    data-land-label="<?= h($guideLandLabel) ?>"
+    data-land-lambda="<?= h((string) $guideLandLambda) ?>"
+    data-land-tone="<?= h($guideLandTone) ?>"
+>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'calm', '0wlslw0') ?>
@@ -226,11 +237,15 @@ $guideVoiceNotes = [
         data-guide-voice-greeting="<?= h((string) $voiceState['greeting']) ?>"
         data-guide-voice-upstream="<?= !empty($voiceState['upstream_configured']) ? '1' : '0' ?>"
         data-guide-voice-chat-url="<?= h((string) $voiceState['chat_url']) ?>"
+        data-guide-voice-program="<?= h((string) ($voiceState['land_program'] ?? $guideLandProgram)) ?>"
+        data-guide-voice-label="<?= h((string) ($voiceState['land_label'] ?? $guideLandLabel)) ?>"
+        data-guide-voice-lambda="<?= h((string) ($voiceState['land_lambda'] ?? $guideLandLambda)) ?>"
+        data-guide-voice-tone="<?= h((string) ($voiceState['land_tone'] ?? $guideLandTone)) ?>"
     >
         <div class="section-topline">
             <div>
                 <h2 id="guide-voice-title">Accompagnement vocal</h2>
-                <p class="panel-copy">Ici, 0wlslw0 écoute, répond à voix haute, puis t’oriente sans champ texte ni chat classique. La voix peut déjà accueillir plusieurs langues d’approche.</p>
+                <p class="panel-copy">Ici, 0wlslw0 écoute, répond à voix haute, puis t’oriente sans champ texte ni chat classique. <strong>I</strong> inverse et mute aussi la voix ; sur tactile, un appui long reprend le même geste. La voix peut déjà accueillir plusieurs langues d’approche.</p>
             </div>
             <span class="badge">voice only</span>
         </div>
@@ -245,6 +260,12 @@ $guideVoiceNotes = [
                 <p class="guide-voice-status" data-guide-voice-status>Prêt. Active la voix puis parle naturellement.</p>
                 <p class="guide-voice-transcript" data-guide-voice-transcript>Exemples : « explique O. », “explain O.”, « llévame vers Signal », “leva-me ao Str3m”.</p>
                 <p class="guide-voice-reply" data-guide-voice-reply>0wlslw0 répondra ici puis lira sa réponse à voix haute.</p>
+                <div class="guide-voice-signature" aria-live="polite">
+                    <span class="summary-label">Signature vocale</span>
+                    <strong data-guide-voice-signature>Voix spectrale · λ <?= h((string) $guideLandLambda) ?> nm</strong>
+                    <span class="guide-voice-profile" data-guide-voice-profile>tempo ajusté · <?= h($guideLandLabel) ?></span>
+                    <span class="guide-voice-mute-indicator" data-guide-voice-mute-indicator>voix active · I inverse + voix · appui long tactile</span>
+                </div>
 
                 <div class="action-row guide-voice-actions">
                     <button type="button" class="pill-link" data-guide-voice-start>Activer la voix</button>

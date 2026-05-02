@@ -58,6 +58,7 @@ function guide_voice_browser_state(?array $authenticatedLand = null): array
 {
     $config = guide_voice_config();
     $landSlug = trim((string) ($authenticatedLand['slug'] ?? ''));
+    $profile = $authenticatedLand ? land_visual_profile($authenticatedLand) : land_collective_profile('calm');
 
     return [
         'api_path' => (string) $config['api_path'],
@@ -66,6 +67,10 @@ function guide_voice_browser_state(?array $authenticatedLand = null): array
         'upstream_configured' => guide_voice_upstream_configured(),
         'chat_url' => (string) $config['chat_url'],
         'land_slug' => $landSlug,
+        'land_program' => (string) ($profile['program'] ?? 'collective'),
+        'land_label' => (string) ($profile['label'] ?? 'collectif'),
+        'land_lambda' => (int) ($profile['lambda_nm'] ?? 548),
+        'land_tone' => (string) ($profile['tone'] ?? 'str3m public'),
     ];
 }
 

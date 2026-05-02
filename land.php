@@ -86,7 +86,7 @@ if ($land && $isAuthenticatedHere) {
             <p class="eyebrow"><strong>terre active</strong> <span><?= h((string) $land['slug']) ?></span></p>
             <h1 class="land-title">
                 <strong><?= h((string) $land['username']) ?></strong>
-                <span>I inverse</span>
+                <span>I inverse + voix</span>
             </h1>
             <p class="lead">
                 Terre posée. Fuseau gardé.
