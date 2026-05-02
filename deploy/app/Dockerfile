@@ -24,6 +24,7 @@ RUN composer install --no-dev --prefer-dist --no-interaction --no-progress
 
 COPY .htaccess ./
 COPY index.php land.php config.php styles.css main.js manifest.json site-sw.js favicon.svg aza.php signal.php signal_item.php signal_post.php logout.php echo.php 0wlslw0.php 0wlslw0_voice.php str3m.php map.php map_points.php ./
+COPY aza_portals ./aza_portals
 COPY lib ./lib
 COPY icons ./icons
 COPY sites ./sites
