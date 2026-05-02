@@ -154,6 +154,7 @@ try {
 
 require_once __DIR__ . '/lib/lands.php';
 require_once __DIR__ . '/lib/aza_archive.php';
+require_once __DIR__ . '/lib/aza_ingest.php';
 require_once __DIR__ . '/lib/mailer.php';
 require_once __DIR__ . '/lib/security.php';
 require_once __DIR__ . '/lib/meaning.php';

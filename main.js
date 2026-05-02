@@ -3922,3 +3922,23 @@ initSignalFlow();
 initSpectralTuner();
 initStr3mArchipelago();
 initStr3mParallax();
+
+function initAzaTabs() {
+	const tabs = document.querySelectorAll('.aza-tab[data-tab]');
+	if (!tabs.length) return;
+
+	tabs.forEach((tab) => {
+		tab.addEventListener('click', () => {
+			const targetId = tab.dataset.tab;
+			tabs.forEach((t) => {
+				t.classList.toggle('aza-tab-active', t === tab);
+				t.setAttribute('aria-selected', t === tab ? 'true' : 'false');
+			});
+			document.querySelectorAll('.aza-tab-panel').forEach((panel) => {
+				panel.classList.toggle('aza-tab-panel-hidden', panel.id !== targetId);
+			});
+		});
+	});
+}
+
+initAzaTabs();

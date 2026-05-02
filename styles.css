@@ -41,6 +41,7 @@ body {
 
 html {
 	scroll-behavior: smooth;
+	font-size: calc(16px - 1pt);
 }
 
 body {
@@ -5529,4 +5530,120 @@ body:has(.connection-meter) {
 		transition-duration: 0.01ms !important;
 		scroll-behavior: auto !important;
 	}
+}
+
+/* ─── aZa tabs ─────────────────────────────────────────────────────────── */
+.aza-tabs {
+	display: flex;
+	gap: 0.25rem;
+	margin-bottom: 1.5rem;
+	border-bottom: 1px solid rgba(var(--fg-rgb) / 0.15);
+	padding-bottom: 0;
+}
+
+.aza-tab {
+	background: none;
+	border: none;
+	border-bottom: 2px solid transparent;
+	color: rgba(var(--fg-rgb) / 0.5);
+	cursor: pointer;
+	font: inherit;
+	font-size: 0.85rem;
+	letter-spacing: 0.04em;
+	padding: 0.5rem 1rem;
+	text-transform: uppercase;
+	transition: color 0.2s, border-color 0.2s;
+}
+
+.aza-tab:hover {
+	color: rgba(var(--fg-rgb) / 0.85);
+}
+
+.aza-tab-active {
+	border-bottom-color: rgba(var(--fg-rgb) / 0.7);
+	color: rgb(var(--fg-rgb));
+}
+
+.aza-tab-panel-hidden {
+	display: none;
+}
+
+/* ─── aZa files grid ────────────────────────────────────────────────────── */
+.aza-family-group + .aza-family-group {
+	margin-top: 2rem;
+}
+
+.aza-family-label {
+	font-size: 0.75rem;
+	letter-spacing: 0.1em;
+	opacity: 0.5;
+	text-transform: uppercase;
+	margin-bottom: 0.75rem;
+}
+
+.aza-files-grid {
+	display: grid;
+	gap: 1rem;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.aza-file-card {
+	background: rgba(var(--fg-rgb) / 0.04);
+	border: 1px solid rgba(var(--fg-rgb) / 0.1);
+	border-radius: 4px;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	overflow: hidden;
+	padding: 0.75rem;
+}
+
+.aza-file-thumb {
+	aspect-ratio: 4/3;
+	background: rgba(var(--fg-rgb) / 0.05);
+	border-radius: 2px;
+	overflow: hidden;
+}
+
+.aza-file-thumb img {
+	height: 100%;
+	object-fit: cover;
+	width: 100%;
+}
+
+.aza-file-thumb-blank {
+	align-items: center;
+	display: flex;
+	justify-content: center;
+}
+
+.aza-file-thumb-blank span {
+	font-size: 0.7rem;
+	letter-spacing: 0.08em;
+	opacity: 0.35;
+	text-transform: uppercase;
+}
+
+.aza-file-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+}
+
+.aza-file-name {
+	font-size: 0.85rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.aza-file-detail {
+	font-size: 0.72rem;
+	opacity: 0.5;
+}
+
+.aza-file-notes {
+	font-size: 0.75rem;
+	margin: 0;
+	opacity: 0.65;
 }

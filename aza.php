@@ -41,19 +41,25 @@ $editLand = $ownerLand ?: $authenticatedLand;
 $message = '';
 $messageType = 'info';
 $imported = null;
+$ingestedFile = null;
+$activeTab = 'zip';
 $form = [
     'owner_slug' => $ownerSlug,
-    'label' => '',
+    'label'      => '',
     'source_hint' => 'auto',
-    'notes' => '',
+    'notes'      => '',
+    'date_hint'  => '',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $form['owner_slug'] = trim((string) ($_POST['owner_slug'] ?? ''));
-    $form['label'] = trim((string) ($_POST['label'] ?? ''));
+    $form['owner_slug']  = trim((string) ($_POST['owner_slug'] ?? ''));
+    $form['label']       = trim((string) ($_POST['label'] ?? ''));
     $form['source_hint'] = trim((string) ($_POST['source_hint'] ?? 'auto'));
-    $form['notes'] = trim((string) ($_POST['notes'] ?? ''));
-    $csrfCandidate = (string) ($_POST['csrf_token'] ?? '');
+    $form['notes']       = trim((string) ($_POST['notes'] ?? ''));
+    $form['date_hint']   = trim((string) ($_POST['date_hint'] ?? ''));
+    $csrfCandidate       = (string) ($_POST['csrf_token'] ?? '');
+    $formAction          = trim((string) ($_POST['form_action'] ?? 'zip'));
+    $activeTab           = $formAction === 'file' ? 'file' : 'zip';
 
     if ($publicReadOnly) {
         $message = $ownerLand
@@ -63,18 +69,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!verify_csrf_token($csrfCandidate)) {
         $message = 'Session expirée. Recharge la page et réessaie.';
         $messageType = 'warning';
-    } elseif (!isset($_FILES['archive_zip'])) {
-        $message = 'Choisis une archive ZIP à déposer.';
-        $messageType = 'warning';
-    } else {
-        try {
-            $imported = aza_import_zip_archive($_FILES['archive_zip'], $form);
-            $form['owner_slug'] = (string) ($imported['owner_slug'] ?? $form['owner_slug']);
-            $message = 'Archive déposée. aZa garde le ZIP et résume sa structure.';
-            $messageType = 'success';
-        } catch (Throwable $exception) {
-            $message = $exception->getMessage();
+    } elseif ($formAction === 'file') {
+        $uploadedFile = $_FILES['ingest_file'] ?? null;
+        if (!$uploadedFile || ($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            $message = 'Choisis un fichier à déposer.';
             $messageType = 'warning';
+        } else {
+            try {
+                $ingestedFile = aza_ingest_import_file($uploadedFile, $form);
+                $form['owner_slug'] = (string) ($ingestedFile['owner_slug'] ?? $form['owner_slug']);
+                $message = 'Fichier déposé — ' . h((string) $ingestedFile['label']) . ' · ' . aza_ingest_family_label((string) $ingestedFile['format_family']) . ' · ' . aza_format_bytes((int) $ingestedFile['size']) . '.';
+                $messageType = 'success';
+            } catch (Throwable $exception) {
+                $message = $exception->getMessage();
+                $messageType = 'warning';
+            }
+        }
+    } else {
+        if (($fileZip = $_FILES['archive_zip'] ?? null) === null || ($fileZip['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            $message = 'Choisis une archive ZIP à déposer.';
+            $messageType = 'warning';
+        } else {
+            try {
+                $imported = aza_import_zip_archive($fileZip, $form);
+                $form['owner_slug'] = (string) ($imported['owner_slug'] ?? $form['owner_slug']);
+                $message = 'Archive déposée. aZa garde le ZIP et résume sa structure.';
+                $messageType = 'success';
+            } catch (Throwable $exception) {
+                $message = $exception->getMessage();
+                $messageType = 'warning';
+            }
         }
     }
 }
@@ -82,13 +106,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $rawArchives = $form['owner_slug'] !== ''
     ? aza_list_archives($form['owner_slug'])
     : get_all_aza_archives();
-$chronology = aza_prepare_chronology($rawArchives);
-$sortedArchives = $chronology['sorted'];
+$chronology      = aza_prepare_chronology($rawArchives);
+$sortedArchives  = $chronology['sorted'];
 $groupedArchives = $chronology['grouped'];
-$chronoSummary = $chronology['summary'];
-$sources = aza_supported_sources();
+$chronoSummary   = $chronology['summary'];
+$sources         = aza_supported_sources();
 $directUploadUrl = aza_direct_upload_url($form['owner_slug'] !== '' ? $form['owner_slug'] : $ownerSlug);
-$ambientLand = $ownerLand ?: $authenticatedLand;
+
+$rawFiles     = aza_ingest_list_files($form['owner_slug'] !== '' ? $form['owner_slug'] : null);
+$filesByFamily = aza_ingest_group_by_family($rawFiles);
+
+$ambientLand    = $ownerLand ?: $authenticatedLand;
 $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collective_profile('nocturnal');
 ?>
 <!DOCTYPE html>
@@ -120,7 +148,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
         </p>
 
         <div class="land-meta">
-            <span class="meta-pill">ZIP seulement</span>
+            <span class="meta-pill">ZIP · fichiers libres</span>
             <span class="meta-pill"><?= h(aza_format_bytes(AZA_MAX_UPLOAD_BYTES)) ?> max côté app</span>
             <span class="meta-pill">archive légère</span>
             <a class="meta-pill meta-pill-link" href="<?= h($guideHref) ?>">0wlslw0</a>
@@ -154,7 +182,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                     Entrée directe active.
                 <?php else: ?>
                     Très gros ZIP&nbsp;:
-                    <a class="ghost-link" href="<?= h($directUploadUrl) ?>">ouvrir <?= h($directHost ?? 'l’entrée directe') ?></a>.
+                    <a class="ghost-link" href="<?= h($directUploadUrl) ?>">ouvrir <?= h($directHost ?? "l'entrée directe") ?></a>.
                 <?php endif; ?>
             </p>
         <?php endif; ?>
@@ -200,8 +228,8 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                     <strong class="preview-title">Lecture publique seulement</strong>
                     <p class="land-note">
                         <?= $ownerLand
-                            ? 'Cette mémoire reste ouverte à la lecture, mais l’écriture passe par la Terre liée.'
-                            : 'La mémoire collective reste visible ici, mais l’écriture demande une Terre active.' ?>
+                            ? "Cette mémoire reste ouverte à la lecture, mais l'écriture passe par la Terre liée."
+                            : "La mémoire collective reste visible ici, mais l'écriture demande une Terre active." ?>
                     </p>
                     <div class="action-row">
                         <?php if ($ownerLand): ?>
@@ -215,50 +243,96 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                     </div>
                 </div>
             <?php else: ?>
-                <form method="post" enctype="multipart/form-data" class="land-form aza-form">
-                    <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                <div class="aza-tabs" role="tablist">
+                    <button role="tab" class="aza-tab<?= $activeTab === 'zip' ? ' aza-tab-active' : '' ?>" data-tab="aza-tab-zip" aria-selected="<?= $activeTab === 'zip' ? 'true' : 'false' ?>">Archive ZIP</button>
+                    <button role="tab" class="aza-tab<?= $activeTab === 'file' ? ' aza-tab-active' : '' ?>" data-tab="aza-tab-file" aria-selected="<?= $activeTab === 'file' ? 'true' : 'false' ?>">Dépôt libre</button>
+                </div>
 
-                    <label>
-                        Terre liée
-                        <input type="text" name="owner_slug" placeholder="ex: nox" value="<?= h($form['owner_slug']) ?>">
-                        <span class="input-hint">Optionnel.</span>
-                    </label>
+                <div id="aza-tab-zip" class="aza-tab-panel<?= $activeTab === 'zip' ? '' : ' aza-tab-panel-hidden' ?>">
+                    <form method="post" enctype="multipart/form-data" class="land-form aza-form">
+                        <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                        <input type="hidden" name="form_action" value="zip">
 
-                    <label>
-                        Nom de l’archive
-                        <input type="text" name="label" placeholder="ex: export-instagram-2024" value="<?= h($form['label']) ?>">
-                    </label>
+                        <label>
+                            Terre liée
+                            <input type="text" name="owner_slug" placeholder="ex: nox" value="<?= h($form['owner_slug']) ?>">
+                            <span class="input-hint">Optionnel.</span>
+                        </label>
 
-                    <label>
-                        Source probable
-                        <select name="source_hint">
-                            <?php foreach ($sources as $value => $label): ?>
-                                <option value="<?= h($value) ?>" <?= $form['source_hint'] === $value ? 'selected' : '' ?>><?= h($label) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </label>
+                        <label>
+                            Nom de l'archive
+                            <input type="text" name="label" placeholder="ex: export-instagram-2024" value="<?= h($form['label']) ?>">
+                        </label>
 
-                    <label>
-                        Archive ZIP
-                        <input type="file" name="archive_zip" accept=".zip,application/zip" required>
-                        <span class="input-hint">ZIP seulement.</span>
-                        <?php if ($directUploadUrl && !$isDirectRequest): ?>
-                            <span class="input-hint">Pour un très gros ZIP, utilise <a class="ghost-link" href="<?= h($directUploadUrl) ?>">l’entrée directe</a>.</span>
-                        <?php endif; ?>
-                    </label>
+                        <label>
+                            Source probable
+                            <select name="source_hint">
+                                <?php foreach ($sources as $value => $label): ?>
+                                    <option value="<?= h($value) ?>" <?= $form['source_hint'] === $value ? 'selected' : '' ?>><?= h($label) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
 
-                    <label>
-                        Note de contexte
-                        <textarea name="notes" rows="4" placeholder="Contexte, provenance, repères utiles."><?= h($form['notes']) ?></textarea>
-                    </label>
+                        <label>
+                            Archive ZIP
+                            <input type="file" name="archive_zip" accept=".zip,application/zip" required>
+                            <span class="input-hint">ZIP seulement.</span>
+                            <?php if ($directUploadUrl && !$isDirectRequest): ?>
+                                <span class="input-hint">Pour un très gros ZIP, utilise <a class="ghost-link" href="<?= h($directUploadUrl) ?>">l'entrée directe</a>.</span>
+                            <?php endif; ?>
+                        </label>
 
-                    <button type="submit">Sédimenter l'archive</button>
-                </form>
+                        <label>
+                            Note de contexte
+                            <textarea name="notes" rows="4" placeholder="Contexte, provenance, repères utiles."><?= h($form['notes']) ?></textarea>
+                        </label>
+
+                        <button type="submit">Sédimenter l'archive</button>
+                    </form>
+                </div>
+
+                <div id="aza-tab-file" class="aza-tab-panel<?= $activeTab === 'file' ? '' : ' aza-tab-panel-hidden' ?>">
+                    <form method="post" enctype="multipart/form-data" class="land-form aza-form">
+                        <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                        <input type="hidden" name="form_action" value="file">
+
+                        <label>
+                            Terre liée
+                            <input type="text" name="owner_slug" placeholder="ex: nox" value="<?= h($form['owner_slug']) ?>">
+                            <span class="input-hint">Optionnel.</span>
+                        </label>
+
+                        <label>
+                            Nom du fichier
+                            <input type="text" name="label" placeholder="ex: collier-prototype-v3" value="<?= h($form['label']) ?>">
+                        </label>
+
+                        <label>
+                            Époque
+                            <input type="text" name="date_hint" placeholder="ex: 2014, 2019-03, automne 2011" value="<?= h($form['date_hint']) ?>">
+                            <span class="input-hint">Quand ce fichier a-t-il été créé ? Libre.</span>
+                        </label>
+
+                        <label>
+                            Fichier
+                            <?php $allExts = implode(',', array_map(static fn($e) => '.' . $e, aza_ingest_allowed_extensions())); ?>
+                            <input type="file" name="ingest_file" accept="<?= h($allExts) ?>" required>
+                            <span class="input-hint">Image, vidéo, audio, PDF, PSD, AI, INDD, OBJ, SKP, STL, GLB…</span>
+                        </label>
+
+                        <label>
+                            Note de contexte
+                            <textarea name="notes" rows="4" placeholder="Contexte, intention, matière, époque."><?= h($form['notes']) ?></textarea>
+                        </label>
+
+                        <button type="submit">Déposer le fichier</button>
+                    </form>
+                </div>
             <?php endif; ?>
 
             <?php if ($imported): ?>
                 <div class="signup-preview aza-preview">
-                    <span class="summary-label">Dernier dépôt</span>
+                    <span class="summary-label">Dernier dépôt ZIP</span>
                     <strong class="preview-title"><?= h((string) $imported['label']) ?></strong>
                     <?php if (!empty($imported['human_summary'])): ?>
                         <p class="land-note"><?= h((string) $imported['human_summary']) ?></p>
@@ -267,7 +341,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                         <p class="panel-copy aza-memory-note"><?= h((string) $imported['memory_note']) ?></p>
                     <?php endif; ?>
                     <div class="preview-grid">
-                        <p><span>Source</span><code><?= h((string) $sources[$imported['source']] ?? (string) $imported['source']) ?></code></p>
+                        <p><span>Source</span><code><?= h((string) ($sources[$imported['source']] ?? (string) $imported['source'])) ?></code></p>
                         <p><span>Entrées repérées</span><code><?= h((string) $imported['entries']) ?></code></p>
                         <p><span>Fichier ZIP</span><code>/<?= h((string) $imported['stored_file']) ?></code></p>
                         <?php if (!empty($imported['years']) && is_array($imported['years'])): ?>
@@ -276,11 +350,28 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                     </div>
                 </div>
             <?php endif; ?>
+
+            <?php if ($ingestedFile): ?>
+                <div class="signup-preview aza-preview">
+                    <span class="summary-label">Dernier dépôt libre</span>
+                    <strong class="preview-title"><?= h((string) $ingestedFile['label']) ?></strong>
+                    <div class="preview-grid">
+                        <p><span>Format</span><code><?= h(strtoupper((string) $ingestedFile['format'])) ?> · <?= h(aza_ingest_family_label((string) $ingestedFile['format_family'])) ?></code></p>
+                        <p><span>Taille</span><code><?= h(aza_format_bytes((int) $ingestedFile['size'])) ?></code></p>
+                        <?php if (!empty($ingestedFile['date_hint'])): ?>
+                            <p><span>Époque</span><code><?= h((string) $ingestedFile['date_hint']) ?></code></p>
+                        <?php endif; ?>
+                        <?php if (!empty($ingestedFile['meta']['width'])): ?>
+                            <p><span>Dimensions</span><code><?= h((string) $ingestedFile['meta']['width']) ?> × <?= h((string) $ingestedFile['meta']['height']) ?></code></p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
         </section>
 
         <aside class="panel reveal" aria-labelledby="aza-principles-title">
             <h2 id="aza-principles-title">Principe</h2>
-            <p class="panel-copy">Ni fil, ni score : une mémoire qu’on peut relire.</p>
+            <p class="panel-copy">Ni fil, ni score : une mémoire qu'on peut relire.</p>
             <div class="summary-grid aza-principles-grid">
                 <article class="summary-card">
                     <span class="summary-label">01</span>
@@ -288,7 +379,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                 </article>
                 <article class="summary-card">
                     <span class="summary-label">02</span>
-                    <strong class="summary-value summary-value-small">Index</strong>
+                    <strong class="summary-value summary-value-small">Fichiers</strong>
                 </article>
                 <article class="summary-card">
                     <span class="summary-label">03</span>
@@ -426,6 +517,52 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
             </div>
         <?php endif; ?>
     </section>
+
+    <?php if ($filesByFamily): ?>
+    <section class="panel reveal" aria-labelledby="aza-files-title">
+        <div class="section-topline aza-timeline-header">
+            <div>
+                <h2 id="aza-files-title">Fichiers libres</h2>
+                <p class="panel-copy">
+                    <?= $form['owner_slug'] !== ''
+                        ? 'Filtre : ' . h($form['owner_slug']) . ' · ' . count($rawFiles) . ' fichier' . (count($rawFiles) > 1 ? 's' : '') . '.'
+                        : count($rawFiles) . ' fichier' . (count($rawFiles) > 1 ? 's' : '') . ' déposé' . (count($rawFiles) > 1 ? 's' : '') . '.' ?>
+                </p>
+            </div>
+        </div>
+
+        <?php foreach ($filesByFamily as $group): ?>
+            <div class="aza-family-group">
+                <h3 class="aza-family-label"><?= h($group['label']) ?></h3>
+                <div class="aza-files-grid">
+                    <?php foreach ($group['items'] as $file): ?>
+                        <article class="aza-file-card">
+                            <?php if (!empty($file['thumbnail'])): ?>
+                                <div class="aza-file-thumb">
+                                    <img src="/<?= h((string) $file['thumbnail']) ?>" alt="<?= h((string) $file['label']) ?>" loading="lazy">
+                                </div>
+                            <?php else: ?>
+                                <div class="aza-file-thumb aza-file-thumb-blank">
+                                    <span><?= h(strtoupper((string) $file['format'])) ?></span>
+                                </div>
+                            <?php endif; ?>
+                            <div class="aza-file-meta">
+                                <strong class="aza-file-name"><?= h((string) $file['label']) ?></strong>
+                                <span class="aza-file-detail"><?= h(aza_format_bytes((int) $file['size'])) ?></span>
+                                <?php if (!empty($file['date_hint'])): ?>
+                                    <span class="aza-file-detail"><?= h((string) $file['date_hint']) ?></span>
+                                <?php endif; ?>
+                                <?php if (!empty($file['notes'])): ?>
+                                    <p class="aza-file-notes"><?= h((string) $file['notes']) ?></p>
+                                <?php endif; ?>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </section>
+    <?php endif; ?>
 </main>
 </body>
 </html>
