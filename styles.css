@@ -2086,6 +2086,131 @@ button:hover,
 	margin-top: 1.1rem;
 }
 
+.guide-voice-grid {
+	margin-top: 1.2rem;
+	grid-template-columns: minmax(0, 1.08fr) minmax(18rem, 0.92fr);
+}
+
+.guide-voice-stage {
+	display: grid;
+	gap: 0.9rem;
+	align-content: start;
+}
+
+.guide-voice-orb {
+	position: relative;
+	width: 4.8rem;
+	height: 4.8rem;
+	display: grid;
+	place-items: center;
+	margin-top: 0.3rem;
+}
+
+.guide-voice-orb-core,
+.guide-voice-orb-ring {
+	position: absolute;
+	border-radius: 999px;
+	border: 1px solid rgba(var(--fg-rgb) / 0.22);
+	transition: transform 0.24s ease, opacity 0.24s ease, border-color 0.24s ease;
+}
+
+.guide-voice-orb-core {
+	width: 1.3rem;
+	height: 1.3rem;
+	background: rgba(var(--land-secondary-rgb) / 0.24);
+	border-color: rgba(var(--land-secondary-rgb) / 0.38);
+	box-shadow: 0 0 0 0.25rem rgba(var(--land-secondary-rgb) / 0.08);
+}
+
+.guide-voice-orb-ring {
+	width: 4.8rem;
+	height: 4.8rem;
+	opacity: 0.7;
+}
+
+.guide-voice-shell[data-voice-state="listening"] .guide-voice-orb-core,
+.guide-voice-shell[data-voice-state="thinking"] .guide-voice-orb-core,
+.guide-voice-shell[data-voice-state="speaking"] .guide-voice-orb-core {
+	transform: scale(1.08);
+	border-color: rgba(var(--land-secondary-rgb) / 0.52);
+}
+
+.guide-voice-shell[data-voice-state="listening"] .guide-voice-orb-ring,
+.guide-voice-shell[data-voice-state="speaking"] .guide-voice-orb-ring {
+	animation: guideVoicePulse 1.6s ease-in-out infinite;
+	border-color: rgba(var(--land-secondary-rgb) / 0.4);
+}
+
+.guide-voice-shell[data-voice-state="thinking"] .guide-voice-orb-ring {
+	animation: guideVoiceRotate 1.4s linear infinite;
+	border-color: rgba(var(--land-secondary-rgb) / 0.32);
+	border-style: dashed;
+}
+
+.guide-voice-status,
+.guide-voice-transcript,
+.guide-voice-reply {
+	margin: 0;
+	max-width: 48rem;
+	line-height: 1.65;
+}
+
+.guide-voice-status {
+	font-size: 0.94rem;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: color-mix(in srgb, var(--fg) 76%, var(--bg) 24%);
+}
+
+.guide-voice-transcript {
+	color: rgba(var(--fg-rgb) / 0.76);
+	font-style: italic;
+}
+
+.guide-voice-reply {
+	font-size: 1.02rem;
+	color: rgba(var(--fg-rgb) / 0.9);
+}
+
+.guide-voice-actions {
+	margin-top: 0.2rem;
+}
+
+.guide-voice-route-link {
+	justify-self: start;
+	margin-top: 0.1rem;
+}
+
+.guide-voice-route-link[hidden] {
+	display: none;
+}
+
+.guide-voice-console {
+	margin-top: 0;
+	align-content: start;
+}
+
+@keyframes guideVoicePulse {
+	0%,
+	100% {
+		transform: scale(0.94);
+		opacity: 0.48;
+	}
+	50% {
+		transform: scale(1.06);
+		opacity: 0.96;
+	}
+}
+
+@keyframes guideVoiceRotate {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
 .meaning-panel {
 	padding-left: 1.4rem;
 }

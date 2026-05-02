@@ -1243,3 +1243,291 @@ if ("serviceWorker" in navigator) {
 		});
 	});
 }
+
+function initGuideVoice() {
+	const root = document.querySelector("[data-guide-voice]");
+	if (!(root instanceof HTMLElement)) {
+		return;
+	}
+
+	const startButton = root.querySelector("[data-guide-voice-start]");
+	const stopButton = root.querySelector("[data-guide-voice-stop]");
+	const statusNode = root.querySelector("[data-guide-voice-status]");
+	const transcriptNode = root.querySelector("[data-guide-voice-transcript]");
+	const replyNode = root.querySelector("[data-guide-voice-reply]");
+	const routeLink = root.querySelector("[data-guide-voice-route]");
+	const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+	const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
+	const greeting = root.dataset.guideVoiceGreeting || "Je suis 0wlslw0. Dis-moi ce que tu veux faire.";
+	const apiPath = root.dataset.guideVoiceApi || "/0wlslw0/voice";
+	const csrfToken = root.dataset.guideVoiceCsrf || "";
+	const chatUrl = root.dataset.guideVoiceChatUrl || "";
+	let recognition = null;
+	let isActive = false;
+	let isSpeaking = false;
+	let isWaitingReply = false;
+
+	function setState(state, statusText = "") {
+		root.dataset.voiceState = state;
+		if (statusNode instanceof HTMLElement && statusText) {
+			statusNode.textContent = statusText;
+		}
+	}
+
+	function setTranscript(text) {
+		if (transcriptNode instanceof HTMLElement && text) {
+			transcriptNode.textContent = text;
+		}
+	}
+
+	function setReply(text) {
+		if (replyNode instanceof HTMLElement && text) {
+			replyNode.textContent = text;
+		}
+	}
+
+	function hideRoute() {
+		if (!(routeLink instanceof HTMLAnchorElement)) {
+			return;
+		}
+
+		routeLink.hidden = true;
+		routeLink.textContent = "Continuer";
+		routeLink.setAttribute("href", "#");
+	}
+
+	function showRoute(route) {
+		if (!(routeLink instanceof HTMLAnchorElement) || !route || !route.href) {
+			hideRoute();
+			return;
+		}
+
+		routeLink.hidden = false;
+		routeLink.href = route.href;
+		routeLink.textContent = route.label || "Continuer";
+	}
+
+	function beginListening() {
+		if (!recognition || !isActive || isSpeaking || isWaitingReply) {
+			return;
+		}
+
+		try {
+			recognition.start();
+			setState("listening", "J’écoute. Parle naturellement.");
+		} catch {
+			// Recognition may already be starting; ignore the duplicate start.
+		}
+	}
+
+	function stopListening() {
+		if (!recognition) {
+			return;
+		}
+
+		try {
+			recognition.stop();
+		} catch {
+			// Ignore stop races.
+		}
+	}
+
+	function speakReply(text, onDone) {
+		if (!text || !synth || typeof window.SpeechSynthesisUtterance !== "function") {
+			onDone?.();
+			return;
+		}
+
+		isSpeaking = true;
+		setState("speaking", "Je te réponds à voix haute.");
+		synth.cancel();
+
+		const utterance = new window.SpeechSynthesisUtterance(text);
+		utterance.lang = "fr-FR";
+		utterance.rate = 1;
+		utterance.pitch = 1;
+		utterance.onend = () => {
+			isSpeaking = false;
+			onDone?.();
+		};
+		utterance.onerror = () => {
+			isSpeaking = false;
+			onDone?.();
+		};
+
+		synth.speak(utterance);
+	}
+
+	function stopGuide(message = "Micro coupé.") {
+		isActive = false;
+		isSpeaking = false;
+		isWaitingReply = false;
+		stopListening();
+		if (synth) {
+			synth.cancel();
+		}
+		if (startButton instanceof HTMLElement) {
+			startButton.hidden = false;
+		}
+		if (stopButton instanceof HTMLElement) {
+			stopButton.hidden = true;
+		}
+		setState("idle", message);
+	}
+
+	async function sendUtterance(utterance) {
+		isWaitingReply = true;
+		setState("thinking", "Je cherche la bonne porte.");
+		setTranscript(`Tu as dit : ${utterance}`);
+
+		try {
+			const response = await fetch(apiPath, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"X-CSRF-Token": csrfToken,
+				},
+				body: JSON.stringify({
+					utterance,
+					csrf_token: csrfToken,
+				}),
+			});
+
+			const payload = await response.json().catch(() => ({}));
+			const reply = typeof payload.reply === "string" && payload.reply.trim()
+				? payload.reply.trim()
+				: "Le passage vocal hésite un instant. Réessaie avec une phrase plus courte.";
+			const route = payload && typeof payload === "object" ? payload.route : null;
+
+			setReply(reply);
+			showRoute(route);
+			isWaitingReply = false;
+
+			speakReply(reply, () => {
+				if (route && route.auto_navigate && route.href) {
+					window.location.assign(route.href);
+					return;
+				}
+
+				if (isActive) {
+					window.setTimeout(beginListening, 260);
+				} else {
+					setState("idle", "Prêt si tu veux reprendre.");
+				}
+			});
+		} catch {
+			isWaitingReply = false;
+			setReply(chatUrl
+				? "Le relais local a décroché. Tu peux utiliser le relais externe pendant que je me réveille."
+				: "Le relais local a décroché. Réessaie dans un instant.");
+			setState("idle", "Connexion vocale brouillée.");
+			if (isActive) {
+				window.setTimeout(beginListening, 600);
+			}
+		}
+	}
+
+	if (!(startButton instanceof HTMLElement) || !(stopButton instanceof HTMLElement)) {
+		return;
+	}
+
+	hideRoute();
+	setState("idle", "Prêt. Active la voix puis parle naturellement.");
+
+	if (!RecognitionCtor) {
+		startButton.setAttribute("disabled", "disabled");
+		setReply(chatUrl
+			? "Ce navigateur ne propose pas la reconnaissance vocale Web. Tu peux ouvrir le relais externe en attendant."
+			: "Ce navigateur ne propose pas la reconnaissance vocale Web. Essaie Safari ou Chrome récents.");
+		setState("idle", "Reconnaissance vocale indisponible dans ce navigateur.");
+		return;
+	}
+
+	recognition = new RecognitionCtor();
+	recognition.lang = "fr-FR";
+	recognition.continuous = false;
+	recognition.interimResults = true;
+	recognition.maxAlternatives = 1;
+
+	recognition.onresult = (event) => {
+		let interim = "";
+		let finalTranscript = "";
+
+		for (let index = event.resultIndex; index < event.results.length; index += 1) {
+			const result = event.results[index];
+			const transcript = result[0]?.transcript?.trim() || "";
+			if (!transcript) {
+				continue;
+			}
+
+			if (result.isFinal) {
+				finalTranscript += `${transcript} `;
+			} else {
+				interim += `${transcript} `;
+			}
+		}
+
+		if (interim.trim()) {
+			setTranscript(`J’entends : ${interim.trim()}`);
+		}
+
+		if (finalTranscript.trim()) {
+			stopListening();
+			sendUtterance(finalTranscript.trim());
+		}
+	};
+
+	recognition.onerror = (event) => {
+		if (!isActive) {
+			return;
+		}
+
+		const errorCode = event?.error || "unknown";
+		if (errorCode === "not-allowed" || errorCode === "service-not-allowed") {
+			stopGuide("Le micro est bloqué. Autorise le micro puis réessaie.");
+			return;
+		}
+
+		if (errorCode === "no-speech") {
+			setState("idle", "Je n’ai rien capté. Réessaie quand tu veux.");
+			window.setTimeout(beginListening, 420);
+			return;
+		}
+
+		setState("idle", "Le micro a décroché. Je relance l’écoute.");
+		window.setTimeout(beginListening, 680);
+	};
+
+	recognition.onend = () => {
+		if (isActive && !isSpeaking && !isWaitingReply) {
+			window.setTimeout(beginListening, 240);
+		}
+	};
+
+	startButton.addEventListener("click", () => {
+		isActive = true;
+		isWaitingReply = false;
+		hideRoute();
+		startButton.hidden = true;
+		stopButton.hidden = false;
+		setReply("0wlslw0 répondra ici puis lira sa réponse à voix haute.");
+
+		speakReply(greeting, () => {
+			if (isActive) {
+				window.setTimeout(beginListening, 260);
+			}
+		});
+	});
+
+	stopButton.addEventListener("click", () => {
+		stopGuide("Voix coupée. Tu peux relancer quand tu veux.");
+	});
+
+	if (routeLink instanceof HTMLAnchorElement) {
+		routeLink.addEventListener("click", () => {
+			stopGuide("Navigation en cours.");
+		});
+	}
+}
+
+initGuideVoice();

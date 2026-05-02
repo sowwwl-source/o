@@ -27,6 +27,7 @@ Use it to decide:
 ### I am about to deploy to production
 Open:
 - `DEPLOY_QUICKREF.md`
+- `PROD_CHECKLIST.md`
 
 Use it for:
 - VPS sync
@@ -94,18 +95,20 @@ Most sessions follow this sequence:
 1. `SESSION_RITUAL.md`
 2. `COMMIT_PROTOCOL.md`
 3. `DEPLOY_QUICKREF.md`
-4. `LIVE_VERIFICATION.md`
+4. `PROD_CHECKLIST.md`
+5. `LIVE_VERIFICATION.md`
 
 Only when needed:
 
-5. `DB_MIGRATION_PROTOCOL.md`
-6. `ROLLBACK_PROTOCOL.md`
+6. `DB_MIGRATION_PROTOCOL.md`
+7. `ROLLBACK_PROTOCOL.md`
 
 ## Short map
 
 - **before work** → `SESSION_RITUAL.md`
 - **before commit** → `COMMIT_PROTOCOL.md`
 - **before deploy** → `DEPLOY_QUICKREF.md`
+- **just before / just after prod** → `PROD_CHECKLIST.md`
 - **after deploy** → `LIVE_VERIFICATION.md`
 - **if DB feels stale** → `DB_MIGRATION_PROTOCOL.md`
 - **if production is degraded** → `ROLLBACK_PROTOCOL.md`

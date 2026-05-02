@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/config.php';
+require_once __DIR__ . '/lib/guide_voice.php';
 
 $host = request_host();
 if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
@@ -22,7 +23,8 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
 $authenticatedLand = current_authenticated_land();
 $ambientProfile = $authenticatedLand ? land_visual_profile($authenticatedLand) : land_collective_profile('calm');
 $agentUrl = trim((string) ((getenv('SOWWWL_0WLSLW0_CHAT_URL') ?: getenv('SOWWWL_0WLSLW0_AGENT_URL')) ?: ''));
-$guideMode = $agentUrl !== '' ? 'agent relaye' : 'guide local';
+$voiceState = guide_voice_browser_state($authenticatedLand);
+$guideMode = guide_voice_mode_label();
 $canonicalOrigin = rtrim((string) (getenv('SOWWWL_PUBLIC_ORIGIN') ?: 'https://sowwwl.com'), '/');
 $openLandHref = $authenticatedLand
     ? '/land.php?u=' . rawurlencode((string) $authenticatedLand['slug'])
@@ -110,7 +112,7 @@ $promptSeeds = guide_prompt_seeds();
             <div class="action-row">
                 <a class="pill-link" href="<?= h($canonicalOrigin . '/#poser') ?>">Commencer la creation</a>
                 <a class="ghost-link" href="<?= h($canonicalOrigin . '/str3m') ?>">Visiter publiquement</a>
-                <a class="ghost-link" href="<?= h($canonicalOrigin . '/aza.php') ?>">Lire aZa</a>
+                <a class="ghost-link" href="<?= h($canonicalOrigin . '/aza') ?>">Lire aZa</a>
                 <?php if ($agentUrl !== ''): ?>
                     <a class="ghost-link" href="<?= h($agentUrl) ?>" target="_blank" rel="noopener">Parler a 0wlslw0</a>
                 <?php endif; ?>
@@ -130,15 +132,66 @@ $promptSeeds = guide_prompt_seeds();
                 <p>[public] oui, lecture et guidage</p>
                 <p>[signup] vers le noyau et la creation de terre</p>
                 <p>[archives] vers aZa en lecture publique</p>
-                <p>[agent] <?= h($agentUrl !== '' ? 'relié au public' : 'encore privé ou non branché') ?></p>
+                <p>[voice] <?= h(guide_voice_upstream_configured() ? 'amont ia relaye' : 'fallback local actif') ?></p>
+                <p>[agent] <?= h($agentUrl !== '' ? 'relais externe visible' : 'pas de relais externe public') ?></p>
             </div>
 
             <p class="panel-copy guide-embed-note">
-                <?= $agentUrl !== ''
-                    ? 'L’agent public est déjà relié. Cette page garde la logique d’orientation et ouvre le relais conversationnel.'
-                    : 'La page fonctionne déjà seule. Quand l’agent DigitalOcean sera public, il suffira de relier son URL pour ajouter le relais conversationnel.' ?>
+                <?= guide_voice_upstream_configured()
+                    ? 'La voix peut déjà relayer un agent amont côté serveur. La page garde l’orientation locale et protège la clé en backend.'
+                    : 'La voix fonctionne déjà en guide local. Quand l’endpoint IA sera accessible côté serveur, le relais se branchera sans exposer la clé au navigateur.' ?>
             </p>
         </aside>
+    </section>
+
+    <section
+        class="panel reveal guide-panel guide-voice-shell"
+        aria-labelledby="guide-voice-title"
+        data-guide-voice
+        data-guide-voice-api="<?= h((string) $voiceState['api_path']) ?>"
+        data-guide-voice-csrf="<?= h((string) $voiceState['csrf_token']) ?>"
+        data-guide-voice-greeting="<?= h((string) $voiceState['greeting']) ?>"
+        data-guide-voice-upstream="<?= !empty($voiceState['upstream_configured']) ? '1' : '0' ?>"
+        data-guide-voice-chat-url="<?= h((string) $voiceState['chat_url']) ?>"
+    >
+        <div class="section-topline">
+            <div>
+                <h2 id="guide-voice-title">Accompagnement vocal</h2>
+                <p class="panel-copy">Ici, 0wlslw0 écoute, répond à voix haute, puis t’oriente sans champ texte ni chat classique.</p>
+            </div>
+            <span class="badge">voice only</span>
+        </div>
+
+        <div class="guide-grid guide-voice-grid">
+            <div class="guide-voice-stage">
+                <div class="guide-voice-orb" aria-hidden="true">
+                    <span class="guide-voice-orb-core"></span>
+                    <span class="guide-voice-orb-ring"></span>
+                </div>
+
+                <p class="guide-voice-status" data-guide-voice-status>Prêt. Active la voix puis parle naturellement.</p>
+                <p class="guide-voice-transcript" data-guide-voice-transcript>Exemples : « explique O. », « je veux visiter », « emmène-moi vers Signal ».</p>
+                <p class="guide-voice-reply" data-guide-voice-reply>0wlslw0 répondra ici puis lira sa réponse à voix haute.</p>
+
+                <div class="action-row guide-voice-actions">
+                    <button type="button" class="pill-link" data-guide-voice-start>Activer la voix</button>
+                    <button type="button" class="ghost-link" data-guide-voice-stop hidden>Couper</button>
+                    <?php if ($agentUrl !== ''): ?>
+                        <a class="ghost-link" href="<?= h($agentUrl) ?>" target="_blank" rel="noopener">Ouvrir le relais externe</a>
+                    <?php endif; ?>
+                </div>
+
+                <a class="ghost-link guide-voice-route-link" href="#" data-guide-voice-route hidden>Continuer</a>
+            </div>
+
+            <aside class="guide-console guide-voice-console" aria-label="Etat du guide vocal">
+                <p>[input] micro navigateur</p>
+                <p>[output] synthese vocale locale</p>
+                <p>[relay] <?= h(guide_voice_upstream_configured() ? 'agent distant via backend' : 'guide local sans endpoint distant') ?></p>
+                <p>[privacy] cle gardee serveur</p>
+                <p>[fallback] orientation locale si l’amont refuse</p>
+            </aside>
+        </div>
     </section>
 
     <section class="panel reveal" aria-labelledby="guide-meaning-title">
