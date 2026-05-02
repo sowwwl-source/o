@@ -57,6 +57,7 @@ load_dotenv(dirname(__DIR__) . '/.env');
 load_dotenv(__DIR__ . '/.env');
 
 const SITE_DOMAIN = 'sowwwl.xyz';
+const SITE_TITLE = 'O. le réseau minimal';
 const SITE_TAGLINE = 'Just the Three of Us';
 const DEFAULT_TIMEZONE = 'Europe/Paris';
 const CREATE_LAND_RATE_LIMIT_MAX_ATTEMPTS = 6;
@@ -99,6 +100,16 @@ define(
 define(
     'T0K_STORAGE_DIR',
     dirname(LANDS_DIR) . DIRECTORY_SEPARATOR . 't0k'
+);
+
+define(
+    'N0DE_STORAGE_DIR',
+    dirname(LANDS_DIR) . DIRECTORY_SEPARATOR . 'n0des'
+);
+
+define(
+    'B0T3_STORAGE_DIR',
+    dirname(LANDS_DIR) . DIRECTORY_SEPARATOR . 'b0t3'
 );
 
 define(
@@ -161,6 +172,8 @@ require_once __DIR__ . '/lib/lands.php';
 require_once __DIR__ . '/lib/aza_archive.php';
 require_once __DIR__ . '/lib/aza_ingest.php';
 require_once __DIR__ . '/lib/t0k.php';
+require_once __DIR__ . '/lib/n0de.php';
+require_once __DIR__ . '/lib/b0t3.php';
 require_once __DIR__ . '/lib/mailer.php';
 require_once __DIR__ . '/lib/security.php';
 require_once __DIR__ . '/lib/meaning.php';

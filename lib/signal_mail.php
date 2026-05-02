@@ -383,6 +383,118 @@ function signal_load_conversation(array $land, string $otherSlug): array
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
+function signal_render_conversation_html(array $conversation, array $land, bool $showSubject = true, string $emptyMessage = 'Aucune trace encore entre vos deux boîtes.'): string
+{
+    ob_start();
+
+    if (empty($conversation)) {
+        ?>
+        <p class="panel-copy"><?= h($emptyMessage) ?></p>
+        <?php
+        return (string) ob_get_clean();
+    }
+
+    foreach ($conversation as $entry) {
+        $isMine = (string) ($entry['sender_land_slug'] ?? '') === (string) ($land['slug'] ?? '');
+        ?>
+        <div class="echo-msg <?= $isMine ? 'echo-msg--sent' : 'echo-msg--received' ?>">
+            <span class="echo-msg-meta">
+                <?= h((string) ($entry['sender_land_username'] ?? 'terre')) ?>
+                · <?= h(human_created_label((string) ($entry['created_at'] ?? '')) ?? 'maintenant') ?>
+            </span>
+            <?php if ($showSubject && trim((string) ($entry['subject'] ?? '')) !== ''): ?>
+                <strong><?= h((string) $entry['subject']) ?></strong><br>
+            <?php endif; ?>
+            <?= nl2br(h((string) ($entry['body'] ?? ''))) ?>
+        </div>
+        <?php
+    }
+
+    return (string) ob_get_clean();
+}
+
+function signal_render_echo_contacts_html(array $contacts, string $targetUsername = ''): string
+{
+    ob_start();
+
+    ?>
+    <div class="section-topline">
+        <h2>Archipel connu</h2>
+    </div>
+    <?php foreach ($contacts as $contact): ?>
+        <?php
+        $username = trim((string) ($contact['username'] ?? ''));
+        $unreadCount = (int) ($contact['unread_count'] ?? 0);
+        ?>
+        <a href="/echo?u=<?= rawurlencode($username) ?>" class="echo-contact <?= $username === $targetUsername ? 'is-active' : '' ?>">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong><?= h($username) ?></strong>
+                <?php if ($unreadCount > 0): ?>
+                    <span style="background: rgba(var(--land-secondary-rgb) / 0.8); color: var(--panel-rgb); font-size: 0.7rem; font-weight: 600; padding: 0.08rem 0.36rem; border-radius: 99px;"><?= $unreadCount ?></span>
+                <?php endif; ?>
+            </div>
+        </a>
+    <?php endforeach; ?>
+    <?php
+
+    return (string) ob_get_clean();
+}
+
+function signal_live_payload(array $land, ?string $targetIdentifier = null, string $view = 'signal'): array
+{
+    $resolvedView = strtolower(trim($view)) === 'echo' ? 'echo' : 'signal';
+    $targetIdentifier = trim((string) $targetIdentifier);
+    $targetLand = $targetIdentifier !== '' ? signal_find_land_by_identifier($targetIdentifier) : null;
+    $conversation = [];
+
+    if ($targetLand) {
+        $conversation = signal_load_conversation($land, (string) ($targetLand['slug'] ?? ''));
+    }
+
+    $historyHtml = signal_render_conversation_html(
+        $conversation,
+        $land,
+        $resolvedView !== 'echo',
+        $resolvedView === 'echo'
+            ? 'Le silence règne entre vos deux terres.'
+            : 'Aucune trace encore entre vos deux boîtes.'
+    );
+
+    $latestEntry = !empty($conversation) ? $conversation[array_key_last($conversation)] : null;
+    $payload = [
+        'ok' => true,
+        'view' => $resolvedView,
+        'unread_total' => signal_unread_total($land),
+        'message_count' => count($conversation),
+        'history_html' => $historyHtml,
+        'history_hash' => sha1($historyHtml),
+        'latest_created_at' => trim((string) ($latestEntry['created_at'] ?? '')),
+        'target' => $targetLand ? [
+            'slug' => trim((string) ($targetLand['slug'] ?? '')),
+            'username' => trim((string) ($targetLand['username'] ?? '')),
+            'virtual_address' => signal_virtual_address($targetLand),
+        ] : null,
+    ];
+
+    if ($resolvedView === 'echo') {
+        $contacts = [];
+        foreach (signal_contact_candidates($land) as $contact) {
+            $contacts[] = [
+                'username' => trim((string) ($contact['counterpart_username'] ?? '')),
+                'slug' => trim((string) ($contact['counterpart_slug'] ?? '')),
+                'unread_count' => (int) ($contact['unread_count'] ?? 0),
+            ];
+        }
+
+        $payload['echo_contacts_html'] = signal_render_echo_contacts_html(
+            $contacts,
+            trim((string) ($targetLand['username'] ?? ''))
+        );
+    }
+
+    return $payload;
+}
+
 function signal_send_message(array $land, string $receiverIdentifier, string $subject, string $body): void
 {
     $pdo = get_pdo();

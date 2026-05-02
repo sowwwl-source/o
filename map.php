@@ -19,9 +19,9 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Surface torique vivante de <?= h($brandDomain) ?> — terres et courants d’activité.">
+    <meta name="description" content="Map — surface torique vivante de <?= h(SITE_TITLE) ?>, terres et courants d’activité.">
     <meta name="theme-color" content="#09090b">
-    <title>Map — <?= h($brandDomain) ?></title>
+    <title>Map — <?= h(SITE_TITLE) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>

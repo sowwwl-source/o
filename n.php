@@ -42,9 +42,9 @@ $statusLabel = $t0k ? t0k_status_label((string) ($t0k['status'] ?? '')) : '';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="T0k — <?= h($brandDomain) ?>">
+    <meta name="description" content="T0k — fragment du n0us dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
-    <title>T0k<?= $t0k ? ' · ' . h(t0k_format_token((string) $t0k['token'])) : '' ?> — <?= h($brandDomain) ?></title>
+    <title>T0k<?= $t0k ? ' · ' . h(t0k_format_token((string) $t0k['token'])) : '' ?> — <?= h(SITE_TITLE) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>

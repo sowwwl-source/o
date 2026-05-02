@@ -85,6 +85,7 @@ $guideLandTone = (string) ($ambientProfile['tone'] ?? 'str3m public');
 $agentUrl = trim((string) ((getenv('SOWWWL_0WLSLW0_CHAT_URL') ?: getenv('SOWWWL_0WLSLW0_AGENT_URL')) ?: ''));
 $voiceState = guide_voice_browser_state($authenticatedLand);
 $guideMode = guide_voice_mode_label();
+$siteTitle = defined('SITE_TITLE') ? (string) constant('SITE_TITLE') : 'O. le réseau minimal';
 $canonicalOrigin = rtrim((string) (getenv('SOWWWL_PUBLIC_ORIGIN') ?: 'https://sowwwl.com'), '/');
 $openLandHref = $authenticatedLand
     ? '/land.php?u=' . rawurlencode((string) $authenticatedLand['slug'])
@@ -120,9 +121,9 @@ $guideVoiceNotes = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="0wlslw0 — concierge d entree pour comprendre <?= h($brandDomain) ?> et poser une terre sans se perdre.">
+    <meta name="description" content="0wlslw0 — concierge d entree pour comprendre <?= h($siteTitle) ?> et poser une terre sans se perdre.">
     <meta name="theme-color" content="#09090b">
-    <title>0wlslw0 — <?= h($brandDomain) ?></title>
+    <title>0wlslw0 — <?= h($siteTitle) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>

@@ -124,9 +124,9 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Ferry 03 — Fichiers et sédimentation d'archives sur <?= h($brandDomain) ?>.">
+    <meta name="description" content="Ferry 03 — fichiers et sédimentation d'archives dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
-    <title>Fichiers (aZa) — <?= h($brandDomain) ?></title>
+    <title>Fichiers (aZa) — <?= h(SITE_TITLE) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>

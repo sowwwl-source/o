@@ -78,15 +78,19 @@ $history = [];
 if ($targetSlug !== '' && $messagingReady) {
     $history = signal_load_conversation($land, $targetSlug);
 }
+
+$echoHistoryHtml = signal_render_conversation_html($history, $land, false, 'Le silence règne entre vos deux terres.');
+$echoHistoryHash = sha1($echoHistoryHtml);
+$echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Écho — résonance directe sur <?= h($brandDomain) ?>.">
+    <meta name="description" content="Écho — résonance directe dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
-    <title>Écho — <?= h($brandDomain) ?></title>
+    <title>Écho — <?= h(SITE_TITLE) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
@@ -123,21 +127,18 @@ if ($targetSlug !== '' && $messagingReady) {
         </div>
     </section>
 
-    <section class="echo-grid reveal">
-        <aside class="echo-contacts">
-            <div class="section-topline">
-                <h2>Archipel connu</h2>
-            </div>
-            <?php foreach ($contacts as $c): ?>
-                <a href="/echo?u=<?= rawurlencode((string) $c['username']) ?>" class="echo-contact <?= $c['username'] === $targetUsername ? 'is-active' : '' ?>">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <strong><?= h((string) $c['username']) ?></strong>
-                        <?php if (!empty($c['unread_count'])): ?>
-                            <span style="background: rgba(var(--land-secondary-rgb) / 0.8); color: var(--panel-rgb); font-size: 0.75rem; font-weight: 600; padding: 0.1rem 0.4rem; border-radius: 99px;"><?= $c['unread_count'] ?></span>
-                        <?php endif; ?>
-                    </div>
-                </a>
-            <?php endforeach; ?>
+    <section
+        class="echo-grid reveal"
+        data-message-live
+        data-live-view="echo"
+        data-live-api="/signal_live.php"
+        data-live-target="<?= h($targetSlug) ?>"
+        data-live-interval="2500"
+        data-live-hash="<?= h($echoHistoryHash) ?>"
+        data-live-message-count="<?= h((string) count($history)) ?>"
+    >
+        <aside class="echo-contacts" data-echo-contacts-list>
+            <?= $echoContactsHtml ?>
         </aside>
 
         <div class="echo-conversation panel">
@@ -149,20 +150,11 @@ if ($targetSlug !== '' && $messagingReady) {
                 <div class="section-topline">
                     <h2>Liaison avec <?= h($targetUsername) ?></h2>
                     <span class="badge"><?= h(signal_virtual_address($targetLand)) ?></span>
+                    <span class="meta-pill" data-message-live-indicator>direct · veille</span>
                 </div>
                 
-                <div class="echo-history">
-                    <?php if (empty($history)): ?>
-                        <p class="panel-copy">Le silence règne entre vos deux terres.</p>
-                    <?php else: ?>
-                        <?php foreach ($history as $msg): ?>
-                            <?php $isMe = (string) ($msg['sender_land_slug'] ?? '') === (string) $land['slug']; ?>
-                            <div class="echo-msg <?= $isMe ? 'echo-msg--sent' : 'echo-msg--received' ?>">
-                                <span class="echo-msg-meta"><?= h((string) ($msg['sender_land_username'] ?? 'terre')) ?> · <?= h(human_created_label((string) ($msg['created_at'] ?? '')) ?? 'maintenant') ?></span>
-                                <?= nl2br(h((string) ($msg['body'] ?? ''))) ?>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                <div class="echo-history" data-message-live-history>
+                    <?= $echoHistoryHtml ?>
                 </div>
 
                 <form action="/echo?u=<?= rawurlencode($targetUsername) ?>" method="post" class="land-form echo-form">

@@ -136,15 +136,18 @@ $virtualAddress = $land ? signal_virtual_address($land) : '';
 $currentDraftScope = $targetLand
     ? 'thread:' . (string) ($targetLand['slug'] ?? '')
     : 'new';
+$signalLiveTarget = $targetLand ? (string) ($targetLand['slug'] ?? '') : '';
+$signalHistoryHtml = signal_render_conversation_html($conversation, $land ?? [], true, 'Aucune trace encore entre vos deux boîtes.');
+$signalHistoryHash = sha1($signalHistoryHtml);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Signal — boîte de réception située sur <?= h($brandDomain) ?>.">
+    <meta name="description" content="Signal — boîte de réception située dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
-    <title>Signal — <?= h($brandDomain) ?></title>
+    <title>Signal — <?= h(SITE_TITLE) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
@@ -171,7 +174,8 @@ $currentDraftScope = $targetLand
                 <span class="meta-pill">terre liée : <?= h((string) $land['slug']) ?></span>
                 <?php if ($tablesReady): ?>
                     <span class="meta-pill"><?= h(signal_identity_status_label($identityStatus)) ?></span>
-                    <span class="meta-pill"><?= $unreadTotal ?> message<?= $unreadTotal > 1 ? 's' : '' ?> non lu<?= $unreadTotal > 1 ? 's' : '' ?></span>
+                    <span class="meta-pill" data-signal-unread-label><?= $unreadTotal ?> message<?= $unreadTotal > 1 ? 's' : '' ?> non lu<?= $unreadTotal > 1 ? 's' : '' ?></span>
+                    <span class="meta-pill" data-message-live-indicator><?= $signalLiveTarget !== '' ? 'direct · veille' : 'direct · en attente' ?></span>
                 <?php endif; ?>
             <?php else: ?>
                 <span class="meta-pill">lecture de principe</span>
@@ -221,7 +225,16 @@ $currentDraftScope = $targetLand
             </div>
         </section>
     <?php else: ?>
-        <section class="signal-grid reveal">
+        <section
+            class="signal-grid reveal"
+            data-message-live
+            data-live-view="signal"
+            data-live-api="/signal_live.php"
+            data-live-target="<?= h($signalLiveTarget) ?>"
+            data-live-interval="2500"
+            data-live-hash="<?= h($signalHistoryHash) ?>"
+            data-live-message-count="<?= h((string) count($conversation)) ?>"
+        >
             <section class="panel signal-col" aria-labelledby="signal-mailbox-title">
                 <div class="section-topline">
                     <div>
@@ -509,24 +522,8 @@ $currentDraftScope = $targetLand
                         </form>
                     </div>
                 <?php else: ?>
-                    <div class="echo-history" id="signal-history">
-                        <?php if (empty($conversation)): ?>
-                            <p class="panel-copy">Aucune trace encore entre vos deux boîtes.</p>
-                        <?php else: ?>
-                            <?php foreach ($conversation as $entry): ?>
-                                <?php $isMine = (string) ($entry['sender_land_slug'] ?? '') === (string) $land['slug']; ?>
-                                <div class="echo-msg <?= $isMine ? 'echo-msg--sent' : 'echo-msg--received' ?>">
-                                    <span class="echo-msg-meta">
-                                        <?= h((string) ($entry['sender_land_username'] ?? 'terre')) ?>
-                                        · <?= h(human_created_label((string) ($entry['created_at'] ?? '')) ?? 'maintenant') ?>
-                                    </span>
-                                    <?php if (trim((string) ($entry['subject'] ?? '')) !== ''): ?>
-                                        <strong><?= h((string) $entry['subject']) ?></strong><br>
-                                    <?php endif; ?>
-                                    <?= nl2br(h((string) ($entry['body'] ?? ''))) ?>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
+                    <div class="echo-history" id="signal-history" data-message-live-history>
+                        <?= $signalHistoryHtml ?>
                     </div>
 
                     <form action="/signal?u=<?= rawurlencode((string) $targetLand['slug']) ?>" method="post" class="land-form signal-form" data-signal-compose data-draft-scope="<?= h($currentDraftScope) ?>">

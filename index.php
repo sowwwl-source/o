@@ -245,9 +245,9 @@ $promptSeeds = guide_prompt_seeds();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="<?= h($brandDomain) ?> — Just the Three of Us. O.n0uSnoImenT.">
+    <meta name="description" content="<?= h(SITE_TITLE) ?> — un espace vivant, personnel, discret. Pose ta terre et laisse la nuit coder le reste.">
     <meta name="theme-color" content="#09090b">
-    <title>O. — Le réseau minimal</title>
+    <title><?= h(SITE_TITLE) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
@@ -585,7 +585,7 @@ $promptSeeds = guide_prompt_seeds();
                 <strong style="display: flex; align-items: center; gap: 0.5rem;">
                     Écho
                     <?php if ($unreadEchoes > 0): ?>
-                        <span style="background: rgba(var(--land-secondary-rgb) / 0.8); color: var(--panel-rgb); font-size: 0.8rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 99px;"><?= $unreadEchoes ?></span>
+                        <span style="background: rgba(var(--land-secondary-rgb) / 0.8); color: var(--panel-rgb); font-size: 0.74rem; font-weight: 600; padding: 0.08rem 0.46rem; border-radius: 99px;"><?= $unreadEchoes ?></span>
                     <?php endif; ?>
                 </strong>
                 <span>Résonance directe entre deux terres.</span>

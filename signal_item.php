@@ -42,9 +42,9 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Signal — détail d'une transmission sur <?= h($brandDomain) ?>.">
+    <meta name="description" content="Signal — détail d'une transmission dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
-    <title><?= $signal ? h((string) $signal['title']) . ' — Signal' : 'Signal introuvable — ' . h($brandDomain) ?></title>
+    <title><?= $signal ? h((string) $signal['title']) . ' — Signal · ' . h(SITE_TITLE) : 'Signal introuvable — ' . h(SITE_TITLE) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>

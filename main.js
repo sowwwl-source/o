@@ -3565,6 +3565,11 @@ function initSignalFlow() {
 	const contactItems = Array.from(document.querySelectorAll("[data-signal-contact-item]"));
 	const openInput = document.querySelector("[data-signal-open-input]");
 	const history = document.getElementById("signal-history");
+	const liveRoot = document.querySelector("[data-message-live]");
+	const liveHistory = liveRoot?.querySelector("[data-message-live-history]");
+	const liveIndicator = liveRoot?.querySelector("[data-message-live-indicator]");
+	const echoContactsRoot = liveRoot?.querySelector("[data-echo-contacts-list]");
+	const unreadLabels = Array.from(document.querySelectorAll("[data-signal-unread-label]"));
 	const composeForms = Array.from(document.querySelectorAll("[data-signal-compose]"));
 	const recipientInputs = Array.from(document.querySelectorAll("[data-signal-recipient-input]"));
 	const optionNodes = Array.from(document.querySelectorAll("#signal-contact-options option"));
@@ -3670,6 +3675,25 @@ function initSignalFlow() {
 	if (history) {
 		history.scrollTop = history.scrollHeight;
 	}
+
+	const renderUnreadLabel = (count) => {
+		const unreadCount = Math.max(0, Number.parseInt(count, 10) || 0);
+		return `${unreadCount} message${unreadCount > 1 ? "s" : ""} non lu${unreadCount > 1 ? "s" : ""}`;
+	};
+
+	const updateUnreadLabels = (count) => {
+		unreadLabels.forEach((node) => {
+			if (node instanceof HTMLElement) {
+				node.textContent = renderUnreadLabel(count);
+			}
+		});
+	};
+
+	const updateLiveIndicator = (message) => {
+		if (liveIndicator instanceof HTMLElement && typeof message === "string" && message.trim()) {
+			liveIndicator.textContent = message;
+		}
+	};
 
 	if (filterInput instanceof HTMLInputElement && contactItems.length > 0) {
 		const applyFilter = () => {
@@ -3915,6 +3939,114 @@ function initSignalFlow() {
 			renderStatus("Transmission en cours...");
 		});
 	});
+
+	if (liveRoot instanceof HTMLElement && liveHistory instanceof HTMLElement) {
+		const apiPath = liveRoot.dataset.liveApi || "/signal_live.php";
+		const liveView = liveRoot.dataset.liveView || "signal";
+		const pollInterval = Math.max(1400, Number.parseInt(liveRoot.dataset.liveInterval || "2500", 10) || 2500);
+		let liveHash = liveRoot.dataset.liveHash || "";
+		let liveMessageCount = Number.parseInt(liveRoot.dataset.liveMessageCount || "0", 10) || 0;
+		let inflight = false;
+		let timerId = 0;
+
+		const shouldStickToBottom = () => {
+			return (liveHistory.scrollHeight - liveHistory.scrollTop - liveHistory.clientHeight) < 72;
+		};
+
+		const scrollLiveHistoryToBottom = () => {
+			liveHistory.scrollTop = liveHistory.scrollHeight;
+		};
+
+		const currentTarget = () => (liveRoot.dataset.liveTarget || "").trim();
+
+		const pollLiveThread = async () => {
+			const target = currentTarget();
+			if (!target || inflight || document.hidden) {
+				return;
+			}
+
+			inflight = true;
+			updateLiveIndicator("direct · synchro");
+
+			try {
+				const url = new URL(apiPath, window.location.origin);
+				url.searchParams.set("view", liveView);
+				url.searchParams.set("u", target);
+
+				const response = await fetch(url.toString(), {
+					method: "GET",
+					headers: { Accept: "application/json" },
+					credentials: "same-origin",
+					cache: "no-store",
+				});
+
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status}`);
+				}
+
+				const payload = await response.json();
+				if (!payload || payload.ok === false) {
+					throw new Error("invalid-payload");
+				}
+
+				const wasNearBottom = shouldStickToBottom();
+				const nextHash = typeof payload.history_hash === "string" ? payload.history_hash : "";
+				const nextMessageCount = Number.parseInt(String(payload.message_count ?? liveMessageCount), 10) || 0;
+				const messageCountIncreased = nextMessageCount > liveMessageCount;
+
+				if (typeof payload.history_html === "string" && nextHash !== liveHash) {
+					liveHistory.innerHTML = payload.history_html;
+					liveHash = nextHash;
+					liveRoot.dataset.liveHash = nextHash;
+				}
+
+				liveMessageCount = nextMessageCount;
+				liveRoot.dataset.liveMessageCount = String(nextMessageCount);
+
+				if (typeof payload.unread_total !== "undefined") {
+					updateUnreadLabels(payload.unread_total);
+				}
+
+				if (liveView === "echo" && echoContactsRoot instanceof HTMLElement && typeof payload.echo_contacts_html === "string") {
+					echoContactsRoot.innerHTML = payload.echo_contacts_html;
+				}
+
+				if (payload.target && typeof payload.target.slug === "string" && payload.target.slug) {
+					liveRoot.dataset.liveTarget = payload.target.slug;
+				}
+
+				if (wasNearBottom || messageCountIncreased) {
+					scrollLiveHistoryToBottom();
+				}
+
+				updateLiveIndicator("direct · temps réel");
+			} catch (error) {
+				console.error("Impossible de rafraîchir la messagerie en direct", error);
+				updateLiveIndicator("direct · interrompu");
+			} finally {
+				inflight = false;
+			}
+		};
+
+		if (currentTarget()) {
+			scrollLiveHistoryToBottom();
+			pollLiveThread();
+			timerId = window.setInterval(pollLiveThread, pollInterval);
+			document.addEventListener("visibilitychange", () => {
+				if (!document.hidden) {
+					pollLiveThread();
+				}
+			});
+			window.addEventListener("focus", pollLiveThread);
+			window.addEventListener("beforeunload", () => {
+				if (timerId) {
+					window.clearInterval(timerId);
+				}
+			});
+		} else {
+			updateLiveIndicator("direct · en attente");
+		}
+	}
 }
 
 initGuideVoice();
@@ -3942,3 +4074,119 @@ function initAzaTabs() {
 }
 
 initAzaTabs();
+
+function initB0t3() {
+	// Poetic substitution map — noise that keeps meaning partial
+	const subs = {
+		a: ['@','ä','à','â','α','∂'],
+		e: ['3','ë','è','ê','ε','∃'],
+		i: ['1','ï','î','ι','|','!'],
+		o: ['0','ö','ô','ø','ο','°'],
+		u: ['ü','û','υ','μ','∪'],
+		s: ['5','$','ş','ś','∫'],
+		n: ['η','ñ','∩','~'],
+		t: ['τ','+','†','⊤'],
+		r: ['г','ŗ','√','®'],
+		l: ['ł','|','λ','ℓ'],
+		c: ['¢','ç','©','⌀'],
+		p: ['þ','ρ','℗','π'],
+		m: ['μ','ṁ','∓'],
+		g: ['9','ĝ','γ'],
+		b: ['β','ƀ','6'],
+		d: ['δ','∂','ð'],
+		f: ['ƒ','φ'],
+		h: ['ħ','η','#'],
+		k: ['κ','ķ'],
+		v: ['ν','√','∨'],
+		w: ['ω','ŵ','∧'],
+		x: ['×','χ','ξ'],
+		y: ['ψ','ÿ','¥'],
+		z: ['ζ','ż','2'],
+	};
+
+	function brouille(char, instability) {
+		if (char === ' ' || char === '\n') return char;
+		if (Math.random() > instability) return char;
+		const lower = char.toLowerCase();
+		const pool  = subs[lower];
+		if (!pool) return char;
+		const sub = pool[Math.floor(Math.random() * pool.length)];
+		return char === char.toUpperCase() ? sub.toUpperCase() : sub;
+	}
+
+	function renderLine(el, text, instability) {
+		el.textContent = text.split('').map(c => brouille(c, instability)).join('');
+	}
+
+	function burstDeform(el, text, instability) {
+		let frame = 0;
+		const id = setInterval(() => {
+			renderLine(el, text, 0.85);
+			if (++frame >= 12) {
+				clearInterval(id);
+				renderLine(el, text, instability * 0.4);
+			}
+		}, 40);
+	}
+
+	document.querySelectorAll('[data-b0t3]').forEach(el => {
+		const text        = (el.dataset.b0t3 || '').trim();
+		const instability = parseFloat(el.dataset.b0t3Instability || '0.25');
+		if (!text) return;
+
+		// Ambient drift — gentle, slow
+		renderLine(el, text, instability * 0.08);
+		setInterval(() => renderLine(el, text, instability * 0.08), 1800 + Math.random() * 1200);
+
+		// Deform on long press or click
+		let pressTimer = null;
+		let pressing   = false;
+
+		el.style.cursor = 'pointer';
+		el.style.userSelect = 'none';
+
+		el.addEventListener('pointerdown', () => {
+			pressing   = true;
+			pressTimer = setTimeout(() => {
+				if (pressing) burstDeform(el, text, instability);
+			}, 420);
+		});
+
+		el.addEventListener('pointerup',     () => { pressing = false; clearTimeout(pressTimer); });
+		el.addEventListener('pointerleave',  () => { pressing = false; clearTimeout(pressTimer); });
+		el.addEventListener('click',         () => burstDeform(el, text, instability));
+	});
+
+	// Live preview in deposit form
+	const input = document.querySelector('.b0t3-input');
+	if (input) {
+		let previewEl = document.querySelector('.b0t3-preview');
+		if (!previewEl) {
+			previewEl = document.createElement('span');
+			previewEl.className = 'b0t3-preview b0t3-line';
+			input.parentNode.insertBefore(previewEl, input.nextSibling);
+		}
+		input.addEventListener('input', () => {
+			const val = input.value;
+			previewEl.dataset.b0t3 = val;
+			previewEl.dataset.b0t3Instability = document.querySelector('.b0t3-instability-range')?.value || '0.25';
+			previewEl.textContent = val;
+			// re-init this element
+			previewEl.removeAttribute('data-b0t3-init');
+			initB0t3SingleEl(previewEl);
+		});
+	}
+}
+
+function initB0t3SingleEl(el) {
+	const text        = (el.dataset.b0t3 || '').trim();
+	const instability = parseFloat(el.dataset.b0t3Instability || '0.25');
+	if (!text) return;
+	el.textContent = text.split('').map(c => {
+		if (c === ' ') return c;
+		const subs = { a:'@',e:'3',i:'1',o:'0',s:'5',t:'τ',n:'η' };
+		return Math.random() < instability * 0.08 ? (subs[c.toLowerCase()] || c) : c;
+	}).join('');
+}
+
+initB0t3();

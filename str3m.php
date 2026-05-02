@@ -49,15 +49,18 @@ $ambientProfile = land_collective_profile((string) ($dailyStream['mood'] ?? 'cal
 
 // T0ks visibles dans le courant
 $recentT0ks = t0k_recent_public(12);
+
+// B0t3s visibles dans le courant
+$recentB0t3s = b0t3_recent_public(20);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Str3m — explorer le courant quotidien et les îles sur <?= h($brandDomain) ?>.">
+    <meta name="description" content="Str3m — explorer le courant quotidien et les îles dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
-    <title>Str3m — <?= h($brandDomain) ?></title>
+    <title>Str3m — <?= h(SITE_TITLE) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
@@ -242,6 +245,27 @@ $recentT0ks = t0k_recent_public(12);
         </div>
     </section>
     <?php endif; ?>
+    <?php if ($recentB0t3s): ?>
+    <section class="panel reveal str3m-b0t3s" aria-labelledby="str3m-b0t3-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="str3m-b0t3-title">B0t3s dans le courant</h2>
+                <p class="panel-copy">Lignes déposées. Touche long ou clic pour déformer.</p>
+            </div>
+        </div>
+        <div class="b0t3-stream-field">
+            <?php foreach ($recentB0t3s as $b0t3): ?>
+                <a class="b0t3-stream-line"
+                   href="/sh0re.php?u=<?= rawurlencode((string) $b0t3['target_land']) ?>"
+                   data-b0t3="<?= h((string) $b0t3['text']) ?>"
+                   data-b0t3-instability="<?= h((string) $b0t3['instability']) ?>"
+                   title="<?= h((string) $b0t3['target_land']) ?> · <?= h((string) $b0t3['kind']) ?>"
+                ><?= h((string) $b0t3['text']) ?></a>
+            <?php endforeach; ?>
+        </div>
+    </section>
+    <?php endif; ?>
+
 </main>
 </body>
 </html>

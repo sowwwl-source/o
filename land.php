@@ -68,9 +68,9 @@ if ($land && $isAuthenticatedHere) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="<?= $land ? h((string) $land['username']) . ' — espace personnel sur ' . h($brandDomain) : 'Terre introuvable — ' . h($brandDomain) ?>">
+    <meta name="description" content="<?= $land ? h((string) $land['username']) . ' — espace personnel dans ' . h(SITE_TITLE) : 'Terre introuvable — ' . h(SITE_TITLE) ?>">
     <meta name="theme-color" content="#09090b">
-    <title><?= $land ? h((string) $land['username']) . ' — ' . h($brandDomain) : 'Terre introuvable — ' . h($brandDomain) ?></title>
+    <title><?= $land ? h((string) $land['username']) . ' — ' . h(SITE_TITLE) : 'Terre introuvable — ' . h(SITE_TITLE) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>

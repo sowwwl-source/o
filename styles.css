@@ -5822,3 +5822,241 @@ body:has(.connection-meter) {
 	color: rgb(var(--land-primary-rgb, var(--fg-rgb)));
 	opacity: 0.8;
 }
+
+/* ─── N0de cards ─────────────────────────────────────────────────────────── */
+.n0de-shell {
+	display: grid;
+	gap: 1.5rem;
+	grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 700px) {
+	.n0de-shell { grid-template-columns: 1fr; }
+}
+
+.n0de-list {
+	display: grid;
+	gap: 1rem;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	margin-top: 1rem;
+}
+
+.n0de-card {
+	background: rgba(var(--fg-rgb) / 0.04);
+	border: 1px solid rgba(var(--fg-rgb) / 0.12);
+	border-radius: 4px;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding: 1.25rem;
+}
+
+.n0de-card-new {
+	border-color: rgba(var(--fg-rgb) / 0.35);
+}
+
+.n0de-token-display {
+	align-items: baseline;
+	display: flex;
+	gap: 0.75rem;
+}
+
+.n0de-token {
+	font-family: monospace;
+	font-size: 1.5rem;
+	font-weight: 700;
+	letter-spacing: 0.15em;
+}
+
+.n0de-kind-badge {
+	background: rgba(var(--fg-rgb) / 0.08);
+	border-radius: 2px;
+	font-size: 0.7rem;
+	letter-spacing: 0.06em;
+	padding: 0.2em 0.5em;
+	text-transform: uppercase;
+}
+
+.n0de-label {
+	font-size: 0.85rem;
+	margin: 0;
+	opacity: 0.7;
+}
+
+.n0de-physical-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1.5rem;
+	margin-top: 0.75rem;
+}
+
+.n0de-physical-block {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.n0de-physical-title {
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	margin: 0;
+	opacity: 0.5;
+	text-transform: uppercase;
+}
+
+.n0de-physical-url {
+	font-family: monospace;
+	font-size: 0.72rem;
+	margin: 0;
+	opacity: 0.5;
+	word-break: break-all;
+}
+
+.n0de-qr-canvas {
+	background: #fff;
+	border-radius: 2px;
+	display: block;
+	image-rendering: pixelated;
+}
+
+.n0de-actions {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	margin-top: 0.5rem;
+}
+
+.n0de-delete-form { margin: 0; }
+
+.n0de-delete-btn {
+	font-size: 0.72rem;
+	opacity: 0.4;
+}
+
+.n0de-registered {
+	border-color: rgba(var(--fg-rgb) / 0.25);
+}
+
+/* ─── B0t3 ───────────────────────────────────────────────────────────────── */
+.b0t3-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	margin-bottom: 1.5rem;
+}
+
+.b0t3-line-wrap {
+	align-items: baseline;
+	display: flex;
+	gap: 0.5rem;
+}
+
+.b0t3-line {
+	cursor: pointer;
+	display: inline-block;
+	font-family: monospace;
+	font-size: 1rem;
+	letter-spacing: 0.04em;
+	line-height: 1.5;
+	opacity: 0.85;
+	transition: opacity 0.2s;
+	user-select: none;
+}
+
+.b0t3-line:hover {
+	opacity: 1;
+}
+
+.b0t3-preview {
+	color: rgba(var(--fg-rgb) / 0.45);
+	display: block;
+	font-size: 0.85rem;
+	margin-bottom: 0.5rem;
+	pointer-events: none;
+}
+
+.b0t3-dissolve-form { margin: 0; }
+
+.b0t3-dissolve-btn {
+	background: none;
+	border: none;
+	color: inherit;
+	cursor: pointer;
+	font-size: 0.75rem;
+	opacity: 0.25;
+	padding: 0 0.25rem;
+	transition: opacity 0.15s;
+}
+
+.b0t3-dissolve-btn:hover { opacity: 0.7; }
+
+.b0t3-deposit-form { margin-top: 0.5rem; }
+
+.b0t3-form-row {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.b0t3-input {
+	flex: 1 1 200px;
+	font-family: monospace;
+	font-size: 0.9rem;
+	letter-spacing: 0.03em;
+	min-width: 120px;
+}
+
+.b0t3-kind-select {
+	font-size: 0.78rem;
+	opacity: 0.65;
+	width: auto;
+}
+
+.b0t3-instability-label {
+	align-items: center;
+	display: flex;
+	gap: 0.25rem;
+	opacity: 0.55;
+}
+
+.b0t3-instability-range {
+	cursor: pointer;
+	width: 60px;
+}
+
+.b0t3-submit {
+	background: none;
+	border: 1px solid rgba(var(--fg-rgb) / 0.25);
+	border-radius: 2px;
+	color: inherit;
+	cursor: pointer;
+	font-family: monospace;
+	font-size: 0.78rem;
+	letter-spacing: 0.06em;
+	padding: 0.3em 0.8em;
+	transition: border-color 0.15s;
+}
+
+.b0t3-submit:hover { border-color: rgba(var(--fg-rgb) / 0.6); }
+
+/* In str3m */
+.b0t3-stream-field {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem 2rem;
+	margin-top: 1rem;
+}
+
+.b0t3-stream-line {
+	cursor: pointer;
+	font-family: monospace;
+	font-size: 0.85rem;
+	letter-spacing: 0.04em;
+	opacity: 0.6;
+	transition: opacity 0.2s;
+	user-select: none;
+}
+
+.b0t3-stream-line:hover { opacity: 0.9; }

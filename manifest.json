@@ -1,8 +1,8 @@
 {
 	"id": "/",
-	"name": "sowwwl.xyz — Just the Three of Us",
-	"short_name": "sowwwl",
-	"description": "Un espace vivant, personnel, discret. Pose ta terre et laisse la nuit coder le reste.",
+	"name": "O. le réseau minimal",
+	"short_name": "O.",
+	"description": "O. le réseau minimal — un espace vivant, personnel, discret. Pose ta terre et laisse la nuit coder le reste.",
 	"lang": "fr",
 	"start_url": "/",
 	"scope": "/",

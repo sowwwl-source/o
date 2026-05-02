@@ -82,6 +82,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isAuthenticated) {
     }
 }
 
+// Handle b0t3 deposit
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'b0t3_deposit') {
+    $csrfCandidate = (string) ($_POST['csrf_token'] ?? '');
+    if (!verify_csrf_token($csrfCandidate)) {
+        $message = 'Session expirée.';
+        $messageType = 'warning';
+    } elseif ($viewLand) {
+        try {
+            $b0t3Text        = trim((string) ($_POST['b0t3_text'] ?? ''));
+            $b0t3Kind        = trim((string) ($_POST['b0t3_kind'] ?? 'human'));
+            $b0t3Instability = (float) ($_POST['b0t3_instability'] ?? 0.25);
+            $b0t3Origin      = $isAuthenticated ? (string) $authenticatedLand['slug'] : '';
+            b0t3_deposit((string) $viewLand['slug'], $b0t3Text, $b0t3Kind, $b0t3Instability, $b0t3Origin);
+            $message     = 'B0t3 déposé sur ce sh0re.';
+            $messageType = 'success';
+        } catch (Throwable $e) {
+            $message     = $e->getMessage();
+            $messageType = 'warning';
+        }
+    }
+}
+
+// Handle b0t3 dissolve
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'b0t3_dissolve' && $isAuthenticated) {
+    $csrfCandidate = (string) ($_POST['csrf_token'] ?? '');
+    if (verify_csrf_token($csrfCandidate)) {
+        try {
+            b0t3_dissolve(trim((string) ($_POST['b0t3_id'] ?? '')), (string) $authenticatedLand['slug']);
+            $message     = 'B0t3 dissous.';
+            $messageType = 'info';
+        } catch (Throwable $e) {
+            $message     = $e->getMessage();
+            $messageType = 'warning';
+        }
+    }
+}
+
 // Load data for the viewed shore
 $pendingIncoming = $viewLand ? t0k_pending_for_land((string) $viewLand['slug']) : [];
 $activeNous      = $viewLand ? t0k_active_for_land((string) $viewLand['slug']) : [];
@@ -89,6 +126,7 @@ $outgoing        = $viewLand ? array_filter(
     t0k_list_for_land((string) $viewLand['slug']),
     static fn ($t) => ($t['from_land'] ?? '') === $viewLand['slug'] && ($t['status'] ?? '') === 'pending'
 ) : [];
+$shoreB0t3s      = $viewLand ? b0t3_list_for_shore((string) $viewLand['slug']) : [];
 
 $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_profile('nocturnal');
 ?>
@@ -97,9 +135,9 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Sh0re — le rivage de <?= h((string) ($viewLand['username'] ?? 'cette land')) ?> sur <?= h($brandDomain) ?>.">
+    <meta name="description" content="Sh0re — le rivage de <?= h((string) ($viewLand['username'] ?? 'cette land')) ?> dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
-    <title>Sh0re<?= $viewLand ? ' · ' . h((string) $viewLand['username']) : '' ?> — <?= h($brandDomain) ?></title>
+    <title>Sh0re<?= $viewLand ? ' · ' . h((string) $viewLand['username']) : '' ?> — <?= h(SITE_TITLE) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
@@ -275,6 +313,74 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
                 </article>
             <?php endforeach; ?>
         </div>
+    </section>
+    <?php endif; ?>
+
+    <?php if ($shoreB0t3s || $viewLand): ?>
+    <section class="panel reveal sh0re-b0t3-section" aria-labelledby="sh0re-b0t3-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="sh0re-b0t3-title">B0t3s</h2>
+                <p class="panel-copy">Lignes déposées. Touche long ou clic pour déformer.</p>
+            </div>
+        </div>
+
+        <?php if ($shoreB0t3s): ?>
+        <div class="b0t3-field">
+            <?php foreach ($shoreB0t3s as $b0t3): ?>
+                <div class="b0t3-line-wrap">
+                    <span
+                        class="b0t3-line"
+                        data-b0t3="<?= h((string) $b0t3['text']) ?>"
+                        data-b0t3-instability="<?= h((string) $b0t3['instability']) ?>"
+                        data-b0t3-kind="<?= h((string) $b0t3['kind']) ?>"
+                        title="<?= h((string) $b0t3['kind']) ?><?= !empty($b0t3['origin_land']) ? ' · ' . h((string) $b0t3['origin_land']) : '' ?>"
+                    ><?= h((string) $b0t3['text']) ?></span>
+                    <?php
+                    $canDissolve = $isAuthenticated && (
+                        (string) $authenticatedLand['slug'] === (string) ($b0t3['origin_land'] ?? '')
+                        || (string) $authenticatedLand['slug'] === (string) ($b0t3['target_land'] ?? '')
+                    );
+                    ?>
+                    <?php if ($canDissolve): ?>
+                        <form method="post" class="b0t3-dissolve-form">
+                            <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                            <input type="hidden" name="action" value="b0t3_dissolve">
+                            <input type="hidden" name="b0t3_id" value="<?= h((string) $b0t3['id']) ?>">
+                            <button type="submit" class="b0t3-dissolve-btn" title="Dissoudre">×</button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($viewLand): ?>
+        <form method="post" class="land-form b0t3-deposit-form">
+            <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+            <input type="hidden" name="action" value="b0t3_deposit">
+            <div class="b0t3-form-row">
+                <input
+                    type="text"
+                    name="b0t3_text"
+                    class="b0t3-input"
+                    placeholder="une ligne. infiniment brouillée."
+                    maxlength="280"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+                <select name="b0t3_kind" class="b0t3-kind-select">
+                    <?php foreach (b0t3_kinds() as $k => $kl): ?>
+                        <option value="<?= h($k) ?>"><?= h($kl) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <label class="b0t3-instability-label" title="Instabilité">
+                    <input type="range" name="b0t3_instability" min="0" max="1" step="0.05" value="0.25" class="b0t3-instability-range">
+                </label>
+                <button type="submit" class="b0t3-submit">déposer</button>
+            </div>
+        </form>
+        <?php endif; ?>
     </section>
     <?php endif; ?>
 
