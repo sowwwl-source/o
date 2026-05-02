@@ -28,9 +28,13 @@ Options -Indexes
   RewriteRule ^aza\.php$ https://%{HTTP_HOST}/aza [R=302,L]
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*0wlslw0\.php(?:\?|\s) [NC]
   RewriteRule ^0wlslw0\.php$ https://%{HTTP_HOST}/0wlslw0 [R=302,L]
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*sh0re\.php(?:\?|\s) [NC]
+  RewriteRule ^sh0re\.php$ https://%{HTTP_HOST}/sh0re [R=302,L]
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*n\.php(?:\?|\s) [NC]
+  RewriteRule ^n\.php$ https://%{HTTP_HOST}/n [R=302,L]
 
   RewriteRule ^0wlslw0/voice/$ https://%{HTTP_HOST}/0wlslw0/voice [R=302,L,NC]
-  RewriteRule ^(land|echo|map|signal|str3m|aza|0wlslw0)/$ https://%{HTTP_HOST}/$1 [R=302,L,NC]
+  RewriteRule ^(land|echo|map|signal|str3m|aza|0wlslw0|sh0re|n)/$ https://%{HTTP_HOST}/$1 [R=302,L,NC]
 
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
@@ -44,6 +48,8 @@ Options -Indexes
   RewriteRule ^signal$ signal.php [L,NC,QSA]
   RewriteRule ^str3m$ str3m.php [L,NC,QSA]
   RewriteRule ^aza$ aza.php [L,NC,QSA]
+  RewriteRule ^sh0re$ sh0re.php [L,NC,QSA]
+  RewriteRule ^n$ n.php [L,NC,QSA]
   RewriteRule ^0wlslw0/voice$ 0wlslw0_voice.php [L,NC,QSA]
   RewriteRule ^0wlslw0$ 0wlslw0.php [L,NC,QSA]
   RewriteRule ^aza/0*([0-9]{1,2})$ aza.php?p=$1 [L,NC,QSA]

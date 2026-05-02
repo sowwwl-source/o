@@ -169,11 +169,13 @@ if ($land && $isAuthenticatedHere) {
                         <a class="ghost-link" href="/signal">Ferry 01 : Signal<?= $signalUnread > 0 ? ' · ' . $signalUnread . ' non lu' . ($signalUnread > 1 ? 's' : '') : '' ?></a>
                         <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
                         <a class="ghost-link" href="/echo.php">Ferry 04 : Écho</a>
+                        <a class="ghost-link" href="/sh0re">Sh0re · n0us</a>
                         <a class="ghost-link" href="/0wlslw0">0wlslw0</a>
                         <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
                     <?php else: ?>
                         <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
                         <a class="ghost-link" href="/echo.php?u=<?= rawurlencode((string) $land['username']) ?>">Ferry 04 : Envoyer un écho</a>
+                        <a class="ghost-link" href="/sh0re?u=<?= rawurlencode((string) $land['slug']) ?>">Sh0re de <?= h((string) $land['username']) ?></a>
                         <a class="ghost-link" href="/0wlslw0">0wlslw0 : se repérer</a>
                     <?php endif; ?>
                     <button

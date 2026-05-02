@@ -97,6 +97,11 @@ define(
 );
 
 define(
+    'T0K_STORAGE_DIR',
+    dirname(LANDS_DIR) . DIRECTORY_SEPARATOR . 't0k'
+);
+
+define(
     'AZA_MAX_UPLOAD_BYTES',
     ctype_digit($azaUploadOverride)
         ? max(16 * 1024 * 1024, (int) $azaUploadOverride)
@@ -155,6 +160,7 @@ try {
 require_once __DIR__ . '/lib/lands.php';
 require_once __DIR__ . '/lib/aza_archive.php';
 require_once __DIR__ . '/lib/aza_ingest.php';
+require_once __DIR__ . '/lib/t0k.php';
 require_once __DIR__ . '/lib/mailer.php';
 require_once __DIR__ . '/lib/security.php';
 require_once __DIR__ . '/lib/meaning.php';

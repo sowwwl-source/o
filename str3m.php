@@ -46,6 +46,9 @@ foreach ($publicSignals as $signal) {
 }
 
 $ambientProfile = land_collective_profile((string) ($dailyStream['mood'] ?? 'calm'));
+
+// T0ks visibles dans le courant
+$recentT0ks = t0k_recent_public(12);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -210,6 +213,35 @@ $ambientProfile = land_collective_profile((string) ($dailyStream['mood'] ?? 'cal
             </div>
         <?php endif; ?>
     </section>
+
+    <?php if ($recentT0ks): ?>
+    <section class="panel reveal str3m-t0ks" aria-labelledby="str3m-t0ks-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="str3m-t0ks-title">T0ks dans le courant</h2>
+                <p class="panel-copy">Les gestes publics. Voulez-vous grandir avec moi ?</p>
+            </div>
+            <a class="ghost-link" href="/sh0re">Mon sh0re</a>
+        </div>
+        <div class="t0k-stream">
+            <?php foreach ($recentT0ks as $t0k): ?>
+                <article class="t0k-stream-item t0k-stream-<?= h((string) $t0k['status']) ?>">
+                    <a class="t0k-stream-main" href="/n?t=<?= h((string) $t0k['token']) ?>">
+                        <span class="t0k-stream-token"><?= h(t0k_format_token((string) $t0k['token'])) ?></span>
+                    </a>
+                    <span class="t0k-stream-route">
+                        <a class="ghost-link" href="/sh0re?u=<?= rawurlencode((string) $t0k['from_land']) ?>"><?= h((string) $t0k['from_land']) ?></a>
+                        <span>→</span>
+                        <a class="ghost-link" href="/sh0re?u=<?= rawurlencode((string) $t0k['to_land']) ?>"><?= h((string) $t0k['to_land']) ?></a>
+                    </span>
+                    <span class="t0k-stream-status">
+                        <a class="ghost-link t0k-stream-status-link" href="/n?t=<?= h((string) $t0k['token']) ?>"><?= h(t0k_status_label((string) $t0k['status'])) ?></a>
+                    </span>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    </section>
+    <?php endif; ?>
 </main>
 </body>
 </html>
