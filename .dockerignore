@@ -36,7 +36,6 @@ Thumbs.db
 *.tgz
 
 # Local-only folders and assets
-o/
 o-dot-empty/
 baco.work/
 AzA_v0.6.1_migrations_pack/

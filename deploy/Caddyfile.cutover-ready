@@ -79,6 +79,15 @@ www.sowwwl.com {
 	redir https://sowwwl.com{uri} 308
 }
 
+www.sowwwl.xyz {
+	redir https://sowwwl.xyz{uri} 308
+}
+
+sowwwl.xyz {
+	import common_headers
+	import app_proxy_with_recovery
+}
+
 sowwwl.com {
 	import common_headers
 	import app_proxy_with_recovery

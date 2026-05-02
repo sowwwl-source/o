@@ -3,6 +3,13 @@ require __DIR__ . '/config.php';
 
 start_secure_session();
 
+// Compatibility bridge: O app stores auth in auth_land_slug/auth_land_username.
+$authLandSlug = trim((string) ($_SESSION['auth_land_slug'] ?? ''));
+if ($authLandSlug !== '') {
+    header('Location: /land.php?u=' . rawurlencode($authLandSlug));
+    exit;
+}
+
 if (isset($_SESSION['username'])) {
     header('Location: land.php');
     exit;

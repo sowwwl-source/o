@@ -31,6 +31,8 @@ ErrorDocument 404 /404.php
   RewriteRule ^dashboard\.php$ /dashboard [R=302,L]
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*echo\.php(?:\?|\s) [NC]
   RewriteRule ^echo\.php$ /echo [R=302,L]
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*map\.php(?:\?|\s) [NC]
+  RewriteRule ^map\.php$ /map [R=302,L]
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*signal\.php(?:\?|\s) [NC]
   RewriteRule ^signal\.php$ /signal [R=302,L]
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*str3m\.php(?:\?|\s) [NC]
@@ -44,7 +46,7 @@ ErrorDocument 404 /404.php
   RewriteRule ^aza\.php$ /aza [R=302,L]
 
   # Canonicalize trailing slash on entry paths
-  RewriteRule ^(install|land|shore|bato|silence|dashboard|aza|echo|signal|str3m)/$ /$1 [R=302,L,NC]
+  RewriteRule ^(install|land|shore|bato|silence|dashboard|aza|echo|map|signal|str3m)/$ /$1 [R=302,L,NC]
 
   # If the request is an existing file/dir, serve it as-is.
   RewriteCond %{REQUEST_FILENAME} -f [OR]
@@ -65,6 +67,8 @@ ErrorDocument 404 /404.php
   RewriteRule ^dashboard$ dashboard.php [L,NC]
   RewriteRule ^aza$ aza.php [L,NC]
   RewriteRule ^echo$ echo.php [L,NC,QSA]
+  RewriteRule ^map/points/?$ o/map_points.php [L,NC,QSA]
+  RewriteRule ^map$ o/map.php [L,NC,QSA]
   # Ferry bridges: force active O implementation to avoid dead-end links
   RewriteRule ^signal$ o/signal.php [L,NC,QSA]
   RewriteRule ^str3m$ o/str3m.php [L,NC,QSA]

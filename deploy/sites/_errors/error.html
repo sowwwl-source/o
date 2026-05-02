@@ -89,6 +89,16 @@
       margin-top: 16px;
       font-size: 0.92rem;
     }
+    .links-group {
+      margin-top: 16px;
+    }
+    .links-group h2 {
+      margin: 0 0 8px;
+      font-size: 0.88rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
   </style>
 </head>
 <body>
@@ -97,17 +107,56 @@
     <p>La ressource demandée n'est pas accessible pour le moment (route absente, session expirée ou contenu déplacé).</p>
     <p>Choisis un point de reprise pour continuer sans impasse.</p>
 
-    <nav class="links" aria-label="Points de reprise">
-      <a class="primary" href="/">Retour à l'accueil</a>
-      <a href="/land">LAND</a>
-      <a href="/shore">SHORE</a>
-      <a href="/bato">BATO</a>
-      <a href="/dashboard">DASHBOARD</a>
-      <a href="/aza">AZA</a>
-      <a href="/silence">SILENCE</a>
-    </nav>
+    <section class="links-group" aria-label="Points de reprise locaux">
+      <h2>Reprise locale</h2>
+      <nav class="links" aria-label="Points de reprise locaux">
+        <a class="primary" href="/">Retour à l'accueil</a>
+        <a href="/signal">Flux</a>
+        <a href="/str3m">Str3m</a>
+        <a href="/map">Map</a>
+        <a href="/land">LAND</a>
+        <a href="/dashboard">DASHBOARD</a>
+        <a href="/aza">AZA</a>
+      </nav>
+    </section>
+
+    <section class="links-group" aria-label="Ponts interdomaines">
+      <h2>Ponts interdomaines</h2>
+      <nav class="links" aria-label="Ponts interdomaines">
+        <a href="https://sowwwl.com/">sowwwl.com</a>
+        <a href="https://sowwwl.xyz/">sowwwl.xyz</a>
+        <a href="https://sowwwl.cloud/">sowwwl.cloud</a>
+        <a href="https://sowwwl.org/">sowwwl.org</a>
+        <a href="https://0wlslw0.com/">0wlslw0.com</a>
+      </nav>
+      <nav class="links" id="same-path-links" aria-label="Même chemin sur d'autres domaines"></nav>
+    </section>
 
     <p class="small">Astuce: si tu viens d'une action de formulaire, recharge la page source puis réessaie.</p>
   </main>
+  <script>
+    (() => {
+      const mount = document.getElementById('same-path-links');
+      if (!mount) return;
+
+      const path = window.location.pathname + window.location.search + window.location.hash;
+      const domains = [
+        'sowwwl.com',
+        'sowwwl.xyz',
+        'sowwwl.cloud',
+        '0wlslw0.com'
+      ];
+      const current = window.location.hostname.replace(/^www\./, '');
+
+      domains
+        .filter((domain) => domain !== current)
+        .forEach((domain) => {
+          const link = document.createElement('a');
+          link.href = `https://${domain}${path || '/'}`;
+          link.textContent = `${domain}${path}`;
+          mount.appendChild(link);
+        });
+    })();
+  </script>
 </body>
 </html>
