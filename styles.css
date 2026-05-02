@@ -1599,6 +1599,116 @@ button:hover,
 	margin-bottom: 1rem;
 }
 
+.signup-portal-ritual,
+.signup-spectrum {
+	display: grid;
+	gap: 1rem;
+	padding-top: 1rem;
+	border-top: 1px solid rgba(var(--fg-rgb) / 0.1);
+}
+
+.signup-portal-grid,
+.signup-program-grid {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+	gap: 0.85rem;
+}
+
+.signup-portal-card,
+.signup-program-card,
+.signup-lambda-field {
+	border: 1px solid rgba(var(--fg-rgb) / 0.12);
+	background: rgba(var(--fg-rgb) / 0.035);
+}
+
+.signup-portal-card,
+.signup-program-card {
+	padding: 0.95rem 1rem 1rem;
+}
+
+.signup-portal-copy {
+	display: grid;
+	gap: 0.65rem;
+}
+
+.signup-portal-copy h2,
+.signup-portal-copy h3 {
+	margin: 0;
+	font-size: 1rem;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.signup-portal-copy p {
+	margin: 0;
+	font-size: 0.88rem;
+	line-height: 1.7;
+	color: var(--muted);
+}
+
+.signup-program-card {
+	position: relative;
+	display: grid;
+	gap: 0.45rem;
+	cursor: pointer;
+	transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.signup-program-card input {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.signup-program-card strong {
+	font-size: 1rem;
+	font-weight: 600;
+}
+
+.signup-program-card span:last-child {
+	font-size: 0.78rem;
+	color: var(--muted);
+}
+
+.signup-program-card:hover,
+.signup-program-card.is-selected {
+	border-color: rgba(var(--land-secondary-rgb) / 0.74);
+	background: rgba(var(--land-secondary-rgb) / 0.08);
+	box-shadow: 0 0 0 1px rgba(var(--land-secondary-rgb) / 0.18);
+	transform: translateY(-1px);
+}
+
+.signup-program-card.is-selected .summary-label,
+.signup-program-card:hover .summary-label {
+	color: rgba(var(--land-secondary-rgb) / 0.92);
+}
+
+.signup-lambda-field {
+	padding: 1rem;
+	display: grid;
+	gap: 0.75rem;
+}
+
+.signup-lambda-field strong {
+	font-size: 0.96rem;
+	font-weight: 600;
+}
+
+.signup-lambda-field input[type="range"] {
+	width: 100%;
+	padding: 0;
+	accent-color: rgb(var(--land-secondary-rgb));
+}
+
+.signup-lambda-range {
+	font-size: 0.78rem;
+	color: var(--muted);
+}
+
 .badge {
 	display: inline-flex;
 	align-items: center;

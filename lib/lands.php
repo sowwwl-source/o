@@ -169,6 +169,69 @@ function land_visual_catalog(): array
     ];
 }
 
+function land_visual_signup_catalog(): array
+{
+    return array_filter(
+        land_visual_catalog(),
+        static fn (string $program): bool => $program !== 'collective',
+        ARRAY_FILTER_USE_KEY
+    );
+}
+
+function land_visual_program_definition(string $program): array
+{
+    $catalog = land_visual_catalog();
+    return $catalog[$program] ?? $catalog['culbu1on'];
+}
+
+function land_visual_lambda_range(string $program): array
+{
+    $definition = land_visual_program_definition($program);
+    [$minimum, $maximum] = $definition['lambda_range'] ?? [440, 560];
+
+    return [(int) $minimum, (int) $maximum];
+}
+
+function validate_land_visual_program(string $program): string
+{
+    $candidate = trim($program);
+    $catalog = land_visual_signup_catalog();
+
+    if (!isset($catalog[$candidate])) {
+        throw new InvalidArgumentException('Choisis un programme de terre valide.');
+    }
+
+    return $candidate;
+}
+
+function land_visual_default_lambda(string $program, ?string $seed = null): int
+{
+    [$minimum, $maximum] = land_visual_lambda_range($program);
+    $candidateSeed = trim((string) $seed);
+
+    if ($candidateSeed !== '') {
+        return land_visual_lambda_from_seed($candidateSeed, $program);
+    }
+
+    return (int) floor(($minimum + $maximum) / 2);
+}
+
+function validate_land_visual_lambda(int|string $lambda, string $program): int
+{
+    if (!is_numeric((string) $lambda)) {
+        throw new InvalidArgumentException('Choisis une longueur d’onde lisible en nombre.');
+    }
+
+    [$minimum, $maximum] = land_visual_lambda_range($program);
+    $candidate = (int) $lambda;
+
+    if ($candidate < $minimum || $candidate > $maximum) {
+        throw new InvalidArgumentException(sprintf('Choisis une longueur d’onde entre %d et %d nm pour ce programme.', $minimum, $maximum));
+    }
+
+    return $candidate;
+}
+
 function land_visual_seed(array $land): string
 {
     $slug = trim((string) ($land['slug'] ?? ''));
@@ -249,7 +312,13 @@ function land_collective_profile(?string $mood = null): array
     ];
 }
 
-function create_land(string $username, string $timezone, ?string $password = null): array
+function create_land(
+    string $username,
+    string $timezone,
+    ?string $password = null,
+    ?string $landProgram = null,
+    int|string|null $lambdaNm = null
+): array
 {
     $username = trim(preg_replace('/\s+/u', ' ', trim($username)) ?? trim($username));
     $timezone = validate_timezone($timezone);
@@ -275,6 +344,18 @@ function create_land(string $username, string $timezone, ?string $password = nul
         'password_hash' => $passwordHash,
         'created_at' => gmdate(DATE_ATOM),
     ];
+
+    $explicitProgram = null;
+    if ($landProgram !== null && trim($landProgram) !== '') {
+        $explicitProgram = validate_land_visual_program($landProgram);
+        $land['land_program'] = $explicitProgram;
+    }
+
+    if ($lambdaNm !== null && $lambdaNm !== '') {
+        $programForLambda = $explicitProgram ?: land_visual_program_from_seed(land_visual_seed($land));
+        $land['land_program'] = $programForLambda;
+        $land['lambda_nm'] = validate_land_visual_lambda($lambdaNm, $programForLambda);
+    }
 
     $visualProfile = land_visual_profile($land);
     $land['land_program'] = (string) $visualProfile['program'];

@@ -14,6 +14,13 @@ const useLocalTimezoneButton = document.querySelector("[data-use-local-timezone]
 const bootline = document.getElementById("bootline");
 const copyButtons = Array.from(document.querySelectorAll("[data-copy-link]"));
 const torusCanvases = Array.from(document.querySelectorAll("[data-torus-cloud]"));
+const signupProgramInputs = Array.from(document.querySelectorAll("[data-signup-program-input]"));
+const signupProgramCards = Array.from(document.querySelectorAll("[data-signup-program-card]"));
+const signupLambdaInput = document.querySelector("[data-signup-lambda-input]");
+const signupProgramLabelOutputs = Array.from(document.querySelectorAll("[data-signup-program-label], [data-preview-program-label]"));
+const signupProgramToneOutputs = Array.from(document.querySelectorAll("[data-signup-program-tone], [data-preview-program-tone]"));
+const signupLambdaValueOutputs = Array.from(document.querySelectorAll("[data-signup-lambda-value]"));
+const signupLambdaRangeOutput = document.querySelector("[data-signup-lambda-range]");
 
 function applyThemeState(isInverted) {
 	document.body.classList.toggle("is-inverted", Boolean(isInverted));
@@ -1067,11 +1074,76 @@ function refreshClocks() {
 	document.querySelectorAll("[data-live-clock]").forEach((card) => renderClock(card));
 }
 
-function renderSignupPreview() {
+function selectedSignupProgramInput() {
+	return signupProgramInputs.find((input) => input.checked) || signupProgramInputs[0] || null;
+}
+
+function syncSignupProgramCards(activeInput) {
+	signupProgramCards.forEach((card) => {
+		const input = card.querySelector("[data-signup-program-input]");
+		card.classList.toggle("is-selected", input === activeInput);
+	});
+}
+
+function syncSignupSpectrum(resetLambda = false) {
+	const activeInput = selectedSignupProgramInput();
+	if (!activeInput) {
+		return null;
+	}
+
+	const programKey = activeInput.value || "culbu1on";
+	const programLabel = activeInput.dataset.programLabel || programKey;
+	const programTone = activeInput.dataset.programTone || "";
+	const lambdaMin = Number.parseInt(activeInput.dataset.lambdaMin || "440", 10);
+	const lambdaMax = Number.parseInt(activeInput.dataset.lambdaMax || "560", 10);
+	const defaultLambda = Number.parseInt(activeInput.dataset.lambdaDefault || String(Math.round((lambdaMin + lambdaMax) / 2)), 10);
+
+	syncSignupProgramCards(activeInput);
+
+	let lambda = defaultLambda;
+	if (signupLambdaInput instanceof HTMLInputElement) {
+		signupLambdaInput.min = String(lambdaMin);
+		signupLambdaInput.max = String(lambdaMax);
+		const currentLambda = Number.parseInt(signupLambdaInput.value || "", 10);
+		const shouldReset = resetLambda || !Number.isFinite(currentLambda) || currentLambda < lambdaMin || currentLambda > lambdaMax;
+		lambda = shouldReset ? defaultLambda : currentLambda;
+		lambda = clampNumber(lambda, lambdaMin, lambdaMax);
+		signupLambdaInput.value = String(lambda);
+	}
+
+	signupProgramLabelOutputs.forEach((node) => {
+		node.textContent = programLabel;
+	});
+
+	signupProgramToneOutputs.forEach((node) => {
+		node.textContent = programTone;
+	});
+
+	signupLambdaValueOutputs.forEach((node) => {
+		node.textContent = String(lambda);
+	});
+
+	if (signupLambdaRangeOutput) {
+		signupLambdaRangeOutput.textContent = `${lambdaMin}–${lambdaMax} nm`;
+	}
+
+	document.body.dataset.landProgram = programKey;
+	document.body.dataset.landTone = programTone;
+	document.body.dataset.landLambda = String(lambda);
+	torusCanvases.forEach((canvas) => {
+		canvas.dataset.landType = programKey;
+		canvas.dataset.lambda = String(lambda);
+	});
+
+	return { programKey, programLabel, programTone, lambda };
+}
+
+function renderSignupPreview(options = {}) {
 	if (!previewShell) {
 		return;
 	}
 
+	const { resetLambda = false } = options;
 	const slug = slugify(usernameInput?.value || "");
 	const timezone = timezoneInput?.value.trim() || DEFAULT_TIMEZONE;
 	const originBase = previewShell.dataset.originBase || window.location.origin;
@@ -1117,6 +1189,8 @@ function renderSignupPreview() {
 		previewClock.dataset.timezone = timezone;
 		renderClock(previewClock);
 	}
+
+	syncSignupSpectrum(resetLambda);
 }
 
 if (timezoneInput && previewClock) {
@@ -1132,6 +1206,18 @@ if (timezoneInput && previewClock) {
 
 if (usernameInput) {
 	usernameInput.addEventListener("input", renderSignupPreview);
+}
+
+signupProgramInputs.forEach((input) => {
+	input.addEventListener("change", () => {
+		renderSignupPreview({ resetLambda: true });
+	});
+});
+
+if (signupLambdaInput instanceof HTMLInputElement) {
+	signupLambdaInput.addEventListener("input", () => {
+		renderSignupPreview();
+	});
 }
 
 if (useLocalTimezoneButton && timezoneInput) {

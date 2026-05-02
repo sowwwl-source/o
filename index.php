@@ -5,6 +5,34 @@ require __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/str3m_media.php';
 require_once __DIR__ . '/lib/str3m_daily.php';
 
+function signup_portal_steps(): array
+{
+    $steps = [
+        ['slug' => '01', 'label' => 'Qui', 'file' => '01-qui-es-tu.html'],
+        ['slug' => '02', 'label' => 'Projet', 'file' => '02-projet.html'],
+        ['slug' => '03', 'label' => 'Valeurs', 'file' => '03-valeurs.html'],
+        ['slug' => '04', 'label' => 'Démarche', 'file' => '04-demarche.html'],
+        ['slug' => '05', 'label' => 'Pacte', 'file' => '05-pacte.html'],
+    ];
+
+    $portals = [];
+    foreach ($steps as $step) {
+        $path = __DIR__ . '/aza_portals/' . $step['file'];
+        $markup = is_file($path) ? trim((string) file_get_contents($path)) : '';
+        if ($markup === '') {
+            continue;
+        }
+
+        $portals[] = [
+            'slug' => $step['slug'],
+            'label' => $step['label'],
+            'markup' => $markup,
+        ];
+    }
+
+    return $portals;
+}
+
 $host = request_host();
 if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
     $path = (string) ($_SERVER['REQUEST_URI'] ?? '/');
@@ -37,6 +65,8 @@ $form = [
     'timezone' => DEFAULT_TIMEZONE,
     'password' => '',
     'login_identifier' => '',
+    'land_program' => '',
+    'lambda_nm' => '',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -45,6 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form['timezone'] = trim((string) ($_POST['timezone'] ?? ''));
     $form['password'] = (string) ($_POST['password'] ?? '');
     $form['login_identifier'] = trim((string) ($_POST['login_identifier'] ?? ''));
+    $form['land_program'] = trim((string) ($_POST['land_program'] ?? ''));
+    $form['lambda_nm'] = trim((string) ($_POST['lambda_nm'] ?? ''));
     $csrfCandidate = (string) ($_POST['csrf_token'] ?? '');
     $honeypot = (string) ($_POST['website'] ?? '');
 
@@ -75,7 +107,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             try {
                 guard_land_creation_request($csrfCandidate, $honeypot);
-                $land = create_land($form['username'], $form['timezone'], $form['password']);
+                $land = create_land(
+                    $form['username'],
+                    $form['timezone'],
+                    $form['password'],
+                    $form['land_program'] !== '' ? $form['land_program'] : null,
+                    $form['lambda_nm'] !== '' ? (int) $form['lambda_nm'] : null
+                );
                 login_land($land);
                 header('Location: /land.php?u=' . urlencode((string) $land['slug']) . '&created=1&session=1', true, 303);
                 exit;
@@ -95,6 +133,33 @@ remember_form_rendered_at();
 $pulse = land_pulse();
 $previewSlug = preview_land_slug($form['username']);
 $previewTimezone = $form['timezone'] !== '' ? $form['timezone'] : DEFAULT_TIMEZONE;
+$signupPrograms = land_visual_signup_catalog();
+$signupPortals = signup_portal_steps();
+$defaultSignupProgram = array_key_first($signupPrograms) ?: 'culbu1on';
+
+try {
+    $selectedSignupProgram = $form['land_program'] !== ''
+        ? validate_land_visual_program($form['land_program'])
+        : $defaultSignupProgram;
+} catch (InvalidArgumentException $exception) {
+    $selectedSignupProgram = $defaultSignupProgram;
+}
+
+$signupPreviewSeed = implode('|', [$previewSlug, $previewTimezone, 'signup-preview']);
+$selectedSignupDefinition = $signupPrograms[$selectedSignupProgram] ?? land_visual_program_definition($selectedSignupProgram);
+[$selectedSignupMinLambda, $selectedSignupMaxLambda] = land_visual_lambda_range($selectedSignupProgram);
+$defaultSignupLambda = land_visual_default_lambda($selectedSignupProgram, $signupPreviewSeed);
+
+try {
+    $selectedSignupLambda = $form['lambda_nm'] !== ''
+        ? validate_land_visual_lambda((int) $form['lambda_nm'], $selectedSignupProgram)
+        : $defaultSignupLambda;
+} catch (InvalidArgumentException $exception) {
+    $selectedSignupLambda = $defaultSignupLambda;
+}
+
+$selectedSignupLabel = (string) ($selectedSignupDefinition['label'] ?? $selectedSignupProgram);
+$selectedSignupTone = (string) ($selectedSignupDefinition['tone'] ?? '');
 $originBase = site_origin();
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
@@ -375,6 +440,77 @@ $promptSeeds = guide_prompt_seeds();
                             <span class="input-hint">Le nom devient ton repère.</span>
                         </label>
 
+                        <?php if ($signupPortals): ?>
+                            <section class="signup-portal-ritual" aria-labelledby="signup-portal-title">
+                                <div class="signup-head signup-portal-head">
+                                    <div>
+                                        <span class="summary-label">Passage aZa</span>
+                                        <h3 id="signup-portal-title">Configurer la terre avant de la sceller</h3>
+                                        <p class="panel-copy">On ne pose pas juste un compte : on choisit un axe, une amplitude, une manière d’entrer.</p>
+                                    </div>
+                                </div>
+
+                                <ol class="signup-portal-grid" aria-label="Parcours aZa pour l’inscription">
+                                    <?php foreach ($signupPortals as $portal): ?>
+                                        <li class="signup-portal-card">
+                                            <span class="summary-label">Portail <?= h((string) $portal['slug']) ?> · <?= h((string) $portal['label']) ?></span>
+                                            <div class="signup-portal-copy"><?= $portal['markup'] ?></div>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ol>
+                            </section>
+                        <?php endif; ?>
+
+                        <section class="signup-spectrum" aria-labelledby="signup-spectrum-title">
+                            <div class="signup-head signup-spectrum-head">
+                                <div>
+                                    <span class="summary-label">Signature native</span>
+                                    <h3 id="signup-spectrum-title">Choisis le programme et la longueur d’onde de ta terre</h3>
+                                    <p class="panel-copy">Ici tu règles l’identité durable. Le slider 24h du noyau restera ensuite une modulation légère, pas un remplacement.</p>
+                                </div>
+                            </div>
+
+                            <div class="signup-program-grid" role="radiogroup" aria-label="Choisir un programme de terre">
+                                <?php foreach ($signupPrograms as $programKey => $programDefinition): ?>
+                                    <?php [$programMin, $programMax] = land_visual_lambda_range($programKey); ?>
+                                    <?php $programDefaultLambda = land_visual_default_lambda($programKey, $signupPreviewSeed); ?>
+                                    <label class="signup-program-card" data-signup-program-card>
+                                        <input
+                                            type="radio"
+                                            name="land_program"
+                                            value="<?= h($programKey) ?>"
+                                            <?= $selectedSignupProgram === $programKey ? 'checked' : '' ?>
+                                            data-signup-program-input
+                                            data-program-label="<?= h((string) ($programDefinition['label'] ?? $programKey)) ?>"
+                                            data-program-tone="<?= h((string) ($programDefinition['tone'] ?? '')) ?>"
+                                            data-lambda-min="<?= h((string) $programMin) ?>"
+                                            data-lambda-max="<?= h((string) $programMax) ?>"
+                                            data-lambda-default="<?= h((string) $programDefaultLambda) ?>"
+                                        >
+                                        <span class="summary-label"><?= h($programKey) ?></span>
+                                        <strong><?= h((string) ($programDefinition['label'] ?? $programKey)) ?></strong>
+                                        <span><?= h((string) ($programDefinition['tone'] ?? '')) ?></span>
+                                        <span>λ <?= h((string) $programMin) ?>–<?= h((string) $programMax) ?> nm</span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <label class="signup-lambda-field">
+                                <span class="input-hint">Amplitude choisie pour la terre</span>
+                                <strong><span data-signup-program-label><?= h($selectedSignupLabel) ?></span> · λ <span data-signup-lambda-value><?= h((string) $selectedSignupLambda) ?></span> nm</strong>
+                                <input
+                                    type="range"
+                                    name="lambda_nm"
+                                    min="<?= h((string) $selectedSignupMinLambda) ?>"
+                                    max="<?= h((string) $selectedSignupMaxLambda) ?>"
+                                    step="1"
+                                    value="<?= h((string) $selectedSignupLambda) ?>"
+                                    data-signup-lambda-input
+                                >
+                                <span class="signup-lambda-range"><span data-signup-program-tone><?= h($selectedSignupTone) ?></span> · plage <span data-signup-lambda-range><?= h((string) $selectedSignupMinLambda) ?>–<?= h((string) $selectedSignupMaxLambda) ?> nm</span></span>
+                            </label>
+                        </section>
+
                         <label>
                             Secret
                             <input
@@ -449,6 +585,9 @@ $promptSeeds = guide_prompt_seeds();
                             <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land.php?u=' . $previewSlug) ?></code></p>
                             <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
                             <p><span>Fuseau</span><strong data-preview-timezone><?= h($previewTimezone) ?></strong></p>
+                            <p><span>Programme</span><strong data-preview-program-label><?= h($selectedSignupLabel) ?></strong></p>
+                            <p><span>Tonalité</span><strong data-preview-program-tone><?= h($selectedSignupTone) ?></strong></p>
+                            <p><span>Signature</span><strong>λ <span data-signup-lambda-value><?= h((string) $selectedSignupLambda) ?></span> nm</strong></p>
                         </div>
                     </div>
                 </div>
