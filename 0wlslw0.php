@@ -63,11 +63,7 @@ function guide_ascii_note(string $label, string $value): string
 }
 
 $host = request_host();
-if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
-    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/0wlslw0');
-    header('Location: https://sowwwl.com' . $path, true, 302);
-    exit;
-}
+// sowwwl.xyz is now allowed to render the mapping UI directly—no redirect!
 
 $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/0wlslw0'), PHP_URL_PATH) ?: '/0wlslw0';
 if ($requestPath === '/0wlslw0.php') {
@@ -76,6 +72,7 @@ if ($requestPath === '/0wlslw0.php') {
 }
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
+$isSpatialMappingHost = ($brandDomain === 'sowwwl.xyz');
 $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
 $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $authenticatedLand = current_authenticated_land();
@@ -131,7 +128,7 @@ $guideVoiceNotes = [
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>
 <body
-    class="experience guide-view"
+    class="experience guide-view<?= $isSpatialMappingHost ? ' mapping-host-view' : '' ?>"
     data-land-program="<?= h($guideLandProgram) ?>"
     data-land-label="<?= h($guideLandLabel) ?>"
     data-land-lambda="<?= h((string) $guideLandLambda) ?>"
@@ -164,6 +161,127 @@ $guideVoiceNotes = [
             <?php endif; ?>
         </div>
     </header>
+
+    <section class="panel reveal mapping-panel mapping-panel--genie" id="mapping" aria-labelledby="mapping-title" data-mapping-genie data-mapping-theme="real">
+        <div class="mapping-panel__veil" aria-hidden="true">
+            <span class="mapping-panel__veil-orbit mapping-panel__veil-orbit--outer"></span>
+            <span class="mapping-panel__veil-orbit mapping-panel__veil-orbit--inner"></span>
+            <span class="mapping-panel__veil-glow"></span>
+        </div>
+
+        <div class="section-topline mapping-panel__topline">
+            <div>
+                <p class="eyebrow mapping-panel__eyebrow">
+                    <strong><?= $isSpatialMappingHost ? 'sowwwl.xyz' : 'surface sensible' ?></strong>
+                    <span><?= $isSpatialMappingHost ? 'monde reel / tore actif' : 'projection / transit / lecture' ?></span>
+                </p>
+                <h2 id="mapping-title">Mapping : réalité · plasma · surface torique</h2>
+                <p class="panel-copy mapping-panel__copy">
+                    <?= $isSpatialMappingHost
+                        ? 'Ici, le tore agit comme une peau de lecture du monde réel. Le plasma sert de couche de translation : il capte, filtre, transmet, puis déploie la surface navigable.'
+                        : 'Ce schéma relie le monde réel, le plasma de données et la surface torique. Chaque point visible sur la surface correspond à une projection, un passage ou une intensité du réel.' ?>
+                </p>
+            </div>
+            <span class="badge mapping-panel__badge"><?= $isSpatialMappingHost ? 'real-world map' : 'genie view' ?></span>
+        </div>
+
+        <div class="mapping-panel__scene">
+            <div class="mapping-genie" role="list" aria-label="Cartographie du tore" data-mapping-genie-list>
+                <button
+                    type="button"
+                    class="mapping-genie-card mapping-genie-card--real is-active"
+                    data-mapping-card
+                    data-mapping-tone="real"
+                    data-mapping-label="Réalité"
+                    data-mapping-whisper="Le monde brut pulse avant toute lecture."
+                    data-mapping-summary="Matière, présence, climat, gestes, voix, lumière. Tout ce qui existe avant d’être interprété."
+                    aria-expanded="true"
+                >
+                    <span class="mapping-genie-card__mist" aria-hidden="true"></span>
+                    <span class="mapping-genie-card__sigil" aria-hidden="true">🌍</span>
+                    <span class="mapping-genie-card__head">
+                        <span class="summary-label">plan 01</span>
+                        <strong>Réalité</strong>
+                    </span>
+                    <span class="mapping-genie-card__body">
+                        Matière, présence, climat, gestes, voix, lumière. Tout ce qui existe avant d’être interprété.
+                    </span>
+                </button>
+
+                <div class="mapping-genie-link" aria-hidden="true">
+                    <span class="mapping-genie-link__line"></span>
+                    <span class="mapping-genie-link__label">traduction</span>
+                </div>
+
+                <button
+                    type="button"
+                    class="mapping-genie-card mapping-genie-card--plasma"
+                    data-mapping-card
+                    data-mapping-tone="plasma"
+                    data-mapping-label="Plasma"
+                    data-mapping-whisper="Le flux mémorise, filtre et transmet."
+                    data-mapping-summary="Couche fluide de mémoire, de calcul et de transmission. Le plasma convertit le réel en intensités lisibles."
+                    aria-expanded="false"
+                >
+                    <span class="mapping-genie-card__mist" aria-hidden="true"></span>
+                    <span class="mapping-genie-card__sigil" aria-hidden="true">💧</span>
+                    <span class="mapping-genie-card__head">
+                        <span class="summary-label">plan 02</span>
+                        <strong>Plasma</strong>
+                    </span>
+                    <span class="mapping-genie-card__body">
+                        Couche fluide de mémoire, de calcul et de transmission. Le plasma convertit le réel en intensités lisibles.
+                    </span>
+                </button>
+
+                <div class="mapping-genie-link" aria-hidden="true">
+                    <span class="mapping-genie-link__line"></span>
+                    <span class="mapping-genie-link__label">déploiement</span>
+                </div>
+
+                <button
+                    type="button"
+                    class="mapping-genie-card mapping-genie-card--torus"
+                    data-mapping-card
+                    data-mapping-tone="torus"
+                    data-mapping-label="Tore"
+                    data-mapping-whisper="La surface devient orientation, seuil et dérive."
+                    data-mapping-summary="Surface navigable de Sowwwl : une peau torique où les flux se déposent, se relient et deviennent orientation."
+                    aria-expanded="false"
+                >
+                    <span class="mapping-genie-card__mist" aria-hidden="true"></span>
+                    <span class="mapping-genie-card__sigil" aria-hidden="true">🌀</span>
+                    <span class="mapping-genie-card__head">
+                        <span class="summary-label">plan 03</span>
+                        <strong>Tore</strong>
+                    </span>
+                    <span class="mapping-genie-card__body">
+                        Surface navigable de Sowwwl : une peau torique où les flux se déposent, se relient et deviennent orientation.
+                    </span>
+                </button>
+            </div>
+
+            <aside class="mapping-chorus" aria-live="polite">
+                <span class="summary-label">écho actif</span>
+                <strong class="mapping-chorus__title" data-mapping-active-label>Réalité</strong>
+                <p class="mapping-chorus__whisper" data-mapping-active-whisper>Le monde brut pulse avant toute lecture.</p>
+                <p class="mapping-chorus__summary" data-mapping-active-summary>Matière, présence, climat, gestes, voix, lumière. Tout ce qui existe avant d’être interprété.</p>
+                <div class="mapping-chorus__meter" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </aside>
+        </div>
+
+        <p class="mapping-panel__reading">
+            <strong>Lecture&nbsp;:</strong>
+            le <span class="mapping-panel__accent mapping-panel__accent--plasma">plasma</span> fait le lien entre
+            <span class="mapping-panel__accent mapping-panel__accent--real">la réalité</span> et
+            <span class="mapping-panel__accent mapping-panel__accent--torus">la surface torique</span>.
+            Sur tactile ou pointeur, chaque carte s’ouvre comme une petite apparition.
+        </p>
+    </section>
 
     <section class="guide-grid">
         <section class="panel reveal guide-panel" aria-labelledby="guide-role-title">

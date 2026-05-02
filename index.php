@@ -167,7 +167,7 @@ $originBase = site_origin();
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
 $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
-$homeVisualOnly = false;
+$homeVisualOnly = $isSowwwlXyz;
 $dailyStream = str3m_build_daily_stream(null);
 $dailyTextItem = is_array($dailyStream['items']['text'] ?? null) ? $dailyStream['items']['text'] : null;
 $dailyImageItem = is_array($dailyStream['items']['image'] ?? null) ? $dailyStream['items']['image'] : null;
@@ -245,7 +245,7 @@ $promptSeeds = guide_prompt_seeds();
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>
 <body
-    class="experience home"
+    class="experience home<?= $isSowwwlXyz ? ' xyz-surface-view' : '' ?>"
     data-land-program="<?= h($activeLandProgram) ?>"
     data-land-label="<?= h($activeLandLabel) ?>"
     data-land-lambda="<?= h((string) $activeLambda) ?>"
@@ -255,6 +255,19 @@ $promptSeeds = guide_prompt_seeds();
 <div class="aurora" aria-hidden="true"></div>
 
 <div class="world-container" aria-hidden="true">
+    <?php if ($isSowwwlXyz): ?>
+    <div class="xyz-camera-layer" data-xyz-camera-root>
+        <video
+            class="xyz-camera-layer__video"
+            data-xyz-camera-video
+            autoplay
+            muted
+            playsinline
+            aria-hidden="true"
+        ></video>
+        <div class="xyz-camera-layer__fallback" data-xyz-camera-fallback aria-hidden="true"></div>
+    </div>
+    <?php endif; ?>
     <canvas
         id="torus-ambient"
         class="main-torus"
@@ -271,32 +284,168 @@ $promptSeeds = guide_prompt_seeds();
 
 <main class="layout ui-overlay">
     <?php if ($isSowwwlXyz): ?>
-    <section class="panel reveal mapping-panel" id="mapping" aria-labelledby="mapping-title" style="margin-bottom:2rem;">
-        <div class="section-topline">
-            <div>
-                <h2 id="mapping-title">Mapping : Réalité · Plasma · Surface torique</h2>
-                <p class="panel-copy">Ce schéma relie le monde réel, le plasma (données/flux) et la surface torique (interface Sowwwl).<br>Chaque point sur la surface correspond à une projection d’un état du réel via le plasma.</p>
-            </div>
+    <section class="xyz-surface-shell reveal" data-xyz-surface>
+        <div class="xyz-surface-shell__veil" aria-hidden="true">
+            <span class="xyz-surface-shell__ring xyz-surface-shell__ring--outer"></span>
+            <span class="xyz-surface-shell__ring xyz-surface-shell__ring--inner"></span>
+            <span class="xyz-surface-shell__pulse"></span>
         </div>
-        <div class="mapping-visual" style="display:flex;justify-content:center;align-items:center;gap:2rem;flex-wrap:wrap;">
-            <div style="text-align:center;">
-                <div style="width:80px;height:80px;border-radius:50%;background:#e0e0e0;border:2px solid #bbb;display:flex;align-items:center;justify-content:center;font-weight:bold;">Réalité<br><span style='font-size:2rem;'>🌍</span></div>
-                <div style="margin-top:0.5rem;font-size:0.9em;">Phénomènes, actions, vécu</div>
+
+        <header class="xyz-surface-head">
+            <p class="eyebrow xyz-surface-head__eyebrow"><strong>sowwwl.xyz</strong> <span>surface torique / monde reel</span></p>
+            <h1 class="xyz-surface-head__title">Le tore écoute le monde réel.</h1>
+            <p class="lead xyz-surface-head__lead">Ici, la surface ne présente pas seulement O. : elle agit comme une membrane de lecture. Le réel entre, le plasma traduit, le tore déploie.</p>
+
+            <div class="xyz-surface-actions">
+                <button type="button" class="pill-link xyz-camera-toggle" data-xyz-camera-start>Ouvrir Ocam</button>
+                <button type="button" class="ghost-link xyz-camera-toggle hidden" data-xyz-camera-stop>Refermer Ocam</button>
+                <a class="pill-link" href="<?= h($guideHref) ?>">Entrer par 0wlslw0</a>
+                <a class="ghost-link" href="/signal">Laisser une enveloppe</a>
+                <a class="ghost-link" href="/str3m">Dériver dans Str3m</a>
+                <a class="ghost-link" href="/map">Voir la carte</a>
             </div>
-            <div style="font-size:2.5rem;">⟶</div>
-            <div style="text-align:center;">
-                <div style="width:80px;height:80px;border-radius:50%;background:#cce6ff;border:2px solid #3399ff;display:flex;align-items:center;justify-content:center;font-weight:bold;">Plasma<br><span style='font-size:2rem;'>💧</span></div>
-                <div style="margin-top:0.5rem;font-size:0.9em;">Flux, données, médiation</div>
+
+            <div class="xyz-surface-meta" aria-label="Signature de la surface">
+                <span class="badge badge-glass">λ <?= h((string) $activeLambda) ?> nm</span>
+                <span class="badge badge-glass"><?= h($activeLandLabel) ?></span>
+                <span class="badge badge-glass"><?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></span>
             </div>
-            <div style="font-size:2.5rem;">⟶</div>
-            <div style="text-align:center;">
-                <div style="width:80px;height:80px;border-radius:50%;background:#f5e6ff;border:2px solid #a259ff;display:flex;align-items:center;justify-content:center;font-weight:bold;">Surface torique<br><span style='font-size:2rem;'>🌀</span></div>
-                <div style="margin-top:0.5rem;font-size:0.9em;">Interface, visualisation, navigation</div>
-            </div>
-        </div>
-        <div style="margin-top:1.5rem;text-align:center;font-size:1.1em;">
-            <strong>Lecture :</strong> <span style="color:#3399ff">Le plasma</span> fait le lien entre <span style="color:#e0e0e0">la réalité</span> et <span style="color:#a259ff">la surface torique</span>.<br>
-            <span style="font-size:0.95em;">Chaque action réelle est médiée par le plasma et projetée/interprétée sur la surface torique.</span>
+        </header>
+
+        <div class="xyz-surface-grid">
+            <section class="panel reveal mapping-panel mapping-panel--genie xyz-surface-mapping" id="mapping" aria-labelledby="mapping-title" data-mapping-genie data-mapping-theme="real">
+                <div class="mapping-panel__veil" aria-hidden="true">
+                    <span class="mapping-panel__veil-orbit mapping-panel__veil-orbit--outer"></span>
+                    <span class="mapping-panel__veil-orbit mapping-panel__veil-orbit--inner"></span>
+                    <span class="mapping-panel__veil-glow"></span>
+                </div>
+
+                <div class="section-topline mapping-panel__topline">
+                    <div>
+                        <p class="eyebrow mapping-panel__eyebrow">
+                            <strong>sowwwl.xyz</strong>
+                            <span>réalité / plasma / tore</span>
+                        </p>
+                        <h2 id="mapping-title">La carte ne représente pas le monde, elle le filtre.</h2>
+                        <p class="panel-copy mapping-panel__copy">Une action, une présence, une voix ou un climat passent par une couche plasma avant d’apparaître sur la peau torique. Ce n’est pas une simple interface&nbsp;: c’est une traduction continue.</p>
+                    </div>
+                    <span class="badge mapping-panel__badge">real-world map</span>
+                </div>
+
+                <div class="mapping-panel__scene">
+                    <div class="mapping-genie" role="list" aria-label="Cartographie du tore" data-mapping-genie-list>
+                        <button
+                            type="button"
+                            class="mapping-genie-card mapping-genie-card--real is-active"
+                            data-mapping-card
+                            data-mapping-tone="real"
+                            data-mapping-label="Réalité"
+                            data-mapping-whisper="Rue, souffle, corps, lumière : le monde avant sa traduction."
+                            data-mapping-summary="La réalité contient les phénomènes, les gestes, les traces et les intensités qui n’ont pas encore trouvé leur forme navigable."
+                            aria-expanded="true"
+                        >
+                            <span class="mapping-genie-card__mist" aria-hidden="true"></span>
+                            <span class="mapping-genie-card__sigil" aria-hidden="true">🌍</span>
+                            <span class="mapping-genie-card__head">
+                                <span class="summary-label">plan 01</span>
+                                <strong>Réalité</strong>
+                            </span>
+                            <span class="mapping-genie-card__body">Présences, sons, météo, rencontres, lumière, usage. Tout ce qui touche avant d’être lu.</span>
+                        </button>
+
+                        <div class="mapping-genie-link" aria-hidden="true">
+                            <span class="mapping-genie-link__line"></span>
+                            <span class="mapping-genie-link__label">traduction</span>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="mapping-genie-card mapping-genie-card--plasma"
+                            data-mapping-card
+                            data-mapping-tone="plasma"
+                            data-mapping-label="Plasma"
+                            data-mapping-whisper="Le flux garde, transforme, relie."
+                            data-mapping-summary="Le plasma est la couche de calcul, de mémoire et de circulation. Il transporte le réel jusqu’à la surface sous forme de signes, de données et de rythme."
+                            aria-expanded="false"
+                        >
+                            <span class="mapping-genie-card__mist" aria-hidden="true"></span>
+                            <span class="mapping-genie-card__sigil" aria-hidden="true">💧</span>
+                            <span class="mapping-genie-card__head">
+                                <span class="summary-label">plan 02</span>
+                                <strong>Plasma</strong>
+                            </span>
+                            <span class="mapping-genie-card__body">Flux, mémoire, calcul, médiation. La couche fluide qui rend le réel transmissible sans l’éteindre.</span>
+                        </button>
+
+                        <div class="mapping-genie-link" aria-hidden="true">
+                            <span class="mapping-genie-link__line"></span>
+                            <span class="mapping-genie-link__label">déploiement</span>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="mapping-genie-card mapping-genie-card--torus"
+                            data-mapping-card
+                            data-mapping-tone="torus"
+                            data-mapping-label="Tore"
+                            data-mapping-whisper="La surface devient seuil, navigation, orientation."
+                            data-mapping-summary="Le tore est la peau visible de Sowwwl. Il accueille la projection du réel et permet d’entrer dans le réseau par dérive, lecture et résonance."
+                            aria-expanded="false"
+                        >
+                            <span class="mapping-genie-card__mist" aria-hidden="true"></span>
+                            <span class="mapping-genie-card__sigil" aria-hidden="true">🌀</span>
+                            <span class="mapping-genie-card__head">
+                                <span class="summary-label">plan 03</span>
+                                <strong>Tore</strong>
+                            </span>
+                            <span class="mapping-genie-card__body">Une membrane navigable où les intensités deviennent lecture, interface et dérive située.</span>
+                        </button>
+                    </div>
+
+                    <aside class="mapping-chorus xyz-surface-chorus" aria-live="polite">
+                        <span class="summary-label">écho actif</span>
+                        <strong class="mapping-chorus__title" data-mapping-active-label>Réalité</strong>
+                        <p class="mapping-chorus__whisper" data-mapping-active-whisper>Rue, souffle, corps, lumière : le monde avant sa traduction.</p>
+                        <p class="mapping-chorus__summary" data-mapping-active-summary>La réalité contient les phénomènes, les gestes, les traces et les intensités qui n’ont pas encore trouvé leur forme navigable.</p>
+                        <div class="mapping-chorus__meter" aria-hidden="true">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </aside>
+                </div>
+
+                <p class="mapping-panel__reading"><strong>Lecture&nbsp;:</strong> le <span class="mapping-panel__accent mapping-panel__accent--plasma">plasma</span> fait le lien entre <span class="mapping-panel__accent mapping-panel__accent--real">la réalité</span> et <span class="mapping-panel__accent mapping-panel__accent--torus">la surface torique</span>. Le tore n’est pas au-dessus du monde&nbsp;: il s’y branche.</p>
+            </section>
+
+            <aside class="xyz-surface-aside reveal">
+                <article class="xyz-surface-note xyz-surface-note--camera" data-xyz-camera-panel>
+                    <span class="summary-label">Ocam / peau comestible</span>
+                    <strong data-xyz-camera-title>Ocam peut nourrir la surface.</strong>
+                    <p class="panel-copy" data-xyz-camera-status>Active Ocam pour laisser le tore mordre doucement dans le réel : lumière, grain, souffle, texture. Rien n’est envoyé côté serveur depuis cette couche.</p>
+                </article>
+
+                <article class="xyz-surface-note">
+                    <span class="summary-label">gestes</span>
+                    <strong>Traverse la surface.</strong>
+                    <p class="panel-copy">Glisse sur le tore pour pivoter. Sur mobile, appui long puis dérive pour viser un passage. Le centre et le geste en O ouvrent aussi 0wlslw0.</p>
+                </article>
+
+                <article class="xyz-surface-note">
+                    <span class="summary-label">phrases d’entrée</span>
+                    <ul class="guide-prompt-list xyz-surface-prompt-list">
+                        <?php foreach (array_slice($promptSeeds, 0, 4) as $prompt): ?>
+                            <li><code><?= h($prompt) ?></code></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </article>
+
+                <article class="xyz-surface-note">
+                    <span class="summary-label">situation</span>
+                    <strong><?= h($authenticatedLand ? 'ta terre module le champ' : 'surface publique en écoute') ?></strong>
+                    <p class="panel-copy"><?= h($authenticatedLand ? 'La fréquence de ta terre colore déjà la membrane. Tu peux entrer, écrire, ou laisser le tore simplement respirer.' : 'Aucune terre liée pour l’instant : la membrane reste collective, disponible, poreuse.') ?></p>
+                </article>
+            </aside>
         </div>
     </section>
     <?php endif; ?>

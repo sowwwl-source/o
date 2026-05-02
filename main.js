@@ -338,6 +338,25 @@ function readGuideVoiceSpectralProfile(root) {
 	return resolveGuideVoiceSpectralProfile(program, lambdaCandidate, tone, label);
 }
 
+function readCameraReactiveState() {
+	const body = document.body;
+	if (!(body instanceof HTMLBodyElement)) {
+		return {
+			ready: false,
+			luma: 0,
+			motion: 0,
+			rgb: [180, 180, 180],
+		};
+	}
+
+	return {
+		ready: body.classList.contains("is-camera-ready"),
+		luma: clampNumber(Number.parseFloat(body.dataset.cameraLuma || "0"), 0, 1),
+		motion: clampNumber(Number.parseFloat(body.dataset.cameraMotion || "0"), 0, 1),
+		rgb: parseRgbTriplet(body.dataset.cameraRgb || "180 180 180", [180, 180, 180]),
+	};
+}
+
 function resolveTorusProfile(canvas) {
 	const bodyStyles = getComputedStyle(document.body);
 	const landType = canvas.dataset.landType || document.body.dataset.landProgram || "collective";
@@ -347,11 +366,13 @@ function resolveTorusProfile(canvas) {
 	const accent = parseRgbTriplet(bodyStyles.getPropertyValue("--land-accent-rgb"), base);
 	const secondary = parseRgbTriplet(bodyStyles.getPropertyValue("--land-secondary-rgb"), accent);
 	const glow = parseRgbTriplet(bodyStyles.getPropertyValue("--land-glow-rgb"), secondary);
+	const cameraState = readCameraReactiveState();
+	let profile;
 
 	if (landType === "dur3rb") {
 		const luminance = Math.round(base[0] * 0.299 + base[1] * 0.587 + base[2] * 0.114);
 		const grayscale = [luminance, luminance, luminance];
-		return {
+		profile = {
 			primary: mixRgb(grayscale, accent, 0.12),
 			secondary: mixRgb(grayscale, glow, 0.08),
 			glow,
@@ -360,10 +381,8 @@ function resolveTorusProfile(canvas) {
 			signalMode: false,
 			motion: mood === "dense" ? 1.08 : 0.9,
 		};
-	}
-
-	if (landType === "tocu") {
-		return {
+	} else if (landType === "tocu") {
+		profile = {
 			primary: mixRgb(base, accent, 0.48),
 			secondary: mixRgb(base, secondary, 0.4),
 			glow,
@@ -377,10 +396,8 @@ function resolveTorusProfile(canvas) {
 			],
 			motion: mood === "nocturnal" ? 1.18 : 1.32,
 		};
-	}
-
-	if (landType === "culbu1on") {
-		return {
+	} else if (landType === "culbu1on") {
+		profile = {
 			primary: mixRgb(base, accent, 0.52),
 			secondary: mixRgb(base, secondary, 0.7),
 			glow,
@@ -389,16 +406,34 @@ function resolveTorusProfile(canvas) {
 			signalMode: false,
 			motion: mood === "calm" ? 0.98 : 1.1,
 		};
+	} else {
+		profile = {
+			primary: mixRgb(base, accent, 0.32),
+			secondary: mixRgb(base, secondary, 0.46),
+			glow,
+			waveStrength: mood === "nocturnal" ? 0.74 : 0.68,
+			pulseStrength: mood === "dense" ? 0.68 : 0.52,
+			signalMode: false,
+			motion: mood === "nocturnal" ? 1.06 : 0.92,
+		};
 	}
 
+	if (!cameraState.ready) {
+		return profile;
+	}
+
+	const chromaMix = clampNumber(0.12 + cameraState.motion * 0.28 + cameraState.luma * 0.12, 0.12, 0.46);
+	const glowMix = clampNumber(0.16 + cameraState.motion * 0.34 + cameraState.luma * 0.08, 0.16, 0.54);
+
 	return {
-		primary: mixRgb(base, accent, 0.32),
-		secondary: mixRgb(base, secondary, 0.46),
-		glow,
-		waveStrength: mood === "nocturnal" ? 0.74 : 0.68,
-		pulseStrength: mood === "dense" ? 0.68 : 0.52,
-		signalMode: false,
-		motion: mood === "nocturnal" ? 1.06 : 0.92,
+		...profile,
+		primary: mixRgb(profile.primary, cameraState.rgb, chromaMix),
+		secondary: mixRgb(profile.secondary, cameraState.rgb, chromaMix * 0.82),
+		glow: mixRgb(profile.glow, cameraState.rgb, glowMix),
+		waveStrength: clampNumber(profile.waveStrength + cameraState.motion * 0.34 + cameraState.luma * 0.08, 0.48, 1.48),
+		pulseStrength: clampNumber(profile.pulseStrength + cameraState.motion * 0.28 + cameraState.luma * 0.14, 0.38, 1.36),
+		motion: clampNumber(profile.motion + cameraState.motion * 0.36 + cameraState.luma * 0.08, 0.82, 1.64),
+		signalMode: profile.signalMode || cameraState.motion > 0.62,
 	};
 }
 
@@ -1861,6 +1896,427 @@ if ("serviceWorker" in navigator) {
 
 const GUIDE_VOICE_SESSION_KEY = "o-guide-voice-session-v1";
 
+function initMappingGenie() {
+	const root = document.querySelector("[data-mapping-genie]");
+	if (!(root instanceof HTMLElement)) {
+		return;
+	}
+
+	const cards = Array.from(root.querySelectorAll("[data-mapping-card]"));
+	const activeLabel = root.querySelector("[data-mapping-active-label]");
+	const activeWhisper = root.querySelector("[data-mapping-active-whisper]");
+	const activeSummary = root.querySelector("[data-mapping-active-summary]");
+	if (!cards.length) {
+		return;
+	}
+
+	let cycleTimer = 0;
+	let cycleIndex = 0;
+
+	const updateChorus = (card) => {
+		if (!(card instanceof HTMLElement)) {
+			return;
+		}
+
+		const tone = card.dataset.mappingTone || "real";
+		const label = card.dataset.mappingLabel || card.querySelector("strong")?.textContent || "";
+		const whisper = card.dataset.mappingWhisper || "";
+		const summary = card.dataset.mappingSummary || "";
+
+		root.dataset.mappingTheme = tone;
+		if (activeLabel instanceof HTMLElement) {
+			activeLabel.textContent = label;
+		}
+		if (activeWhisper instanceof HTMLElement) {
+			activeWhisper.textContent = whisper;
+		}
+		if (activeSummary instanceof HTMLElement) {
+			activeSummary.textContent = summary;
+		}
+	};
+
+	const stopCycle = () => {
+		if (!cycleTimer) {
+			return;
+		}
+		window.clearInterval(cycleTimer);
+		cycleTimer = 0;
+	};
+
+	const startCycle = () => {
+		if (coarsePointer || cards.length < 2 || cycleTimer) {
+			return;
+		}
+
+		cycleTimer = window.setInterval(() => {
+			cycleIndex = (cycleIndex + 1) % cards.length;
+			setActiveCard(cards[cycleIndex]);
+		}, 4200);
+	};
+
+	const setActiveCard = (nextCard, { collapseOnSecondTap = false } = {}) => {
+		let chosenCard = nextCard;
+		cards.forEach((card) => {
+			const isActive = card === nextCard;
+			if (collapseOnSecondTap && isActive && card.classList.contains("is-active")) {
+				card.classList.remove("is-active");
+				card.setAttribute("aria-expanded", "false");
+				chosenCard = null;
+				return;
+			}
+
+			card.classList.toggle("is-active", isActive);
+			card.setAttribute("aria-expanded", isActive ? "true" : "false");
+		});
+
+		if (!chosenCard) {
+			root.dataset.mappingTheme = "real";
+			return;
+		}
+
+		cycleIndex = Math.max(0, cards.indexOf(chosenCard));
+		updateChorus(chosenCard);
+	};
+
+	const activeCard = cards.find((card) => card.classList.contains("is-active")) || cards[0] || null;
+	if (activeCard) {
+		setActiveCard(activeCard);
+	}
+
+	cards.forEach((card) => {
+		card.addEventListener("pointerenter", () => {
+			if (coarsePointer) {
+				return;
+			}
+			stopCycle();
+			setActiveCard(card);
+		});
+
+		card.addEventListener("focus", () => {
+			stopCycle();
+			setActiveCard(card);
+		});
+
+		card.addEventListener("click", () => {
+			stopCycle();
+			setActiveCard(card, { collapseOnSecondTap: coarsePointer });
+		});
+	});
+
+	root.addEventListener("pointerleave", () => {
+		startCycle();
+	});
+
+	root.addEventListener("keydown", (event) => {
+		if (event.key !== "Escape") {
+			return;
+		}
+
+		cards.forEach((card) => {
+			card.classList.remove("is-active");
+			card.setAttribute("aria-expanded", "false");
+		});
+		root.dataset.mappingTheme = "real";
+	});
+
+	document.addEventListener("pointerdown", (event) => {
+		if (!coarsePointer) {
+			return;
+		}
+
+		if (!(event.target instanceof Element) || event.target.closest("[data-mapping-genie]")) {
+			return;
+		}
+
+		cards.forEach((card) => {
+			card.classList.remove("is-active");
+			card.setAttribute("aria-expanded", "false");
+		});
+		if (cards[0]) {
+			cards[0].classList.add("is-active");
+			cards[0].setAttribute("aria-expanded", "true");
+			updateChorus(cards[0]);
+		}
+	}, true);
+
+	startCycle();
+}
+
+function initXyzSurface() {
+	const root = document.querySelector("[data-xyz-surface]");
+	if (!(root instanceof HTMLElement)) {
+		return;
+	}
+
+	const applyDrift = (clientX, clientY) => {
+		const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1;
+		const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 1;
+		const offsetX = ((clientX / viewportWidth) - 0.5) * 14;
+		const offsetY = ((clientY / viewportHeight) - 0.5) * 12;
+		root.style.setProperty("--xyz-drift-x", `${offsetX.toFixed(2)}px`);
+		root.style.setProperty("--xyz-drift-y", `${offsetY.toFixed(2)}px`);
+	};
+
+	const resetDrift = () => {
+		root.style.setProperty("--xyz-drift-x", "0px");
+		root.style.setProperty("--xyz-drift-y", "0px");
+	};
+
+	if (!reducedMotion && !coarsePointer) {
+		window.addEventListener("pointermove", (event) => {
+			if ((event.pointerType || "") === "touch") {
+				return;
+			}
+			applyDrift(event.clientX, event.clientY);
+		});
+
+		window.addEventListener("pointerleave", resetDrift);
+	}
+
+	if (reducedMotion || coarsePointer) {
+		resetDrift();
+	}
+}
+
+function initXyzCamera() {
+	const root = document.querySelector("[data-xyz-camera-root]");
+	const video = document.querySelector("[data-xyz-camera-video]");
+	const startButton = document.querySelector("[data-xyz-camera-start]");
+	const stopButton = document.querySelector("[data-xyz-camera-stop]");
+	const statusNode = document.querySelector("[data-xyz-camera-status]");
+	const titleNode = document.querySelector("[data-xyz-camera-title]");
+
+	if (!(root instanceof HTMLElement) || !(video instanceof HTMLVideoElement) || !(startButton instanceof HTMLElement) || !(stopButton instanceof HTMLElement)) {
+		return;
+	}
+
+	let stream = null;
+	let analysisFrame = 0;
+	let analysisLastAt = 0;
+	let previousSamples = null;
+	const analysisCanvas = document.createElement("canvas");
+	analysisCanvas.width = 48;
+	analysisCanvas.height = 36;
+	const analysisContext = analysisCanvas.getContext("2d", { willReadFrequently: true });
+
+	const setReactiveCssState = (luma = 0, motion = 0, rgb = [180, 180, 180], flavor = "neutral") => {
+		const safeLuma = clampNumber(luma, 0, 1);
+		const safeMotion = clampNumber(motion, 0, 1);
+		const safeRgb = Array.isArray(rgb) && rgb.length >= 3
+			? rgb.map((value) => clampNumber(Math.round(Number(value) || 0), 0, 255))
+			: [180, 180, 180];
+
+		document.body.dataset.cameraLuma = safeLuma.toFixed(3);
+		document.body.dataset.cameraMotion = safeMotion.toFixed(3);
+		document.body.dataset.cameraRgb = safeRgb.join(" ");
+		document.body.dataset.cameraFlavor = flavor;
+		document.body.style.setProperty("--camera-luma", safeLuma.toFixed(3));
+		document.body.style.setProperty("--camera-motion", safeMotion.toFixed(3));
+		document.body.style.setProperty("--camera-rgb", safeRgb.join(" "));
+	};
+
+	const resetReactiveCssState = () => {
+		previousSamples = null;
+		setReactiveCssState(0, 0, [180, 180, 180], "neutral");
+	};
+
+	const describeCameraFlavor = (luma, motion) => {
+		if (motion > 0.48 && luma > 0.54) {
+			return {
+				key: "sap",
+				title: "La surface mâche une sève vive.",
+				message: "Le flux est lumineux et mobile : le tore devient plus nerveux, presque juteux, comme s’il goûtait des reflets frais et des gestes rapides.",
+			};
+		}
+
+		if (motion > 0.5) {
+			return {
+				key: "pulse",
+				title: "Le tore avale du mouvement.",
+				message: "Quelque chose remue dans le champ. La membrane épaissit ses pulsations et laisse le réel la traverser par secousses tendres.",
+			};
+		}
+
+		if (luma < 0.32) {
+			return {
+				key: "velvet",
+				title: "La membrane boit une nuit douce.",
+				message: "Le monde est plus sombre, plus velouté. Le tore retient les noirs, les peaux basses, les ombres comme une pulpe lente.",
+			};
+		}
+
+		if (luma > 0.62) {
+			return {
+				key: "gloss",
+				title: "Le monde nourrit la surface de clarté.",
+				message: "La lumière monte. Le tore s’éclaircit, absorbe les reflets et rend la membrane presque translucide, sucrée de présence.",
+			};
+		}
+
+		return {
+			key: "soft",
+			title: "Le monde nourrit maintenant la surface.",
+			message: "La peau caméra est ouverte. Le tore lit maintenant la lumière réelle comme une matière presque comestible : grain, souffle, reflets, présence.",
+		};
+	};
+
+	const stopAnalysis = () => {
+		if (analysisFrame) {
+			window.cancelAnimationFrame(analysisFrame);
+			analysisFrame = 0;
+		}
+		analysisLastAt = 0;
+		resetReactiveCssState();
+	};
+
+	const analyzeFrame = (time = 0) => {
+		if (!stream || !analysisContext) {
+			return;
+		}
+
+		analysisFrame = window.requestAnimationFrame(analyzeFrame);
+		if (time - analysisLastAt < 120) {
+			return;
+		}
+		analysisLastAt = time;
+
+		if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || video.videoWidth === 0 || video.videoHeight === 0) {
+			return;
+		}
+
+		analysisContext.drawImage(video, 0, 0, analysisCanvas.width, analysisCanvas.height);
+		const imageData = analysisContext.getImageData(0, 0, analysisCanvas.width, analysisCanvas.height);
+		const { data } = imageData;
+		const sampleCount = analysisCanvas.width * analysisCanvas.height;
+		const currentSamples = new Float32Array(sampleCount);
+		let totalLuma = 0;
+		let totalR = 0;
+		let totalG = 0;
+		let totalB = 0;
+		let totalMotion = 0;
+
+		for (let offset = 0, sampleIndex = 0; offset < data.length; offset += 4, sampleIndex += 1) {
+			const red = data[offset];
+			const green = data[offset + 1];
+			const blue = data[offset + 2];
+			const luma = (red * 0.299 + green * 0.587 + blue * 0.114) / 255;
+
+			currentSamples[sampleIndex] = luma;
+			totalLuma += luma;
+			totalR += red;
+			totalG += green;
+			totalB += blue;
+
+			if (previousSamples) {
+				totalMotion += Math.abs(luma - previousSamples[sampleIndex]);
+			}
+		}
+
+		previousSamples = currentSamples;
+		const averageLuma = totalLuma / sampleCount;
+		const averageMotion = previousSamples
+			? clampNumber((totalMotion / sampleCount) * 3.6, 0, 1)
+			: 0;
+		const averageRgb = [
+			Math.round(totalR / sampleCount),
+			Math.round(totalG / sampleCount),
+			Math.round(totalB / sampleCount),
+		];
+
+		const flavor = describeCameraFlavor(averageLuma, averageMotion);
+		setReactiveCssState(averageLuma, averageMotion, averageRgb, flavor.key);
+
+		if (titleNode instanceof HTMLElement) {
+			titleNode.textContent = flavor.title;
+		}
+		if (statusNode instanceof HTMLElement) {
+			statusNode.textContent = flavor.message;
+		}
+	};
+
+	const setUiState = (state, message = "", title = "") => {
+		document.body.classList.toggle("is-camera-ready", state === "live");
+		startButton.classList.toggle("hidden", state === "live");
+		stopButton.classList.toggle("hidden", state !== "live");
+
+		if (statusNode instanceof HTMLElement && message) {
+			statusNode.textContent = message;
+		}
+
+		if (titleNode instanceof HTMLElement && title) {
+			titleNode.textContent = title;
+		}
+	};
+
+	const stopStream = () => {
+		stopAnalysis();
+		if (stream) {
+			stream.getTracks().forEach((track) => track.stop());
+			stream = null;
+		}
+		video.srcObject = null;
+		setUiState(
+			"idle",
+			"Ocam est refermé. Le tore continue de respirer sur une mémoire synthétique, sans capter le monde en direct.",
+			"Ocam peut nourrir la surface."
+		);
+	};
+
+	const constraints = {
+		audio: false,
+		video: {
+			facingMode: coarsePointer ? { ideal: "environment" } : "user",
+			width: { ideal: 1280 },
+			height: { ideal: 720 },
+		},
+	};
+
+	startButton.addEventListener("click", async () => {
+		if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+			setUiState(
+				"unsupported",
+				"Ocam ne trouve pas de caméra disponible ici. La membrane garde donc un monde synthétique, comme une pulpe de secours.",
+				"Ocam indisponible sur cette surface."
+			);
+			return;
+		}
+
+		setUiState(
+			"loading",
+			"Le tore demande à Ocam la permission de goûter le réel : lumière, grain, textures. Rien n’est envoyé au serveur depuis cette couche.",
+			"Ouverture d’Ocam…"
+		);
+
+		try {
+			stream = await navigator.mediaDevices.getUserMedia(constraints);
+			video.srcObject = stream;
+			await video.play().catch(() => undefined);
+			stopAnalysis();
+			analysisFrame = window.requestAnimationFrame(analyzeFrame);
+			setUiState(
+				"live",
+				"Ocam est ouvert. Le tore lit maintenant la lumière réelle comme une matière presque comestible : grain, souffle, reflets, présence.",
+				"Ocam nourrit maintenant la surface."
+			);
+		} catch (error) {
+			stopStream();
+			setUiState(
+				"error",
+				"Permission refusée ou caméra inaccessible. La membrane revient à son rêve interne, sans captation directe.",
+				"La surface garde son rêve sans Ocam."
+			);
+		}
+	});
+
+	stopButton.addEventListener("click", () => {
+		stopStream();
+	});
+
+	window.addEventListener("beforeunload", () => {
+		stopStream();
+	});
+}
+
 function readGuideVoiceSession() {
 	try {
 		const raw = window.sessionStorage.getItem(GUIDE_VOICE_SESSION_KEY);
@@ -1874,6 +2330,10 @@ function readGuideVoiceSession() {
 		return {};
 	}
 }
+
+initMappingGenie();
+initXyzSurface();
+initXyzCamera();
 
 function writeGuideVoiceSession(session) {
 	if (!session || typeof session !== "object") {
