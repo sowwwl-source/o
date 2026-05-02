@@ -6,6 +6,14 @@ require_once __DIR__ . '/lib/guide_voice.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
+if (in_array(strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')), ['GET', 'HEAD'], true)) {
+    echo json_encode([
+        'ok' => true,
+        'state' => guide_voice_browser_state(current_authenticated_land()),
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
     http_response_code(405);
     echo json_encode([

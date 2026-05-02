@@ -2,7 +2,65 @@
 declare(strict_types=1);
 
 require __DIR__ . '/config.php';
+require_once __DIR__ . '/lib/meaning.php';
 require_once __DIR__ . '/lib/guide_voice.php';
+
+function guide_ascii_tokenize(string $value): string
+{
+    $normalized = trim($value);
+    if ($normalized === '') {
+        return '';
+    }
+
+    if (function_exists('iconv')) {
+        $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $normalized);
+        if (is_string($ascii) && $ascii !== '') {
+            $normalized = $ascii;
+        }
+    }
+
+    $normalized = strtolower($normalized);
+    $normalized = str_replace(['&', '@'], [' et ', ' a '], $normalized);
+    $normalized = preg_replace('/[^a-z0-9\/' . preg_quote("<>°'", '/') . ']+/', '.', $normalized) ?? $normalized;
+    $normalized = preg_replace('/\.{2,}/', '.', $normalized) ?? $normalized;
+
+    return trim($normalized, '.');
+}
+
+function guide_ascii_frame(string $label): array
+{
+    return match (guide_ascii_tokenize($label)) {
+        'input' => ["' O >", "< O '"] ,
+        'output' => ['. O <', "> O ."],
+        'relay' => ['/ O >', '< o /'],
+        'privacy' => ['° O .', '. O °'],
+        'fallback' => ["' o >", "< o '"] ,
+        'role' => ['° o >', '< o °'],
+        'public' => ['. O /', '\\ O .'],
+        'signup' => ["' O /", "\\ O '"] ,
+        'archives' => ['< O /', '\\ o >'],
+        'voice' => ['° O /', '\\ O °'],
+        'agent' => ['. o >', '< O .'],
+        default => ["' o .", ". o '"] ,
+    };
+}
+
+function guide_ascii_note(string $label, string $value): string
+{
+    [$lead, $tail] = guide_ascii_frame($label);
+    $asciiLabel = guide_ascii_tokenize($label);
+    $asciiValue = guide_ascii_tokenize($value);
+
+    return sprintf(
+        '<p class="guide-ascii-note" aria-label="%s : %s"><span class="guide-ascii-note__sigil">%s</span><span class="guide-ascii-note__label">° %s °</span><span class="guide-ascii-note__body">/ %s</span><span class="guide-ascii-note__sigil guide-ascii-note__sigil--tail">%s</span></p>',
+        h($label),
+        h($value),
+        h($lead),
+        h($asciiLabel),
+        h($asciiValue),
+        h($tail)
+    );
+}
 
 $host = request_host();
 if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
@@ -32,10 +90,28 @@ $openLandHref = $authenticatedLand
 $openLandLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une terre';
 $paths = guide_paths();
 $principles = guide_principles();
+$thresholdModes = guide_threshold_modes();
+$languageDoors = guide_language_doors();
 $glossary = guide_glossary();
 $steps = guide_creation_steps();
 $faq = guide_faq_items();
 $promptSeeds = guide_prompt_seeds();
+$guideStateNotes = [
+    ['role', 'accueil / clarification / orientation douce'],
+    ['public', 'oui, lecture / ecoute / observation'],
+    ['signup', 'vers le noyau et la creation de terre'],
+    ['archives', 'vers aZa en lecture publique'],
+    ['voice', guide_voice_upstream_configured() ? 'amont ia relaye' : 'fallback local actif'],
+    ['agent', $agentUrl !== '' ? 'relais externe visible' : 'pas de relais externe public'],
+];
+$guideVoiceNotes = [
+    ['input', 'micro navigateur'],
+    ['output', 'synthese vocale locale'],
+    ['relay', guide_voice_upstream_configured() ? 'agent distant via backend' : 'guide local sans endpoint distant'],
+    ['voice', 'fr / en / es / pt / it'],
+    ['privacy', 'cle gardee serveur'],
+    ['fallback', 'orientation locale si l’amont refuse'],
+];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -59,9 +135,9 @@ $promptSeeds = guide_prompt_seeds();
         <p class="eyebrow"><strong>0wlslw0</strong> <span>concierge d entree</span></p>
         <h1 class="land-title">
             <strong>Entrer sans se perdre.</strong>
-            <span>porte oblique / guide de creation</span>
+            <span>porte oblique / guide des passages</span>
         </h1>
-        <p class="lead">0wlslw0 accueille les visiteurs, explique le projet, puis les oriente vers la bonne porte avant qu’ils n’ouvrent une terre.</p>
+        <p class="lead">0wlslw0 accueille les visiteurs, traduit l’atmosphère du projet en gestes simples, puis oriente vers la bonne porte avant qu’une terre n’apparaisse.</p>
 
         <div class="land-meta">
             <a class="meta-pill meta-pill-link" href="<?= h($canonicalOrigin . '/') ?>">retour au noyau</a>
@@ -83,7 +159,7 @@ $promptSeeds = guide_prompt_seeds();
             <div class="section-topline">
                 <div>
                     <h2 id="guide-role-title">Ce que fait 0wlslw0</h2>
-                    <p class="panel-copy">Un accueil plus clair que mystique, sans perdre la tonalité du projet.</p>
+                    <p class="panel-copy">Un accueil plus fluide, légèrement mystique, mais assez net pour ne pas perdre l’attention.</p>
                 </div>
                 <span class="badge"><?= h($guideMode) ?></span>
             </div>
@@ -95,18 +171,18 @@ $promptSeeds = guide_prompt_seeds();
                 </article>
                 <article class="summary-card">
                     <span class="summary-label">Mission</span>
-                    <strong class="summary-value summary-value-small">orienter</strong>
+                    <strong class="summary-value summary-value-small">écouter / orienter</strong>
                 </article>
                 <article class="summary-card">
-                    <span class="summary-label">Issue</span>
-                    <strong class="summary-value summary-value-small">poser une terre</strong>
+                    <span class="summary-label">Ouverture</span>
+                    <strong class="summary-value summary-value-small">fr / en / es / pt / it</strong>
                 </article>
             </div>
 
             <ul class="guide-list" aria-label="Roles de 0wlslw0">
                 <li>Expliquer O. en langage simple, sans supposer que le visiteur connaît déjà la cosmologie du projet.</li>
-                <li>Qualifier l’intention du visiteur : comprendre, lire publiquement, poser une terre, ou retrouver une terre existante.</li>
-                <li>Envoyer vers la bonne porte avec le moins de friction possible.</li>
+                <li>Accueillir aussi les intentions incomplètes : comprendre, lire publiquement, poser une terre, retrouver une terre existante, ou simplement sentir le lieu.</li>
+                <li>Envoyer vers la bonne porte avec le moins de friction possible, puis se retirer.</li>
             </ul>
 
             <div class="action-row">
@@ -123,17 +199,14 @@ $promptSeeds = guide_prompt_seeds();
             <div class="section-topline">
                 <div>
                     <h2 id="guide-state-title">Etat du passage</h2>
-                    <p class="panel-copy">Une porte pour les hésitations ordinaires.</p>
+                    <p class="panel-copy">Une porte pour les hésitations ordinaires, les langues mêlées et les intentions encore floues.</p>
                 </div>
             </div>
 
-            <div class="guide-console" aria-label="Console de guidage">
-                <p>[role] accueil / clarification / orientation</p>
-                <p>[public] oui, lecture et guidage</p>
-                <p>[signup] vers le noyau et la creation de terre</p>
-                <p>[archives] vers aZa en lecture publique</p>
-                <p>[voice] <?= h(guide_voice_upstream_configured() ? 'amont ia relaye' : 'fallback local actif') ?></p>
-                <p>[agent] <?= h($agentUrl !== '' ? 'relais externe visible' : 'pas de relais externe public') ?></p>
+            <div class="guide-console guide-console--encoded" aria-label="Console de guidage">
+                <?php foreach ($guideStateNotes as [$label, $value]): ?>
+                    <?= guide_ascii_note((string) $label, (string) $value) ?>
+                <?php endforeach; ?>
             </div>
 
             <p class="panel-copy guide-embed-note">
@@ -157,7 +230,7 @@ $promptSeeds = guide_prompt_seeds();
         <div class="section-topline">
             <div>
                 <h2 id="guide-voice-title">Accompagnement vocal</h2>
-                <p class="panel-copy">Ici, 0wlslw0 écoute, répond à voix haute, puis t’oriente sans champ texte ni chat classique.</p>
+                <p class="panel-copy">Ici, 0wlslw0 écoute, répond à voix haute, puis t’oriente sans champ texte ni chat classique. La voix peut déjà accueillir plusieurs langues d’approche.</p>
             </div>
             <span class="badge">voice only</span>
         </div>
@@ -170,7 +243,7 @@ $promptSeeds = guide_prompt_seeds();
                 </div>
 
                 <p class="guide-voice-status" data-guide-voice-status>Prêt. Active la voix puis parle naturellement.</p>
-                <p class="guide-voice-transcript" data-guide-voice-transcript>Exemples : « explique O. », « je veux visiter », « emmène-moi vers Signal ».</p>
+                <p class="guide-voice-transcript" data-guide-voice-transcript>Exemples : « explique O. », “explain O.”, « llévame vers Signal », “leva-me ao Str3m”.</p>
                 <p class="guide-voice-reply" data-guide-voice-reply>0wlslw0 répondra ici puis lira sa réponse à voix haute.</p>
 
                 <div class="action-row guide-voice-actions">
@@ -184,21 +257,62 @@ $promptSeeds = guide_prompt_seeds();
                 <a class="ghost-link guide-voice-route-link" href="#" data-guide-voice-route hidden>Continuer</a>
             </div>
 
-            <aside class="guide-console guide-voice-console" aria-label="Etat du guide vocal">
-                <p>[input] micro navigateur</p>
-                <p>[output] synthese vocale locale</p>
-                <p>[relay] <?= h(guide_voice_upstream_configured() ? 'agent distant via backend' : 'guide local sans endpoint distant') ?></p>
-                <p>[privacy] cle gardee serveur</p>
-                <p>[fallback] orientation locale si l’amont refuse</p>
+            <aside class="guide-console guide-console--encoded guide-voice-console" aria-label="Etat du guide vocal">
+                <?php foreach ($guideVoiceNotes as [$label, $value]): ?>
+                    <?= guide_ascii_note((string) $label, (string) $value) ?>
+                <?php endforeach; ?>
             </aside>
         </div>
+    </section>
+
+    <section class="guide-grid">
+        <section class="panel reveal guide-panel" aria-labelledby="guide-threshold-title">
+            <div class="section-topline">
+                <div>
+                    <h2 id="guide-threshold-title">Rythme d’entrée</h2>
+                    <p class="panel-copy">Le seuil n’a pas besoin d’être brusque. Il peut instruire, rassurer et n’ouvrir qu’au moment juste.</p>
+                </div>
+            </div>
+
+            <div class="guide-cards guide-cards--triple guide-cards--compact">
+                <?php foreach ($thresholdModes as $mode): ?>
+                    <article class="guide-card guide-card-static guide-card-soft">
+                        <span class="summary-label"><?= h((string) $mode['label']) ?></span>
+                        <strong><?= h((string) $mode['title']) ?></strong>
+                        <p><?= h((string) $mode['copy']) ?></p>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+
+        <aside class="panel reveal guide-panel" aria-labelledby="guide-language-title">
+            <div class="section-topline">
+                <div>
+                    <h2 id="guide-language-title">Langues d’approche</h2>
+                    <p class="panel-copy">Le lieu pense en français, mais il peut déjà recevoir d’autres voix sans se fermer.</p>
+                </div>
+            </div>
+
+            <div class="guide-cards guide-cards--compact">
+                <?php foreach ($languageDoors as $door): ?>
+                    <article class="guide-card guide-card-static guide-card-soft">
+                        <span class="summary-label"><?= h((string) $door['label']) ?></span>
+                        <strong><?= h((string) $door['title']) ?></strong>
+                        <p><?= h((string) $door['copy']) ?></p>
+                        <code class="guide-language-sample"><?= h((string) $door['sample']) ?></code>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+
+            <p class="panel-copy guide-soft-note">Si la phrase arrive incomplète, 0wlslw0 privilégie d’abord l’intention : comprendre, visiter, écrire, archiver, retrouver.</p>
+        </aside>
     </section>
 
     <section class="panel reveal" aria-labelledby="guide-meaning-title">
         <div class="section-topline">
             <div>
                 <h2 id="guide-meaning-title">Donner un sens stable</h2>
-                <p class="panel-copy">Le projet devient plus lisible quand ses principes sont nommés explicitement.</p>
+                <p class="panel-copy">Le projet devient plus lisible quand ses principes sont nommés explicitement, sans perdre leur charge sensible.</p>
             </div>
         </div>
 
@@ -217,7 +331,7 @@ $promptSeeds = guide_prompt_seeds();
         <div class="section-topline">
             <div>
                 <h2 id="guide-paths-title">Choisir un passage</h2>
-                <p class="panel-copy">Les trajets à proposer en premier à un visiteur.</p>
+                <p class="panel-copy">Les trajets à proposer en premier à un visiteur, selon ce qu’il cherche vraiment à faire.</p>
             </div>
         </div>
 
@@ -244,7 +358,7 @@ $promptSeeds = guide_prompt_seeds();
             <div class="section-topline">
                 <div>
                     <h2 id="guide-steps-title">Poser une terre</h2>
-                    <p class="panel-copy">Le chemin de création à faire comprendre avant de demander quoi que ce soit.</p>
+                    <p class="panel-copy">Le chemin de création à faire comprendre avant de demander quoi que ce soit au visiteur.</p>
                 </div>
             </div>
 
@@ -272,7 +386,7 @@ $promptSeeds = guide_prompt_seeds();
             <div class="section-topline">
                 <div>
                     <h2 id="guide-faq-title">Questions frequentes</h2>
-                    <p class="panel-copy">Le genre de questions que 0wlslw0 doit absorber sans fatiguer le visiteur.</p>
+                    <p class="panel-copy">Le genre de questions que 0wlslw0 doit absorber sans fatiguer le visiteur ni le noyer de jargon.</p>
                 </div>
             </div>
 
@@ -309,7 +423,7 @@ $promptSeeds = guide_prompt_seeds();
         <div class="section-topline">
             <div>
                 <h2 id="guide-prompts-title">Phrases de départ</h2>
-                <p class="panel-copy">Si tu branches l’agent, ce sont de bons premiers messages proposés aux visiteurs.</p>
+                <p class="panel-copy">Si tu branches l’agent, ce sont de bons premiers souffles à proposer aux visiteurs.</p>
             </div>
         </div>
 

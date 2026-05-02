@@ -41,6 +41,40 @@ function signal_find_land_by_slug(string $slug): ?array
     }
 }
 
+function signal_find_land_by_username(string $username): ?array
+{
+    $username = trim($username);
+    if ($username === '') {
+        return null;
+    }
+
+    foreach (land_snapshot() as $candidate) {
+        if (hash_equals(
+            normalize_username((string) ($candidate['username'] ?? '')),
+            normalize_username($username)
+        )) {
+            return $candidate;
+        }
+    }
+
+    return null;
+}
+
+function signal_find_land_by_identifier(string $identifier): ?array
+{
+    $identifier = trim($identifier);
+    if ($identifier === '') {
+        return null;
+    }
+
+    $bySlug = signal_find_land_by_slug($identifier);
+    if ($bySlug) {
+        return $bySlug;
+    }
+
+    return signal_find_land_by_username($identifier);
+}
+
 function ensure_signal_mailbox(array $land): array
 {
     $pdo = get_pdo();
@@ -87,6 +121,144 @@ function signal_identity_status_label(string $status): string
     };
 }
 
+function signal_datetime_to_timestamp(string $value): int
+{
+    $timestamp = strtotime(trim($value));
+    return $timestamp !== false ? $timestamp : 0;
+}
+
+function signal_contact_activity(array $summary): array
+{
+    $unreadCount = (int) ($summary['unread_count'] ?? 0);
+    $lastMessageAt = trim((string) ($summary['last_message_at'] ?? ''));
+    $hasMessages = $lastMessageAt !== '' || trim((string) ($summary['last_subject'] ?? '')) !== '' || trim((string) ($summary['last_body'] ?? '')) !== '';
+    $timestamp = signal_datetime_to_timestamp($lastMessageAt);
+    $now = time();
+    $days = $timestamp > 0 ? max(0.0, ($now - $timestamp) / 86400) : 999.0;
+
+    $score = 0.0;
+    if ($hasMessages) {
+        $score += 8.0;
+    }
+    $score += min(6.0, $unreadCount * 2.5);
+    if ($timestamp > 0) {
+        $score += max(0.0, 5.5 - min(5.5, $days * 0.42));
+    }
+
+    $heat = match (true) {
+        $unreadCount >= 3 || $score >= 12.5 => 'hot',
+        $unreadCount >= 1 || $score >= 8.5 => 'warm',
+        $hasMessages => 'calm',
+        default => 'dormant',
+    };
+
+    $label = match ($heat) {
+        'hot' => 'plasma chaud',
+        'warm' => 'en circulation',
+        'calm' => 'stable',
+        default => 'latente',
+    };
+
+    return [
+        'activity_score' => round($score, 3),
+        'activity_heat' => $heat,
+        'activity_label' => $label,
+        'last_message_ts' => $timestamp,
+        'has_messages' => $hasMessages,
+    ];
+}
+
+function signal_contact_resonance(array $land, ?array $counterpartLand): array
+{
+    $selfProfile = land_visual_profile($land);
+    $counterpartProfile = $counterpartLand
+        ? land_visual_profile($counterpartLand)
+        : land_collective_profile('calm');
+
+    $selfProgram = trim((string) ($selfProfile['program'] ?? 'collective')) ?: 'collective';
+    $counterpartProgram = trim((string) ($counterpartProfile['program'] ?? 'collective')) ?: 'collective';
+    $selfLambda = (int) ($selfProfile['lambda_nm'] ?? 548);
+    $counterpartLambda = (int) ($counterpartProfile['lambda_nm'] ?? 548);
+    $lambdaGap = abs($selfLambda - $counterpartLambda);
+    $sameProgram = hash_equals($selfProgram, $counterpartProgram);
+
+    $phase = match (true) {
+        $sameProgram && $lambdaGap <= 18 => 'phase-locked',
+        $sameProgram && $lambdaGap <= 52 => 'harmonic',
+        !$sameProgram && $lambdaGap <= 28 => 'interference',
+        $lambdaGap <= 92 => 'drift',
+        default => 'inertia',
+    };
+
+    $label = match ($phase) {
+        'phase-locked' => 'en phase',
+        'harmonic' => 'harmonique',
+        'interference' => 'interférence créative',
+        'drift' => 'déphasage léger',
+        default => 'inertie fertile',
+    };
+
+    $summary = match ($phase) {
+        'phase-locked' => 'même programme, faible écart spectral : le fil part vite.',
+        'harmonic' => 'même famille d’onde, un peu d’espace pour respirer.',
+        'interference' => 'programmes distincts mais proches : contraste fécond.',
+        'drift' => 'les ondes se croisent sans se perdre, avec un peu d’inertie.',
+        default => 'grande distance spectrale : l’élan est plus lent mais profond.',
+    };
+
+    $score = max(0.4, 3.4 - min(3.0, $lambdaGap / 34));
+    if ($sameProgram) {
+        $score += 1.1;
+    } elseif ($phase === 'interference') {
+        $score += 0.7;
+    }
+
+    return [
+        'self_lambda_nm' => $selfLambda,
+        'self_program' => $selfProgram,
+        'counterpart_program' => $counterpartProgram,
+        'counterpart_program_label' => trim((string) ($counterpartProfile['label'] ?? $counterpartProgram)),
+        'counterpart_tone' => trim((string) ($counterpartProfile['tone'] ?? '')),
+        'counterpart_lambda_nm' => $counterpartLambda,
+        'resonance_gap_nm' => $lambdaGap,
+        'resonance_phase' => $phase,
+        'resonance_label' => $label,
+        'resonance_summary' => $summary,
+        'resonance_family' => $sameProgram ? 'homophase' : 'hétérophase',
+        'resonance_score' => round($score, 3),
+    ];
+}
+
+function signal_contact_presence(array $contact): array
+{
+    $activityScore = (float) ($contact['activity_score'] ?? 0.0);
+    $resonanceScore = (float) ($contact['resonance_score'] ?? 0.0);
+    $unreadCount = (int) ($contact['unread_count'] ?? 0);
+    $hasMessages = !empty($contact['has_messages']);
+    $combinedScore = $activityScore + $resonanceScore;
+
+    $heat = match (true) {
+        $unreadCount >= 3 || $combinedScore >= 13.0 => 'hot',
+        $unreadCount >= 1 || $combinedScore >= 9.2 => 'warm',
+        $hasMessages || $resonanceScore >= 2.5 => 'calm',
+        default => 'dormant',
+    };
+
+    $label = match ($heat) {
+        'hot' => 'plasma chaud',
+        'warm' => 'en circulation',
+        'calm' => $resonanceScore >= 2.5 ? 'résonance claire' : 'stable',
+        default => 'latente',
+    };
+
+    return [
+        'activity_score' => round($combinedScore, 3),
+        'activity_heat' => $heat,
+        'activity_label' => $label,
+        'contact_score' => round($combinedScore, 3),
+    ];
+}
+
 function signal_conversation_summaries(array $land): array
 {
     $pdo = get_pdo();
@@ -120,11 +292,10 @@ SQL;
         }
     }
 
-    return array_map(static function (array $row) use ($landsBySlug): array {
+    return array_map(static function (array $row) use ($landsBySlug, $land): array {
         $counterpartSlug = trim((string) ($row['counterpart_slug'] ?? ''));
         $counterpartLand = $landsBySlug[$counterpartSlug] ?? null;
-
-        return [
+        $summary = [
             'counterpart_slug' => $counterpartSlug,
             'counterpart_username' => trim((string) ($counterpartLand['username'] ?? $counterpartSlug)),
             'unread_count' => (int) ($row['unread_count'] ?? 0),
@@ -132,6 +303,10 @@ SQL;
             'last_body' => trim((string) ($row['last_body'] ?? '')),
             'last_message_at' => trim((string) ($row['last_message_at'] ?? '')),
         ];
+        $activity = signal_contact_activity($summary);
+        $resonance = signal_contact_resonance($land, $counterpartLand);
+
+        return [...$summary, ...$activity, ...$resonance, ...signal_contact_presence([...$summary, ...$activity, ...$resonance])];
     }, $rows);
 }
 
@@ -156,7 +331,7 @@ function signal_contact_candidates(array $land): array
         if ($slug === '' || $slug === $me || isset($seen[$slug])) {
             continue;
         }
-        $contacts[] = [
+        $summary = [
             'counterpart_slug' => $slug,
             'counterpart_username' => trim((string) ($candidate['username'] ?? $slug)),
             'unread_count' => 0,
@@ -164,7 +339,30 @@ function signal_contact_candidates(array $land): array
             'last_body' => '',
             'last_message_at' => '',
         ];
+        $activity = signal_contact_activity($summary);
+        $resonance = signal_contact_resonance($land, $candidate);
+        $contacts[] = [...$summary, ...$activity, ...$resonance, ...signal_contact_presence([...$summary, ...$activity, ...$resonance])];
     }
+
+    usort(
+        $contacts,
+        static function (array $left, array $right): int {
+            $scoreComparison = ((float) ($right['contact_score'] ?? $right['activity_score'] ?? 0.0)) <=> ((float) ($left['contact_score'] ?? $left['activity_score'] ?? 0.0));
+            if ($scoreComparison !== 0) {
+                return $scoreComparison;
+            }
+
+            $timestampComparison = ((int) ($right['last_message_ts'] ?? 0)) <=> ((int) ($left['last_message_ts'] ?? 0));
+            if ($timestampComparison !== 0) {
+                return $timestampComparison;
+            }
+
+            return strcmp(
+                trim((string) ($left['counterpart_username'] ?? $left['counterpart_slug'] ?? '')),
+                trim((string) ($right['counterpart_username'] ?? $right['counterpart_slug'] ?? ''))
+            );
+        }
+    );
 
     return $contacts;
 }
@@ -190,7 +388,7 @@ function signal_send_message(array $land, string $receiverIdentifier, string $su
     $pdo = get_pdo();
     $senderSlug = normalize_username((string) ($land['slug'] ?? ''));
     $senderUsername = trim((string) ($land['username'] ?? $senderSlug));
-    $receiverLand = find_land($receiverIdentifier);
+    $receiverLand = signal_find_land_by_identifier($receiverIdentifier);
 
     if (!$receiverLand) {
         throw new InvalidArgumentException('Cette terre n’existe pas.');

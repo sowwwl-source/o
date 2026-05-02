@@ -15,6 +15,7 @@ RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
 RUN a2enmod headers rewrite
 
 COPY deploy/app/security.conf /etc/apache2/conf-enabled/zzz-sowwwl-security.conf
+COPY deploy/app/upload-limits.ini /usr/local/etc/php/conf.d/zzz-sowwwl-upload.ini
 COPY deploy/app/entrypoint.sh /usr/local/bin/sowwwl-entrypoint
 
 # Install PHP dependencies (PHPMailer) for magic-link email sending.

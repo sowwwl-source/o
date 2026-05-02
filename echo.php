@@ -5,7 +5,7 @@ require_once __DIR__ . '/config.php';
 
 $host = request_host();
 if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
-    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/echo.php');
+    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/echo');
     header('Location: https://sowwwl.com' . $path, true, 302);
     exit;
 }
@@ -25,21 +25,13 @@ if (!$land) {
 
 $ambientProfile = land_visual_profile($land);
 $myUsername = (string) $land['username'];
-$targetUsername = trim((string) ($_GET['u'] ?? ''));
+$targetIdentifier = trim((string) ($_GET['u'] ?? ''));
 $message = '';
 $messageType = 'info';
-$pdoConn = isset($pdo) && $pdo instanceof PDO ? $pdo : null;
-$messagingReady = false;
-
-if ($pdoConn instanceof PDO) {
-    try {
-        $pdoConn->query('SELECT 1 FROM echoes LIMIT 1');
-        $messagingReady = true;
-    } catch (Throwable $exception) {
-        $messagingReady = false;
-        $pdoConn = null;
-    }
-}
+$messagingReady = signal_mail_tables_ready();
+$targetLand = $targetIdentifier !== '' ? signal_find_land_by_identifier($targetIdentifier) : null;
+$targetUsername = trim((string) ($targetLand['username'] ?? ''));
+$targetSlug = trim((string) ($targetLand['slug'] ?? ''));
 
 // Traitement de l'envoi d'un écho
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -52,59 +44,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $messageType = 'warning';
     } else {
         $body = trim((string) ($_POST['body'] ?? ''));
-        $receiver = trim((string) ($_POST['receiver_username'] ?? ''));
+        $receiver = trim((string) ($_POST['receiver_slug'] ?? $_POST['receiver_username'] ?? ''));
         
-        if ($body !== '' && $receiver !== '' && $pdoConn instanceof PDO) {
-            $stmt = $pdoConn->prepare("INSERT INTO echoes (sender_username, receiver_username, body) VALUES (?, ?, ?)");
-            $stmt->execute([$myUsername, $receiver, $body]);
-            header("Location: /echo.php?u=" . urlencode($receiver));
-            exit;
+        try {
+            if ($body !== '' && $receiver !== '') {
+                signal_send_message($land, $receiver, '', $body);
+                $receiverLand = signal_find_land_by_identifier($receiver);
+                $receiverUsername = trim((string) ($receiverLand['username'] ?? $receiver));
+                header("Location: /echo?u=" . urlencode($receiverUsername));
+                exit;
+            }
+        } catch (InvalidArgumentException|RuntimeException $exception) {
+            $message = $exception->getMessage();
+            $messageType = 'warning';
         }
     }
 }
 
 // Récupération des contacts (Terres existantes, excluant soi-même)
-$unreadByUsername = [];
-if ($messagingReady && $pdoConn instanceof PDO) {
-    $stmtUnreadBySender = $pdoConn->prepare("SELECT sender_username, COUNT(*) AS unread_count FROM echoes WHERE receiver_username = ? AND is_read = 0 GROUP BY sender_username");
-    $stmtUnreadBySender->execute([$myUsername]);
-    foreach ($stmtUnreadBySender->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
-        $sender = trim((string) ($row['sender_username'] ?? ''));
-        if ($sender !== '') {
-            $unreadByUsername[$sender] = (int) ($row['unread_count'] ?? 0);
-        }
-    }
-}
-
 $contacts = [];
-foreach (land_snapshot() as $candidate) {
-    $username = trim((string) ($candidate['username'] ?? ''));
-    if ($username === '' || $username === $myUsername) {
-        continue;
+if ($messagingReady) {
+    foreach (signal_contact_candidates($land) as $contact) {
+        $contacts[] = [
+            'username' => trim((string) ($contact['counterpart_username'] ?? '')),
+            'slug' => trim((string) ($contact['counterpart_slug'] ?? '')),
+            'unread_count' => (int) ($contact['unread_count'] ?? 0),
+        ];
     }
-
-    $contacts[] = [
-        'username' => $username,
-        'slug' => trim((string) ($candidate['slug'] ?? '')),
-        'unread_count' => (int) ($unreadByUsername[$username] ?? 0),
-    ];
 }
 
 // Récupération de l'historique si une Terre est ciblée
 $history = [];
-if ($targetUsername !== '' && $messagingReady && $pdoConn instanceof PDO) {
-    // Marquer les messages entrants comme lus
-    $stmtRead = $pdoConn->prepare("UPDATE echoes SET is_read = 1 WHERE sender_username = ? AND receiver_username = ?");
-    $stmtRead->execute([$targetUsername, $myUsername]);
-
-    $stmtHistory = $pdoConn->prepare("
-        SELECT * FROM echoes 
-        WHERE (sender_username = ? AND receiver_username = ?) 
-           OR (sender_username = ? AND receiver_username = ?)
-        ORDER BY created_at ASC
-    ");
-    $stmtHistory->execute([$myUsername, $targetUsername, $targetUsername, $myUsername]);
-    $history = $stmtHistory->fetchAll();
+if ($targetSlug !== '' && $messagingReady) {
+    $history = signal_load_conversation($land, $targetSlug);
 }
 ?>
 <!DOCTYPE html>
@@ -157,7 +129,7 @@ if ($targetUsername !== '' && $messagingReady && $pdoConn instanceof PDO) {
                 <h2>Archipel connu</h2>
             </div>
             <?php foreach ($contacts as $c): ?>
-                <a href="/echo.php?u=<?= rawurlencode((string) $c['username']) ?>" class="echo-contact <?= $c['username'] === $targetUsername ? 'is-active' : '' ?>">
+                <a href="/echo?u=<?= rawurlencode((string) $c['username']) ?>" class="echo-contact <?= $c['username'] === $targetUsername ? 'is-active' : '' ?>">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <strong><?= h((string) $c['username']) ?></strong>
                         <?php if (!empty($c['unread_count'])): ?>
@@ -170,12 +142,13 @@ if ($targetUsername !== '' && $messagingReady && $pdoConn instanceof PDO) {
 
         <div class="echo-conversation panel">
             <?php if (!$messagingReady): ?>
-                <p class="panel-copy">Écho reste en veille tant que la base SQL de messagerie n’est pas active.</p>
-            <?php elseif ($targetUsername === ''): ?>
+                <p class="panel-copy">Écho reste en veille tant que la base SQL unifiée de Signal n’est pas active.</p>
+            <?php elseif ($targetSlug === '' || !$targetLand): ?>
                 <p class="panel-copy">Sélectionne une Terre pour établir la liaison.</p>
             <?php else: ?>
                 <div class="section-topline">
                     <h2>Liaison avec <?= h($targetUsername) ?></h2>
+                    <span class="badge"><?= h(signal_virtual_address($targetLand)) ?></span>
                 </div>
                 
                 <div class="echo-history">
@@ -183,18 +156,19 @@ if ($targetUsername !== '' && $messagingReady && $pdoConn instanceof PDO) {
                         <p class="panel-copy">Le silence règne entre vos deux terres.</p>
                     <?php else: ?>
                         <?php foreach ($history as $msg): ?>
-                            <?php $isMe = $msg['sender_username'] === $myUsername; ?>
+                            <?php $isMe = (string) ($msg['sender_land_slug'] ?? '') === (string) $land['slug']; ?>
                             <div class="echo-msg <?= $isMe ? 'echo-msg--sent' : 'echo-msg--received' ?>">
-                                <span class="echo-msg-meta"><?= h($msg['sender_username']) ?> · <?= h(human_created_label($msg['created_at'])) ?></span>
-                                <?= nl2br(h($msg['body'])) ?>
+                                <span class="echo-msg-meta"><?= h((string) ($msg['sender_land_username'] ?? 'terre')) ?> · <?= h(human_created_label((string) ($msg['created_at'] ?? '')) ?? 'maintenant') ?></span>
+                                <?= nl2br(h((string) ($msg['body'] ?? ''))) ?>
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
 
-                <form action="/echo.php?u=<?= rawurlencode($targetUsername) ?>" method="post" class="land-form echo-form">
+                <form action="/echo?u=<?= rawurlencode($targetUsername) ?>" method="post" class="land-form echo-form">
                     <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
                     <input type="hidden" name="receiver_username" value="<?= h($targetUsername) ?>">
+                    <input type="hidden" name="receiver_slug" value="<?= h($targetSlug) ?>">
                     
                     <label>
                         Transmission
@@ -203,6 +177,7 @@ if ($targetUsername !== '' && $messagingReady && $pdoConn instanceof PDO) {
                     
                     <div class="action-row">
                         <button type="submit">Émettre l'écho</button>
+                        <a class="ghost-link" href="/signal?u=<?= rawurlencode($targetSlug) ?>">Ouvrir la même liaison dans Signal</a>
                     </div>
                 </form>
             <?php endif; ?>

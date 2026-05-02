@@ -69,17 +69,74 @@ function guide_principles(): array
         [
             'label' => 'Principe',
             'title' => 'Un lieu avant un flux',
-            'copy' => 'O. ne commence pas par un fil infini. Il commence par une terre, donc par une position, un nom et un rythme.',
+            'copy' => 'O. ne commence pas par un fil infini. Il commence par une terre, donc par une position, un nom et un rythme propre.',
         ],
         [
             'label' => 'Principe',
             'title' => 'Public quand il faut, privé quand ça compte',
-            'copy' => 'Str3m se lit publiquement. L’écriture adressée, l’archive et l’identité de contact passent par une terre liée.',
+            'copy' => 'Str3m se lit publiquement. L’écriture adressée, l’archive et l’identité de contact passent par une terre liée et assumée.',
         ],
         [
             'label' => 'Principe',
             'title' => 'Chaque ferry a un rôle',
-            'copy' => 'Signal adresse, Str3m fait découvrir, aZa sédimente, Écho résonne encore en direct. 0wlslw0 explique sans remplacer.',
+            'copy' => 'Signal adresse, Str3m fait découvrir, aZa sédimente, Écho relie directement. 0wlslw0 éclaire le passage sans prendre la place du lieu.',
+        ],
+    ];
+}
+
+function guide_threshold_modes(): array
+{
+    return [
+        [
+            'label' => 'Seuil 01',
+            'title' => 'Sentir avant de choisir',
+            'copy' => 'Le visiteur peut d’abord écouter l’atmosphère du projet, regarder le courant public et comprendre les rôles avant d’entrer plus loin.',
+        ],
+        [
+            'label' => 'Seuil 02',
+            'title' => 'Nommer l’intention',
+            'copy' => '0wlslw0 cherche une intention simple : comprendre, visiter, écrire, archiver, retrouver une terre. Le reste devient nettement plus fluide.',
+        ],
+        [
+            'label' => 'Seuil 03',
+            'title' => 'Passer sans rupture',
+            'copy' => 'Quand le désir devient clair, le guide n’ajoute pas de théâtre inutile : il ouvre la bonne porte et s’efface doucement.',
+        ],
+    ];
+}
+
+function guide_language_doors(): array
+{
+    return [
+        [
+            'label' => 'fr',
+            'title' => 'français',
+            'copy' => 'La langue native du lieu. Les nuances du projet y sont les plus fines et les plus exactes.',
+            'sample' => '« explique O. et mène-moi vers Signal »',
+        ],
+        [
+            'label' => 'en',
+            'title' => 'english',
+            'copy' => 'Pour entrer depuis l’extérieur sans perdre le fil : comprendre le lieu, puis choisir une porte nette.',
+            'sample' => '“explain O. and take me to Str3m”',
+        ],
+        [
+            'label' => 'es',
+            'title' => 'español',
+            'copy' => 'Pour approcher le projet avec une voix plus souple, plus orale, puis glisser vers la bonne traversée.',
+            'sample' => '« explíca O. y llévame a Signal »',
+        ],
+        [
+            'label' => 'pt',
+            'title' => 'português',
+            'copy' => 'Pour garder la sensation du passage tout en demandant une orientation concrète et directe.',
+            'sample' => '“explica O. e leva-me ao Signal”',
+        ],
+        [
+            'label' => 'it',
+            'title' => 'italiano',
+            'copy' => 'Pour converser avec le seuil sans casser sa tonalité, puis être dirigé vers un usage précis.',
+            'sample' => '“spiega O. e portami verso aZa”',
         ],
     ];
 }
@@ -124,12 +181,12 @@ function guide_creation_steps(): array
         [
             'label' => '01',
             'title' => 'Choisir un nom',
-            'copy' => 'Le nom devient le repère visible de la terre. Il vaut mieux court, lisible et durable.',
+            'copy' => 'Le nom devient le repère visible de la terre. Il vaut mieux court, lisible et capable de durer sans effort.',
         ],
         [
             'label' => '02',
             'title' => 'Fixer un secret',
-            'copy' => 'Le secret protège la terre. Il sert à la retrouver plus tard et à ouvrir l’édition.',
+            'copy' => 'Le secret protège la terre. Il sert à la retrouver plus tard et à rouvrir l’édition sans bruit.',
         ],
         [
             'label' => '03',
@@ -158,6 +215,10 @@ function guide_faq_items(): array
             'question' => 'À quoi sert 0wlslw0 si un formulaire existe déjà ?',
             'answer' => 'Le formulaire crée une terre. 0wlslw0 prépare le visiteur : il explique le projet, clarifie les choix et réduit la friction avant l’inscription.',
         ],
+        [
+            'question' => 'Puis-je parler dans une autre langue que le français ?',
+            'answer' => 'Oui. Le lieu pense en français, mais 0wlslw0 peut déjà reconnaître plusieurs approches et répondre plus simplement en anglais, espagnol, portugais ou italien quand l’intention est claire.',
+        ],
     ];
 }
 
@@ -168,5 +229,7 @@ function guide_prompt_seeds(): array
         'Aide-moi à choisir entre Signal, Str3m et aZa.',
         'Explique-moi comment poser une terre en trois étapes.',
         'Je visite publiquement. Que puis-je déjà lire ?',
+        'Explain O. and guide me to the public entry.',
+        'Explíca el proyecto y llévame hacia Signal.',
     ];
 }

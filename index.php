@@ -133,15 +133,6 @@ if (isset($pdo) && $pdo instanceof PDO) {
 }
 
 $unreadEchoes = 0;
-if ($authenticatedLand && $pdoConn instanceof PDO) {
-    try {
-        $stmtUnread = $pdoConn->prepare("SELECT COUNT(*) FROM echoes WHERE receiver_username = ? AND is_read = 0");
-        $stmtUnread->execute([$activeLandUsername]);
-        $unreadEchoes = (int) $stmtUnread->fetchColumn();
-    } catch (Throwable $exception) {
-        $unreadEchoes = 0;
-    }
-}
 
 $signalReady = false;
 $unreadSignal = 0;
@@ -151,6 +142,7 @@ if ($authenticatedLand) {
         $signalReady = signal_mail_tables_ready();
         if ($signalReady) {
             $unreadSignal = signal_unread_total($authenticatedLand);
+            $unreadEchoes = $unreadSignal;
             $signalMailbox = signal_mailbox_for_land($authenticatedLand);
             $signalIdentityLabel = signal_identity_status_label((string) ($signalMailbox['identity_status'] ?? SIGNAL_IDENTITY_UNVERIFIED));
         }
@@ -189,19 +181,10 @@ $promptSeeds = guide_prompt_seeds();
     data-land-program="<?= h($activeLandProgram) ?>"
     data-land-label="<?= h($activeLandLabel) ?>"
     data-land-lambda="<?= h((string) $activeLambda) ?>"
+    data-land-tone="<?= h($activeLandTone) ?>"
 >
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
-<a class="o-signature-mark" href="/" aria-label="Retour au noyau O.">
-    <span class="o-signature-mark__glyph" aria-hidden="true">
-        <span class="o-signature-mark__ring o-signature-mark__ring--outer"></span>
-        <span class="o-signature-mark__ring o-signature-mark__ring--inner"></span>
-        <svg class="o-signature-mark__wave" viewBox="0 0 72 18" fill="none" aria-hidden="true" focusable="false">
-            <path d="M2 9C12 9 16 5 24 5C31 5 35 12.5 43 12.5C52 12.5 56 8 70 8" vector-effect="non-scaling-stroke" />
-        </svg>
-        <span class="o-signature-mark__dot"></span>
-    </span>
-</a>
 
 <div class="world-container" aria-hidden="true">
     <canvas
@@ -229,13 +212,13 @@ $promptSeeds = guide_prompt_seeds();
                 </a>
             <?php endif; ?>
             <?php if ($unreadEchoes > 0): ?>
-                <a href="/echo.php" class="badge badge-glass" style="border-color: rgba(var(--land-secondary-rgb) / 0.8); color: rgba(var(--land-secondary-rgb) / 0.9); text-decoration: none;">
+                <a href="/echo" class="badge badge-glass" style="border-color: rgba(var(--land-secondary-rgb) / 0.8); color: rgba(var(--land-secondary-rgb) / 0.9); text-decoration: none;">
                     <?= $unreadEchoes ?> ÉCHO<?= $unreadEchoes > 1 ? 'S' : '' ?> EN ATTENTE
                 </a>
             <?php endif; ?>
-            <span class="badge badge-glass current-mood"><?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></span>
+            <span class="badge badge-glass current-mood" data-spectral-mood-label><?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></span>
             <span class="badge badge-glass"><?= h($activeLandLabel) ?></span>
-            <span class="badge badge-glass">λ <?= h((string) $activeLambda) ?> nm</span>
+            <span class="badge badge-glass">λ <span data-spectral-lambda><?= h((string) $activeLambda) ?></span> nm</span>
         </div>
     </header>
 
@@ -284,7 +267,7 @@ $promptSeeds = guide_prompt_seeds();
                 <strong>Fichiers</strong>
                 <span>Déposer, classer, retrouver.</span>
             </a>
-            <a href="/echo.php" class="island-card">
+            <a href="/echo" class="island-card">
                 <span class="summary-label">Ferry 04</span>
                 <strong style="display: flex; align-items: center; gap: 0.5rem;">
                     Écho
@@ -302,9 +285,51 @@ $promptSeeds = guide_prompt_seeds();
                 <strong class="preview-title"><?= h($authenticatedLand ? $activeLandUsername : 'Str3m public') ?></strong>
                 <div class="signature-grid">
                     <p><span>Programme</span><strong><?= h($activeLandLabel) ?></strong></p>
-                    <p><span>Longueur d’onde</span><strong>λ <?= h((string) $activeLambda) ?> nm</strong></p>
+                    <p><span>Longueur d’onde</span><strong>λ <span data-spectral-lambda><?= h((string) $activeLambda) ?></span> nm</strong></p>
                     <p><span>Tonalité</span><strong><?= h($activeLandTone) ?></strong></p>
                 </div>
+
+                <section class="spectral-tuner" data-spectral-tuner data-default-lambda="<?= h((string) $activeLambda) ?>" data-default-mood="<?= h((string) ($dailyStream['mood'] ?? 'calm')) ?>" aria-labelledby="spectral-tuner-title">
+                    <div class="spectral-tuner__head">
+                        <div>
+                            <span class="summary-label">Réglage 24h</span>
+                            <strong id="spectral-tuner-title">Dans quel mood es-tu ?</strong>
+                        </div>
+                        <span class="badge badge-glass spectral-tuner__badge" data-spectral-expiry>mode instantané</span>
+                    </div>
+
+                    <label class="spectral-tuner__label" for="spectral-tuner-range">
+                        <span>Fais glisser, puis valide ta longueur d’onde pour 24h.</span>
+                        <strong><span data-spectral-mode-name>clair</span> · λ <span data-spectral-lambda><?= h((string) $activeLambda) ?></span> nm</strong>
+                    </label>
+
+                    <input
+                        id="spectral-tuner-range"
+                        class="spectral-tuner__range"
+                        type="range"
+                        min="0"
+                        max="4"
+                        step="1"
+                        value="2"
+                        data-spectral-range
+                        aria-describedby="spectral-tuner-copy"
+                    >
+
+                    <div class="spectral-tuner__stops" aria-hidden="true">
+                        <span>brume</span>
+                        <span>écume</span>
+                        <span>clair</span>
+                        <span>braise</span>
+                        <span>nuit chaude</span>
+                    </div>
+
+                    <p class="panel-copy spectral-tuner__copy" id="spectral-tuner-copy" data-spectral-copy>Un réglage léger, local à ce navigateur, pour stabiliser ta fréquence de surface pendant 24h.</p>
+
+                    <div class="action-row spectral-tuner__actions">
+                        <button type="button" data-spectral-save>Valider 24h</button>
+                        <button type="button" class="ghost-link spectral-tuner__reset" data-spectral-reset>Relâcher</button>
+                    </div>
+                </section>
                 <?php if ($authenticatedLand): ?>
                     <div class="action-row auth-action-row">
                         <a class="pill-link" href="/land.php?u=<?= rawurlencode($activeLandSlug) ?>">Ouvrir la terre</a>

@@ -52,6 +52,7 @@ Start here depending on the situation:
 - `DEPLOY_QUICKREF.md` — shortest deploy path
 - `PROD_CHECKLIST.md` — compact before/after prod checklist
 - `LIVE_VERIFICATION.md` — verify real production behavior
+- `LIVE_RECOVERY_NOTES.md` — recent production recovery trail for Signal SQL and DB state
 - `ROLLBACK_PROTOCOL.md` — controlled rollback path
 - `DB_MIGRATION_PROTOCOL.md` — DB and migration state checks
 

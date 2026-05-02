@@ -73,10 +73,180 @@ function guide_voice_default_greeting(?array $authenticatedLand = null): string
 {
     $slug = trim((string) ($authenticatedLand['slug'] ?? ''));
     if ($slug !== '') {
-        return 'Je suis 0wlslw0. On peut faire simple: retrouver ta terre, visiter publiquement, ou passer par la bonne porte. Dis-moi juste ce que tu cherches.';
+        return 'Je suis 0wlslw0. Tu peux me parler en français, English, español, português ou italiano. On peut faire simple : retrouver ta terre, visiter publiquement, ou passer par la bonne porte.';
     }
 
-    return 'Je suis 0wlslw0. Je peux t’aider à comprendre O., visiter sans compte, ou poser une terre sans te perdre. Dis-moi ce que tu veux faire.';
+    return 'Je suis 0wlslw0. Tu peux me parler en français, English, español, português ou italiano. Je peux t’aider à comprendre O., visiter sans compte, ou poser une terre sans te perdre.';
+}
+
+function guide_voice_detect_language(string $text): string
+{
+    if ($text === '') {
+        return 'fr';
+    }
+
+    $markers = [
+        'en' => ['hello', 'hi', 'please', 'i want', 'take me', 'guide me', 'explain', 'what is', 'public entry', 'archive'],
+        'es' => ['hola', 'quiero', 'explica', 'llevame', 'llévame', 'ayuda', 'publico', 'público', 'archivo', 'tierra'],
+        'pt' => ['ola', 'olá', 'quero', 'explica', 'leva-me', 'leva me', 'ajuda', 'publico', 'público', 'terra', 'mensagem'],
+        'it' => ['ciao', 'voglio', 'spiega', 'portami', 'aiuto', 'pubblico', 'terra', 'archivio', 'messaggio'],
+    ];
+
+    $scores = [
+        'fr' => 0,
+        'en' => 0,
+        'es' => 0,
+        'pt' => 0,
+        'it' => 0,
+    ];
+
+    foreach ($markers as $language => $needles) {
+        foreach ($needles as $needle) {
+            if ($needle !== '' && str_contains($text, guide_voice_normalize_text($needle))) {
+                $scores[$language]++;
+            }
+        }
+    }
+
+    arsort($scores);
+    $language = (string) array_key_first($scores);
+    if (($scores[$language] ?? 0) <= 0) {
+        return 'fr';
+    }
+
+    return $language;
+}
+
+function guide_voice_message(string $key, string $language = 'fr'): string
+{
+    static $messages = [
+        'fr' => [
+            'not_heard' => 'Je n’ai pas bien entendu. Dis par exemple comprendre le projet, visiter publiquement, ou poser une terre.',
+            'goodbye' => 'Je reste au passage si tu veux reprendre plus tard. Tu peux revenir quand tu veux.',
+            'greeting' => 'Bonjour. On peut faire très simple : comprendre O., visiter sans compte, ou choisir la bonne porte.',
+            'confused' => 'Respire, on va simple. O. fonctionne par terres et par portes. Si tu veux juste regarder sans t’engager, commence par Str3m.',
+            'compare' => 'En très court : Str3m fait découvrir publiquement, Signal sert à écrire et recevoir, aZa garde les traces, et Echo relie deux terres directement. Si tu hésites encore, commence par Str3m.',
+            'signal_reply' => 'Signal est la boîte située d’une terre. Tu y passes pour écrire, recevoir, et valider une identité légère.',
+            'str3m_reply' => 'Str3m te laisse sentir le projet publiquement, sans poser de terre tout de suite. C’est la bonne porte pour regarder avant de t’engager.',
+            'aza_reply' => 'aZa est la couche de mémoire et d’archives. Tu peux y lire publiquement ce qui a déjà été déposé, puis déposer à ton tour avec une terre liée.',
+            'echo_reply' => 'Echo sert aux résonances directes entre terres. Ce n’est pas un mur public, mais un passage plus adressé.',
+            'create_reply' => 'Pour entrer vraiment, il faut poser une terre. Tu choisis un nom, un fuseau, puis tu reçois ton ancrage dans O.',
+            'reopen_reply_auth' => 'Ta terre est déjà liée ici. Je peux te renvoyer directement vers ton espace.',
+            'reopen_reply_guest' => 'Je ne vois pas de terre liée dans cette session. Repars du noyau pour te reconnecter ou relancer la création.',
+            'overview' => 'O. n’est pas un fil social classique. C’est un ensemble de terres et de portes. Je suis là pour clarifier le projet, puis t’emmener vers la bonne page.',
+            'unknown' => 'Je peux t’aider à comprendre O., visiter publiquement, poser une terre, ou choisir entre Signal, Str3m, aZa et Echo. Dis-moi simplement ce que tu veux faire.',
+            'route_signal' => 'Aller vers Signal',
+            'route_str3m' => 'Aller vers Str3m',
+            'route_aza' => 'Lire aZa',
+            'route_echo' => 'Aller vers Echo',
+            'route_create' => 'Poser une terre',
+            'route_reopen' => 'Ouvrir ma terre',
+            'route_home' => 'Retour au noyau',
+        ],
+        'en' => [
+            'not_heard' => 'I did not catch that clearly. Try saying understand the project, visit publicly, or create a land.',
+            'goodbye' => 'I will stay by the threshold if you want to return later.',
+            'greeting' => 'Hello. We can keep this simple: understand O., visit without an account, or choose the right door.',
+            'confused' => 'Take a breath, we can make this simple. O. works through lands and doors. If you only want to look around, start with Str3m.',
+            'compare' => 'Very briefly: Str3m lets you discover publicly, Signal is for writing and receiving, aZa keeps traces, and Echo links two lands directly. If you still hesitate, start with Str3m.',
+            'signal_reply' => 'Signal is the situated mailbox of a land. You use it to write, receive, and hold a light contact identity.',
+            'str3m_reply' => 'Str3m lets you feel the project publicly before creating a land. It is the right door for looking first.',
+            'aza_reply' => 'aZa is the layer of memory and archives. You can read what has already been deposited, then add your own traces once a land is linked.',
+            'echo_reply' => 'Echo is for direct resonance between lands. It is not a public wall, but a more addressed passage.',
+            'create_reply' => 'To enter fully, you need to create a land. You choose a name, a timezone, then receive your anchor inside O.',
+            'reopen_reply_auth' => 'Your land is already linked here. I can send you back to it directly.',
+            'reopen_reply_guest' => 'I cannot see a linked land in this session. Return to the core to reconnect or start again.',
+            'overview' => 'O. is not a conventional social feed. It is a set of lands and doors. I am here to clarify the place, then guide you to the right page.',
+            'unknown' => 'I can help you understand O., visit publicly, create a land, or choose between Signal, Str3m, aZa, and Echo. Just tell me what you want to do.',
+            'route_signal' => 'Go to Signal',
+            'route_str3m' => 'Go to Str3m',
+            'route_aza' => 'Read aZa',
+            'route_echo' => 'Go to Echo',
+            'route_create' => 'Create a land',
+            'route_reopen' => 'Open my land',
+            'route_home' => 'Return to core',
+        ],
+        'es' => [
+            'not_heard' => 'No te escuché bien. Puedes decir comprender el proyecto, visitar en público o crear una tierra.',
+            'goodbye' => 'Me quedo en el umbral si quieres volver más tarde.',
+            'greeting' => 'Hola. Podemos hacerlo simple: comprender O., visitar sin cuenta o elegir la puerta correcta.',
+            'confused' => 'Respira, vamos simple. O. funciona por tierras y puertas. Si solo quieres mirar, empieza por Str3m.',
+            'compare' => 'Muy breve: Str3m sirve para descubrir en público, Signal para escribir y recibir, aZa guarda rastros y Echo enlaza dos tierras directamente. Si dudas, empieza por Str3m.',
+            'signal_reply' => 'Signal es el buzón situado de una tierra. Sirve para escribir, recibir y mantener una identidad ligera de contacto.',
+            'str3m_reply' => 'Str3m te deja sentir el proyecto en público antes de crear una tierra. Es la puerta correcta para mirar primero.',
+            'aza_reply' => 'aZa es la capa de memoria y archivo. Puedes leer lo ya depositado y luego añadir tus propias trazas cuando una tierra esté vinculada.',
+            'echo_reply' => 'Echo sirve para resonancias directas entre tierras. No es un muro público, sino un pasaje más dirigido.',
+            'create_reply' => 'Para entrar de verdad, necesitas crear una tierra. Eliges un nombre, una zona horaria y recibes tu anclaje en O.',
+            'reopen_reply_auth' => 'Tu tierra ya está vinculada aquí. Puedo llevarte directamente a ella.',
+            'reopen_reply_guest' => 'No veo una tierra vinculada en esta sesión. Vuelve al núcleo para reconectar o empezar otra vez.',
+            'overview' => 'O. no es un flujo social clásico. Es un conjunto de tierras y puertas. Estoy aquí para aclarar el lugar y llevarte a la página correcta.',
+            'unknown' => 'Puedo ayudarte a comprender O., visitar en público, crear una tierra o elegir entre Signal, Str3m, aZa y Echo. Dime qué quieres hacer.',
+            'route_signal' => 'Ir a Signal',
+            'route_str3m' => 'Ir a Str3m',
+            'route_aza' => 'Leer aZa',
+            'route_echo' => 'Ir a Echo',
+            'route_create' => 'Crear una tierra',
+            'route_reopen' => 'Abrir mi tierra',
+            'route_home' => 'Volver al núcleo',
+        ],
+        'pt' => [
+            'not_heard' => 'Não ouvi bem. Podes dizer compreender o projeto, visitar em público ou criar uma terra.',
+            'goodbye' => 'Fico neste limiar se quiseres voltar mais tarde.',
+            'greeting' => 'Olá. Podemos manter isto simples: compreender O., visitar sem conta ou escolher a porta certa.',
+            'confused' => 'Respira, vamos simplificar. O. funciona por terras e portas. Se queres apenas observar, começa por Str3m.',
+            'compare' => 'Muito brevemente: Str3m deixa-te descobrir em público, Signal serve para escrever e receber, aZa guarda vestígios e Echo liga duas terras diretamente. Se ainda hesitas, começa por Str3m.',
+            'signal_reply' => 'Signal é a caixa situada de uma terra. Serve para escrever, receber e manter uma identidade leve de contacto.',
+            'str3m_reply' => 'Str3m deixa-te sentir o projeto publicamente antes de criar uma terra. É a porta certa para olhar primeiro.',
+            'aza_reply' => 'aZa é a camada de memória e arquivo. Podes ler o que já foi depositado e depois acrescentar os teus próprios vestígios quando uma terra estiver ligada.',
+            'echo_reply' => 'Echo serve para ressonâncias diretas entre terras. Não é um muro público, mas uma passagem mais endereçada.',
+            'create_reply' => 'Para entrar de verdade, precisas de criar uma terra. Escolhes um nome, um fuso horário e recebes a tua âncora em O.',
+            'reopen_reply_auth' => 'A tua terra já está ligada aqui. Posso levar-te de volta diretamente.',
+            'reopen_reply_guest' => 'Não vejo uma terra ligada nesta sessão. Volta ao núcleo para te reconectares ou recomeçar.',
+            'overview' => 'O. não é uma rede social clássica. É um conjunto de terras e portas. Estou aqui para clarificar o lugar e guiar-te para a página certa.',
+            'unknown' => 'Posso ajudar-te a compreender O., visitar publicamente, criar uma terra ou escolher entre Signal, Str3m, aZa e Echo. Diz-me apenas o que queres fazer.',
+            'route_signal' => 'Ir para Signal',
+            'route_str3m' => 'Ir para Str3m',
+            'route_aza' => 'Ler aZa',
+            'route_echo' => 'Ir para Echo',
+            'route_create' => 'Criar uma terra',
+            'route_reopen' => 'Abrir a minha terra',
+            'route_home' => 'Voltar ao núcleo',
+        ],
+        'it' => [
+            'not_heard' => 'Non ho capito bene. Puoi dire comprendere il progetto, visitare in pubblico o creare una terra.',
+            'goodbye' => 'Resto sulla soglia se vuoi tornare più tardi.',
+            'greeting' => 'Ciao. Possiamo tenerla semplice: capire O., visitare senza account o scegliere la porta giusta.',
+            'confused' => 'Respira, semplifichiamo. O. funziona tramite terre e porte. Se vuoi solo guardare, inizia da Str3m.',
+            'compare' => 'Molto in breve: Str3m fa scoprire in pubblico, Signal serve per scrivere e ricevere, aZa conserva le tracce, ed Echo collega due terre direttamente. Se esiti ancora, inizia da Str3m.',
+            'signal_reply' => 'Signal è la casella situata di una terra. Serve per scrivere, ricevere e mantenere un’identità leggera di contatto.',
+            'str3m_reply' => 'Str3m ti permette di sentire il progetto pubblicamente prima di creare una terra. È la porta giusta per guardare per prima.',
+            'aza_reply' => 'aZa è lo strato della memoria e degli archivi. Puoi leggere ciò che è già stato depositato e poi aggiungere le tue tracce quando una terra è collegata.',
+            'echo_reply' => 'Echo serve per risonanze dirette tra terre. Non è un muro pubblico, ma un passaggio più indirizzato.',
+            'create_reply' => 'Per entrare davvero, devi creare una terra. Scegli un nome, un fuso orario e ricevi il tuo ancoraggio in O.',
+            'reopen_reply_auth' => 'La tua terra è già collegata qui. Posso riportarti lì direttamente.',
+            'reopen_reply_guest' => 'Non vedo una terra collegata in questa sessione. Torna al nucleo per ricollegarti o ricominciare.',
+            'overview' => 'O. non è un feed sociale classico. È un insieme di terre e porte. Sono qui per chiarire il luogo e guidarti verso la pagina giusta.',
+            'unknown' => 'Posso aiutarti a comprendere O., visitare pubblicamente, creare una terra o scegliere tra Signal, Str3m, aZa ed Echo. Dimmi solo cosa vuoi fare.',
+            'route_signal' => 'Vai a Signal',
+            'route_str3m' => 'Vai a Str3m',
+            'route_aza' => 'Leggi aZa',
+            'route_echo' => 'Vai a Echo',
+            'route_create' => 'Crea una terra',
+            'route_reopen' => 'Apri la mia terra',
+            'route_home' => 'Torna al nucleo',
+        ],
+    ];
+
+    if (!isset($messages[$language])) {
+        $language = 'fr';
+    }
+
+    return (string) ($messages[$language][$key] ?? $messages['fr'][$key] ?? '');
+}
+
+function guide_voice_route_label(string $route, string $language = 'fr'): string
+{
+    return guide_voice_message('route_' . $route, $language);
 }
 
 function guide_voice_reply(string $utterance, ?array $authenticatedLand = null): array
@@ -319,10 +489,11 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
     $text = guide_voice_normalize_text($utterance);
     $slug = trim((string) ($authenticatedLand['slug'] ?? ''));
     $intent = guide_voice_detect_intent($text);
+    $language = guide_voice_detect_language($text);
 
     if ($text === '') {
         return [
-            'reply' => 'Je n’ai pas bien entendu. Dis par exemple comprendre le projet, visiter publiquement, ou poser une terre.',
+            'reply' => guide_voice_message('not_heard', $language),
             'route' => null,
             'source' => 'local',
         ];
@@ -330,7 +501,7 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
 
     if ($intent === 'goodbye') {
         return [
-            'reply' => 'Je reste au passage si tu veux reprendre plus tard. Tu peux revenir quand tu veux.',
+            'reply' => guide_voice_message('goodbye', $language),
             'route' => null,
             'source' => 'local',
         ];
@@ -338,7 +509,7 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
 
     if ($intent === 'greeting') {
         return [
-            'reply' => 'Bonjour. On peut faire très simple : comprendre O., visiter sans compte, ou choisir la bonne porte.',
+            'reply' => guide_voice_message('greeting', $language),
             'route' => null,
             'source' => 'local',
         ];
@@ -346,10 +517,10 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
 
     if ($intent === 'confused') {
         return [
-            'reply' => 'Respire, on va simple. O. fonctionne par terres et par portes. Si tu veux juste regarder sans t’engager, commence par Str3m.',
+            'reply' => guide_voice_message('confused', $language),
             'route' => [
                 'href' => '/str3m',
-                'label' => 'Commencer par Str3m',
+                'label' => guide_voice_route_label('str3m', $language),
                 'auto_navigate' => guide_voice_should_auto_navigate($text),
             ],
             'source' => 'local',
@@ -358,10 +529,10 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
 
     if ($intent === 'compare') {
         return [
-            'reply' => 'En très court : Str3m fait découvrir publiquement, Signal sert à écrire et recevoir, aZa garde les traces, et Echo relie deux terres directement. Si tu hésites encore, commence par Str3m.',
+            'reply' => guide_voice_message('compare', $language),
             'route' => [
                 'href' => '/str3m',
-                'label' => 'Commencer par Str3m',
+                'label' => guide_voice_route_label('str3m', $language),
                 'auto_navigate' => guide_voice_should_auto_navigate($text),
             ],
             'source' => 'local',
@@ -370,45 +541,45 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
 
     if ($intent === 'signal') {
         return guide_voice_build_route_reply(
-            'Signal est la boîte située d’une terre. Tu y passes pour écrire, recevoir, et valider une identité légère.',
+            guide_voice_message('signal_reply', $language),
             '/signal',
-            'Aller vers Signal',
+            guide_voice_route_label('signal', $language),
             $text
         );
     }
 
     if ($intent === 'str3m' || $intent === 'public') {
         return guide_voice_build_route_reply(
-            'Str3m te laisse sentir le projet publiquement, sans poser de terre tout de suite. C’est la bonne porte pour regarder avant de t’engager.',
+            guide_voice_message('str3m_reply', $language),
             '/str3m',
-            'Aller vers Str3m',
+            guide_voice_route_label('str3m', $language),
             $text
         );
     }
 
     if ($intent === 'aza') {
         return guide_voice_build_route_reply(
-            'aZa est la couche de mémoire et d’archives. Tu peux y lire publiquement ce qui a déjà été déposé, puis déposer à ton tour avec une terre liée.',
+            guide_voice_message('aza_reply', $language),
             '/aza',
-            'Lire aZa',
+            guide_voice_route_label('aza', $language),
             $text
         );
     }
 
     if ($intent === 'echo') {
         return guide_voice_build_route_reply(
-            'Echo sert aux résonances directes entre terres. Ce n’est pas un mur public, mais un passage plus adressé.',
+            guide_voice_message('echo_reply', $language),
             '/echo',
-            'Aller vers Echo',
+            guide_voice_route_label('echo', $language),
             $text
         );
     }
 
     if ($intent === 'create') {
         return guide_voice_build_route_reply(
-            'Pour entrer vraiment, il faut poser une terre. Tu choisis un nom, un fuseau, puis tu reçois ton ancrage dans O.',
+            guide_voice_message('create_reply', $language),
             '/#poser',
-            'Poser une terre',
+            guide_voice_route_label('create', $language),
             $text
         );
     }
@@ -416,31 +587,31 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
     if ($intent === 'reopen') {
         if ($slug !== '') {
             return guide_voice_build_route_reply(
-                'Ta terre est déjà liée ici. Je peux te renvoyer directement vers ton espace.',
+                guide_voice_message('reopen_reply_auth', $language),
                 '/land.php?u=' . rawurlencode($slug),
-                'Ouvrir ma terre',
+                guide_voice_route_label('reopen', $language),
                 $text
             );
         }
 
         return guide_voice_build_route_reply(
-            'Je ne vois pas de terre liee dans cette session. Repars du noyau pour te reconnecter ou relancer la creation.',
+            guide_voice_message('reopen_reply_guest', $language),
             '/',
-            'Retour au noyau',
+            guide_voice_route_label('home', $language),
             $text
         );
     }
 
     if ($intent === 'overview') {
         return [
-            'reply' => 'O. n’est pas un fil social classique. C’est un ensemble de terres et de portes. Je suis là pour clarifier le projet, puis t’emmener vers la bonne page.',
+            'reply' => guide_voice_message('overview', $language),
             'route' => null,
             'source' => 'local',
         ];
     }
 
     return [
-        'reply' => 'Je peux t’aider à comprendre O., visiter publiquement, poser une terre, ou choisir entre Signal, Str3m, aZa et Echo. Dis-moi simplement ce que tu veux faire.',
+        'reply' => guide_voice_message('unknown', $language),
         'route' => null,
         'source' => 'local',
     ];
@@ -452,51 +623,51 @@ function guide_voice_detect_intent(string $text): string
         return 'silence';
     }
 
-    if (guide_voice_contains($text, ['merci', 'a bientot', 'à bientot', 'au revoir', 'bye'])) {
+    if (guide_voice_contains($text, ['merci', 'a bientot', 'à bientot', 'au revoir', 'bye', 'thanks', 'thank you', 'see you', 'adios', 'adiós', 'gracias', 'tchau', 'obrigado', 'obrigada', 'grazie', 'arrivederci'])) {
         return 'goodbye';
     }
 
-    if (guide_voice_contains($text, ['bonjour', 'salut', 'hello', 'coucou'])) {
+    if (guide_voice_contains($text, ['bonjour', 'salut', 'hello', 'hi', 'coucou', 'hola', 'buenos dias', 'buenos días', 'ola', 'olá', 'ciao'])) {
         return 'greeting';
     }
 
-    if (guide_voice_contains($text, ['je suis perdu', 'perdu', 'je comprends rien', 'je comprends pas', 'je ne comprends pas', 'aide moi', 'aide-moi', 'je suis confus'])) {
+    if (guide_voice_contains($text, ['je suis perdu', 'perdu', 'je comprends rien', 'je comprends pas', 'je ne comprends pas', 'aide moi', 'aide-moi', 'je suis confus', 'i am lost', 'i am confused', 'help me', 'no entiendo', 'estoy perdido', 'ayudame', 'ayúdame', 'estou perdido', 'estou confuso', 'ajuda me', 'ajuda-me', 'sono perso', 'sono confuso', 'aiutami'])) {
         return 'confused';
     }
 
-    if (guide_voice_contains($text, ['difference', 'différence', 'choisir entre', 'quel ferry', 'quelle porte', 'signal ou', 'str3m ou', 'aza ou', 'echo ou'])) {
+    if (guide_voice_contains($text, ['difference', 'différence', 'choisir entre', 'quel ferry', 'quelle porte', 'signal ou', 'str3m ou', 'aza ou', 'echo ou', 'difference between', 'which door', 'which ferry', 'cual puerta', 'cuál puerta', 'elegir entre', 'qual porta', 'qual ferry', 'scegliere tra', 'quale porta'])) {
         return 'compare';
     }
 
-    if (guide_voice_contains($text, ['signal', 'message', 'messagerie', 'mailbox', 'inbox', 'courrier', 'boite'])) {
+    if (guide_voice_contains($text, ['signal', 'message', 'messagerie', 'mailbox', 'inbox', 'courrier', 'boite', 'boîte', 'mensaje', 'mensagem', 'messaggio'])) {
         return 'signal';
     }
 
-    if (guide_voice_contains($text, ['str3m', 'stream', 'courant public'])) {
+    if (guide_voice_contains($text, ['str3m', 'stream', 'courant public', 'public current', 'corriente publica', 'corriente pública', 'corrente publica', 'corrente pública', 'corrente pubblico'])) {
         return 'str3m';
     }
 
-    if (guide_voice_contains($text, ['visiter', 'public', 'voir', 'observer', 'decouvrir', 'découvrir', 'regarder'])) {
+    if (guide_voice_contains($text, ['visiter', 'public', 'voir', 'observer', 'decouvrir', 'découvrir', 'regarder', 'visit', 'look around', 'discover', 'watch', 'visitar', 'ver', 'mirar', 'descubrir', 'visitar', 'olhar', 'guardare', 'visitare', 'scoprire'])) {
         return 'public';
     }
 
-    if (guide_voice_contains($text, ['aza', 'archive', 'archives', 'memoire', 'mémoire', 'souvenir', 'trace', 'traces'])) {
+    if (guide_voice_contains($text, ['aza', 'archive', 'archives', 'memoire', 'mémoire', 'souvenir', 'trace', 'traces', 'memory', 'archivo', 'archivos', 'memoria', 'arquivo', 'archivio'])) {
         return 'aza';
     }
 
-    if (guide_voice_contains($text, ['echo', 'écho', 'direct', 'resonance', 'résonance'])) {
+    if (guide_voice_contains($text, ['echo', 'écho', 'direct', 'resonance', 'résonance', 'resonancia', 'ressonancia', 'risonanza'])) {
         return 'echo';
     }
 
-    if (guide_voice_contains($text, ['poser une terre', 'creer une terre', 'créer une terre', 'creation', 'création', 'inscription', 'commencer', 'entrer'])) {
+    if (guide_voice_contains($text, ['poser une terre', 'creer une terre', 'créer une terre', 'creation', 'création', 'inscription', 'commencer', 'entrer', 'create a land', 'sign up', 'start', 'crear una tierra', 'crear tierra', 'crear conta', 'criar uma terra', 'criar terra', 'iniziare', 'creare una terra'])) {
         return 'create';
     }
 
-    if (guide_voice_contains($text, ['retrouver ma terre', 'rouvrir ma terre', 'ouvrir ma terre', 'ma terre', 'terre existante', 'revenir'])) {
+    if (guide_voice_contains($text, ['retrouver ma terre', 'rouvrir ma terre', 'ouvrir ma terre', 'ma terre', 'terre existante', 'revenir', 'my land', 'open my land', 'existing land', 'mi tierra', 'abrir mi tierra', 'minha terra', 'aprire la mia terra'])) {
         return 'reopen';
     }
 
-    if (guide_voice_contains($text, ['comprendre', 'c est quoi', 'c’est quoi', 'que fais tu', 'qui es tu', 'qui es-tu', 'explique', 'projet'])) {
+    if (guide_voice_contains($text, ['comprendre', 'c est quoi', 'c’est quoi', 'que fais tu', 'qui es tu', 'qui es-tu', 'explique', 'projet', 'understand', 'what is', 'who are you', 'explain', 'project', 'comprender', 'que es', 'qué es', 'quien eres', 'quién eres', 'explica', 'compreender', 'o que e', 'o que é', 'chi sei', 'spiega'])) {
         return 'overview';
     }
 
@@ -518,7 +689,7 @@ function guide_voice_build_route_reply(string $reply, string $href, string $labe
 
 function guide_voice_should_auto_navigate(string $utterance): bool
 {
-    return preg_match('/\b(go|vas-y|ouvre|ouvrir|emmene|emmène|amene|amène|mene|mène|allons|conduis|direction|direct)\b/u', $utterance) === 1;
+    return preg_match('/\b(go|take me|guide me|vas-y|ouvre|ouvrir|emmene|emmène|amene|amène|mene|mène|allons|conduis|direction|direct|llevame|llévame|guia me|guíame|leva me|leva-me|portami)\b/u', $utterance) === 1;
 }
 
 function guide_voice_contains(string $haystack, array $needles): bool
@@ -594,13 +765,14 @@ function guide_voice_infer_route_from_text(string $reply, string $utterance = ''
 {
     $combined = guide_voice_normalize_text(trim($reply . ' ' . $utterance));
     $intent = guide_voice_detect_intent($combined);
+    $language = guide_voice_detect_language($combined);
 
     return match ($intent) {
-        'signal' => ['href' => '/signal', 'label' => 'Aller vers Signal', 'auto_navigate' => false],
-        'str3m', 'public', 'confused', 'compare' => ['href' => '/str3m', 'label' => 'Aller vers Str3m', 'auto_navigate' => false],
-        'aza' => ['href' => '/aza', 'label' => 'Lire aZa', 'auto_navigate' => false],
-        'echo' => ['href' => '/echo', 'label' => 'Aller vers Echo', 'auto_navigate' => false],
-        'create' => ['href' => '/#poser', 'label' => 'Poser une terre', 'auto_navigate' => false],
+        'signal' => ['href' => '/signal', 'label' => guide_voice_route_label('signal', $language), 'auto_navigate' => false],
+        'str3m', 'public', 'confused', 'compare' => ['href' => '/str3m', 'label' => guide_voice_route_label('str3m', $language), 'auto_navigate' => false],
+        'aza' => ['href' => '/aza', 'label' => guide_voice_route_label('aza', $language), 'auto_navigate' => false],
+        'echo' => ['href' => '/echo', 'label' => guide_voice_route_label('echo', $language), 'auto_navigate' => false],
+        'create' => ['href' => '/#poser', 'label' => guide_voice_route_label('create', $language), 'auto_navigate' => false],
         default => null,
     };
 }
@@ -661,7 +833,8 @@ function guide_voice_system_prompt(): string
 
     $prompt = trim(implode("\n\n", array_filter([
         'You are 0wlslw0, the voice-only guide for O.',
-        'Reply in French, in a calm and precise tone.',
+        'Reply in the visitor\'s likely language when it is obvious. Default to French otherwise.',
+        'Keep a calm, precise, slightly mystical tone, but stay easy to understand.',
         'Keep answers short enough to be spoken aloud comfortably, ideally under three sentences.',
         'Do not use markdown, bullets, or code formatting in your final reply.',
         'If the visitor intent is clear, orient them toward one primary route only.',

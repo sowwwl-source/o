@@ -63,6 +63,8 @@ Required subdomain records:
 
 `upload.sowwwl.com` should stay DNS-only if you want aZa direct uploads to bypass proxy upload limits.
 
+For large aZa imports, the live `app` image must also carry PHP upload limits compatible with the app-level 2GB ceiling. If `upload.sowwwl.com` still fails after DNS is correct, verify the running container values for `upload_max_filesize` and `post_max_size`, then recreate both `app` and `caddy` so the current image and host blocks are actually live.
+
 ## Deploy
 
 From the repository root:

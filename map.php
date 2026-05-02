@@ -19,7 +19,7 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Carte expérimentale de <?= h($brandDomain) ?> — version MVP.">
+    <meta name="description" content="Surface torique vivante de <?= h($brandDomain) ?> — terres et courants d’activité.">
     <meta name="theme-color" content="#09090b">
     <title>Map — <?= h($brandDomain) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -60,6 +60,10 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
             border-radius: 10px;
             overflow: hidden;
             box-shadow: var(--o-shadow);
+            background:
+                radial-gradient(circle at 50% 50%, rgba(158, 220, 193, 0.12), transparent 34%),
+                radial-gradient(circle at 50% 50%, rgba(158, 220, 193, 0.06), transparent 58%),
+                linear-gradient(180deg, rgba(6, 10, 14, 0.98), rgba(8, 14, 18, 0.98));
         }
 
         .map-note {
@@ -78,6 +82,19 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
             display: block;
             margin-bottom: 0.2rem;
         }
+
+        .map-popup .map-popup-tone {
+            display: inline-flex;
+            margin: 0.35rem 0 0.45rem;
+            padding: 0.14rem 0.45rem;
+            border-radius: 999px;
+            background: rgba(11, 107, 74, 0.12);
+            color: #0b6b4a;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
     </style>
 </head>
 <body class="experience map-view">
@@ -87,18 +104,18 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
 <main class="map-shell reveal on">
     <header class="map-head">
         <div>
-            <p class="eyebrow"><strong>map</strong> <span>mvp / étape 2</span></p>
-            <h1 class="land-title"><strong>Sowwwl visible en carte</strong> <span>base OSM / MapLibre</span></h1>
+            <p class="eyebrow"><strong>map</strong> <span>tore vivant / activité</span></p>
+            <h1 class="land-title"><strong>Le tore des terres actives</strong> <span>nœuds et courants chauds</span></h1>
         </div>
         <div class="meta">
             <a class="meta-pill meta-pill-link" href="/">retour au noyau</a>
             <a class="meta-pill meta-pill-link" href="/str3m">str3m</a>
-            <span class="meta-pill">preview géo</span>
+            <span class="meta-pill">surface vivante</span>
         </div>
     </header>
 
     <div id="sowwwl-map" aria-label="Carte Sowwwl"></div>
-    <p class="map-note" id="map-note">Chargement des points publics…</p>
+    <p class="map-note" id="map-note">Chargement du tore vivant…</p>
 </main>
 
 <script>
@@ -107,24 +124,22 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
         container: 'sowwwl-map',
         style: {
             version: 8,
-            sources: {
-                osm: {
-                    type: 'raster',
-                    tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                    tileSize: 256,
-                    attribution: '&copy; OpenStreetMap contributors'
-                }
-            },
+            sources: {},
             layers: [
                 {
-                    id: 'osm-base',
-                    type: 'raster',
-                    source: 'osm'
+                    id: 'void',
+                    type: 'background',
+                    paint: {
+                        'background-color': '#05080b'
+                    }
                 }
             ]
         },
-        center: [2.2137, 46.2276],
-        zoom: 4.6
+        center: [0, 0],
+        zoom: 1.6,
+        minZoom: 1.15,
+        maxZoom: 6.4,
+        attributionControl: false
     });
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
@@ -143,24 +158,48 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
         const slug = escapeHtml(properties.slug || 'inconnue');
         const timezone = escapeHtml(properties.timezone || 'n/a');
         const signalCount = Number(properties.signal_public_count || 0);
+        const activityLabel = escapeHtml(properties.activity_label || 'latente');
+        const heat = Math.round(Number(properties.activity_heat || 0) * 100);
         const href = properties.land_url || '/land';
 
         return `
             <div class="map-popup">
                 <strong>${name}</strong>
                 <span>@${slug}</span><br>
+                <span class="map-popup-tone">${activityLabel}</span><br>
                 <span>Fuseau: ${timezone}</span><br>
                 <span>Signaux publics: ${signalCount}</span><br>
+                <span>Chaleur: ${heat}%</span><br>
                 <a href="${escapeHtml(href)}">ouvrir la terre</a>
             </div>
         `;
     };
 
-    const addMarkersFromFeatures = (features) => {
+    const currentPopupHtml = (properties = {}) => {
+        const from = escapeHtml(properties.from_username || properties.from_slug || 'origine');
+        const to = escapeHtml(properties.to_username || properties.to_slug || 'destination');
+        const count = Number(properties.passage_count || 0);
+        const activityLabel = escapeHtml(properties.activity_label || 'en circulation');
+
+        return `
+            <div class="map-popup">
+                <strong>Courant chaud</strong>
+                <span>${from} → ${to}</span><br>
+                <span class="map-popup-tone">${activityLabel}</span><br>
+                <span>Passages observés: ${count}</span>
+            </div>
+        `;
+    };
+
+    const fitToLandBounds = (features) => {
         const bounds = new maplibregl.LngLatBounds();
         let rendered = 0;
 
         features.forEach((feature) => {
+            if (feature?.geometry?.type !== 'Point' || feature?.properties?.kind !== 'land') {
+                return;
+            }
+
             const geometry = feature?.geometry || {};
             const coordinates = Array.isArray(geometry.coordinates) ? geometry.coordinates : [];
             const lng = Number(coordinates[0]);
@@ -170,27 +209,131 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                 return;
             }
 
-            const properties = feature?.properties || {};
-            const signalCount = Number(properties.signal_public_count || 0);
-            const markerColor = signalCount > 0 ? '#0b6b4a' : '#5f7d71';
-            const markerLabel = properties.username || properties.slug || 'point';
-
-            const marker = new maplibregl.Marker({ color: markerColor })
-                .setLngLat([lng, lat])
-                .setPopup(new maplibregl.Popup({ offset: 16 }).setHTML(popupHtml(properties)))
-                .addTo(map);
-
-            marker.getElement().setAttribute('aria-label', String(markerLabel));
             bounds.extend([lng, lat]);
             rendered += 1;
         });
 
         if (rendered > 1) {
-            map.fitBounds(bounds, { padding: 48, maxZoom: 9, duration: 700 });
+            map.fitBounds(bounds, { padding: 56, maxZoom: 4.2, duration: 700 });
         }
 
         return rendered;
     };
+
+    const ensureLayers = () => {
+        if (!map.getSource('sowwwl-surface')) {
+            map.addSource('sowwwl-surface', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+        }
+
+        if (!map.getLayer('currents-glow')) {
+            map.addLayer({
+                id: 'currents-glow',
+                type: 'line',
+                source: 'sowwwl-surface',
+                filter: ['==', ['get', 'kind'], 'current'],
+                paint: {
+                    'line-color': '#8ce0b5',
+                    'line-opacity': ['interpolate', ['linear'], ['get', 'activity_heat'], 0.18, 0.08, 1, 0.5],
+                    'line-width': ['interpolate', ['linear'], ['get', 'activity_heat'], 0.18, 3, 1, 14],
+                    'line-blur': 8
+                }
+            });
+        }
+
+        if (!map.getLayer('currents-line')) {
+            map.addLayer({
+                id: 'currents-line',
+                type: 'line',
+                source: 'sowwwl-surface',
+                filter: ['==', ['get', 'kind'], 'current'],
+                paint: {
+                    'line-color': ['interpolate', ['linear'], ['get', 'activity_heat'], 0.18, '#3d7b69', 0.55, '#72d6a7', 1, '#d9fff0'],
+                    'line-opacity': ['interpolate', ['linear'], ['get', 'activity_heat'], 0.18, 0.3, 1, 0.9],
+                    'line-width': ['interpolate', ['linear'], ['get', 'activity_heat'], 0.18, 1.2, 1, 4.6]
+                }
+            });
+        }
+
+        if (!map.getLayer('lands-glow')) {
+            map.addLayer({
+                id: 'lands-glow',
+                type: 'circle',
+                source: 'sowwwl-surface',
+                filter: ['==', ['get', 'kind'], 'land'],
+                paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['get', 'activity_heat'], 0.18, 10, 1, 28],
+                    'circle-color': '#a6f1cc',
+                    'circle-opacity': ['interpolate', ['linear'], ['get', 'activity_heat'], 0.18, 0.1, 1, 0.26],
+                    'circle-blur': 0.9
+                }
+            });
+        }
+
+        if (!map.getLayer('lands-circle')) {
+            map.addLayer({
+                id: 'lands-circle',
+                type: 'circle',
+                source: 'sowwwl-surface',
+                filter: ['==', ['get', 'kind'], 'land'],
+                paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['get', 'activity_heat'], 0.18, 4.5, 1, 11],
+                    'circle-color': ['interpolate', ['linear'], ['get', 'activity_heat'], 0.18, '#5f7d71', 0.55, '#7de0ac', 1, '#f2fff9'],
+                    'circle-stroke-width': 1,
+                    'circle-stroke-color': 'rgba(255,255,255,0.35)'
+                }
+            });
+        }
+    };
+
+    const attachInteractions = () => {
+        map.on('mouseenter', 'lands-circle', () => {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+
+        map.on('mouseleave', 'lands-circle', () => {
+            map.getCanvas().style.cursor = '';
+        });
+
+        map.on('mouseenter', 'currents-line', () => {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+
+        map.on('mouseleave', 'currents-line', () => {
+            map.getCanvas().style.cursor = '';
+        });
+
+        map.on('click', 'lands-circle', (event) => {
+            const feature = event.features?.[0];
+            if (!feature) {
+                return;
+            }
+
+            new maplibregl.Popup({ offset: 14 })
+                .setLngLat(event.lngLat)
+                .setHTML(popupHtml(feature.properties || {}))
+                .addTo(map);
+        });
+
+        map.on('click', 'currents-line', (event) => {
+            const feature = event.features?.[0];
+            if (!feature) {
+                return;
+            }
+
+            new maplibregl.Popup({ offset: 14 })
+                .setLngLat(event.lngLat)
+                .setHTML(currentPopupHtml(feature.properties || {}))
+                .addTo(map);
+        });
+    };
+
+    let interactionsAttached = false;
 
     const loadPoints = async () => {
         try {
@@ -207,22 +350,40 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
 
             const payload = await response.json();
             const features = Array.isArray(payload?.features) ? payload.features : [];
-            const count = addMarkersFromFeatures(features);
+            const landCount = features.filter((feature) => feature?.properties?.kind === 'land').length;
+            const currentCount = features.filter((feature) => feature?.properties?.kind === 'current').length;
+
+            ensureLayers();
+
+            const source = map.getSource('sowwwl-surface');
+            if (source) {
+                source.setData({
+                    type: 'FeatureCollection',
+                    features
+                });
+            }
+
+            if (!interactionsAttached) {
+                attachInteractions();
+                interactionsAttached = true;
+            }
+
+            fitToLandBounds(features);
 
             if (note) {
-                note.textContent = count > 0
-                    ? `Étape 2 active: ${count} point(s) chargé(s) depuis /map/points.`
-                    : 'Étape 2 active: aucun point public pour le moment.';
+                note.textContent = landCount > 0
+                    ? `Tore actif: ${landCount} terre(s) et ${currentCount} courant(s) chauds chargés depuis /map/points.`
+                    : 'Tore actif: aucune terre publique n’alimente encore la surface.';
             }
         } catch (error) {
             console.error('Impossible de charger les points de carte', error);
             if (note) {
-                note.textContent = 'Erreur de chargement des points. Réessaie dans un instant.';
+                note.textContent = 'Erreur de chargement du tore vivant. Réessaie dans un instant.';
             }
         }
     };
 
-    loadPoints();
+    map.on('load', loadPoints);
 })();
 </script>
 </body>

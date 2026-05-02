@@ -1236,6 +1236,239 @@ copyButtons.forEach((button) => {
 	});
 });
 
+const SPECTRAL_TUNER_KEY = "o-spectral-tuner-v1";
+const SPECTRAL_TUNER_TTL = 24 * 60 * 60 * 1000;
+const spectralModes = [
+	{
+		index: 0,
+		name: "brume",
+		mood: "brume",
+		lambda: 432,
+		copy: "Brûme basse, presque silencieuse. Idéal si tu veux rester poreux sans trop de contraste.",
+	},
+	{
+		index: 1,
+		name: "écume",
+		mood: "écume",
+		lambda: 486,
+		copy: "Écume mobile, attentive, en bord de phrase. Tu captes sans encore trancher.",
+	},
+	{
+		index: 2,
+		name: "clair",
+		mood: "clair",
+		lambda: 548,
+		copy: "Clair stable, net mais encore doux. Le bon axe quand tu veux traverser sans bruit.",
+	},
+	{
+		index: 3,
+		name: "braise",
+		mood: "braise",
+		lambda: 612,
+		copy: "Braise active, plus franche, prête à écrire ou décider. Le flux commence à chauffer.",
+	},
+	{
+		index: 4,
+		name: "nuit chaude",
+		mood: "nuit chaude",
+		lambda: 684,
+		copy: "Nuit chaude, dense, presque infra. À choisir quand le monde te traverse déjà fort.",
+	},
+];
+
+function getSpectralModeByIndex(index) {
+	const numericIndex = clampNumber(Number.parseInt(index, 10), 0, spectralModes.length - 1);
+	return spectralModes[numericIndex] || spectralModes[2];
+}
+
+function readSpectralTunerState() {
+	try {
+		const raw = window.localStorage.getItem(SPECTRAL_TUNER_KEY);
+		if (!raw) {
+			return null;
+		}
+
+		const parsed = JSON.parse(raw);
+		if (!parsed || typeof parsed !== "object") {
+			return null;
+		}
+
+		const expiresAt = Number(parsed.expiresAt || 0);
+		if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+			window.localStorage.removeItem(SPECTRAL_TUNER_KEY);
+			return null;
+		}
+
+		const mode = getSpectralModeByIndex(parsed.index ?? 2);
+		return {
+			...mode,
+			expiresAt,
+		};
+	} catch {
+		return null;
+	}
+}
+
+function writeSpectralTunerState(mode) {
+	if (!mode) {
+		return;
+	}
+
+	try {
+		window.localStorage.setItem(
+			SPECTRAL_TUNER_KEY,
+			JSON.stringify({
+				index: mode.index,
+				expiresAt: Date.now() + SPECTRAL_TUNER_TTL,
+			})
+		);
+	} catch {
+		// Ignore storage failures.
+	}
+}
+
+function clearSpectralTunerState() {
+	try {
+		window.localStorage.removeItem(SPECTRAL_TUNER_KEY);
+	} catch {
+		// Ignore storage failures.
+	}
+}
+
+function formatSpectralTimeLeft(expiresAt) {
+	const remaining = Math.max(0, expiresAt - Date.now());
+	const totalMinutes = Math.round(remaining / 60000);
+	const hours = Math.floor(totalMinutes / 60);
+	const minutes = totalMinutes % 60;
+
+	if (hours <= 0) {
+		return `${minutes} min`;
+	}
+
+	if (minutes === 0) {
+		return `${hours} h`;
+	}
+
+	return `${hours} h ${minutes.toString().padStart(2, "0")}`;
+}
+
+function initSpectralTuner() {
+	const root = document.querySelector("[data-spectral-tuner]");
+	if (!(root instanceof HTMLElement)) {
+		return;
+	}
+
+	const range = root.querySelector("[data-spectral-range]");
+	const saveButton = root.querySelector("[data-spectral-save]");
+	const resetButton = root.querySelector("[data-spectral-reset]");
+	const lambdaNodes = Array.from(document.querySelectorAll("[data-spectral-lambda]"));
+	const modeNameNodes = Array.from(document.querySelectorAll("[data-spectral-mode-name]"));
+	const moodLabelNodes = Array.from(document.querySelectorAll("[data-spectral-mood-label]"));
+	const copyNode = root.querySelector("[data-spectral-copy]");
+	const expiryNode = root.querySelector("[data-spectral-expiry]");
+	const torusCanvas = document.getElementById("torus-ambient");
+	const defaultLambda = Number.parseInt(root.dataset.defaultLambda || document.body.dataset.landLambda || "548", 10) || 548;
+	const defaultMood = root.dataset.defaultMood || "calm";
+	const fallbackMode = spectralModes.reduce((closest, mode) => {
+		return Math.abs(mode.lambda - defaultLambda) < Math.abs(closest.lambda - defaultLambda) ? mode : closest;
+	}, spectralModes[2]);
+	const activeStored = readSpectralTunerState();
+	let currentMode = activeStored || fallbackMode;
+	let expiryTimer = 0;
+
+	if (!(range instanceof HTMLInputElement) || !(saveButton instanceof HTMLElement) || !(resetButton instanceof HTMLElement)) {
+		return;
+	}
+
+	function applyMode(mode, options = {}) {
+		currentMode = mode;
+		range.value = String(mode.index);
+		lambdaNodes.forEach((node) => {
+			node.textContent = String(mode.lambda);
+		});
+		modeNameNodes.forEach((node) => {
+			node.textContent = mode.name;
+		});
+		moodLabelNodes.forEach((node) => {
+			node.textContent = options.saved ? `${mode.mood} · 24h` : mode.mood;
+		});
+		if (copyNode instanceof HTMLElement) {
+			copyNode.textContent = options.saved
+				? `${mode.copy} Réglage validé ici pour les prochaines 24h.`
+				: mode.copy;
+		}
+		if (expiryNode instanceof HTMLElement) {
+			expiryNode.textContent = options.expiresAt
+				? `tenu ${formatSpectralTimeLeft(options.expiresAt)}`
+				: "mode instantané";
+		}
+		document.body.dataset.landLambda = String(mode.lambda);
+		if (torusCanvas instanceof HTMLCanvasElement) {
+			torusCanvas.dataset.lambda = String(mode.lambda);
+		}
+	}
+
+	function syncExpiryBadge() {
+		const persisted = readSpectralTunerState();
+		if (!persisted) {
+			window.clearInterval(expiryTimer);
+			expiryTimer = 0;
+			applyMode(getSpectralModeByIndex(range.value), { saved: false });
+			return;
+		}
+
+		applyMode(persisted, { saved: true, expiresAt: persisted.expiresAt });
+	}
+
+	range.addEventListener("input", () => {
+		const nextMode = getSpectralModeByIndex(range.value);
+		const persisted = readSpectralTunerState();
+		const isCurrentSaved = Boolean(persisted && persisted.index === nextMode.index);
+		applyMode(nextMode, isCurrentSaved ? { saved: true, expiresAt: persisted.expiresAt } : { saved: false });
+	});
+
+	saveButton.addEventListener("click", () => {
+		const mode = getSpectralModeByIndex(range.value);
+		writeSpectralTunerState(mode);
+		const persisted = readSpectralTunerState();
+		if (persisted) {
+			applyMode(persisted, { saved: true, expiresAt: persisted.expiresAt });
+		}
+		if (!expiryTimer) {
+			expiryTimer = window.setInterval(syncExpiryBadge, 60000);
+		}
+	});
+
+	resetButton.addEventListener("click", () => {
+		clearSpectralTunerState();
+		window.clearInterval(expiryTimer);
+		expiryTimer = 0;
+		const neutralMode = spectralModes.reduce((closest, mode) => {
+			return Math.abs(mode.lambda - defaultLambda) < Math.abs(closest.lambda - defaultLambda) ? mode : closest;
+		}, spectralModes[2]);
+		applyMode(neutralMode, { saved: false });
+		moodLabelNodes.forEach((node) => {
+			node.textContent = defaultMood;
+		});
+		if (copyNode instanceof HTMLElement) {
+			copyNode.textContent = "Retour à la fréquence native de cette surface. Tu peux refaire un réglage à tout moment.";
+		}
+		if (expiryNode instanceof HTMLElement) {
+			expiryNode.textContent = "mode instantané";
+		}
+	});
+
+	if (activeStored) {
+		applyMode(activeStored, { saved: true, expiresAt: activeStored.expiresAt });
+		expiryTimer = window.setInterval(syncExpiryBadge, 60000);
+	} else {
+		applyMode(fallbackMode, { saved: false });
+		moodLabelNodes.forEach((node) => {
+			node.textContent = defaultMood;
+		});
+	}
+}
+
 if ("serviceWorker" in navigator) {
 	window.addEventListener("load", () => {
 		navigator.serviceWorker.register("/site-sw.js").catch(() => {
@@ -1244,11 +1477,422 @@ if ("serviceWorker" in navigator) {
 	});
 }
 
-function initGuideVoice() {
-	const root = document.querySelector("[data-guide-voice]");
-	if (!(root instanceof HTMLElement)) {
+const GUIDE_VOICE_SESSION_KEY = "o-guide-voice-session-v1";
+
+function readGuideVoiceSession() {
+	try {
+		const raw = window.sessionStorage.getItem(GUIDE_VOICE_SESSION_KEY);
+		if (!raw) {
+			return {};
+		}
+
+		const parsed = JSON.parse(raw);
+		return parsed && typeof parsed === "object" ? parsed : {};
+	} catch {
+		return {};
+	}
+}
+
+function writeGuideVoiceSession(session) {
+	if (!session || typeof session !== "object") {
 		return;
 	}
+
+	try {
+		window.sessionStorage.setItem(GUIDE_VOICE_SESSION_KEY, JSON.stringify(session));
+	} catch {
+		// Ignore storage failures.
+	}
+}
+
+function clearGuideVoiceSession() {
+	try {
+		window.sessionStorage.removeItem(GUIDE_VOICE_SESSION_KEY);
+	} catch {
+		// Ignore storage failures.
+	}
+}
+
+async function fetchGuideVoiceState(apiPath = "/0wlslw0/voice") {
+	try {
+		const response = await fetch(apiPath, {
+			method: "GET",
+			headers: {
+				Accept: "application/json",
+			},
+			credentials: "same-origin",
+			cache: "no-store",
+		});
+
+		if (!response.ok) {
+			return null;
+		}
+
+		const payload = await response.json().catch(() => ({}));
+		const state = payload && typeof payload.state === "object" ? payload.state : null;
+		return state && typeof state === "object" ? state : null;
+	} catch {
+		return null;
+	}
+}
+
+function createGuideVoiceDock(config = {}) {
+	if (!(document.body instanceof HTMLBodyElement)) {
+		return null;
+	}
+
+	const existing = document.querySelector("[data-guide-voice-dock]");
+	if (existing instanceof HTMLElement) {
+		return existing;
+	}
+
+	const shell = document.createElement("section");
+	shell.className = "panel reveal on guide-panel guide-voice-shell guide-voice-dock";
+	shell.dataset.guideVoice = "";
+	shell.dataset.guideVoiceDock = "1";
+	shell.dataset.guideVoiceApi = config.api_path || "/0wlslw0/voice";
+	shell.dataset.guideVoiceCsrf = config.csrf_token || "";
+	shell.dataset.guideVoiceGreeting = config.greeting || "Je suis 0wlslw0. Je te suis d’une page à l’autre.";
+	shell.dataset.guideVoiceUpstream = config.upstream_configured ? "1" : "0";
+	shell.dataset.guideVoiceChatUrl = config.chat_url || "";
+	shell.dataset.voiceState = "idle";
+	shell.setAttribute("aria-label", "Dock vocal 0wlslw0");
+	shell.innerHTML = `
+		<div class="guide-voice-dock-head">
+			<p class="eyebrow"><strong>0wlslw0</strong> <span>voix persistante</span></p>
+			<span class="badge">suivi</span>
+		</div>
+		<div class="guide-voice-stage">
+			<div class="guide-voice-orb" aria-hidden="true">
+				<span class="guide-voice-orb-core"></span>
+				<span class="guide-voice-orb-ring"></span>
+			</div>
+			<p class="guide-voice-status" data-guide-voice-status>0wlslw0 peut te suivre ici.</p>
+			<p class="guide-voice-transcript" data-guide-voice-transcript>La continuité vocale se réamorce après navigation.</p>
+			<p class="guide-voice-reply" data-guide-voice-reply>Active la voix une fois, puis continue ta traversée.</p>
+			<div class="action-row guide-voice-actions">
+				<button type="button" class="pill-link" data-guide-voice-start>Réactiver la voix</button>
+				<button type="button" class="ghost-link" data-guide-voice-stop hidden>Couper</button>
+			</div>
+			<a class="ghost-link guide-voice-route-link" href="#" data-guide-voice-route hidden>Continuer</a>
+		</div>
+	`;
+
+	document.body.classList.add("has-guide-voice-dock");
+	document.body.appendChild(shell);
+	return shell;
+}
+
+function normalizeGuideVoiceRoute(route) {
+	if (!route || typeof route !== "object" || typeof route.href !== "string" || !route.href) {
+		return null;
+	}
+
+	return {
+		href: route.href,
+		label: typeof route.label === "string" && route.label ? route.label : "Continuer",
+		auto_navigate: Boolean(route.auto_navigate),
+	};
+}
+
+function normalizeGuideVoiceText(value) {
+	const input = typeof value === "string" ? value : "";
+	const normalized = typeof input.normalize === "function" ? input.normalize("NFD") : input;
+	return normalized
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase()
+		.replace(/[^a-z0-9#\s/-]+/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
+}
+
+function currentGuideVoicePageInfo() {
+	const path = window.location.pathname;
+	const hash = window.location.hash || "";
+	const heading = document.querySelector("h1 strong, h1")?.textContent?.trim() || "";
+	const landSlug = new URLSearchParams(window.location.search).get("u") || "";
+
+	if (path === "/" && hash === "#str3m-quotidien") {
+		return {
+			key: "str3m",
+			label: "le Str3m quotidien",
+			hint: "Tu peux dire signal, aZa, echo, map, noyau, ou guide.",
+		};
+	}
+
+	switch (path) {
+		case "/":
+			return {
+				key: "home",
+				label: "le noyau",
+				hint: "Tu peux dire Str3m, Signal, aZa, Echo, map, ou guide.",
+			};
+		case "/signal":
+			return {
+				key: "signal",
+				label: "Signal",
+				hint: "Tu peux dire noyau, Str3m, aZa, Echo, map, ou guide.",
+			};
+		case "/str3m":
+			return {
+				key: "str3m",
+				label: "Str3m",
+				hint: "Tu peux dire noyau, Signal, aZa, Echo, map, ou guide.",
+			};
+		case "/aza":
+			return {
+				key: "aza",
+				label: "aZa",
+				hint: "Tu peux dire noyau, Signal, Str3m, Echo, map, ou guide.",
+			};
+		case "/echo":
+			return {
+				key: "echo",
+				label: "Echo",
+				hint: "Tu peux dire noyau, Signal, Str3m, aZa, map, ou guide.",
+			};
+		case "/map":
+			return {
+				key: "map",
+				label: "la map du tore vivant",
+				hint: "Tu peux dire noyau, Signal, Str3m, aZa, Echo, ou guide.",
+			};
+		case "/0wlslw0":
+			return {
+				key: "guide",
+				label: "0wlslw0",
+				hint: "Tu peux dire noyau, Signal, Str3m, aZa, Echo, ou map.",
+			};
+		case "/land":
+			return {
+				key: "land",
+				label: heading || (landSlug ? `la terre ${landSlug}` : "une terre"),
+				hint: "Tu peux dire noyau, Signal, Str3m, aZa, Echo, map, ou guide.",
+			};
+		default:
+			return {
+				key: "unknown",
+				label: heading || "cette page",
+				hint: "Tu peux dire noyau, Signal, Str3m, aZa, Echo, map, ou guide.",
+			};
+	}
+}
+
+function findGuideVoiceLandRoute() {
+	const preferredAnchors = Array.from(document.querySelectorAll("a[href]"));
+	const preferred = preferredAnchors.find((anchor) => {
+		if (!(anchor instanceof HTMLAnchorElement)) {
+			return false;
+		}
+
+		const text = normalizeGuideVoiceText(anchor.textContent || "");
+		return text.includes("ma terre") || text.includes("ouvrir ma terre");
+	});
+
+	if (preferred instanceof HTMLAnchorElement && preferred.href) {
+		const parsed = new URL(preferred.href, window.location.origin);
+		return {
+			href: `${parsed.pathname}${parsed.search}${parsed.hash}`,
+			label: "Ma terre",
+			auto_navigate: true,
+		};
+	}
+
+	if (window.location.pathname === "/land") {
+		return {
+			href: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+			label: "Cette terre",
+			auto_navigate: true,
+		};
+	}
+
+	return null;
+}
+
+function guideVoiceNavigationCatalog() {
+	const landRoute = findGuideVoiceLandRoute();
+	const routes = [
+		{
+			key: "home",
+			label: "le noyau",
+			href: "/",
+			confirm: "Je te ramène vers le noyau.",
+			matchers: ["noyau", "accueil", "centre", "retour noyau", "retour accueil", "home"],
+		},
+		{
+			key: "signal",
+			label: "Signal",
+			href: "/signal",
+			confirm: "Je t’emmène vers Signal.",
+			matchers: ["signal", "inbox", "boite", "boite aux lettres", "adresse"],
+		},
+		{
+			key: "str3m",
+			label: "Str3m",
+			href: "/str3m",
+			confirm: "Je t’emmène vers Str3m.",
+			matchers: ["str3m", "stream", "courant", "courant public", "public"],
+		},
+		{
+			key: "aza",
+			label: "aZa",
+			href: "/aza",
+			confirm: "Je t’emmène vers aZa.",
+			matchers: ["aza", "archive", "archives", "memoire", "memoires"],
+		},
+		{
+			key: "echo",
+			label: "Echo",
+			href: "/echo",
+			confirm: "Je t’emmène vers Echo.",
+			matchers: ["echo", "echoo", "liaison", "resonance", "resonnance"],
+		},
+		{
+			key: "map",
+			label: "la map",
+			href: "/map",
+			confirm: "Je t’emmène vers la map du tore vivant.",
+			matchers: ["map", "carte", "tore", "torus", "courants", "courant chaud"],
+		},
+		{
+			key: "guide",
+			label: "0wlslw0",
+			href: "/0wlslw0",
+			confirm: "Je te ramène vers 0wlslw0.",
+			matchers: ["0wlslw0", "guide", "hibou", "owl"],
+		},
+	];
+
+	if (landRoute) {
+		routes.push({
+			key: "land",
+			label: landRoute.label,
+			href: landRoute.href,
+			confirm: "Je t’emmène vers ta terre.",
+			matchers: ["ma terre", "mon ile", "mon ile", "mon espace", "ma page"],
+		});
+	}
+
+	return routes;
+}
+
+function guideVoiceLooksLikeNavigation(text) {
+	if (!text) {
+		return false;
+	}
+
+	const verbs = [
+		"va",
+		"aller",
+		"ouvre",
+		"emmene",
+		"conduis",
+		"guide",
+		"navigue",
+		"ramene",
+		"retour",
+		"direction",
+		"cap sur",
+		"go",
+	];
+
+	return verbs.some((verb) => text.includes(verb));
+}
+
+function resolveGuideVoiceNativeCommand(utterance) {
+	const text = normalizeGuideVoiceText(utterance);
+	const page = currentGuideVoicePageInfo();
+	if (!text) {
+		return null;
+	}
+
+	if (["ou suis je", "ou on est", "on est ou", "quelle page", "ou sommes nous"].some((phrase) => text.includes(phrase))) {
+		return {
+			type: "info",
+			reply: `Nous sommes dans ${page.label}. ${page.hint}`,
+		};
+	}
+
+	if (["tais toi", "tais-toi", "coupe la voix", "arrete la voix", "stop voix", "silence"].some((phrase) => text.includes(normalizeGuideVoiceText(phrase)))) {
+		return {
+			type: "stop",
+			reply: "Je coupe la voix. Tu peux me relancer quand tu veux.",
+		};
+	}
+
+	const routes = guideVoiceNavigationCatalog();
+	const navigationIntent = guideVoiceLooksLikeNavigation(text);
+	const exactShortCommand = text.split(" ").length <= 3;
+
+	for (const route of routes) {
+		const match = route.matchers.some((matcher) => text.includes(normalizeGuideVoiceText(matcher)));
+		if (!match) {
+			continue;
+		}
+
+		if (!navigationIntent && !exactShortCommand) {
+			continue;
+		}
+
+		const href = route.href;
+		const parsed = new URL(href, window.location.origin);
+		const destination = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+		const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+		if (current === destination) {
+			return {
+				type: "info",
+				reply: `On est déjà dans ${route.label}. ${page.hint}`,
+				route: {
+					href: destination,
+					label: route.label,
+					auto_navigate: false,
+				},
+			};
+		}
+
+		return {
+			type: "navigate",
+			reply: route.confirm,
+			route: {
+				href: destination,
+				label: route.label,
+				auto_navigate: true,
+			},
+		};
+	}
+
+	return null;
+}
+
+function navigateToGuideVoiceRoute(href) {
+	if (!href) {
+		return false;
+	}
+
+	if (href === "/#str3m-quotidien") {
+		return navigateToStr3mSurface();
+	}
+
+	if (href === "/") {
+		return navigateToCoreSurface();
+	}
+
+	const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+	if (current === href) {
+		return false;
+	}
+
+	window.location.assign(href);
+	return true;
+}
+
+function mountGuideVoice(root) {
+	if (!(root instanceof HTMLElement) || root.dataset.guideVoiceMounted === "1") {
+		return;
+	}
+
+	root.dataset.guideVoiceMounted = "1";
 
 	const startButton = root.querySelector("[data-guide-voice-start]");
 	const stopButton = root.querySelector("[data-guide-voice-stop]");
@@ -1262,28 +1906,64 @@ function initGuideVoice() {
 	const apiPath = root.dataset.guideVoiceApi || "/0wlslw0/voice";
 	const csrfToken = root.dataset.guideVoiceCsrf || "";
 	const chatUrl = root.dataset.guideVoiceChatUrl || "";
+	const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+	const isDock = root.dataset.guideVoiceDock === "1";
+	const persisted = readGuideVoiceSession();
 	let recognition = null;
-	let isActive = false;
+	let isActive = Boolean(persisted.active);
 	let isSpeaking = false;
 	let isWaitingReply = false;
+	let interactionsBound = false;
+
+	function persistSession(overrides = {}) {
+		const previous = readGuideVoiceSession();
+		const route = routeLink instanceof HTMLAnchorElement && !routeLink.hidden
+			? {
+				href: routeLink.getAttribute("href") || "#",
+				label: routeLink.textContent || "Continuer",
+				auto_navigate: routeLink.dataset.autoNavigate === "1",
+			}
+			: null;
+
+		writeGuideVoiceSession({
+			...previous,
+			active: isActive,
+			everActivated: Boolean(previous.everActivated || isActive || overrides.everActivated),
+			status: statusNode instanceof HTMLElement ? statusNode.textContent || "" : "",
+			transcript: transcriptNode instanceof HTMLElement ? transcriptNode.textContent || "" : "",
+			reply: replyNode instanceof HTMLElement ? replyNode.textContent || "" : "",
+			route,
+			apiPath,
+			csrfToken,
+			chatUrl,
+			greeting,
+			lastPath: currentPath,
+			autoResume: isActive,
+			updatedAt: Date.now(),
+			...overrides,
+		});
+	}
 
 	function setState(state, statusText = "") {
 		root.dataset.voiceState = state;
 		if (statusNode instanceof HTMLElement && statusText) {
 			statusNode.textContent = statusText;
 		}
+		persistSession();
 	}
 
 	function setTranscript(text) {
 		if (transcriptNode instanceof HTMLElement && text) {
 			transcriptNode.textContent = text;
 		}
+		persistSession();
 	}
 
 	function setReply(text) {
 		if (replyNode instanceof HTMLElement && text) {
 			replyNode.textContent = text;
 		}
+		persistSession();
 	}
 
 	function hideRoute() {
@@ -1294,30 +1974,22 @@ function initGuideVoice() {
 		routeLink.hidden = true;
 		routeLink.textContent = "Continuer";
 		routeLink.setAttribute("href", "#");
+		routeLink.dataset.autoNavigate = "0";
+		persistSession();
 	}
 
 	function showRoute(route) {
-		if (!(routeLink instanceof HTMLAnchorElement) || !route || !route.href) {
+		const normalized = normalizeGuideVoiceRoute(route);
+		if (!(routeLink instanceof HTMLAnchorElement) || !normalized) {
 			hideRoute();
 			return;
 		}
 
 		routeLink.hidden = false;
-		routeLink.href = route.href;
-		routeLink.textContent = route.label || "Continuer";
-	}
-
-	function beginListening() {
-		if (!recognition || !isActive || isSpeaking || isWaitingReply) {
-			return;
-		}
-
-		try {
-			recognition.start();
-			setState("listening", "J’écoute. Parle naturellement.");
-		} catch {
-			// Recognition may already be starting; ignore the duplicate start.
-		}
+		routeLink.href = normalized.href;
+		routeLink.textContent = normalized.label || "Continuer";
+		routeLink.dataset.autoNavigate = normalized.auto_navigate ? "1" : "0";
+		persistSession({ route: normalized });
 	}
 
 	function stopListening() {
@@ -1329,6 +2001,32 @@ function initGuideVoice() {
 			recognition.stop();
 		} catch {
 			// Ignore stop races.
+		}
+	}
+
+	function prepareNavigation(destination = "") {
+		if (!isActive) {
+			return;
+		}
+
+		persistSession({
+			active: true,
+			autoResume: true,
+			pendingNavigation: destination,
+			carryMessage: "Je te suis sur la page suivante.",
+		});
+	}
+
+	function beginListening() {
+		if (!recognition || !isActive || isSpeaking || isWaitingReply) {
+			return;
+		}
+
+		try {
+			recognition.start();
+			setState("listening", "J’écoute. Parle naturellement.");
+		} catch {
+			// Recognition may already be starting; ignore duplicate starts.
 		}
 	}
 
@@ -1368,11 +2066,73 @@ function initGuideVoice() {
 		}
 		if (startButton instanceof HTMLElement) {
 			startButton.hidden = false;
+			startButton.textContent = isDock ? "Réactiver la voix" : "Activer la voix";
 		}
 		if (stopButton instanceof HTMLElement) {
 			stopButton.hidden = true;
 		}
 		setState("idle", message);
+		clearGuideVoiceSession();
+	}
+
+	function resumeAfterReply(delay = 260) {
+		if (isActive) {
+			window.setTimeout(beginListening, delay);
+		} else {
+			setState("idle", "Prêt si tu veux reprendre.");
+		}
+	}
+
+	function announceCurrentPage(afterAnnouncement) {
+		const page = currentGuideVoicePageInfo();
+		const announcement = `Nous sommes dans ${page.label}. ${page.hint}`;
+		setReply(announcement);
+		speakReply(announcement, () => {
+			persistSession({ carryMessage: "", pendingNavigation: "" });
+			afterAnnouncement?.();
+		});
+	}
+
+	function handleNativeCommand(utterance) {
+		const command = resolveGuideVoiceNativeCommand(utterance);
+		if (!command) {
+			return false;
+		}
+
+		setTranscript(`Tu as dit : ${utterance}`);
+
+		if (command.type === "stop") {
+			setReply(command.reply);
+			stopGuide("Voix coupée localement.");
+			return true;
+		}
+
+		if (command.type === "info") {
+			setReply(command.reply);
+			showRoute(command.route || null);
+			speakReply(command.reply, () => {
+				resumeAfterReply(220);
+			});
+			return true;
+		}
+
+		if (command.type === "navigate") {
+			const normalizedRoute = normalizeGuideVoiceRoute(command.route);
+			setReply(command.reply);
+			showRoute(normalizedRoute);
+			speakReply(command.reply, () => {
+				if (normalizedRoute && normalizedRoute.href) {
+					prepareNavigation(normalizedRoute.href);
+					navigateToGuideVoiceRoute(normalizedRoute.href);
+					return;
+				}
+
+				resumeAfterReply(220);
+			});
+			return true;
+		}
+
+		return false;
 	}
 
 	async function sendUtterance(utterance) {
@@ -1404,16 +2164,14 @@ function initGuideVoice() {
 			isWaitingReply = false;
 
 			speakReply(reply, () => {
-				if (route && route.auto_navigate && route.href) {
-					window.location.assign(route.href);
+				const normalizedRoute = normalizeGuideVoiceRoute(route);
+				if (normalizedRoute && normalizedRoute.auto_navigate && normalizedRoute.href) {
+					prepareNavigation(normalizedRoute.href);
+					window.location.assign(normalizedRoute.href);
 					return;
 				}
 
-				if (isActive) {
-					window.setTimeout(beginListening, 260);
-				} else {
-					setState("idle", "Prêt si tu veux reprendre.");
-				}
+				resumeAfterReply(260);
 			});
 		} catch {
 			isWaitingReply = false;
@@ -1427,12 +2185,77 @@ function initGuideVoice() {
 		}
 	}
 
+	function bindNavigationCarry() {
+		if (interactionsBound) {
+			return;
+		}
+
+		interactionsBound = true;
+		document.addEventListener("click", (event) => {
+			if (!isActive) {
+				return;
+			}
+
+			const target = event.target;
+			if (!(target instanceof Element)) {
+				return;
+			}
+
+			const anchor = target.closest("a[href]");
+			if (!(anchor instanceof HTMLAnchorElement)) {
+				return;
+			}
+
+			const rawHref = anchor.getAttribute("href") || "";
+			if (!rawHref || rawHref.startsWith("#") || rawHref.startsWith("mailto:") || rawHref.startsWith("tel:")) {
+				return;
+			}
+
+			if (anchor.target && anchor.target !== "_self") {
+				return;
+			}
+
+			let destination = "";
+			try {
+				const parsed = new URL(anchor.href, window.location.origin);
+				if (parsed.origin !== window.location.origin) {
+					return;
+				}
+
+				destination = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+			} catch {
+				return;
+			}
+
+			prepareNavigation(destination);
+		}, true);
+
+		window.addEventListener("beforeunload", () => {
+			if (isActive) {
+				prepareNavigation("");
+			}
+		});
+	}
+
 	if (!(startButton instanceof HTMLElement) || !(stopButton instanceof HTMLElement)) {
 		return;
 	}
 
 	hideRoute();
-	setState("idle", "Prêt. Active la voix puis parle naturellement.");
+	bindNavigationCarry();
+
+	const restoredRoute = normalizeGuideVoiceRoute(persisted.route || null);
+	if (restoredRoute) {
+		showRoute(restoredRoute);
+	}
+
+	if (typeof persisted.transcript === "string" && persisted.transcript) {
+		setTranscript(persisted.transcript);
+	}
+
+	if (typeof persisted.reply === "string" && persisted.reply) {
+		setReply(persisted.reply);
+	}
 
 	if (!RecognitionCtor) {
 		startButton.setAttribute("disabled", "disabled");
@@ -1473,6 +2296,9 @@ function initGuideVoice() {
 
 		if (finalTranscript.trim()) {
 			stopListening();
+			if (handleNativeCommand(finalTranscript.trim())) {
+				return;
+			}
 			sendUtterance(finalTranscript.trim());
 		}
 	};
@@ -1484,7 +2310,7 @@ function initGuideVoice() {
 
 		const errorCode = event?.error || "unknown";
 		if (errorCode === "not-allowed" || errorCode === "service-not-allowed") {
-			stopGuide("Le micro est bloqué. Autorise le micro puis réessaie.");
+			stopGuide("Le micro doit être réautorisé sur cette page. Réactive la voix pour reprendre.");
 			return;
 		}
 
@@ -1505,18 +2331,29 @@ function initGuideVoice() {
 	};
 
 	startButton.addEventListener("click", () => {
+		const session = readGuideVoiceSession();
+		const firstActivation = !session.everActivated;
 		isActive = true;
 		isWaitingReply = false;
 		hideRoute();
 		startButton.hidden = true;
 		stopButton.hidden = false;
-		setReply("0wlslw0 répondra ici puis lira sa réponse à voix haute.");
+		setReply(firstActivation
+			? "0wlslw0 répondra ici puis lira sa réponse à voix haute."
+			: "0wlslw0 reste avec toi et reprend l’écoute sur cette page.");
+		persistSession({ active: true, autoResume: true, everActivated: true, pendingNavigation: "" });
 
-		speakReply(greeting, () => {
-			if (isActive) {
-				window.setTimeout(beginListening, 260);
-			}
-		});
+		if (firstActivation) {
+			speakReply(greeting, () => {
+				if (isActive) {
+					window.setTimeout(beginListening, 260);
+				}
+			});
+			return;
+		}
+
+		setState("idle", "Je suis là. On reprend.");
+		window.setTimeout(beginListening, 180);
 	});
 
 	stopButton.addEventListener("click", () => {
@@ -1525,9 +2362,433 @@ function initGuideVoice() {
 
 	if (routeLink instanceof HTMLAnchorElement) {
 		routeLink.addEventListener("click", () => {
-			stopGuide("Navigation en cours.");
+			prepareNavigation(routeLink.href || "");
 		});
+	}
+
+	const navigationCarry = Boolean(persisted.active);
+	if (navigationCarry) {
+		startButton.hidden = true;
+		stopButton.hidden = false;
+		const crossedPageBoundary = Boolean(persisted.lastPath && persisted.lastPath !== currentPath);
+		setState(
+			"idle",
+			crossedPageBoundary
+				? "Je te suis ici. Je reprends la navigation vocale."
+				: (persisted.status || (isDock ? "0wlslw0 reste actif ici." : "La voix reste active."))
+		);
+		if (!(replyNode instanceof HTMLElement) || !replyNode.textContent) {
+			setReply(isDock
+				? "0wlslw0 est toujours là. Continue simplement à parler."
+				: "0wlslw0 reste actif pendant la traversée.");
+		}
+		if (crossedPageBoundary) {
+			window.setTimeout(() => {
+				announceCurrentPage(() => {
+					resumeAfterReply(260);
+				});
+			}, 180);
+		} else {
+			window.setTimeout(beginListening, 320);
+		}
+		persistSession({ active: true, autoResume: true, pendingNavigation: "", carryMessage: "" });
+		return;
+	}
+
+	setState("idle", isDock
+		? "0wlslw0 peut te suivre ici si tu actives la voix depuis son passage."
+		: "Prêt. Active la voix puis parle naturellement.");
+	if (!(replyNode instanceof HTMLElement) || !replyNode.textContent) {
+		setReply(isDock
+			? "Active la voix depuis 0wlslw0, puis elle te suivra pendant la navigation."
+			: "0wlslw0 répondra ici puis lira sa réponse à voix haute.");
+	}
+	if (startButton instanceof HTMLElement) {
+		startButton.textContent = isDock ? "Réactiver la voix" : "Activer la voix";
 	}
 }
 
+function initGuideVoice() {
+	const existingRoot = document.querySelector("[data-guide-voice]");
+	const persisted = readGuideVoiceSession();
+
+	const boot = async () => {
+		let root = existingRoot instanceof HTMLElement ? existingRoot : null;
+		if (!root && !persisted.active) {
+			return;
+		}
+
+		if (!root) {
+			const state = await fetchGuideVoiceState(persisted.apiPath || "/0wlslw0/voice");
+			if (!state) {
+				return;
+			}
+			root = createGuideVoiceDock(state);
+		}
+
+		mountGuideVoice(root);
+	};
+
+	boot();
+}
+
+function initSignalFlow() {
+	const filterInput = document.querySelector("[data-signal-contact-filter]");
+	const contactItems = Array.from(document.querySelectorAll("[data-signal-contact-item]"));
+	const openInput = document.querySelector("[data-signal-open-input]");
+	const history = document.getElementById("signal-history");
+	const composeForms = Array.from(document.querySelectorAll("[data-signal-compose]"));
+	const recipientInputs = Array.from(document.querySelectorAll("[data-signal-recipient-input]"));
+	const optionNodes = Array.from(document.querySelectorAll("#signal-contact-options option"));
+	const algoraStorageKey = "o-signal-algora-mode";
+	const algoraCopy = {
+		douceur: {
+			fallbackHint: "algoRa en douceur : chercher les accords avant de pousser le flux.",
+			openPlaceholder: "slug ou nom d’une terre en douceur",
+			recipientPlaceholder: "slug ou nom d’une terre en douceur",
+			subjectPlaceholder: "Premier contact en douceur (optionnel)",
+			threadSubjectPlaceholder: "Objet du message en douceur (optionnel)",
+			body: {
+				"phase-locked": "Écrire en prolongeant l’accord déjà là...",
+				harmonic: "Écrire en gardant de la souplesse entre vos ondes...",
+				interference: "Entrer doucement dans l’écart créatif...",
+				drift: "Ralentir un peu pour rencontrer l’autre fréquence...",
+				inertia: "Approcher lentement cette distance fertile...",
+			},
+		},
+		confrontation: {
+			fallbackHint: "algoRa en confrontation : préférer les écarts productifs et les tensions claires.",
+			openPlaceholder: "slug ou nom d’une terre à confronter",
+			recipientPlaceholder: "slug ou nom d’une terre à confronter",
+			subjectPlaceholder: "Point de friction à ouvrir (optionnel)",
+			threadSubjectPlaceholder: "Nœud de confrontation (optionnel)",
+			body: {
+				"phase-locked": "Nommer franchement ce qui résiste malgré la proximité...",
+				harmonic: "Faire apparaître le désaccord utile sans rompre le lien...",
+				interference: "Entrer dans la tension féconde sans l’adoucir trop tôt...",
+				drift: "Attraper le décalage et le rendre explicite...",
+				inertia: "Forer la distance sans contourner ce qui frotte...",
+			},
+		},
+		ecoute: {
+			fallbackHint: "algoRa en écoute : laisser l’autre fréquence se dire avant de conclure.",
+			openPlaceholder: "slug ou nom d’une terre à écouter",
+			recipientPlaceholder: "slug ou nom d’une terre à écouter",
+			subjectPlaceholder: "Question d’écoute (optionnel)",
+			threadSubjectPlaceholder: "Ce que tu veux entendre (optionnel)",
+			body: {
+				"phase-locked": "Écrire en laissant de l’espace à ce qui répond déjà...",
+				harmonic: "Écrire avec attention aux nuances entre vos rythmes...",
+				interference: "Accueillir le contraste avant de le résoudre...",
+				drift: "Suivre le décalage pour entendre ce qu’il révèle...",
+				inertia: "Laisser le temps et la profondeur faire remonter la voix de l’autre...",
+			},
+		},
+	};
+
+	const normalizeSignalRecipient = (value) => value.toLowerCase().trim();
+	const recipientDirectory = optionNodes.map((option) => ({
+		value: option.getAttribute("value") || "",
+		slug: option.dataset.slug || option.getAttribute("value") || "",
+		username: option.dataset.username || option.textContent?.trim() || option.getAttribute("value") || "",
+		phase: option.dataset.phase || "drift",
+		phaseLabel: option.dataset.phaseLabel || "déphasage léger",
+		summary: option.dataset.summary || "",
+		lambda: option.dataset.lambda || "548",
+		gap: option.dataset.gap || "0",
+	}));
+
+	const findRecipientMatch = (query) => {
+		const normalized = normalizeSignalRecipient(query);
+		if (!normalized) {
+			return null;
+		}
+
+		const exactMatch = recipientDirectory.find((entry) => {
+			return [entry.value, entry.slug, entry.username].some((candidate) => normalizeSignalRecipient(candidate) === normalized);
+		});
+		if (exactMatch) {
+			return exactMatch;
+		}
+
+		return recipientDirectory.find((entry) => {
+			return [entry.value, entry.slug, entry.username].some((candidate) => normalizeSignalRecipient(candidate).includes(normalized));
+		}) || null;
+	};
+
+	const preferredPhasesByMode = {
+		douceur: ["phase-locked", "harmonic"],
+		confrontation: ["interference", "drift"],
+		ecoute: ["inertia", "harmonic", "drift"],
+	};
+
+	const getSavedAlgoraMode = () => {
+		try {
+			const stored = window.localStorage.getItem(algoraStorageKey);
+			return stored && algoraCopy[stored] ? stored : "douceur";
+		} catch {
+			return "douceur";
+		}
+	};
+
+	const saveAlgoraMode = (mode) => {
+		try {
+			window.localStorage.setItem(algoraStorageKey, mode);
+		} catch {
+			// Ignore persistence failures.
+		}
+	};
+
+	if (history) {
+		history.scrollTop = history.scrollHeight;
+	}
+
+	if (filterInput instanceof HTMLInputElement && contactItems.length > 0) {
+		const applyFilter = () => {
+			const query = filterInput.value.toLowerCase().trim();
+			let visibleCount = 0;
+
+			contactItems.forEach((item) => {
+				const haystack = [
+					item.getAttribute("data-signal-contact-name") || "",
+					item.getAttribute("data-signal-contact-slug") || "",
+					item.getAttribute("data-signal-contact-last") || "",
+				].join(" ");
+				const visible = query === "" || haystack.includes(query);
+				item.hidden = !visible;
+				if (visible) {
+					visibleCount += 1;
+				}
+			});
+
+			const list = document.querySelector("[data-signal-contact-list]");
+			if (list instanceof HTMLElement) {
+				list.dataset.empty = visibleCount === 0 ? "1" : "0";
+			}
+		};
+
+		filterInput.addEventListener("input", applyFilter);
+		applyFilter();
+	}
+
+	if (openInput instanceof HTMLInputElement && !openInput.value) {
+		const activeContact = document.querySelector("[data-signal-contact-item].is-active strong");
+		if (activeContact instanceof HTMLElement) {
+			openInput.value = activeContact.textContent.trim();
+		}
+	}
+
+	recipientInputs.forEach((input) => {
+		if (!(input instanceof HTMLInputElement)) {
+			return;
+		}
+
+		const form = input.closest("form");
+		const hintNode = form?.querySelector("[data-signal-recipient-hint]");
+		const choiceNodes = Array.from(form?.querySelectorAll("[data-signal-recipient-choice]") || []);
+		const algoraNodes = Array.from(form?.querySelectorAll("[data-signal-algora-choice]") || []);
+		const subjectInput = form?.querySelector("[data-signal-draft-subject]");
+		const bodyInput = form?.querySelector("[data-signal-draft-body]");
+		let algoraMode = getSavedAlgoraMode();
+		const defaultHint = hintNode instanceof HTMLElement ? hintNode.textContent : "";
+
+		const applyPlaceholders = (phase = null) => {
+			const copy = algoraCopy[algoraMode] || algoraCopy.douceur;
+			const resolvedPhase = phase || "phase-locked";
+			const bodyPlaceholder = copy.body[resolvedPhase] || copy.body.drift;
+
+			if (input.dataset.signalOpenInput !== undefined || input.hasAttribute("data-signal-open-input")) {
+				input.placeholder = copy.openPlaceholder;
+			} else {
+				input.placeholder = copy.recipientPlaceholder;
+			}
+
+			if (subjectInput instanceof HTMLInputElement && !subjectInput.value) {
+				subjectInput.placeholder = form?.dataset.draftScope === "new"
+					? copy.subjectPlaceholder
+					: copy.threadSubjectPlaceholder;
+			}
+
+			if (bodyInput instanceof HTMLTextAreaElement && !bodyInput.value) {
+				bodyInput.placeholder = bodyPlaceholder;
+			}
+		};
+
+		const refreshSuggestionPriority = () => {
+			const preferredPhases = preferredPhasesByMode[algoraMode] || [];
+			choiceNodes.forEach((node, index) => {
+				if (!(node instanceof HTMLElement)) {
+					return;
+				}
+
+				const phase = recipientDirectory.find((entry) => entry.slug === (node.dataset.recipientValue || ""))?.phase || "drift";
+				const preferredIndex = preferredPhases.indexOf(phase);
+				node.classList.toggle("is-algora-preferred", preferredIndex !== -1);
+				node.style.order = String(preferredIndex !== -1 ? preferredIndex : preferredPhases.length + index);
+			});
+		};
+
+		const renderRecipientHint = () => {
+			if (!(hintNode instanceof HTMLElement)) {
+				return;
+			}
+
+			const match = findRecipientMatch(input.value);
+			if (!match) {
+				hintNode.textContent = (algoraCopy[algoraMode] || algoraCopy.douceur).fallbackHint || defaultHint || "Choisis une terre et la phase apparaîtra ici.";
+				applyPlaceholders(null);
+			} else {
+				hintNode.textContent = `${match.username} · λ ${match.lambda} nm · Δ ${match.gap} nm · ${match.phaseLabel} — ${match.summary}`;
+				applyPlaceholders(match.phase);
+			}
+
+			const query = normalizeSignalRecipient(input.value);
+			choiceNodes.forEach((node) => {
+				if (!(node instanceof HTMLElement)) {
+					return;
+				}
+
+				const haystack = normalizeSignalRecipient(node.dataset.recipientSearch || node.dataset.recipientValue || "");
+				const visible = query === "" || haystack.includes(query);
+				node.hidden = !visible;
+			});
+		};
+
+		algoraNodes.forEach((node) => {
+			if (!(node instanceof HTMLButtonElement)) {
+				return;
+			}
+
+			const nodeMode = node.dataset.algoraMode || "douceur";
+			node.classList.toggle("is-active", nodeMode === algoraMode);
+			node.addEventListener("click", () => {
+				algoraMode = nodeMode;
+				saveAlgoraMode(algoraMode);
+				algoraNodes.forEach((otherNode) => {
+					if (otherNode instanceof HTMLButtonElement) {
+						otherNode.classList.toggle("is-active", (otherNode.dataset.algoraMode || "") === algoraMode);
+					}
+				});
+				refreshSuggestionPriority();
+				renderRecipientHint();
+			});
+		});
+
+		choiceNodes.forEach((node) => {
+			if (!(node instanceof HTMLButtonElement)) {
+				return;
+			}
+
+			node.addEventListener("click", () => {
+				input.value = node.dataset.recipientValue || "";
+				input.dispatchEvent(new Event("input", { bubbles: true }));
+				input.focus();
+			});
+		});
+
+		refreshSuggestionPriority();
+		input.addEventListener("input", renderRecipientHint);
+		input.addEventListener("change", renderRecipientHint);
+		renderRecipientHint();
+	});
+
+	composeForms.forEach((form) => {
+		if (!(form instanceof HTMLFormElement)) {
+			return;
+		}
+
+		const subjectInput = form.querySelector("[data-signal-draft-subject]");
+		const bodyInput = form.querySelector("[data-signal-draft-body]");
+		const receiverInput = form.querySelector('input[name="receiver_slug"]');
+		const statusNode = form.querySelector("[data-signal-draft-status]");
+		const draftScope = form.dataset.draftScope || `${window.location.pathname}${window.location.search}`;
+		const storageKey = `o-signal-draft:${draftScope}`;
+
+		const renderStatus = (message) => {
+			if (statusNode instanceof HTMLElement && message) {
+				statusNode.textContent = message;
+			}
+		};
+
+		const restoreDraft = () => {
+			try {
+				const raw = window.localStorage.getItem(storageKey);
+				if (!raw) {
+					return;
+				}
+
+				const draft = JSON.parse(raw);
+				if (subjectInput instanceof HTMLInputElement && typeof draft.subject === "string" && !subjectInput.value) {
+					subjectInput.value = draft.subject;
+				}
+				if (bodyInput instanceof HTMLTextAreaElement && typeof draft.body === "string" && !bodyInput.value) {
+					bodyInput.value = draft.body;
+				}
+				if (receiverInput instanceof HTMLInputElement && typeof draft.receiver === "string" && !receiverInput.value) {
+					receiverInput.value = draft.receiver;
+				}
+				if ((draft.subject || draft.body || draft.receiver)) {
+					renderStatus("Brouillon restauré localement. ⌘/Ctrl + Entrée envoie.");
+				}
+			} catch {
+				// Ignore draft restore failures.
+			}
+		};
+
+		const persistDraft = () => {
+			try {
+				const subject = subjectInput instanceof HTMLInputElement ? subjectInput.value : "";
+				const body = bodyInput instanceof HTMLTextAreaElement ? bodyInput.value : "";
+				const receiver = receiverInput instanceof HTMLInputElement ? receiverInput.value : "";
+				if (!subject.trim() && !body.trim() && !receiver.trim()) {
+					window.localStorage.removeItem(storageKey);
+					renderStatus("Brouillon vide. ⌘/Ctrl + Entrée envoie.");
+					return;
+				}
+
+				window.localStorage.setItem(storageKey, JSON.stringify({
+					subject,
+					body,
+					receiver,
+					updatedAt: Date.now(),
+				}));
+				renderStatus("Brouillon gardé localement. ⌘/Ctrl + Entrée envoie.");
+			} catch {
+				// Ignore draft persistence failures.
+			}
+		};
+
+		restoreDraft();
+
+		[subjectInput, bodyInput, receiverInput].forEach((field) => {
+			if (!(field instanceof HTMLInputElement) && !(field instanceof HTMLTextAreaElement)) {
+				return;
+			}
+
+			field.addEventListener("input", persistDraft);
+		});
+
+		if (bodyInput instanceof HTMLTextAreaElement) {
+			bodyInput.addEventListener("keydown", (event) => {
+				if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+					event.preventDefault();
+					renderStatus("Transmission en cours...");
+					form.requestSubmit();
+				}
+			});
+		}
+
+		form.addEventListener("submit", () => {
+			try {
+				window.localStorage.removeItem(storageKey);
+			} catch {
+				// Ignore cleanup failures.
+			}
+			renderStatus("Transmission en cours...");
+		});
+	});
+}
+
 initGuideVoice();
+initSignalFlow();
+initSpectralTuner();
