@@ -33,12 +33,15 @@ function signup_portal_steps(): array
     return $portals;
 }
 
+
 $host = request_host();
-if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
-    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/');
-    header('Location: https://sowwwl.com' . $path, true, 302);
-    exit;
-}
+$isSowwwlXyz = ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz');
+// Désactive la redirection pour sowwwl.xyz, on veut un contenu spécial
+// if ($isSowwwlXyz) {
+//     $path = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+//     header('Location: https://sowwwl.com' . $path, true, 302);
+//     exit;
+// }
 
 $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/';
 if (($host === '0wlslw0.com' || $host === 'www.0wlslw0.com') && ($requestPath === '/' || $requestPath === '/index.php')) {
@@ -267,6 +270,36 @@ $promptSeeds = guide_prompt_seeds();
 </div>
 
 <main class="layout ui-overlay">
+    <?php if ($isSowwwlXyz): ?>
+    <section class="panel reveal mapping-panel" id="mapping" aria-labelledby="mapping-title" style="margin-bottom:2rem;">
+        <div class="section-topline">
+            <div>
+                <h2 id="mapping-title">Mapping : Réalité · Plasma · Surface torique</h2>
+                <p class="panel-copy">Ce schéma relie le monde réel, le plasma (données/flux) et la surface torique (interface Sowwwl).<br>Chaque point sur la surface correspond à une projection d’un état du réel via le plasma.</p>
+            </div>
+        </div>
+        <div class="mapping-visual" style="display:flex;justify-content:center;align-items:center;gap:2rem;flex-wrap:wrap;">
+            <div style="text-align:center;">
+                <div style="width:80px;height:80px;border-radius:50%;background:#e0e0e0;border:2px solid #bbb;display:flex;align-items:center;justify-content:center;font-weight:bold;">Réalité<br><span style='font-size:2rem;'>🌍</span></div>
+                <div style="margin-top:0.5rem;font-size:0.9em;">Phénomènes, actions, vécu</div>
+            </div>
+            <div style="font-size:2.5rem;">⟶</div>
+            <div style="text-align:center;">
+                <div style="width:80px;height:80px;border-radius:50%;background:#cce6ff;border:2px solid #3399ff;display:flex;align-items:center;justify-content:center;font-weight:bold;">Plasma<br><span style='font-size:2rem;'>💧</span></div>
+                <div style="margin-top:0.5rem;font-size:0.9em;">Flux, données, médiation</div>
+            </div>
+            <div style="font-size:2.5rem;">⟶</div>
+            <div style="text-align:center;">
+                <div style="width:80px;height:80px;border-radius:50%;background:#f5e6ff;border:2px solid #a259ff;display:flex;align-items:center;justify-content:center;font-weight:bold;">Surface torique<br><span style='font-size:2rem;'>🌀</span></div>
+                <div style="margin-top:0.5rem;font-size:0.9em;">Interface, visualisation, navigation</div>
+            </div>
+        </div>
+        <div style="margin-top:1.5rem;text-align:center;font-size:1.1em;">
+            <strong>Lecture :</strong> <span style="color:#3399ff">Le plasma</span> fait le lien entre <span style="color:#e0e0e0">la réalité</span> et <span style="color:#a259ff">la surface torique</span>.<br>
+            <span style="font-size:0.95em;">Chaque action réelle est médiée par le plasma et projetée/interprétée sur la surface torique.</span>
+        </div>
+    </section>
+    <?php endif; ?>
     <?php if (!$homeVisualOnly): ?>
     <header class="top-bar reveal">
         <span class="eyebrow eyebrow-pill"><?= h($brandDomain) ?></span>
