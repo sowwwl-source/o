@@ -2,6 +2,8 @@
 
 Use this checklist before touching code, before deploying, and after verifying production.
 
+Master entry point for all workflow docs: `OPS_INDEX.md`.
+
 ## 1. Decide the workspace boundary
 
 ### If the change is about the live O. app

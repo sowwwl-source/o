@@ -28,6 +28,8 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml restart app
 ```
 
+For a fuller schema-state checklist, see `DB_MIGRATION_PROTOCOL.md`.
+
 ## 4. Verify the container contents
 
 ```bash
@@ -91,3 +93,6 @@ cd /root/O_installation_FRESH/o/deploy
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml build --no-cache app
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml up -d
 ```
+
+For a focused post-deploy checklist, see `LIVE_VERIFICATION.md`.
+For a deliberate recovery path, see `ROLLBACK_PROTOCOL.md`.
