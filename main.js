@@ -15,13 +15,48 @@ const useLocalTimezoneButton = document.querySelector("[data-use-local-timezone]
 const bootline = document.getElementById("bootline");
 const copyButtons = Array.from(document.querySelectorAll("[data-copy-link]"));
 const torusCanvases = Array.from(document.querySelectorAll("[data-torus-cloud]"));
-const signupProgramInputs = Array.from(document.querySelectorAll("[data-signup-program-input]"));
-const signupProgramCards = Array.from(document.querySelectorAll("[data-signup-program-card]"));
-const signupLambdaInput = document.querySelector("[data-signup-lambda-input]");
-const signupProgramLabelOutputs = Array.from(document.querySelectorAll("[data-signup-program-label], [data-preview-program-label]"));
-const signupProgramToneOutputs = Array.from(document.querySelectorAll("[data-signup-program-tone], [data-preview-program-tone]"));
-const signupLambdaValueOutputs = Array.from(document.querySelectorAll("[data-signup-lambda-value]"));
-const signupLambdaRangeOutput = document.querySelector("[data-signup-lambda-range]");
+
+// === SIGNUP SPECTRUM LOGIC ===
+const signupProgramInputs = Array.from(document.querySelectorAll('[data-signup-program-input]'));
+const signupLambdaInput = document.querySelector('[data-signup-lambda-input]');
+const signupProgramLabelOutputs = Array.from(document.querySelectorAll('[data-signup-program-label], [data-preview-program-label]'));
+const signupProgramToneOutputs = Array.from(document.querySelectorAll('[data-signup-program-tone], [data-preview-program-tone]'));
+const signupLambdaValueOutputs = Array.from(document.querySelectorAll('[data-signup-lambda-value]'));
+const signupLambdaRangeOutput = document.querySelector('[data-signup-lambda-range]');
+
+function updateSignupSpectrumUI() {
+	const checkedProgram = signupProgramInputs.find((input) => input.checked);
+	if (!checkedProgram) return;
+	const programLabel = checkedProgram.dataset.programLabel || checkedProgram.value;
+	const programTone = checkedProgram.dataset.programTone || '';
+	const lambdaMin = Number(checkedProgram.dataset.lambdaMin || 400);
+	const lambdaMax = Number(checkedProgram.dataset.lambdaMax || 700);
+	const lambdaDefault = Number(checkedProgram.dataset.lambdaDefault || Math.floor((lambdaMin + lambdaMax) / 2));
+	let lambda = Number(signupLambdaInput?.value || lambdaDefault);
+	lambda = Math.max(lambdaMin, Math.min(lambda, lambdaMax));
+	if (signupLambdaInput) {
+		signupLambdaInput.min = lambdaMin;
+		signupLambdaInput.max = lambdaMax;
+		signupLambdaInput.value = lambda;
+	}
+	signupProgramLabelOutputs.forEach((el) => el.textContent = programLabel);
+	signupProgramToneOutputs.forEach((el) => el.textContent = programTone);
+	signupLambdaValueOutputs.forEach((el) => el.textContent = lambda);
+	if (signupLambdaRangeOutput) signupLambdaRangeOutput.textContent = `${lambdaMin}–${lambdaMax} nm`;
+}
+
+if (signupProgramInputs.length && signupLambdaInput) {
+	signupProgramInputs.forEach((input) => {
+		input.addEventListener('change', () => {
+			updateSignupSpectrumUI();
+		});
+	});
+	signupLambdaInput.addEventListener('input', () => {
+		updateSignupSpectrumUI();
+	});
+	// Initial sync
+	updateSignupSpectrumUI();
+}
 
 function applyThemeState(isInverted) {
 	document.body.classList.toggle("is-inverted", Boolean(isInverted));
