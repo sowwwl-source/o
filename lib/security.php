@@ -51,10 +51,33 @@ function send_security_headers(): void
     header('Cache-Control: no-store, private, max-age=0');
     header('Pragma: no-cache');
     header('Vary: Cookie');
-    header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'");
+    header('Content-Security-Policy: ' . content_security_policy());
     header('Cross-Origin-Opener-Policy: same-origin');
     header('Cross-Origin-Resource-Policy: same-origin');
     header('X-Permitted-Cross-Domain-Policies: none');
+}
+
+function content_security_policy(): string
+{
+    $requestPath = (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/');
+
+    if ($requestPath === '/map') {
+        return implode('; ', [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' https://unpkg.com",
+            "style-src 'self' 'unsafe-inline' https://unpkg.com",
+            "img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org",
+            "connect-src 'self' https://tile.openstreetmap.org https://*.tile.openstreetmap.org",
+            "manifest-src 'self'",
+            "worker-src 'self' blob:",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "frame-ancestors 'none'",
+            "object-src 'none'",
+        ]);
+    }
+
+    return "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'";
 }
 
 function site_origin(): string

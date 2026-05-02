@@ -33,7 +33,8 @@ For a fuller schema-state checklist, see `DB_MIGRATION_PROTOCOL.md`.
 ## 4. Verify the container contents
 
 ```bash
-docker exec sowwwl-o-app-1 sh -lc 'ls -la /var/www/html/.htaccess /var/www/html/0wlslw0.php /var/www/html/str3m.php /var/www/html/map.php /var/www/html/map_points.php'
+docker exec sowwwl-o-app-1 sh -lc 'ls -la /var/www/html/.htaccess /var/www/html/0wlslw0.php /var/www/html/0wlslw0_voice.php /var/www/html/str3m.php /var/www/html/map.php /var/www/html/map_points.php'
+docker exec sowwwl-o-app-1 sh -lc 'printenv | grep -E "SOWWWL_0WLSLW0_(CHAT_URL|AGENT_ENDPOINT|AGENT_MODE|AGENT_INPUT_FIELD|AGENT_TIMEOUT_SECONDS)"'
 ```
 
 ## 5. Verify live domains
@@ -41,6 +42,8 @@ docker exec sowwwl-o-app-1 sh -lc 'ls -la /var/www/html/.htaccess /var/www/html/
 ```bash
 curl -I https://0wlslw0.com
 curl -sL https://0wlslw0.com | grep -E 'Signal before story|concierge d entree|Entrer sans se perdre|0wlslw0'
+
+curl -sL https://sowwwl.com/0wlslw0 | grep -E 'Accompagnement vocal|voice only|guide vocal|fallback local|Activer la voix'
 
 curl -I https://sowwwl.com/signal
 curl -I https://sowwwl.com/str3m
@@ -51,6 +54,7 @@ curl -I https://sowwwl.com/map
 
 - `0wlslw0.com` should not serve the old static placeholder
 - `0wlslw0.com` should redirect to `/0wlslw0` or serve the guide content
+- `/0wlslw0` should expose the voice-only guide block
 - `signal` should expose mailbox behavior
 - `str3m` should stay public
 - `map` should respond from the O. app

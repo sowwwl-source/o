@@ -98,16 +98,28 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 After deploy, verify at least:
 
 - `https://sowwwl.com/`
+- `https://sowwwl.com/0wlslw0`
 - `https://sowwwl.com/signal`
 - `https://sowwwl.com/str3m`
 - `https://sowwwl.com/echo.php`
 
 Expected behavior:
 
+- `0wlslw0` shows the voice guide block when the updated app image is live
 - `Signal` shows a mailbox UX, not the old public trace wall
 - `Signal` uses the land virtual email and can send an identity verification email
 - `Écho` still works and lists contacts from JSON lands, even if SQL `lands` rows are absent
 - `sowwwl.xyz` redirects toward `sowwwl.com`
+
+If you want the live app to relay to the DigitalOcean voice agent, also set these variables in `.env.production`:
+
+- `SOWWWL_0WLSLW0_AGENT_ENDPOINT`
+- `SOWWWL_0WLSLW0_AGENT_KEY`
+- `SOWWWL_0WLSLW0_AGENT_AUTH_HEADER`
+- `SOWWWL_0WLSLW0_AGENT_AUTH_SCHEME`
+- `SOWWWL_0WLSLW0_AGENT_MODE`
+- `SOWWWL_0WLSLW0_AGENT_INPUT_FIELD`
+- `SOWWWL_0WLSLW0_AGENT_EXTRA_HEADERS_JSON`
 
 Do not run `wrangler deploy` for `sowwwl.xyz`; Cloudflare should proxy the VPS origin instead.
 

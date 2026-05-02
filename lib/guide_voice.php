@@ -15,6 +15,7 @@ function guide_voice_config(): array
     $agentKey = trim((string) (getenv('SOWWWL_0WLSLW0_AGENT_KEY') ?: ''));
     $requestMode = strtolower(trim((string) (getenv('SOWWWL_0WLSLW0_AGENT_MODE') ?: 'chat')));
     $inputField = trim((string) (getenv('SOWWWL_0WLSLW0_AGENT_INPUT_FIELD') ?: 'message'));
+    $extraHeadersRaw = trim((string) (getenv('SOWWWL_0WLSLW0_AGENT_EXTRA_HEADERS_JSON') ?: ''));
     $timeout = (int) (getenv('SOWWWL_0WLSLW0_AGENT_TIMEOUT_SECONDS') ?: 18);
     $timeout = max(5, min($timeout, 45));
 
@@ -31,6 +32,7 @@ function guide_voice_config(): array
         'auth_scheme' => $authScheme !== '' ? $authScheme : 'Bearer',
         'request_mode' => $requestMode,
         'input_field' => $inputField !== '' ? $inputField : 'message',
+        'extra_headers' => guide_voice_decode_headers($extraHeadersRaw),
         'timeout' => $timeout,
     ];
 
@@ -71,10 +73,10 @@ function guide_voice_default_greeting(?array $authenticatedLand = null): string
 {
     $slug = trim((string) ($authenticatedLand['slug'] ?? ''));
     if ($slug !== '') {
-        return 'Je suis 0wlslw0. Je peux t’aider à retrouver ta terre, visiter publiquement, ou passer par Signal, Str3m, aZa ou Echo. Dis-moi ce que tu cherches.';
+        return 'Je suis 0wlslw0. On peut faire simple: retrouver ta terre, visiter publiquement, ou passer par la bonne porte. Dis-moi juste ce que tu cherches.';
     }
 
-    return 'Je suis 0wlslw0. Je peux t’aider à comprendre O., visiter sans compte, ou poser une terre. Dis-moi simplement ce que tu veux faire.';
+    return 'Je suis 0wlslw0. Je peux t’aider à comprendre O., visiter sans compte, ou poser une terre sans te perdre. Dis-moi ce que tu veux faire.';
 }
 
 function guide_voice_reply(string $utterance, ?array $authenticatedLand = null): array
@@ -167,6 +169,10 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
         $headers[] = $config['auth_header'] . ': ' . trim($config['auth_scheme'] . ' ' . $config['agent_key']);
     }
 
+    foreach ($config['extra_headers'] as $headerLine) {
+        $headers[] = $headerLine;
+    }
+
     $body = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     if (!is_string($body)) {
         return null;
@@ -200,6 +206,9 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
     }
 
     $route = guide_voice_extract_route($decoded);
+    if ($route === null) {
+        $route = guide_voice_infer_route_from_text($reply, $utterance);
+    }
     if ($route === null && !empty($localFallback['route'])) {
         $route = $localFallback['route'];
     }
@@ -309,6 +318,7 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
 {
     $text = guide_voice_normalize_text($utterance);
     $slug = trim((string) ($authenticatedLand['slug'] ?? ''));
+    $intent = guide_voice_detect_intent($text);
 
     if ($text === '') {
         return [
@@ -318,7 +328,7 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
         ];
     }
 
-    if (guide_voice_contains($text, ['merci', 'a bientot', 'à bientot', 'au revoir', 'bye'])) {
+    if ($intent === 'goodbye') {
         return [
             'reply' => 'Je reste au passage si tu veux reprendre plus tard. Tu peux revenir quand tu veux.',
             'route' => null,
@@ -326,43 +336,75 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
         ];
     }
 
-    if (guide_voice_contains($text, ['signal', 'message', 'messagerie', 'mailbox', 'inbox', 'courrier', 'boite'])) {
+    if ($intent === 'greeting') {
+        return [
+            'reply' => 'Bonjour. On peut faire très simple : comprendre O., visiter sans compte, ou choisir la bonne porte.',
+            'route' => null,
+            'source' => 'local',
+        ];
+    }
+
+    if ($intent === 'confused') {
+        return [
+            'reply' => 'Respire, on va simple. O. fonctionne par terres et par portes. Si tu veux juste regarder sans t’engager, commence par Str3m.',
+            'route' => [
+                'href' => '/str3m',
+                'label' => 'Commencer par Str3m',
+                'auto_navigate' => guide_voice_should_auto_navigate($text),
+            ],
+            'source' => 'local',
+        ];
+    }
+
+    if ($intent === 'compare') {
+        return [
+            'reply' => 'En très court : Str3m fait découvrir publiquement, Signal sert à écrire et recevoir, aZa garde les traces, et Echo relie deux terres directement. Si tu hésites encore, commence par Str3m.',
+            'route' => [
+                'href' => '/str3m',
+                'label' => 'Commencer par Str3m',
+                'auto_navigate' => guide_voice_should_auto_navigate($text),
+            ],
+            'source' => 'local',
+        ];
+    }
+
+    if ($intent === 'signal') {
         return guide_voice_build_route_reply(
-            'Signal est la boite situee de chaque terre. Tu y passes pour lire, ecrire, et valider une identite legere.',
+            'Signal est la boîte située d’une terre. Tu y passes pour écrire, recevoir, et valider une identité légère.',
             '/signal',
             'Aller vers Signal',
             $text
         );
     }
 
-    if (guide_voice_contains($text, ['str3m', 'stream', 'public', 'visiter', 'voir', 'observer', 'decouvrir', 'découvrir'])) {
+    if ($intent === 'str3m' || $intent === 'public') {
         return guide_voice_build_route_reply(
-            'Str3m te laisse sentir le projet publiquement, sans poser de terre tout de suite. C’est la meilleure porte pour regarder avant de t’engager.',
+            'Str3m te laisse sentir le projet publiquement, sans poser de terre tout de suite. C’est la bonne porte pour regarder avant de t’engager.',
             '/str3m',
             'Aller vers Str3m',
             $text
         );
     }
 
-    if (guide_voice_contains($text, ['aza', 'archive', 'archives', 'memoire', 'mémoire', 'souvenir'])) {
+    if ($intent === 'aza') {
         return guide_voice_build_route_reply(
-            'aZa est la couche de memoire et d’archives. Tu peux y lire publiquement ce qui a deja ete depose.',
+            'aZa est la couche de mémoire et d’archives. Tu peux y lire publiquement ce qui a déjà été déposé, puis déposer à ton tour avec une terre liée.',
             '/aza',
             'Lire aZa',
             $text
         );
     }
 
-    if (guide_voice_contains($text, ['echo', 'écho', 'direct', 'resonance', 'résonance'])) {
+    if ($intent === 'echo') {
         return guide_voice_build_route_reply(
-            'Echo sert aux resonances directes entre terres. Ce n’est pas un mur public, mais un passage plus adresse.',
+            'Echo sert aux résonances directes entre terres. Ce n’est pas un mur public, mais un passage plus adressé.',
             '/echo',
             'Aller vers Echo',
             $text
         );
     }
 
-    if (guide_voice_contains($text, ['poser une terre', 'creer une terre', 'créer une terre', 'creation', 'création', 'inscription', 'commencer', 'entrer'])) {
+    if ($intent === 'create') {
         return guide_voice_build_route_reply(
             'Pour entrer vraiment, il faut poser une terre. Tu choisis un nom, un fuseau, puis tu reçois ton ancrage dans O.',
             '/#poser',
@@ -371,10 +413,10 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
         );
     }
 
-    if (guide_voice_contains($text, ['retrouver ma terre', 'rouvrir ma terre', 'ouvrir ma terre', 'ma terre', 'terre existante', 'revenir'])) {
+    if ($intent === 'reopen') {
         if ($slug !== '') {
             return guide_voice_build_route_reply(
-                'Ta terre est deja liee ici. Je peux te renvoyer directement vers ton espace.',
+                'Ta terre est déjà liée ici. Je peux te renvoyer directement vers ton espace.',
                 '/land.php?u=' . rawurlencode($slug),
                 'Ouvrir ma terre',
                 $text
@@ -389,19 +431,76 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
         );
     }
 
-    if (guide_voice_contains($text, ['comprendre', 'c est quoi', 'c’est quoi', 'que fais tu', 'qui es tu', 'qui es-tu', 'explique', 'projet'])) {
+    if ($intent === 'overview') {
         return [
-            'reply' => 'O. est un ensemble de terres et de portes. Je suis ici pour clarifier le projet, identifier ton intention, puis t’emmener vers la bonne page sans te perdre dans le decor.',
+            'reply' => 'O. n’est pas un fil social classique. C’est un ensemble de terres et de portes. Je suis là pour clarifier le projet, puis t’emmener vers la bonne page.',
             'route' => null,
             'source' => 'local',
         ];
     }
 
     return [
-        'reply' => 'Je peux t’aider a comprendre O., visiter publiquement, poser une terre, ou rejoindre Signal, Str3m, aZa ou Echo. Dis-moi juste la porte que tu veux.',
+        'reply' => 'Je peux t’aider à comprendre O., visiter publiquement, poser une terre, ou choisir entre Signal, Str3m, aZa et Echo. Dis-moi simplement ce que tu veux faire.',
         'route' => null,
         'source' => 'local',
     ];
+}
+
+function guide_voice_detect_intent(string $text): string
+{
+    if ($text === '') {
+        return 'silence';
+    }
+
+    if (guide_voice_contains($text, ['merci', 'a bientot', 'à bientot', 'au revoir', 'bye'])) {
+        return 'goodbye';
+    }
+
+    if (guide_voice_contains($text, ['bonjour', 'salut', 'hello', 'coucou'])) {
+        return 'greeting';
+    }
+
+    if (guide_voice_contains($text, ['je suis perdu', 'perdu', 'je comprends rien', 'je comprends pas', 'je ne comprends pas', 'aide moi', 'aide-moi', 'je suis confus'])) {
+        return 'confused';
+    }
+
+    if (guide_voice_contains($text, ['difference', 'différence', 'choisir entre', 'quel ferry', 'quelle porte', 'signal ou', 'str3m ou', 'aza ou', 'echo ou'])) {
+        return 'compare';
+    }
+
+    if (guide_voice_contains($text, ['signal', 'message', 'messagerie', 'mailbox', 'inbox', 'courrier', 'boite'])) {
+        return 'signal';
+    }
+
+    if (guide_voice_contains($text, ['str3m', 'stream', 'courant public'])) {
+        return 'str3m';
+    }
+
+    if (guide_voice_contains($text, ['visiter', 'public', 'voir', 'observer', 'decouvrir', 'découvrir', 'regarder'])) {
+        return 'public';
+    }
+
+    if (guide_voice_contains($text, ['aza', 'archive', 'archives', 'memoire', 'mémoire', 'souvenir', 'trace', 'traces'])) {
+        return 'aza';
+    }
+
+    if (guide_voice_contains($text, ['echo', 'écho', 'direct', 'resonance', 'résonance'])) {
+        return 'echo';
+    }
+
+    if (guide_voice_contains($text, ['poser une terre', 'creer une terre', 'créer une terre', 'creation', 'création', 'inscription', 'commencer', 'entrer'])) {
+        return 'create';
+    }
+
+    if (guide_voice_contains($text, ['retrouver ma terre', 'rouvrir ma terre', 'ouvrir ma terre', 'ma terre', 'terre existante', 'revenir'])) {
+        return 'reopen';
+    }
+
+    if (guide_voice_contains($text, ['comprendre', 'c est quoi', 'c’est quoi', 'que fais tu', 'qui es tu', 'qui es-tu', 'explique', 'projet'])) {
+        return 'overview';
+    }
+
+    return 'unknown';
 }
 
 function guide_voice_build_route_reply(string $reply, string $href, string $label, string $utterance): array
@@ -491,6 +590,21 @@ function guide_voice_normalize_route(mixed $route): ?array
     ];
 }
 
+function guide_voice_infer_route_from_text(string $reply, string $utterance = ''): ?array
+{
+    $combined = guide_voice_normalize_text(trim($reply . ' ' . $utterance));
+    $intent = guide_voice_detect_intent($combined);
+
+    return match ($intent) {
+        'signal' => ['href' => '/signal', 'label' => 'Aller vers Signal', 'auto_navigate' => false],
+        'str3m', 'public', 'confused', 'compare' => ['href' => '/str3m', 'label' => 'Aller vers Str3m', 'auto_navigate' => false],
+        'aza' => ['href' => '/aza', 'label' => 'Lire aZa', 'auto_navigate' => false],
+        'echo' => ['href' => '/echo', 'label' => 'Aller vers Echo', 'auto_navigate' => false],
+        'create' => ['href' => '/#poser', 'label' => 'Poser une terre', 'auto_navigate' => false],
+        default => null,
+    };
+}
+
 function guide_voice_recent_history(): array
 {
     $history = $_SESSION['guide_voice_history'] ?? [];
@@ -558,4 +672,29 @@ function guide_voice_system_prompt(): string
     ])));
 
     return $prompt;
+}
+
+function guide_voice_decode_headers(string $raw): array
+{
+    if ($raw === '') {
+        return [];
+    }
+
+    $decoded = json_decode($raw, true);
+    if (!is_array($decoded)) {
+        return [];
+    }
+
+    $headers = [];
+    foreach ($decoded as $name => $value) {
+        $headerName = trim((string) $name);
+        $headerValue = trim((string) $value);
+        if ($headerName === '' || $headerValue === '' || str_contains($headerName, ':')) {
+            continue;
+        }
+
+        $headers[] = $headerName . ': ' . $headerValue;
+    }
+
+    return $headers;
 }
