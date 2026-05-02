@@ -608,6 +608,203 @@ function navigateFromSwipe(direction) {
 	return false;
 }
 
+function initStr3mArchipelago() {
+	const container = document.querySelector("[data-str3m-archipelago]");
+	if (!(container instanceof HTMLElement)) {
+		return;
+	}
+
+	const scene = container.querySelector(".archipelago-scene");
+	if (!(scene instanceof HTMLElement)) {
+		return;
+	}
+
+	const wrappers = Array.from(scene.querySelectorAll(".archipelago-card-wrapper"))
+		.filter((wrapper) => wrapper instanceof HTMLElement);
+	const nodes = Array.from(scene.querySelectorAll(".archipelago-node"))
+		.filter((node) => node instanceof HTMLElement);
+	const hint = container.querySelector("[data-str3m-archipelago-hint]");
+	const setHint = (copy) => {
+		if (hint instanceof HTMLElement) {
+			hint.textContent = copy;
+		}
+	};
+
+	nodes.forEach((node) => {
+		const x = Number(node.dataset.archipelagoX || 0);
+		const y = Number(node.dataset.archipelagoY || 0);
+		const z = Number(node.dataset.archipelagoZ || 0);
+		node.style.transform = `translate3d(${x}px, ${y}px, ${z}px)`;
+	});
+
+	const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+	let rotX = 5;
+	let rotY = 0;
+	let posZ = -500;
+	let targetRotX = 5;
+	let targetRotY = 0;
+	let targetPosZ = -500;
+	let pointerId = null;
+	let pointerType = "";
+	let active = false;
+	let armed = false;
+	let longTouchTimer = 0;
+	let startX = 0;
+	let startY = 0;
+	let lastX = 0;
+	let lastY = 0;
+
+	const clearLongTouchTimer = () => {
+		if (!longTouchTimer) {
+			return;
+		}
+
+		window.clearTimeout(longTouchTimer);
+		longTouchTimer = 0;
+	};
+
+	const releasePointer = () => {
+		if (pointerId !== null && container.hasPointerCapture(pointerId)) {
+			container.releasePointerCapture(pointerId);
+		}
+	};
+
+	const resetGesture = () => {
+		clearLongTouchTimer();
+		releasePointer();
+		pointerId = null;
+		pointerType = "";
+		active = false;
+		armed = false;
+		container.classList.remove("is-navigating", "is-touch-arming");
+		setHint(coarsePointer ? "Appui long puis glisse · relâche pour stabiliser" : "Glisser pour pivoter · molette pour avancer");
+	};
+
+	const activateGesture = () => {
+		if (pointerId === null) {
+			return;
+		}
+
+		active = true;
+		armed = false;
+		container.classList.remove("is-touch-arming");
+		container.classList.add("is-navigating");
+		container.setPointerCapture(pointerId);
+		setHint("Navigation armée · gauche/droite pivote · haut/bas traverse");
+	};
+
+	const moveStr3m = (clientX, clientY) => {
+		const deltaX = clientX - lastX;
+		const deltaY = clientY - lastY;
+		lastX = clientX;
+		lastY = clientY;
+
+		targetRotY += deltaX * 0.24;
+		targetRotX -= deltaY * 0.12;
+		targetPosZ += deltaY * 2.8;
+		targetRotX = clamp(targetRotX, -25, 25);
+		targetPosZ = clamp(targetPosZ, -4000, 800);
+	};
+
+	container.addEventListener("pointerdown", (event) => {
+		if ((event.target instanceof Element) && event.target.closest("a, button, input, textarea, select")) {
+			return;
+		}
+
+		resetGesture();
+		pointerId = event.pointerId;
+		pointerType = event.pointerType || "";
+		startX = event.clientX;
+		startY = event.clientY;
+		lastX = event.clientX;
+		lastY = event.clientY;
+
+		if (pointerType === "touch") {
+			armed = true;
+			container.classList.add("is-touch-arming");
+			setHint("Maintiens... puis glisse dans le courant");
+			longTouchTimer = window.setTimeout(activateGesture, 340);
+			return;
+		}
+
+		activateGesture();
+	});
+
+	container.addEventListener("pointermove", (event) => {
+		if (pointerId === null || event.pointerId !== pointerId) {
+			return;
+		}
+
+		const travel = Math.hypot(event.clientX - startX, event.clientY - startY);
+		if (armed && travel > 12) {
+			resetGesture();
+			return;
+		}
+
+		if (!active) {
+			return;
+		}
+
+		event.preventDefault();
+		moveStr3m(event.clientX, event.clientY);
+	});
+
+	["pointerup", "pointercancel", "pointerleave"].forEach((eventName) => {
+		container.addEventListener(eventName, (event) => {
+			if (pointerId !== null && event.pointerId === pointerId) {
+				resetGesture();
+			}
+		});
+	});
+
+	container.addEventListener("wheel", (event) => {
+		event.preventDefault();
+		targetPosZ += event.deltaY * 1.5;
+		targetPosZ = clamp(targetPosZ, -4000, 800);
+	}, { passive: false });
+
+	const render = () => {
+		rotX += (targetRotX - rotX) * 0.08;
+		rotY += (targetRotY - rotY) * 0.08;
+		posZ += (targetPosZ - posZ) * 0.08;
+		scene.style.transform = `translateZ(${posZ}px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+
+		wrappers.forEach((wrapper) => {
+			wrapper.style.transform = `translate(-50%, -50%) rotateY(${-rotY}deg) rotateX(${-rotX}deg)`;
+		});
+
+		window.requestAnimationFrame(render);
+	};
+
+	resetGesture();
+	window.requestAnimationFrame(render);
+}
+
+function initStr3mParallax() {
+	const str3mImage = document.querySelector(".str3m-image");
+	const str3mFigure = document.querySelector(".str3m-figure");
+	if (!(str3mImage instanceof HTMLElement) || !(str3mFigure instanceof HTMLElement)) {
+		return;
+	}
+
+	let currentY = 0;
+	let targetY = 0;
+
+	const renderParallax = () => {
+		const rect = str3mFigure.getBoundingClientRect();
+		if (rect.top < window.innerHeight && rect.bottom > 0) {
+			const centerOffset = (window.innerHeight / 2) - (rect.top + rect.height / 2);
+			targetY = centerOffset * 0.15;
+		}
+
+		currentY += (targetY - currentY) * 0.08;
+		str3mImage.style.transform = `translateY(${-currentY}px)`;
+		window.requestAnimationFrame(renderParallax);
+	};
+
+	window.requestAnimationFrame(renderParallax);
+}
+
 function ensureTorusTouchHint() {
 	if (!document.body) {
 		return null;
@@ -3723,3 +3920,5 @@ function initSignalFlow() {
 initGuideVoice();
 initSignalFlow();
 initSpectralTuner();
+initStr3mArchipelago();
+initStr3mParallax();

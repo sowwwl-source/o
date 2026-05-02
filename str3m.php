@@ -181,12 +181,17 @@ $ambientProfile = land_collective_profile((string) ($dailyStream['mood'] ?? 'cal
                 ];
             }
             ?>
-            <div id="archipelago-3d" class="archipelago-3d-container">
-                <div class="archipelago-instructions">Glisser pour pivoter · Molette pour avancer</div>
+            <div id="archipelago-3d" class="archipelago-3d-container" data-str3m-archipelago>
+                <div class="archipelago-instructions" data-str3m-archipelago-hint>Appui long puis glisse · Molette pour avancer</div>
                 <div class="archipelago-scene">
                     <?php foreach ($islandNodes as $node): ?>
                         <?php $island = $node['island']; ?>
-                        <div class="archipelago-node" style="transform: translate3d(<?= $node['x'] ?>px, <?= $node['y'] ?>px, <?= $node['z'] ?>px);">
+                        <div
+                            class="archipelago-node"
+                            data-archipelago-x="<?= h((string) $node['x']) ?>"
+                            data-archipelago-y="<?= h((string) $node['y']) ?>"
+                            data-archipelago-z="<?= h((string) $node['z']) ?>"
+                        >
                             <div class="archipelago-card-wrapper">
                                 <article class="str3m-island-card <?= $island['slug'] === $newestIslandSlug ? 'is-glowing' : '' ?>">
                                     <div>
@@ -203,106 +208,8 @@ $ambientProfile = land_collective_profile((string) ($dailyStream['mood'] ?? 'cal
                     <?php endforeach; ?>
                 </div>
             </div>
-
-            <script>
-                document.addEventListener('DOMContentLoaded', () => {
-                    const container = document.getElementById('archipelago-3d');
-                    if (!container) return;
-
-                    const scene = container.querySelector('.archipelago-scene');
-                    const nodes = scene.querySelectorAll('.archipelago-card-wrapper');
-                    let rotX = 5, rotY = 0, posZ = -500;
-                    let targetRotX = 5, targetRotY = 0, targetPosZ = -500;
-                    let isDragging = false;
-                    let lastX = 0, lastY = 0;
-
-                    const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
-
-                    const onDragStart = (clientX, clientY, target) => {
-                        if (target.closest('a')) return; // Laisse les liens cliquables
-                        isDragging = true;
-                        lastX = clientX;
-                        lastY = clientY;
-                        container.style.cursor = 'grabbing';
-                    };
-
-                    const onDragMove = (clientX, clientY) => {
-                        if (!isDragging) return;
-                        targetRotY += (clientX - lastX) * 0.25;
-                        targetRotX -= (clientY - lastY) * 0.25;
-                        targetRotX = clamp(targetRotX, -25, 25);
-                        lastX = clientX;
-                        lastY = clientY;
-                    };
-
-                    const onDragEnd = () => {
-                        isDragging = false;
-                        container.style.cursor = 'grab';
-                    };
-
-                    // Souris
-                    container.addEventListener('mousedown', (e) => onDragStart(e.clientX, e.clientY, e.target));
-                    window.addEventListener('mousemove', (e) => onDragMove(e.clientX, e.clientY));
-                    window.addEventListener('mouseup', onDragEnd);
-
-                    // Tactile
-                    container.addEventListener('touchstart', (e) => onDragStart(e.touches[0].clientX, e.touches[0].clientY, e.target), {passive: true});
-                    window.addEventListener('touchmove', (e) => onDragMove(e.touches[0].clientX, e.touches[0].clientY), {passive: true});
-                    window.addEventListener('touchend', onDragEnd);
-
-                    // Molette pour avancer/reculer dans la 3D
-                    container.addEventListener('wheel', (e) => {
-                        e.preventDefault();
-                        targetPosZ += e.deltaY * 1.5;
-                        targetPosZ = clamp(targetPosZ, -4000, 800);
-                    });
-
-                    // Boucle de rendu (Inertie + Billboarding)
-                    const render = () => {
-                        rotX += (targetRotX - rotX) * 0.08;
-                        rotY += (targetRotY - rotY) * 0.08;
-                        posZ += (targetPosZ - posZ) * 0.08;
-
-                        scene.style.transform = `translateZ(${posZ}px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
-                        
-                        // Billboarding: les îles regardent toujours la caméra
-                        nodes.forEach(wrapper => {
-                            wrapper.style.transform = `translate(-50%, -50%) rotateY(${-rotY}deg) rotateX(${-rotX}deg)`;
-                        });
-
-                        requestAnimationFrame(render);
-                    };
-                    requestAnimationFrame(render);
-                });
-            </script>
         <?php endif; ?>
     </section>
 </main>
-
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // Effet Parallax avec inertie sur l'image du Str3m
-        const str3mImage = document.querySelector('.str3m-image');
-        const str3mFigure = document.querySelector('.str3m-figure');
-        
-        if (str3mImage && str3mFigure) {
-            let currentY = 0;
-            let targetY = 0;
-            
-            const renderParallax = () => {
-                const rect = str3mFigure.getBoundingClientRect();
-                // Si l'élément est visible à l'écran
-                if (rect.top < window.innerHeight && rect.bottom > 0) {
-                    const centerOffset = (window.innerHeight / 2) - (rect.top + rect.height / 2);
-                    targetY = centerOffset * 0.15; // Intensité du décalage
-                }
-                currentY += (targetY - currentY) * 0.08; // Facteur d'inertie douce
-                str3mImage.style.transform = `translateY(${-currentY}px)`;
-                requestAnimationFrame(renderParallax);
-            };
-            requestAnimationFrame(renderParallax);
-        }
-    });
-</script>
 </body>
 </html>

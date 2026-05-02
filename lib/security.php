@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+const SOWWWL_AUTH_SESSION_TTL = 12780; // 3h33
+
 function bootstrap_request(): void
 {
     if (PHP_SAPI === 'cli') {
@@ -18,8 +20,9 @@ function start_secure_session(): void
     }
 
     session_name('sowwwl_session');
+    ini_set('session.gc_maxlifetime', (string) SOWWWL_AUTH_SESSION_TTL);
     session_set_cookie_params([
-        'lifetime' => 0,
+        'lifetime' => SOWWWL_AUTH_SESSION_TTL,
         'path' => '/',
         'domain' => '',
         'secure' => request_is_secure(),
@@ -126,8 +129,24 @@ function verify_csrf_token(?string $token): bool
 
 function auth_land_slug(): ?string
 {
+    expire_land_session_if_needed();
+
     $slug = trim((string) ($_SESSION['auth_land_slug'] ?? ''));
     return $slug !== '' ? $slug : null;
+}
+
+function expire_land_session_if_needed(): void
+{
+    $loggedInAt = (int) ($_SESSION['auth_logged_in_at'] ?? 0);
+    if ($loggedInAt <= 0) {
+        return;
+    }
+
+    if ((time() - $loggedInAt) <= SOWWWL_AUTH_SESSION_TTL) {
+        return;
+    }
+
+    logout_land();
 }
 
 function auth_is_land_session_for(?string $slug = null): bool

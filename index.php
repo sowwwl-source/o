@@ -61,8 +61,8 @@ $timezoneSuggestions = [
     'Asia/Tokyo',
     'Asia/Bangkok',
 ];
-$csrfToken = csrf_token();
 $authenticatedLand = current_authenticated_land();
+$csrfToken = csrf_token();
 $form = [
     'username' => '',
     'timezone' => DEFAULT_TIMEZONE,
@@ -185,6 +185,14 @@ $activeLandTone = (string) ($activeVisualProfile['tone'] ?? 'str3m public');
 $activeLambda = (int) ($activeVisualProfile['lambda_nm'] ?? 548);
 $activeLandSlug = $authenticatedLand ? (string) ($authenticatedLand['slug'] ?? '') : '';
 $activeLandUsername = $authenticatedLand ? (string) ($authenticatedLand['username'] ?? '') : '';
+$connectionNeedleAngle = $authenticatedLand
+    ? (int) round(-34 + (($activeLambda - 380) / 400) * 68)
+    : -38;
+$connectionNeedleAngle = max(-44, min(44, $connectionNeedleAngle));
+$connectionNeedleClass = $connectionNeedleAngle < -12
+    ? ' connection-meter--low'
+    : ($connectionNeedleAngle > 12 ? ' connection-meter--high' : ' connection-meter--mid');
+$connectionStatusText = $authenticatedLand ? 'terre liée 3h33' : 'surface publique';
 
 $pdoConn = null;
 if (isset($pdo) && $pdo instanceof PDO) {
@@ -253,6 +261,64 @@ $promptSeeds = guide_prompt_seeds();
 >
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
+
+<aside
+    class="connection-meter<?= $authenticatedLand ? ' is-linked' : ' is-public' ?><?= h($connectionNeedleClass) ?>"
+    id="connexion"
+    aria-labelledby="connection-meter-title"
+>
+    <div class="connection-meter__dial" aria-hidden="true">
+        <span class="connection-meter__arc"></span>
+        <span class="connection-meter__tick connection-meter__tick--left"></span>
+        <span class="connection-meter__tick connection-meter__tick--center"></span>
+        <span class="connection-meter__tick connection-meter__tick--right"></span>
+        <span class="connection-meter__needle"></span>
+        <span class="connection-meter__pin"></span>
+    </div>
+
+    <div class="connection-meter__body">
+        <div class="connection-meter__head">
+            <span class="summary-label">VU connexion</span>
+            <strong id="connection-meter-title"><?= h($connectionStatusText) ?></strong>
+        </div>
+
+        <?php if ($authenticatedLand): ?>
+            <p class="connection-meter__copy">λ <?= h((string) $activeLambda) ?> nm · <?= h($activeLandUsername) ?></p>
+            <div class="connection-meter__actions">
+                <a class="pill-link" href="/land.php?u=<?= rawurlencode($activeLandSlug) ?>">ouvrir</a>
+                <a class="ghost-link" href="/logout.php">retirer</a>
+            </div>
+        <?php else: ?>
+            <form method="post" action="/#connexion" class="connection-meter__form" autocomplete="on">
+                <input type="hidden" name="action" value="login">
+                <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                <label>
+                    <span>Terre</span>
+                    <input
+                        type="text"
+                        name="login_identifier"
+                        placeholder="nom"
+                        required
+                        value="<?= h($form['login_identifier']) ?>"
+                        autocomplete="username"
+                    >
+                </label>
+                <label>
+                    <span>Secret</span>
+                    <input
+                        type="password"
+                        name="password"
+                        placeholder="secret"
+                        required
+                        autocomplete="current-password"
+                    >
+                </label>
+                <button type="submit">entrer</button>
+            </form>
+            <a class="connection-meter__create" href="#poser">poser une terre</a>
+        <?php endif; ?>
+    </div>
+</aside>
 
 <div class="world-container" aria-hidden="true">
     <?php if ($isSowwwlXyz): ?>
