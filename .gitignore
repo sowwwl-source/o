@@ -14,11 +14,13 @@
 !/storage/lands/.gitignore
 /storage/runtime/rate-limit/*.json
 !/storage/runtime/rate-limit/.gitignore
+/storage/signals/
 
 # OS / editor
 .DS_Store
 .idea/
 .vscode/
+O_installation_FRESH.code-workspace
 *.ppk
 .wrangler/
 temporary
