@@ -2552,6 +2552,102 @@ function clearGuideVoiceSession() {
 	}
 }
 
+let cornerDocksBooted = false;
+
+function isCompactCornerDockViewport() {
+	return window.innerWidth <= 720;
+}
+
+function registerCornerDock(dock) {
+	if (!(dock instanceof HTMLDetailsElement) || dock.dataset.cornerDockRegistered === "1") {
+		return;
+	}
+
+	dock.dataset.cornerDockRegistered = "1";
+}
+
+function syncCornerDocks(force = false) {
+	const compact = isCompactCornerDockViewport();
+	const docks = Array.from(document.querySelectorAll("[data-corner-dock]"));
+
+	docks.forEach((dock) => {
+		if (!(dock instanceof HTMLDetailsElement)) {
+			return;
+		}
+
+		registerCornerDock(dock);
+		const shouldStayOpen = dock.dataset.cornerDockActive === "1"
+			|| (dock.id && window.location.hash === `#${dock.id}`)
+			|| dock.contains(document.activeElement);
+
+		if (!compact) {
+			dock.open = true;
+			dock.dataset.cornerDockCompact = "0";
+			return;
+		}
+
+		dock.dataset.cornerDockCompact = "1";
+		if (force || dock.dataset.cornerDockInitialized !== "1") {
+			dock.open = shouldStayOpen;
+		} else if (shouldStayOpen) {
+			dock.open = true;
+		}
+
+		dock.dataset.cornerDockInitialized = "1";
+	});
+}
+
+function initCornerDocks() {
+	if (cornerDocksBooted) {
+		syncCornerDocks();
+		return;
+	}
+
+	cornerDocksBooted = true;
+	syncCornerDocks(true);
+
+	window.addEventListener("resize", () => {
+		syncCornerDocks();
+	});
+
+	window.addEventListener("hashchange", () => {
+		syncCornerDocks(true);
+	});
+
+	document.addEventListener("pointerdown", (event) => {
+		if (!isCompactCornerDockViewport()) {
+			return;
+		}
+
+		const target = event.target;
+		if (!(target instanceof Element)) {
+			return;
+		}
+
+		document.querySelectorAll("[data-corner-dock]").forEach((dock) => {
+			if (!(dock instanceof HTMLDetailsElement) || !dock.open || dock.dataset.cornerDockActive === "1") {
+				return;
+			}
+
+			if (!dock.contains(target)) {
+				dock.open = false;
+			}
+		});
+	}, true);
+
+	document.addEventListener("keydown", (event) => {
+		if (event.key !== "Escape" || !isCompactCornerDockViewport()) {
+			return;
+		}
+
+		document.querySelectorAll("[data-corner-dock]").forEach((dock) => {
+			if (dock instanceof HTMLDetailsElement && dock.dataset.cornerDockActive !== "1") {
+				dock.open = false;
+			}
+		});
+	});
+}
+
 async function fetchGuideVoiceState(apiPath = "/0wlslw0/voice") {
 	try {
 		const response = await fetch(apiPath, {
@@ -2585,10 +2681,14 @@ function createGuideVoiceDock(config = {}) {
 		return existing;
 	}
 
-	const shell = document.createElement("section");
+	const shell = document.createElement("details");
 	shell.className = "panel reveal on guide-panel guide-voice-shell guide-voice-dock";
+	shell.open = true;
 	shell.dataset.guideVoice = "";
 	shell.dataset.guideVoiceDock = "1";
+	shell.dataset.cornerDock = "";
+	shell.dataset.cornerDockSide = "right";
+	shell.dataset.cornerDockActive = "0";
 	shell.dataset.guideVoiceApi = config.api_path || "/0wlslw0/voice";
 	shell.dataset.guideVoiceCsrf = config.csrf_token || "";
 	shell.dataset.guideVoiceGreeting = config.greeting || "Je suis 0wlslw0. Je te suis d’une page à l’autre.";
@@ -2602,6 +2702,11 @@ function createGuideVoiceDock(config = {}) {
 	shell.dataset.voiceMuted = readGuideVoiceMutedState() ? "1" : "0";
 	shell.setAttribute("aria-label", "Dock vocal 0wlslw0");
 	shell.innerHTML = `
+		<summary class="guide-voice-dock__toggle">
+			<span class="corner-dock-toggle__kicker">0wlslw0</span>
+			<strong data-guide-voice-dock-label>voix persistante</strong>
+			<span class="corner-dock-toggle__meta" data-guide-voice-dock-state>ouvrir</span>
+		</summary>
 		<div class="guide-voice-dock-head">
 			<p class="eyebrow"><strong>0wlslw0</strong> <span>voix persistante</span></p>
 			<span class="badge">suivi</span>
@@ -2630,6 +2735,8 @@ function createGuideVoiceDock(config = {}) {
 
 	document.body.classList.add("has-guide-voice-dock");
 	document.body.appendChild(shell);
+	registerCornerDock(shell);
+	syncCornerDocks(true);
 	return shell;
 }
 
@@ -2953,6 +3060,8 @@ function mountGuideVoice(root) {
 	const profileNode = root.querySelector("[data-guide-voice-profile]");
 	const muteIndicatorNode = root.querySelector("[data-guide-voice-mute-indicator]");
 	const routeLink = root.querySelector("[data-guide-voice-route]");
+	const dockLabelNode = root.querySelector("[data-guide-voice-dock-label]");
+	const dockStateNode = root.querySelector("[data-guide-voice-dock-state]");
 	const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 	const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
 	const greeting = root.dataset.guideVoiceGreeting || "Je suis 0wlslw0. Dis-moi ce que tu veux faire.";
@@ -2968,6 +3077,40 @@ function mountGuideVoice(root) {
 	let isSpeaking = false;
 	let isWaitingReply = false;
 	let interactionsBound = false;
+
+	function syncDockState() {
+		if (!isDock) {
+			return;
+		}
+
+		root.dataset.cornerDockActive = isActive ? "1" : "0";
+		if (dockLabelNode instanceof HTMLElement) {
+			dockLabelNode.textContent = isActive ? "voix active" : "voix persistante";
+		}
+
+		if (dockStateNode instanceof HTMLElement) {
+			let compactLabel = "ouvrir";
+			if (isActive && isMuted) {
+				compactLabel = "muette";
+			} else if (isWaitingReply) {
+				compactLabel = "analyse";
+			} else if (isSpeaking) {
+				compactLabel = "répond";
+			} else if (root.dataset.voiceState === "listening") {
+				compactLabel = "écoute";
+			} else if (isActive) {
+				compactLabel = "veille";
+			}
+
+			dockStateNode.textContent = compactLabel;
+		}
+
+		if (isCompactCornerDockViewport()) {
+			root.open = isActive || root.open;
+		}
+
+		syncCornerDocks();
+	}
 
 	function persistSession(overrides = {}) {
 		const previous = readGuideVoiceSession();
@@ -3006,6 +3149,7 @@ function mountGuideVoice(root) {
 				? "voix muette · I ou appui long pour la relancer"
 				: "voix active · I inverse + voix · appui long tactile";
 		}
+		syncDockState();
 	}
 
 	function applyGuideVoiceSignature() {
@@ -3036,6 +3180,7 @@ function mountGuideVoice(root) {
 			statusNode.textContent = statusText;
 		}
 		persistSession();
+		syncDockState();
 	}
 
 	function setTranscript(text) {
@@ -3171,6 +3316,10 @@ function mountGuideVoice(root) {
 		}
 		setState("idle", message);
 		clearGuideVoiceSession();
+		if (isDock && isCompactCornerDockViewport()) {
+			root.open = false;
+		}
+		syncDockState();
 	}
 
 	function resumeAfterReply(delay = 260) {
@@ -3346,6 +3495,7 @@ function mountGuideVoice(root) {
 	applyGuideVoiceSignature();
 	hideRoute();
 	bindNavigationCarry();
+	syncDockState();
 
 	const restoredRoute = normalizeGuideVoiceRoute(persisted.route || null);
 	if (restoredRoute) {
@@ -3438,6 +3588,9 @@ function mountGuideVoice(root) {
 		const firstActivation = !session.everActivated;
 		isActive = true;
 		isWaitingReply = false;
+		if (isDock && isCompactCornerDockViewport()) {
+			root.open = true;
+		}
 		hideRoute();
 		startButton.hidden = true;
 		stopButton.hidden = false;
@@ -3492,6 +3645,8 @@ function mountGuideVoice(root) {
 		if (wasSpeaking && nextMuted && isActive && !isWaitingReply) {
 			window.setTimeout(beginListening, 140);
 		}
+
+		syncDockState();
 	});
 
 	const navigationCarry = Boolean(persisted.active);
@@ -3520,6 +3675,7 @@ function mountGuideVoice(root) {
 			window.setTimeout(beginListening, 320);
 		}
 		persistSession({ active: true, autoResume: true, pendingNavigation: "", carryMessage: "" });
+		syncDockState();
 		return;
 	}
 
@@ -3534,6 +3690,7 @@ function mountGuideVoice(root) {
 	if (startButton instanceof HTMLElement) {
 		startButton.textContent = isDock ? "Réactiver la voix" : "Activer la voix";
 	}
+	syncDockState();
 }
 
 function initGuideVoice() {
@@ -4049,6 +4206,7 @@ function initSignalFlow() {
 	}
 }
 
+initCornerDocks();
 initGuideVoice();
 initSignalFlow();
 initSpectralTuner();
