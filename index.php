@@ -262,11 +262,20 @@ $promptSeeds = guide_prompt_seeds();
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 
-<aside
+<details
     class="connection-meter<?= $authenticatedLand ? ' is-linked' : ' is-public' ?><?= h($connectionNeedleClass) ?>"
     id="connexion"
+    data-corner-dock
+    data-corner-dock-side="left"
     aria-labelledby="connection-meter-title"
+    open
 >
+    <summary class="connection-meter__toggle">
+        <span class="corner-dock-toggle__kicker">Connexion</span>
+        <strong><?= h($authenticatedLand ? $connectionStatusText : 'retrouver une terre') ?></strong>
+        <span class="corner-dock-toggle__meta"><?= $authenticatedLand ? h('@' . $activeLandSlug) : 'ouvrir' ?></span>
+    </summary>
+
     <div class="connection-meter__dial" aria-hidden="true">
         <span class="connection-meter__arc"></span>
         <span class="connection-meter__tick connection-meter__tick--left"></span>
@@ -318,7 +327,7 @@ $promptSeeds = guide_prompt_seeds();
             <a class="connection-meter__create" href="#poser">poser une terre</a>
         <?php endif; ?>
     </div>
-</aside>
+</details>
 
 <div class="world-container" aria-hidden="true">
     <?php if ($isSowwwlXyz): ?>
@@ -536,311 +545,314 @@ $promptSeeds = guide_prompt_seeds();
     </header>
 
     <section class="hero-archipelago reveal">
-        <article class="world-intro">
+        <article class="world-intro world-intro--entry">
             <span class="summary-label"><?= h($homeStatusLabel) ?></span>
             <h1><span><?= $authenticatedLand ? 'La terre colore le torus.' : 'O. le réseau minimal' ?></span> <em><?= h($activeLandTone) ?></em></h1>
             <p class="vortex" aria-hidden="true">(.λ.)</p>
             <p class="lead"><?= h($homeLead) ?></p>
-            <div class="hero-actions">
-                <a class="pill-link" href="/signal">Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal : '' ?></a>
-                <a class="ghost-link" href="/str3m">Str3m</a>
-                <a class="ghost-link" href="/map">Map</a>
+            <p class="world-intro-note">Trois gestes suffisent&nbsp;: entrer, poser, retrouver.</p>
+            <div class="secondary-links" aria-label="Passages secondaires du noyau">
                 <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0</a>
-                <a class="ghost-link" href="<?= h($homePrimaryActionHref) ?>"><?= h($homePrimaryActionLabel) ?></a>
+                <a class="ghost-link" href="/map">Map</a>
+                <a class="ghost-link" href="/aza.php">Fichiers</a>
             </div>
         </article>
 
-        <nav class="island-grid editorial-nav" aria-label="Ferries (Applications)">
-            <a href="<?= h($guideHref) ?>" class="island-card">
-                <span class="summary-label">Porte 00</span>
-                <strong>0wlslw0</strong>
-                <span>Comprendre O., choisir un passage, poser une terre.</span>
-            </a>
-            <a href="/signal" class="island-card">
-                <span class="summary-label">Ferry 01</span>
-                <strong>Signal</strong>
-                <span>
-                    <?= $authenticatedLand && $signalReady && $signalIdentityLabel !== ''
-                        ? h('Écrire, recevoir · ' . $signalIdentityLabel)
-                        : 'Écrire, recevoir, valider une adresse située.' ?>
-                </span>
-            </a>
-            <a href="/str3m" class="island-card">
-                <span class="summary-label">Ferry 02</span>
-                <strong>Str3m</strong>
-                <span>Explorer les îles des autres utilisateurs.</span>
-            </a>
-            <a href="/map" class="island-card">
-                <span class="summary-label">Ferry 02b</span>
-                <strong>Map</strong>
-                <span>Voir les points du réseau sur une carte.</span>
-            </a>
-            <a href="/aza.php" class="island-card">
-                <span class="summary-label">Ferry 03</span>
-                <strong>Fichiers</strong>
-                <span>Déposer, classer, retrouver.</span>
-            </a>
-            <a href="/echo" class="island-card">
-                <span class="summary-label">Ferry 04</span>
-                <strong style="display: flex; align-items: center; gap: 0.5rem;">
-                    Écho
-                    <?php if ($unreadEchoes > 0): ?>
-                        <span style="background: rgba(var(--land-secondary-rgb) / 0.8); color: var(--panel-rgb); font-size: 0.74rem; font-weight: 600; padding: 0.08rem 0.46rem; border-radius: 99px;"><?= $unreadEchoes ?></span>
-                    <?php endif; ?>
-                </strong>
-                <span>Résonance directe entre deux terres.</span>
-            </a>
+        <nav class="entry-grid editorial-nav" aria-label="Entrées principales du noyau">
+            <?php if ($authenticatedLand): ?>
+                <a href="<?= h($homePrimaryActionHref) ?>" class="entry-card entry-card--primary">
+                    <span class="summary-label">01 · terre</span>
+                    <strong>Ouvrir ma terre</strong>
+                    <span>Revenir immédiatement à ton noyau situé.</span>
+                </a>
+                <a href="/signal" class="entry-card">
+                    <span class="summary-label">02 · adresse</span>
+                    <strong>Écrire</strong>
+                    <span>Aller droit vers Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : '' ?>.</span>
+                </a>
+                <a href="/str3m" class="entry-card">
+                    <span class="summary-label">03 · public</span>
+                    <strong>Entrer publiquement</strong>
+                    <span>Voir le courant avant de replonger dans ta terre.</span>
+                </a>
+            <?php else: ?>
+                <a href="/str3m" class="entry-card entry-card--primary">
+                    <span class="summary-label">01 · public</span>
+                    <strong>Entrer publiquement</strong>
+                    <span>Lire le courant, regarder les îles, sentir la surface.</span>
+                </a>
+                <a href="#poser" class="entry-card">
+                    <span class="summary-label">02 · terre</span>
+                    <strong>Poser une terre</strong>
+                    <span>Créer un lieu à toi, discret, situé, lié à une fréquence.</span>
+                </a>
+                <a href="#connexion" class="entry-card">
+                    <span class="summary-label">03 · retour</span>
+                    <strong>Retrouver ma terre</strong>
+                    <span>Revenir par le compteur de connexion, sans détour.</span>
+                </a>
+            <?php endif; ?>
         </nav>
 
-        <aside class="land-anchor" id="poser">
-            <section class="land-signature" aria-label="Signature de la terre">
-                <span class="summary-label">Signature</span>
-                <strong class="preview-title"><?= h($authenticatedLand ? $activeLandUsername : 'Str3m public') ?></strong>
-                <div class="signature-grid">
-                    <p><span>Programme</span><strong><?= h($activeLandLabel) ?></strong></p>
-                    <p><span>Longueur d’onde</span><strong>λ <span data-spectral-lambda><?= h((string) $activeLambda) ?></span> nm</strong></p>
-                    <p><span>Tonalité</span><strong><?= h($activeLandTone) ?></strong></p>
+        <aside class="entry-secondary" aria-label="Passages secondaires">
+            <p class="summary-label">Autres passages</p>
+            <div class="entry-secondary-links">
+                <a class="ghost-link" href="/echo">Écho<?= $unreadEchoes > 0 ? ' · ' . $unreadEchoes : '' ?></a>
+                <a class="ghost-link" href="/signal">Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal : '' ?></a>
+                <a class="ghost-link" href="<?= h($guideHref) ?>">Comprendre</a>
+            </div>
+            <p class="panel-copy">Le noyau n’explique plus tout d’un coup. Il ouvre, puis laisse respirer.</p>
+        </aside>
+    </section>
+
+    <section class="home-secondary-grid reveal" id="poser">
+        <section class="land-signature home-secondary-panel" aria-label="Signature de la terre">
+            <span class="summary-label">Signature</span>
+            <strong class="preview-title"><?= h($authenticatedLand ? $activeLandUsername : 'Str3m public') ?></strong>
+            <div class="signature-grid">
+                <p><span>Programme</span><strong><?= h($activeLandLabel) ?></strong></p>
+                <p><span>Longueur d’onde</span><strong>λ <span data-spectral-lambda><?= h((string) $activeLambda) ?></span> nm</strong></p>
+                <p><span>Tonalité</span><strong><?= h($activeLandTone) ?></strong></p>
+            </div>
+
+            <section class="spectral-tuner" data-spectral-tuner data-default-lambda="<?= h((string) $activeLambda) ?>" data-default-mood="<?= h((string) ($dailyStream['mood'] ?? 'calm')) ?>" aria-labelledby="spectral-tuner-title">
+                <div class="spectral-tuner__head">
+                    <div>
+                        <span class="summary-label">Réglage 24h</span>
+                        <strong id="spectral-tuner-title">Dans quel mood es-tu ?</strong>
+                    </div>
+                    <span class="badge badge-glass spectral-tuner__badge" data-spectral-expiry>mode instantané</span>
                 </div>
 
-                <section class="spectral-tuner" data-spectral-tuner data-default-lambda="<?= h((string) $activeLambda) ?>" data-default-mood="<?= h((string) ($dailyStream['mood'] ?? 'calm')) ?>" aria-labelledby="spectral-tuner-title">
-                    <div class="spectral-tuner__head">
-                        <div>
-                            <span class="summary-label">Réglage 24h</span>
-                            <strong id="spectral-tuner-title">Dans quel mood es-tu ?</strong>
-                        </div>
-                        <span class="badge badge-glass spectral-tuner__badge" data-spectral-expiry>mode instantané</span>
+                <label class="spectral-tuner__label" for="spectral-tuner-range">
+                    <span>Fais glisser, puis valide ta longueur d’onde pour 24h.</span>
+                    <strong><span data-spectral-mode-name>clair</span> · λ <span data-spectral-lambda><?= h((string) $activeLambda) ?></span> nm</strong>
+                </label>
+
+                <input
+                    id="spectral-tuner-range"
+                    class="spectral-tuner__range"
+                    type="range"
+                    min="0"
+                    max="4"
+                    step="1"
+                    value="2"
+                    data-spectral-range
+                    aria-describedby="spectral-tuner-copy"
+                >
+
+                <div class="spectral-tuner__stops" aria-hidden="true">
+                    <span>brume</span>
+                    <span>écume</span>
+                    <span>clair</span>
+                    <span>braise</span>
+                    <span>nuit chaude</span>
+                </div>
+
+                <p class="panel-copy spectral-tuner__copy" id="spectral-tuner-copy" data-spectral-copy>Un réglage léger, local à ce navigateur, pour stabiliser ta fréquence de surface pendant 24h.</p>
+
+                <div class="action-row spectral-tuner__actions">
+                    <button type="button" data-spectral-save>Valider 24h</button>
+                    <button type="button" class="ghost-link spectral-tuner__reset" data-spectral-reset>Relâcher</button>
+                </div>
+            </section>
+            <?php if ($authenticatedLand): ?>
+                <div class="action-row auth-action-row">
+                    <a class="pill-link" href="/land.php?u=<?= rawurlencode($activeLandSlug) ?>">Ouvrir la terre</a>
+                    <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
+                </div>
+            <?php endif; ?>
+        </section>
+
+        <details class="minimal-auth home-secondary-panel"<?= $message !== '' ? ' open' : '' ?>>
+            <summary class="signup-summary"><?= $authenticatedLand ? 'Relier une autre terre' : 'Poser une terre' ?></summary>
+            <div class="auth-box">
+                <p class="panel-copy">L’entrée est minimale. Le rituel complet reste ici, un cran plus bas.</p>
+
+                <?php if ($message !== ''): ?>
+                    <div class="flash flash-<?= h($messageType) ?>" aria-live="polite">
+                        <p><?= h($message) ?></p>
+                    </div>
+                <?php endif; ?>
+
+                <form method="post" class="land-form" autocomplete="off">
+                    <input type="hidden" name="action" value="create">
+                    <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+
+                    <div class="form-trap" aria-hidden="true">
+                        <label>
+                            Site web
+                            <input type="text" name="website" tabindex="-1" autocomplete="off">
+                        </label>
                     </div>
 
-                    <label class="spectral-tuner__label" for="spectral-tuner-range">
-                        <span>Fais glisser, puis valide ta longueur d’onde pour 24h.</span>
-                        <strong><span data-spectral-mode-name>clair</span> · λ <span data-spectral-lambda><?= h((string) $activeLambda) ?></span> nm</strong>
+                    <label>
+                        Nom d’usage
+                        <input
+                            type="text"
+                            name="username"
+                            placeholder="ex: nox"
+                            required
+                            minlength="2"
+                            maxlength="42"
+                            value="<?= h($form['username']) ?>"
+                            data-username-input
+                        >
+                        <span class="input-hint">Le nom devient ton repère.</span>
+                    </label>
+
+                    <?php if ($signupPortals): ?>
+                        <section class="signup-portal-ritual" aria-labelledby="signup-portal-title">
+                            <div class="signup-head signup-portal-head">
+                                <div>
+                                    <span class="summary-label">Passage aZa</span>
+                                    <h3 id="signup-portal-title">Configurer la terre avant de la sceller</h3>
+                                    <p class="panel-copy">On ne pose pas juste un compte : on choisit un axe, une amplitude, une manière d’entrer.</p>
+                                </div>
+                            </div>
+
+                            <ol class="signup-portal-grid" aria-label="Parcours aZa pour l’inscription">
+                                <?php foreach ($signupPortals as $portal): ?>
+                                    <li class="signup-portal-card">
+                                        <span class="summary-label">Portail <?= h((string) $portal['slug']) ?> · <?= h((string) $portal['label']) ?></span>
+                                        <div class="signup-portal-copy"><?= $portal['markup'] ?></div>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ol>
+                        </section>
+                    <?php endif; ?>
+
+                    <section class="signup-spectrum" aria-labelledby="signup-spectrum-title">
+                        <div class="signup-head signup-spectrum-head">
+                            <div>
+                                <span class="summary-label">Signature native</span>
+                                <h3 id="signup-spectrum-title">Choisis le programme et la longueur d’onde de ta terre</h3>
+                                <p class="panel-copy">Ici tu règles l’identité durable. Le slider 24h du noyau restera ensuite une modulation légère, pas un remplacement.</p>
+                            </div>
+                        </div>
+
+                        <div class="signup-program-grid" role="radiogroup" aria-label="Choisir un programme de terre">
+                            <?php foreach ($signupPrograms as $programKey => $programDefinition): ?>
+                                <?php [$programMin, $programMax] = land_visual_lambda_range($programKey); ?>
+                                <?php $programDefaultLambda = land_visual_default_lambda($programKey, $signupPreviewSeed); ?>
+                                <label class="signup-program-card" data-signup-program-card>
+                                    <input
+                                        type="radio"
+                                        name="land_program"
+                                        value="<?= h($programKey) ?>"
+                                        <?= $selectedSignupProgram === $programKey ? 'checked' : '' ?>
+                                        data-signup-program-input
+                                        data-program-label="<?= h((string) ($programDefinition['label'] ?? $programKey)) ?>"
+                                        data-program-tone="<?= h((string) ($programDefinition['tone'] ?? '')) ?>"
+                                        data-lambda-min="<?= h((string) $programMin) ?>"
+                                        data-lambda-max="<?= h((string) $programMax) ?>"
+                                        data-lambda-default="<?= h((string) $programDefaultLambda) ?>"
+                                    >
+                                    <span class="summary-label"><?= h($programKey) ?></span>
+                                    <strong><?= h((string) ($programDefinition['label'] ?? $programKey)) ?></strong>
+                                    <span><?= h((string) ($programDefinition['tone'] ?? '')) ?></span>
+                                    <span>λ <?= h((string) $programMin) ?>–<?= h((string) $programMax) ?> nm</span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <label class="signup-lambda-field">
+                            <span class="input-hint">Amplitude choisie pour la terre</span>
+                            <strong><span data-signup-program-label><?= h($selectedSignupLabel) ?></span> · λ <span data-signup-lambda-value><?= h((string) $selectedSignupLambda) ?></span> nm</strong>
+                            <input
+                                type="range"
+                                name="lambda_nm"
+                                min="<?= h((string) $selectedSignupMinLambda) ?>"
+                                max="<?= h((string) $selectedSignupMaxLambda) ?>"
+                                step="1"
+                                value="<?= h((string) $selectedSignupLambda) ?>"
+                                data-signup-lambda-input
+                            >
+                            <span class="signup-lambda-range"><span data-signup-program-tone><?= h($selectedSignupTone) ?></span> · plage <span data-signup-lambda-range><?= h((string) $selectedSignupMinLambda) ?>–<?= h((string) $selectedSignupMaxLambda) ?> nm</span></span>
+                        </label>
+                    </section>
+
+                    <label>
+                        Secret
+                        <input
+                            type="password"
+                            name="password"
+                            placeholder="8 caractères minimum"
+                            required
+                            minlength="<?= AUTH_MIN_PASSWORD_LENGTH ?>"
+                            value="<?= h($form['password']) ?>"
+                            autocomplete="new-password"
+                        >
+                        <span class="input-hint">Il protège ta terre.</span>
                     </label>
 
                     <input
-                        id="spectral-tuner-range"
-                        class="spectral-tuner__range"
-                        type="range"
-                        min="0"
-                        max="4"
-                        step="1"
-                        value="2"
-                        data-spectral-range
-                        aria-describedby="spectral-tuner-copy"
+                        type="hidden"
+                        name="timezone"
+                        value="<?= h($previewTimezone) ?>"
+                        data-timezone-input
                     >
 
-                    <div class="spectral-tuner__stops" aria-hidden="true">
-                        <span>brume</span>
-                        <span>écume</span>
-                        <span>clair</span>
-                        <span>braise</span>
-                        <span>nuit chaude</span>
-                    </div>
+                    <button type="submit">Rejoindre le peuple de l'O</button>
+                </form>
 
-                    <p class="panel-copy spectral-tuner__copy" id="spectral-tuner-copy" data-spectral-copy>Un réglage léger, local à ce navigateur, pour stabiliser ta fréquence de surface pendant 24h.</p>
-
-                    <div class="action-row spectral-tuner__actions">
-                        <button type="button" data-spectral-save>Valider 24h</button>
-                        <button type="button" class="ghost-link spectral-tuner__reset" data-spectral-reset>Relâcher</button>
-                    </div>
-                </section>
-                <?php if ($authenticatedLand): ?>
-                    <div class="action-row auth-action-row">
-                        <a class="pill-link" href="/land.php?u=<?= rawurlencode($activeLandSlug) ?>">Ouvrir la terre</a>
-                        <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
-                    </div>
-                <?php endif; ?>
-            </section>
-
-            <details class="minimal-auth"<?= $message !== '' ? ' open' : '' ?>>
-                <summary class="signup-summary"><?= $authenticatedLand ? 'Relier une autre terre' : 'Rejoindre le peuple de l\'O' ?></summary>
-                <div class="auth-box">
-                    <p class="panel-copy">Connexion optionnelle.</p>
-
-                    <?php if ($message !== ''): ?>
-                        <div class="flash flash-<?= h($messageType) ?>" aria-live="polite">
-                            <p><?= h($message) ?></p>
+                <div class="signup-preview auth-login-preview" aria-labelledby="login-title">
+                    <div class="signup-head auth-head">
+                        <div>
+                            <h3 id="login-title">Connexion</h3>
+                            <p class="panel-copy">Retrouver une terre.</p>
                         </div>
-                    <?php endif; ?>
+                    </div>
 
-                    <form method="post" class="land-form" autocomplete="off">
-                        <input type="hidden" name="action" value="create">
+                    <form method="post" class="land-form" autocomplete="on">
+                        <input type="hidden" name="action" value="login">
                         <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
 
-                        <div class="form-trap" aria-hidden="true">
-                            <label>
-                                Site web
-                                <input type="text" name="website" tabindex="-1" autocomplete="off">
-                            </label>
-                        </div>
-
                         <label>
-                            Nom d’usage
+                            Terre
                             <input
                                 type="text"
-                                name="username"
+                                name="login_identifier"
                                 placeholder="ex: nox"
                                 required
-                                minlength="2"
-                                maxlength="42"
-                                value="<?= h($form['username']) ?>"
-                                data-username-input
+                                value="<?= h($form['login_identifier']) ?>"
+                                autocomplete="username"
                             >
-                            <span class="input-hint">Le nom devient ton repère.</span>
                         </label>
-
-                        <?php if ($signupPortals): ?>
-                            <section class="signup-portal-ritual" aria-labelledby="signup-portal-title">
-                                <div class="signup-head signup-portal-head">
-                                    <div>
-                                        <span class="summary-label">Passage aZa</span>
-                                        <h3 id="signup-portal-title">Configurer la terre avant de la sceller</h3>
-                                        <p class="panel-copy">On ne pose pas juste un compte : on choisit un axe, une amplitude, une manière d’entrer.</p>
-                                    </div>
-                                </div>
-
-                                <ol class="signup-portal-grid" aria-label="Parcours aZa pour l’inscription">
-                                    <?php foreach ($signupPortals as $portal): ?>
-                                        <li class="signup-portal-card">
-                                            <span class="summary-label">Portail <?= h((string) $portal['slug']) ?> · <?= h((string) $portal['label']) ?></span>
-                                            <div class="signup-portal-copy"><?= $portal['markup'] ?></div>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ol>
-                            </section>
-                        <?php endif; ?>
-
-                        <section class="signup-spectrum" aria-labelledby="signup-spectrum-title">
-                            <div class="signup-head signup-spectrum-head">
-                                <div>
-                                    <span class="summary-label">Signature native</span>
-                                    <h3 id="signup-spectrum-title">Choisis le programme et la longueur d’onde de ta terre</h3>
-                                    <p class="panel-copy">Ici tu règles l’identité durable. Le slider 24h du noyau restera ensuite une modulation légère, pas un remplacement.</p>
-                                </div>
-                            </div>
-
-                            <div class="signup-program-grid" role="radiogroup" aria-label="Choisir un programme de terre">
-                                <?php foreach ($signupPrograms as $programKey => $programDefinition): ?>
-                                    <?php [$programMin, $programMax] = land_visual_lambda_range($programKey); ?>
-                                    <?php $programDefaultLambda = land_visual_default_lambda($programKey, $signupPreviewSeed); ?>
-                                    <label class="signup-program-card" data-signup-program-card>
-                                        <input
-                                            type="radio"
-                                            name="land_program"
-                                            value="<?= h($programKey) ?>"
-                                            <?= $selectedSignupProgram === $programKey ? 'checked' : '' ?>
-                                            data-signup-program-input
-                                            data-program-label="<?= h((string) ($programDefinition['label'] ?? $programKey)) ?>"
-                                            data-program-tone="<?= h((string) ($programDefinition['tone'] ?? '')) ?>"
-                                            data-lambda-min="<?= h((string) $programMin) ?>"
-                                            data-lambda-max="<?= h((string) $programMax) ?>"
-                                            data-lambda-default="<?= h((string) $programDefaultLambda) ?>"
-                                        >
-                                        <span class="summary-label"><?= h($programKey) ?></span>
-                                        <strong><?= h((string) ($programDefinition['label'] ?? $programKey)) ?></strong>
-                                        <span><?= h((string) ($programDefinition['tone'] ?? '')) ?></span>
-                                        <span>λ <?= h((string) $programMin) ?>–<?= h((string) $programMax) ?> nm</span>
-                                    </label>
-                                <?php endforeach; ?>
-                            </div>
-
-                            <label class="signup-lambda-field">
-                                <span class="input-hint">Amplitude choisie pour la terre</span>
-                                <strong><span data-signup-program-label><?= h($selectedSignupLabel) ?></span> · λ <span data-signup-lambda-value><?= h((string) $selectedSignupLambda) ?></span> nm</strong>
-                                <input
-                                    type="range"
-                                    name="lambda_nm"
-                                    min="<?= h((string) $selectedSignupMinLambda) ?>"
-                                    max="<?= h((string) $selectedSignupMaxLambda) ?>"
-                                    step="1"
-                                    value="<?= h((string) $selectedSignupLambda) ?>"
-                                    data-signup-lambda-input
-                                >
-                                <span class="signup-lambda-range"><span data-signup-program-tone><?= h($selectedSignupTone) ?></span> · plage <span data-signup-lambda-range><?= h((string) $selectedSignupMinLambda) ?>–<?= h((string) $selectedSignupMaxLambda) ?> nm</span></span>
-                            </label>
-                        </section>
 
                         <label>
                             Secret
                             <input
                                 type="password"
                                 name="password"
-                                placeholder="8 caractères minimum"
+                                placeholder="mot de passe"
                                 required
-                                minlength="<?= AUTH_MIN_PASSWORD_LENGTH ?>"
-                                value="<?= h($form['password']) ?>"
-                                autocomplete="new-password"
+                                autocomplete="current-password"
                             >
-                            <span class="input-hint">Il protège ta terre.</span>
                         </label>
 
-                        <input
-                            type="hidden"
-                            name="timezone"
-                            value="<?= h($previewTimezone) ?>"
-                            data-timezone-input
-                        >
-
-                        <button type="submit">Rejoindre le peuple de l'O</button>
+                        <button type="submit">Affirmer sa présence</button>
                     </form>
+                </div>
 
-                    <div class="signup-preview auth-login-preview" aria-labelledby="login-title">
-                        <div class="signup-head auth-head">
-                            <div>
-                                <h3 id="login-title">Connexion</h3>
-                                <p class="panel-copy">Retrouver une terre.</p>
-                            </div>
-                        </div>
-
-                        <form method="post" class="land-form" autocomplete="on">
-                            <input type="hidden" name="action" value="login">
-                            <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-
-                            <label>
-                                Terre
-                                <input
-                                    type="text"
-                                    name="login_identifier"
-                                    placeholder="ex: nox"
-                                    required
-                                    value="<?= h($form['login_identifier']) ?>"
-                                    autocomplete="username"
-                                >
-                            </label>
-
-                            <label>
-                                Secret
-                                <input
-                                    type="password"
-                                    name="password"
-                                    placeholder="mot de passe"
-                                    required
-                                    autocomplete="current-password"
-                                >
-                            </label>
-
-                            <button type="submit">Affirmer sa présence</button>
-                        </form>
-                    </div>
-
-                    <div
-                        class="signup-preview"
-                        data-origin-base="<?= h($originBase) ?>"
-                        data-preview-shell
-                    >
-                        <span class="summary-label">Aperçu</span>
-                        <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
-                        <div class="preview-grid">
-                            <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land.php?u=' . $previewSlug) ?></code></p>
-                            <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
-                            <p><span>Fuseau</span><strong data-preview-timezone><?= h($previewTimezone) ?></strong></p>
-                            <p><span>Programme</span><strong data-preview-program-label><?= h($selectedSignupLabel) ?></strong></p>
-                            <p><span>Tonalité</span><strong data-preview-program-tone><?= h($selectedSignupTone) ?></strong></p>
-                            <p><span>Signature</span><strong>λ <span data-signup-lambda-value><?= h((string) $selectedSignupLambda) ?></span> nm</strong></p>
-                        </div>
+                <div
+                    class="signup-preview"
+                    data-origin-base="<?= h($originBase) ?>"
+                    data-preview-shell
+                >
+                    <span class="summary-label">Aperçu</span>
+                    <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
+                    <div class="preview-grid">
+                        <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land.php?u=' . $previewSlug) ?></code></p>
+                        <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
+                        <p><span>Fuseau</span><strong data-preview-timezone><?= h($previewTimezone) ?></strong></p>
+                        <p><span>Programme</span><strong data-preview-program-label><?= h($selectedSignupLabel) ?></strong></p>
+                        <p><span>Tonalité</span><strong data-preview-program-tone><?= h($selectedSignupTone) ?></strong></p>
+                        <p><span>Signature</span><strong>λ <span data-signup-lambda-value><?= h((string) $selectedSignupLambda) ?></span> nm</strong></p>
                     </div>
                 </div>
-            </details>
-        </aside>
+            </div>
+        </details>
     </section>
     <?php endif; ?>
 

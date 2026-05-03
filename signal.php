@@ -132,6 +132,10 @@ if ($land && $tablesReady) {
 
 $identityStatus = trim((string) ($mailbox['identity_status'] ?? SIGNAL_IDENTITY_UNVERIFIED));
 $notificationEmail = trim((string) ($mailbox['notification_email'] ?? ''));
+$identityHint = $mailbox ? signal_identity_status_hint($mailbox) : '';
+$identityResendWait = $mailbox ? signal_identity_seconds_until_resend($mailbox) : 0;
+$identitySubmitLabel = $identityStatus === SIGNAL_IDENTITY_VERIFIED ? 'Changer l’adresse validée' : ($identityStatus === SIGNAL_IDENTITY_PENDING ? 'Renvoyer le lien' : 'Valider cette identité');
+$identitySubmitDisabled = $identityResendWait > 0;
 $virtualAddress = $land ? signal_virtual_address($land) : '';
 $currentDraftScope = $targetLand
     ? 'thread:' . (string) ($targetLand['slug'] ?? '')
@@ -238,49 +242,23 @@ $signalHistoryHash = sha1($signalHistoryHtml);
             <section class="panel signal-col" aria-labelledby="signal-mailbox-title">
                 <div class="section-topline">
                     <div>
-                        <h2 id="signal-mailbox-title">Boîte de la terre</h2>
-                        <p class="panel-copy">Adresse interne : <?= h($virtualAddress) ?></p>
+                        <h2 id="signal-mailbox-title">Choisir une terre</h2>
+                        <p class="panel-copy">Ouvre un fil, retrouve une conversation, puis écris. Le reste peut attendre.</p>
                     </div>
-                    <span class="badge"><?= h(signal_identity_status_label($identityStatus)) ?></span>
+                    <span class="badge"><?= h((string) count($contacts)) ?> terre<?= count($contacts) > 1 ? 's' : '' ?></span>
                 </div>
-
-                <p class="panel-copy">L’adresse virtuelle identifie la terre à l’intérieur de l’archipel. Pour relier ce Signal à une présence réelle, ajoute une adresse de notification et valide-la.</p>
-
-                <form action="/signal" method="post" class="land-form signal-form">
-                    <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-                    <input type="hidden" name="action" value="request_identity">
-
-                    <label>
-                        Email de notification / validation
-                        <input type="email" name="notification_email" value="<?= h($notificationEmail) ?>" placeholder="vous@domaine.tld" required>
-                        <span class="input-hint">Un lien de validation y sera envoyé. Tant qu’il n’est pas confirmé, la terre reste en attente.</span>
-                    </label>
-
-                    <button type="submit">Valider cette identité</button>
-                </form>
 
                 <div class="signal-list-block">
                     <div class="section-topline signal-subhead">
                         <div>
                             <h2>Contacts</h2>
-                            <p class="panel-copy">Terres connues, conversations ouvertes et messages non lus.</p>
+                            <p class="panel-copy">Cherche une terre, ouvre un fil, puis laisse les détails avancés se révéler seulement si besoin.</p>
                         </div>
-                        <span class="badge"><?= h((string) count($contacts)) ?> terre<?= count($contacts) > 1 ? 's' : '' ?></span>
+                        <span class="badge">@<?= h((string) $land['slug']) ?></span>
                     </div>
 
                     <div class="signal-flow-shell">
                         <form action="/signal" method="get" class="land-form signal-form signal-open-form" data-signal-open-form>
-                            <div class="signal-algora-shell" data-signal-algora>
-                                <div>
-                                    <span class="signal-flow-hint">algoRa · tonalité</span>
-                                    <p class="signal-card-meta signal-card-meta--resonance">Préfigure un réglage personnel de l’algorithme : douceur, confrontation, écoute.</p>
-                                </div>
-                                <div class="signal-algora-row" role="group" aria-label="Tonalité algoRa">
-                                    <button type="button" class="signal-algora-chip is-active" data-signal-algora-choice data-algora-mode="douceur">douceur</button>
-                                    <button type="button" class="signal-algora-chip" data-signal-algora-choice data-algora-mode="confrontation">confrontation</button>
-                                    <button type="button" class="signal-algora-chip" data-signal-algora-choice data-algora-mode="ecoute">écoute</button>
-                                </div>
-                            </div>
                             <label>
                                 Ouvrir une liaison
                                 <input
@@ -293,39 +271,55 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                                     data-signal-recipient-input
                                     data-placeholder-default="slug ou nom d’une terre"
                                 >
-                                <span class="input-hint" data-signal-recipient-hint>Tape un nom de terre, ouvre un fil, puis laisse le message couler.</span>
+                                <span class="input-hint" data-signal-recipient-hint>Tape un nom de terre, ouvre le fil, puis écris.</span>
                             </label>
-                            <?php if (!empty($resonantContacts)): ?>
-                                <div class="signal-suggestion-shell">
-                                    <span class="signal-flow-hint">Trajectoires en phase</span>
-                                    <div class="signal-suggestion-row" data-signal-recipient-choices>
-                                        <?php foreach ($resonantContacts as $contact): ?>
-                                            <?php
-                                            $suggestionValue = (string) ($contact['counterpart_slug'] ?? '');
-                                            $suggestionLabel = (string) ($contact['counterpart_username'] ?? $suggestionValue);
-                                            $suggestionPhase = (string) ($contact['resonance_phase'] ?? 'drift');
-                                            $suggestionSummary = (string) ($contact['resonance_summary'] ?? '');
-                                            $suggestionLambda = (int) ($contact['counterpart_lambda_nm'] ?? 548);
-                                            ?>
-                                            <button
-                                                type="button"
-                                                class="signal-suggestion-chip signal-suggestion-chip--<?= h($suggestionPhase) ?>"
-                                                data-signal-recipient-choice
-                                                data-recipient-value="<?= h($suggestionValue) ?>"
-                                                data-recipient-search="<?= h(strtolower($suggestionValue . ' ' . $suggestionLabel)) ?>"
-                                                title="<?= h($suggestionSummary) ?>"
-                                            >
-                                                <strong><?= h($suggestionLabel) ?></strong>
-                                                <span>λ <?= h((string) $suggestionLambda) ?> nm</span>
-                                            </button>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
                             <div class="action-row signal-flow-actions">
                                 <button type="submit">Ouvrir le fil</button>
                                 <span class="signal-flow-hint">Entrée ouvre la conversation</span>
                             </div>
+
+                            <details class="signal-advanced">
+                                <summary class="signal-secondary-summary">Affiner l’ouverture</summary>
+                                <div class="signal-algora-shell" data-signal-algora>
+                                    <div>
+                                        <span class="signal-flow-hint">algoRa · tonalité</span>
+                                        <p class="signal-card-meta signal-card-meta--resonance">Préfigure un réglage personnel de l’algorithme : douceur, confrontation, écoute.</p>
+                                    </div>
+                                    <div class="signal-algora-row" role="group" aria-label="Tonalité algoRa">
+                                        <button type="button" class="signal-algora-chip is-active" data-signal-algora-choice data-algora-mode="douceur">douceur</button>
+                                        <button type="button" class="signal-algora-chip" data-signal-algora-choice data-algora-mode="confrontation">confrontation</button>
+                                        <button type="button" class="signal-algora-chip" data-signal-algora-choice data-algora-mode="ecoute">écoute</button>
+                                    </div>
+                                </div>
+
+                                <?php if (!empty($resonantContacts)): ?>
+                                    <div class="signal-suggestion-shell">
+                                        <span class="signal-flow-hint">Trajectoires suggérées</span>
+                                        <div class="signal-suggestion-row" data-signal-recipient-choices>
+                                            <?php foreach ($resonantContacts as $contact): ?>
+                                                <?php
+                                                $suggestionValue = (string) ($contact['counterpart_slug'] ?? '');
+                                                $suggestionLabel = (string) ($contact['counterpart_username'] ?? $suggestionValue);
+                                                $suggestionPhase = (string) ($contact['resonance_phase'] ?? 'drift');
+                                                $suggestionSummary = (string) ($contact['resonance_summary'] ?? '');
+                                                $suggestionLambda = (int) ($contact['counterpart_lambda_nm'] ?? 548);
+                                                ?>
+                                                <button
+                                                    type="button"
+                                                    class="signal-suggestion-chip signal-suggestion-chip--<?= h($suggestionPhase) ?>"
+                                                    data-signal-recipient-choice
+                                                    data-recipient-value="<?= h($suggestionValue) ?>"
+                                                    data-recipient-search="<?= h(strtolower($suggestionValue . ' ' . $suggestionLabel)) ?>"
+                                                    title="<?= h($suggestionSummary) ?>"
+                                                >
+                                                    <strong><?= h($suggestionLabel) ?></strong>
+                                                    <span>λ <?= h((string) $suggestionLambda) ?> nm</span>
+                                                </button>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            </details>
                         </form>
 
                         <?php if (!empty($recentContacts)): ?>
@@ -432,6 +426,33 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                         <?php endforeach; ?>
                     </div>
                 </div>
+
+                <div class="signal-identity-block">
+                    <details class="signal-secondary-block">
+                        <summary class="signal-secondary-summary">Adresse et notifications</summary>
+                        <div class="signal-identity-status signal-identity-status--<?= h($identityStatus) ?>">
+                            <span class="summary-label"><?= h(signal_identity_status_label($identityStatus)) ?></span>
+                            <strong><?= h($identityHint !== '' ? $identityHint : 'Validation non initialisée.') ?></strong>
+                        </div>
+                        <p class="panel-copy">Adresse interne : <?= h($virtualAddress) ?>. Pour relier ce Signal à une présence réelle, ajoute une adresse de notification et valide-la.</p>
+
+                        <form action="/signal" method="post" class="land-form signal-form">
+                            <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                            <input type="hidden" name="action" value="request_identity">
+
+                            <label>
+                                Email de notification / validation
+                                <input type="email" name="notification_email" value="<?= h($notificationEmail) ?>" placeholder="vous@domaine.tld" required>
+                                <span class="input-hint">Un lien de validation y sera envoyé. Tant qu’il n’est pas confirmé, la terre reste en attente.</span>
+                            </label>
+
+                            <button type="submit"<?= $identitySubmitDisabled ? ' disabled' : '' ?>><?= h($identitySubmitLabel) ?></button>
+                            <?php if ($identityResendWait > 0): ?>
+                                <p class="input-hint">Renvoyable dans <?= h((string) $identityResendWait) ?> secondes.</p>
+                            <?php endif; ?>
+                        </form>
+                    </details>
+                </div>
             </section>
 
             <aside class="panel signal-col" aria-labelledby="signal-inbox-title">
@@ -453,67 +474,72 @@ $signalHistoryHash = sha1($signalHistoryHtml);
 
                 <?php if (!$targetLand): ?>
                     <div class="signal-empty-state">
-                        <p class="panel-copy">Signal n’est plus un mur public. Ouvre une terre à gauche, ou amorce directement une première liaison ici.</p>
+                        <div class="signal-compose-head">
+                            <p class="panel-copy">Commence simplement : une destination, un message. Le sujet et la trajectoire viennent après.</p>
+                        </div>
 
                         <form action="/signal" method="post" class="land-form signal-form signal-compose-form" data-signal-compose data-draft-scope="new">
                             <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
                             <input type="hidden" name="action" value="send_message">
 
-                            <div class="signal-algora-shell" data-signal-algora>
-                                <div>
-                                    <span class="signal-flow-hint">algoRa · thème d’écriture</span>
-                                    <p class="signal-card-meta signal-card-meta--resonance">Choisis comment l’algorithme t’oriente : adoucir, confronter, écouter.</p>
-                                </div>
-                                <div class="signal-algora-row" role="group" aria-label="Thème algoRa de composition">
-                                    <button type="button" class="signal-algora-chip is-active" data-signal-algora-choice data-algora-mode="douceur">douceur</button>
-                                    <button type="button" class="signal-algora-chip" data-signal-algora-choice data-algora-mode="confrontation">confrontation</button>
-                                    <button type="button" class="signal-algora-chip" data-signal-algora-choice data-algora-mode="ecoute">écoute</button>
-                                </div>
-                            </div>
-
                             <label>
                                 Destination
                                 <input type="text" name="receiver_slug" list="signal-contact-options" placeholder="slug ou nom d’une terre en douceur" required data-signal-recipient-input data-placeholder-default="slug ou nom d’une terre">
-                                <span class="input-hint" data-signal-recipient-hint>Choisis une terre proche, contrastée ou lointaine — Signal indiquera la phase.</span>
-                            </label>
-
-                            <?php if (!empty($resonantContacts)): ?>
-                                <div class="signal-suggestion-shell">
-                                    <span class="signal-flow-hint">Destinations suggérées</span>
-                                    <div class="signal-suggestion-row" data-signal-recipient-choices>
-                                        <?php foreach ($resonantContacts as $contact): ?>
-                                            <?php
-                                            $suggestionValue = (string) ($contact['counterpart_slug'] ?? '');
-                                            $suggestionLabel = (string) ($contact['counterpart_username'] ?? $suggestionValue);
-                                            $suggestionPhase = (string) ($contact['resonance_phase'] ?? 'drift');
-                                            $suggestionSummary = (string) ($contact['resonance_summary'] ?? '');
-                                            $suggestionLambda = (int) ($contact['counterpart_lambda_nm'] ?? 548);
-                                            ?>
-                                            <button
-                                                type="button"
-                                                class="signal-suggestion-chip signal-suggestion-chip--<?= h($suggestionPhase) ?>"
-                                                data-signal-recipient-choice
-                                                data-recipient-value="<?= h($suggestionValue) ?>"
-                                                data-recipient-search="<?= h(strtolower($suggestionValue . ' ' . $suggestionLabel)) ?>"
-                                                title="<?= h($suggestionSummary) ?>"
-                                            >
-                                                <strong><?= h($suggestionLabel) ?></strong>
-                                                <span>λ <?= h((string) $suggestionLambda) ?> nm</span>
-                                            </button>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
-
-                            <label>
-                                Sujet
-                                <input type="text" name="subject" maxlength="180" placeholder="Premier contact en douceur (optionnel)" data-signal-draft-subject data-placeholder-default="Premier contact (optionnel)">
+                                <span class="input-hint" data-signal-recipient-hint>Choisis une terre et commence à écrire. Les nuances viennent après.</span>
                             </label>
 
                             <label>
                                 Première impulsion
                                 <textarea name="body" rows="7" required placeholder="Écrire à une terre sans casser l’élan..." data-signal-draft-body data-placeholder-default="Écrire à une terre sans casser l’élan..."></textarea>
                             </label>
+
+                            <details class="signal-advanced">
+                                <summary class="signal-secondary-summary">Affiner ce premier message</summary>
+                                <div class="signal-algora-shell" data-signal-algora>
+                                    <div>
+                                        <span class="signal-flow-hint">algoRa · thème d’écriture</span>
+                                        <p class="signal-card-meta signal-card-meta--resonance">Choisis comment l’algorithme t’oriente : adoucir, confronter, écouter.</p>
+                                    </div>
+                                    <div class="signal-algora-row" role="group" aria-label="Thème algoRa de composition">
+                                        <button type="button" class="signal-algora-chip is-active" data-signal-algora-choice data-algora-mode="douceur">douceur</button>
+                                        <button type="button" class="signal-algora-chip" data-signal-algora-choice data-algora-mode="confrontation">confrontation</button>
+                                        <button type="button" class="signal-algora-chip" data-signal-algora-choice data-algora-mode="ecoute">écoute</button>
+                                    </div>
+                                </div>
+
+                                <?php if (!empty($resonantContacts)): ?>
+                                    <div class="signal-suggestion-shell">
+                                        <span class="signal-flow-hint">Destinations suggérées</span>
+                                        <div class="signal-suggestion-row" data-signal-recipient-choices>
+                                            <?php foreach ($resonantContacts as $contact): ?>
+                                                <?php
+                                                $suggestionValue = (string) ($contact['counterpart_slug'] ?? '');
+                                                $suggestionLabel = (string) ($contact['counterpart_username'] ?? $suggestionValue);
+                                                $suggestionPhase = (string) ($contact['resonance_phase'] ?? 'drift');
+                                                $suggestionSummary = (string) ($contact['resonance_summary'] ?? '');
+                                                $suggestionLambda = (int) ($contact['counterpart_lambda_nm'] ?? 548);
+                                                ?>
+                                                <button
+                                                    type="button"
+                                                    class="signal-suggestion-chip signal-suggestion-chip--<?= h($suggestionPhase) ?>"
+                                                    data-signal-recipient-choice
+                                                    data-recipient-value="<?= h($suggestionValue) ?>"
+                                                    data-recipient-search="<?= h(strtolower($suggestionValue . ' ' . $suggestionLabel)) ?>"
+                                                    title="<?= h($suggestionSummary) ?>"
+                                                >
+                                                    <strong><?= h($suggestionLabel) ?></strong>
+                                                    <span>λ <?= h((string) $suggestionLambda) ?> nm</span>
+                                                </button>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <label>
+                                    Sujet
+                                    <input type="text" name="subject" maxlength="180" placeholder="Premier contact en douceur (optionnel)" data-signal-draft-subject data-placeholder-default="Premier contact (optionnel)">
+                                </label>
+                            </details>
 
                             <div class="action-row signal-flow-actions">
                                 <button type="submit">Ouvrir et transmettre</button>
@@ -531,27 +557,30 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                         <input type="hidden" name="action" value="send_message">
                         <input type="hidden" name="receiver_slug" value="<?= h((string) $targetLand['slug']) ?>">
 
-                        <div class="signal-algora-shell" data-signal-algora>
-                            <div>
-                                <span class="signal-flow-hint">algoRa · thème d’écriture</span>
-                                <p class="signal-card-meta signal-card-meta--resonance">Ajuste la trajectoire du message selon la nature du lien en cours.</p>
-                            </div>
-                            <div class="signal-algora-row" role="group" aria-label="Thème algoRa du fil">
-                                <button type="button" class="signal-algora-chip is-active" data-signal-algora-choice data-algora-mode="douceur">douceur</button>
-                                <button type="button" class="signal-algora-chip" data-signal-algora-choice data-algora-mode="confrontation">confrontation</button>
-                                <button type="button" class="signal-algora-chip" data-signal-algora-choice data-algora-mode="ecoute">écoute</button>
-                            </div>
-                        </div>
-
-                        <label>
-                            Sujet
-                            <input type="text" name="subject" maxlength="180" placeholder="Objet du message en douceur (optionnel)" data-signal-draft-subject data-placeholder-default="Objet du message (optionnel)">
-                        </label>
-
                         <label>
                             Message
                             <textarea name="body" rows="7" required placeholder="Écrire à cette terre en cherchant l’accord..." data-signal-draft-body data-placeholder-default="Écrire à cette terre..."></textarea>
                         </label>
+
+                        <details class="signal-advanced">
+                            <summary class="signal-secondary-summary">Affiner ce message</summary>
+                            <div class="signal-algora-shell" data-signal-algora>
+                                <div>
+                                    <span class="signal-flow-hint">algoRa · thème d’écriture</span>
+                                    <p class="signal-card-meta signal-card-meta--resonance">Ajuste la trajectoire du message selon la nature du lien en cours.</p>
+                                </div>
+                                <div class="signal-algora-row" role="group" aria-label="Thème algoRa du fil">
+                                    <button type="button" class="signal-algora-chip is-active" data-signal-algora-choice data-algora-mode="douceur">douceur</button>
+                                    <button type="button" class="signal-algora-chip" data-signal-algora-choice data-algora-mode="confrontation">confrontation</button>
+                                    <button type="button" class="signal-algora-chip" data-signal-algora-choice data-algora-mode="ecoute">écoute</button>
+                                </div>
+                            </div>
+
+                            <label>
+                                Sujet
+                                <input type="text" name="subject" maxlength="180" placeholder="Objet du message en douceur (optionnel)" data-signal-draft-subject data-placeholder-default="Objet du message (optionnel)">
+                            </label>
+                        </details>
 
                         <div class="action-row">
                             <button type="submit">Transmettre</button>

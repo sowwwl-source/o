@@ -36,12 +36,61 @@ Later it should be replaced by a Pi-backed route or tunnel target.
 - `docker-compose.lab.yml`
 - `Caddyfile`
 - `.env.lab.example`
+- `db/Dockerfile`
+- `db/init/*.sql`
+
+The lab DB image embeds its init SQL files.
+This avoids fragile bind mounts to `/opt/o-3ternet-lab/init.sql` on the droplet.
 
 ## Deploy
 
 ```bash
 cp .env.lab.example .env.lab
 docker compose -p sowwwl-o-lab --env-file .env.lab -f docker-compose.lab.yml up --build -d
+```
+
+## Recovery checklist
+
+Use this on the DigitalOcean console when the lab is half-up, when Caddy cannot bind `80/443`, or when Docker says it cannot reach `/var/run/docker.sock`.
+
+```bash
+cd /opt/o-3ternet-lab/deploy-lab
+
+echo "=== docker daemon ==="
+systemctl status docker --no-pager || true
+systemctl start docker || service docker start || snap start docker
+docker version
+
+echo "=== ports 80/443 ==="
+ss -tlnp | grep -E ':80 |:443 ' || true
+docker ps -a --format 'table {{.Names}}\t{{.Ports}}\t{{.Status}}'
+
+echo "=== stop old lab caddy only ==="
+docker rm -f sowwwl-o-lab-caddy-1 2>/dev/null || true
+
+echo "=== compose config ==="
+docker compose -p sowwwl-o-lab --env-file .env.lab -f docker-compose.lab.yml config >/tmp/sowwwl-o-lab.compose.yml
+
+echo "=== deploy lab ==="
+docker compose -p sowwwl-o-lab --env-file .env.lab -f docker-compose.lab.yml up --build -d
+docker compose -p sowwwl-o-lab --env-file .env.lab -f docker-compose.lab.yml ps
+```
+
+If `80/443` are still occupied by a non-lab container, identify it before removing it:
+
+```bash
+docker ps -a --format '{{.ID}} {{.Names}} {{.Ports}}' | grep -E '0.0.0.0:(80|443)|:::(80|443)'
+```
+
+Do not remove a container unless it clearly belongs to the disposable lab or an abandoned test stack.
+
+## Verify
+
+```bash
+curl -I https://lab.sowwwl.cloud
+curl -I https://lab.sowwwl.cloud/0wlslw0
+curl -I https://pocket.lab.sowwwl.cloud
+curl -I https://api.lab.sowwwl.cloud/healthz
 ```
 
 ## Simulate a sleeping land

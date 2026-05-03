@@ -9,6 +9,7 @@ const SIGNAL_IDENTITY_PENDING = 'pending';
 const SIGNAL_IDENTITY_UNVERIFIED = 'unverified';
 const SIGNAL_IDENTITY_VERIFIED = 'verified';
 const SIGNAL_IDENTITY_TTL_SECONDS = 86400;
+const SIGNAL_IDENTITY_RESEND_SECONDS = 120;
 
 function signal_mail_tables_ready(): bool
 {
@@ -119,6 +120,52 @@ function signal_identity_status_label(string $status): string
         SIGNAL_IDENTITY_PENDING => 'validation en attente',
         default => 'identité non vérifiée',
     };
+}
+
+function signal_identity_delivery_mode(): string
+{
+    $mode = strtolower(trim((string) (getenv('SOWWWL_SIGNAL_IDENTITY_DELIVERY') ?: '')));
+    if ($mode === '') {
+        $mode = strtolower(trim((string) (getenv('SOWWWL_MAGIC_LINK_DELIVERY') ?: 'mail')));
+    }
+
+    return in_array($mode, ['mail', 'log', 'display'], true) ? $mode : 'mail';
+}
+
+function signal_identity_seconds_until_resend(array $mailbox): int
+{
+    if (($mailbox['identity_status'] ?? '') !== SIGNAL_IDENTITY_PENDING) {
+        return 0;
+    }
+
+    $sentAt = strtotime((string) ($mailbox['verification_token_sent_at'] ?? '')) ?: 0;
+    if ($sentAt <= 0) {
+        return 0;
+    }
+
+    return max(0, SIGNAL_IDENTITY_RESEND_SECONDS - (time() - $sentAt));
+}
+
+function signal_identity_status_hint(array $mailbox): string
+{
+    $status = trim((string) ($mailbox['identity_status'] ?? SIGNAL_IDENTITY_UNVERIFIED));
+    $email = trim((string) ($mailbox['notification_email'] ?? ''));
+
+    if ($status === SIGNAL_IDENTITY_VERIFIED) {
+        return $email !== ''
+            ? 'Adresse confirmée : ' . $email . '. Les notifications peuvent circuler.'
+            : 'Adresse confirmée. Les notifications peuvent circuler.';
+    }
+
+    if ($status === SIGNAL_IDENTITY_PENDING) {
+        $sentAt = trim((string) ($mailbox['verification_token_sent_at'] ?? ''));
+        $suffix = $sentAt !== '' ? ' Dernier envoi : ' . human_created_label($sentAt) . '.' : '';
+        return $email !== ''
+            ? 'Lien envoyé à ' . $email . '. En attente de confirmation.' . $suffix
+            : 'Validation en attente.' . $suffix;
+    }
+
+    return 'Aucune adresse confirmée. Signal fonctionne en interne, mais la présence réelle n’est pas encore reliée.';
 }
 
 function signal_datetime_to_timestamp(string $value): int
@@ -552,6 +599,18 @@ function signal_request_identity_verification(array $land, string $notificationE
     }
 
     $mailbox = ensure_signal_mailbox($land);
+    $resendWait = signal_identity_seconds_until_resend($mailbox);
+    if ($resendWait > 0) {
+        throw new RuntimeException('Un lien vient déjà d’être généré. Réessaie dans ' . $resendWait . ' secondes.');
+    }
+
+    if (
+        ($mailbox['identity_status'] ?? '') === SIGNAL_IDENTITY_VERIFIED
+        && hash_equals(strtolower(trim((string) ($mailbox['notification_email'] ?? ''))), strtolower($notificationEmail))
+    ) {
+        return signal_mailbox_for_land($land);
+    }
+
     $slug = normalize_username((string) ($land['slug'] ?? ''));
     $token = bin2hex(random_bytes(24));
     $tokenHash = hash('sha256', $slug . '|' . $token);
@@ -560,7 +619,10 @@ function signal_request_identity_verification(array $land, string $notificationE
     $body = "Bonjour,\n\nValidez l’identité de la terre {$land['username']} pour activer la messagerie Signal et recevoir les notifications :\n\n{$verificationUrl}\n\nCe lien reste valide 24 heures.\n";
     $error = null;
 
-    if (!sowwwl_send_email($notificationEmail, $subject, $body, $error)) {
+    $deliveryMode = signal_identity_delivery_mode();
+    if ($deliveryMode === 'log' || $deliveryMode === 'display') {
+        error_log('[sowwwl][signal.identity] ' . $notificationEmail . ' ' . $verificationUrl);
+    } elseif (!sowwwl_send_email($notificationEmail, $subject, $body, $error)) {
         throw new RuntimeException($error ?: 'Impossible d’envoyer l’email de validation.');
     }
 

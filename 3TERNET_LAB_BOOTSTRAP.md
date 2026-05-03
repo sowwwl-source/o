@@ -44,7 +44,7 @@ The lab stack has:
 - `caddy`
 - `app` = shore-lab O. app
 - `pocket` = fake pocket land, same image but separate runtime volume
-- `db`
+- `db` = MySQL lab image with embedded init SQL
 - `api`
 
 This lets us test:
@@ -130,6 +130,9 @@ cd /opt/o-3ternet-lab/deploy-lab
 docker compose -p sowwwl-o-lab --env-file .env.lab -f docker-compose.lab.yml up --build -d
 ```
 
+The DB init files are built into the lab DB image from `deploy-lab/db/init/`.
+Do not add bind mounts for `init.sql`; the lab should remain clone-and-build.
+
 ## Step 7 — verify the containers
 
 ```bash
@@ -139,6 +142,32 @@ docker logs --tail=80 sowwwl-o-lab-caddy-1
 docker logs --tail=80 sowwwl-o-lab-app-1
 docker logs --tail=80 sowwwl-o-lab-pocket-1
 ```
+
+### If Docker or Caddy refuses to start
+
+Use this before retrying the deploy:
+
+```bash
+cd /opt/o-3ternet-lab/deploy-lab
+
+systemctl start docker || service docker start || snap start docker
+docker version
+
+ss -tlnp | grep -E ':80 |:443 ' || true
+docker ps -a --format 'table {{.Names}}\t{{.Ports}}\t{{.Status}}'
+
+docker rm -f sowwwl-o-lab-caddy-1 2>/dev/null || true
+docker compose -p sowwwl-o-lab --env-file .env.lab -f docker-compose.lab.yml config >/tmp/sowwwl-o-lab.compose.yml
+docker compose -p sowwwl-o-lab --env-file .env.lab -f docker-compose.lab.yml up --build -d
+```
+
+If another container owns `80/443`, stop there and identify it first:
+
+```bash
+docker ps -a --format '{{.ID}} {{.Names}} {{.Ports}}' | grep -E '0.0.0.0:(80|443)|:::(80|443)'
+```
+
+Only remove containers that clearly belong to an abandoned lab/test stack.
 
 ## Step 8 — verify the public lab routes
 

@@ -145,10 +145,19 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
             <?php if (!$messagingReady): ?>
                 <p class="panel-copy">Écho reste en veille tant que la base SQL unifiée de Signal n’est pas active.</p>
             <?php elseif ($targetSlug === '' || !$targetLand): ?>
-                <p class="panel-copy">Sélectionne une Terre pour établir la liaison.</p>
+                <div class="echo-empty-state">
+                    <p class="panel-copy">Choisis une terre à gauche pour ouvrir la liaison. Si tu préfères commencer par l’adresse et le fil, passe par Signal.</p>
+                    <div class="action-row">
+                        <a class="pill-link" href="/signal">Ouvrir Signal</a>
+                        <a class="ghost-link" href="/str3m">Retour au public</a>
+                    </div>
+                </div>
             <?php else: ?>
                 <div class="section-topline">
-                    <h2>Liaison avec <?= h($targetUsername) ?></h2>
+                    <div>
+                        <h2>Liaison avec <?= h($targetUsername) ?></h2>
+                        <p class="panel-copy">Direct, sans détour, sur la même trame que Signal.</p>
+                    </div>
                     <span class="badge"><?= h(signal_virtual_address($targetLand)) ?></span>
                     <span class="meta-pill" data-message-live-indicator>direct · veille</span>
                 </div>
@@ -164,11 +173,11 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
                     
                     <label>
                         Transmission
-                        <textarea name="body" required placeholder="Le signal à envoyer..."></textarea>
+                        <textarea name="body" required placeholder="Écrire à cette terre, simplement..."></textarea>
                     </label>
                     
                     <div class="action-row">
-                        <button type="submit">Émettre l'écho</button>
+                        <button type="submit">Transmettre</button>
                         <a class="ghost-link" href="/signal?u=<?= rawurlencode($targetSlug) ?>">Ouvrir la même liaison dans Signal</a>
                     </div>
                 </form>
