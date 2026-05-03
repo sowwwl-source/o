@@ -278,6 +278,100 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
             font-size: 0.86rem;
         }
 
+        .map-lexical-console {
+            display: grid;
+            gap: 0.65rem;
+            padding: 0.85rem 0.95rem;
+            border: 1px solid rgba(158, 220, 193, 0.12);
+            border-radius: 16px;
+            background:
+                radial-gradient(circle at top left, rgba(217, 255, 240, 0.08), transparent 44%),
+                rgba(4, 8, 10, 0.72);
+        }
+
+        .map-lexical-console__bar {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 0.55rem;
+            align-items: center;
+        }
+
+        .map-lexical-console__prompt {
+            color: rgba(217, 255, 240, 0.78);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.9rem;
+        }
+
+        .map-lexical-console input {
+            width: 100%;
+            min-width: 0;
+            border: 1px solid rgba(217, 255, 240, 0.14);
+            border-radius: 999px;
+            padding: 0.72rem 0.9rem;
+            background: rgba(0, 0, 0, 0.2);
+            color: #f2fff9;
+            font: inherit;
+        }
+
+        .map-lexical-console input::placeholder {
+            color: rgba(228, 247, 239, 0.42);
+        }
+
+        .map-lexical-console button {
+            border: 1px solid rgba(217, 255, 240, 0.16);
+            border-radius: 999px;
+            padding: 0.72rem 0.9rem;
+            background: rgba(217, 255, 240, 0.08);
+            color: #f2fff9;
+            cursor: pointer;
+        }
+
+        .map-lexical-console__hints {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .map-lexical-chip {
+            border: 1px solid rgba(217, 255, 240, 0.12);
+            border-radius: 999px;
+            padding: 0.32rem 0.56rem;
+            background: rgba(217, 255, 240, 0.045);
+            color: rgba(228, 247, 239, 0.72);
+            font-size: 0.76rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .map-lexical-console__output {
+            display: grid;
+            gap: 0.45rem;
+            min-height: 1.2rem;
+            color: rgba(228, 247, 239, 0.78);
+            font-size: 0.86rem;
+            line-height: 1.45;
+        }
+
+        .map-lexical-console__output a {
+            color: #f2fff9;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(217, 255, 240, 0.22);
+        }
+
+        .map-lexical-console__output p {
+            margin: 0;
+        }
+
+        .map-fallback__svg .map-line-ghost--match {
+            opacity: 0.72;
+            stroke-width: 2.2;
+        }
+
+        .map-fallback__svg .map-core-node--match {
+            opacity: 1;
+            filter: drop-shadow(0 0 1.2rem rgba(236, 255, 248, 0.72));
+        }
+
         @keyframes mapParticlePulse {
             0%,
             100% {
@@ -331,6 +425,22 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
     </header>
 
     <div id="sowwwl-map-surface" class="map-fallback" aria-live="polite"></div>
+    <section class="map-lexical-console" aria-labelledby="map-lexical-title">
+        <form class="map-lexical-console__bar" data-map-lexical-form>
+            <span class="map-lexical-console__prompt" aria-hidden="true">λ&gt;</span>
+            <label class="sr-only" for="map-lexical-input" id="map-lexical-title">Console lexicale de la map</label>
+            <input id="map-lexical-input" name="q" type="search" placeholder="chaud · terres · courants · @slug · fragment lexical" autocomplete="off" data-map-lexical-input>
+            <button type="submit">lire</button>
+        </form>
+        <div class="map-lexical-console__hints" aria-label="Commandes de la console">
+            <span class="map-lexical-chip">chaud</span>
+            <span class="map-lexical-chip">terres</span>
+            <span class="map-lexical-chip">courants</span>
+            <span class="map-lexical-chip">@slug</span>
+            <span class="map-lexical-chip">aide</span>
+        </div>
+        <div class="map-lexical-console__output" data-map-lexical-output aria-live="polite"></div>
+    </section>
     <p class="map-note" id="map-note">Chargement du tore vivant…</p>
 </main>
 
@@ -339,6 +449,11 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
     const pointsUrl = '/map/points';
     const surfaceRoot = document.getElementById('sowwwl-map-surface');
     const note = document.getElementById('map-note');
+    const lexicalForm = document.querySelector('[data-map-lexical-form]');
+    const lexicalInput = document.querySelector('[data-map-lexical-input]');
+    const lexicalOutput = document.querySelector('[data-map-lexical-output]');
+    let currentPayload = null;
+    let currentLexicalQuery = '';
 
     const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
 
@@ -370,6 +485,11 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
         .replaceAll("'", '&#039;');
 
     const formatPercent = (value) => `${Math.round(Number(value || 0) * 100)}%`;
+    const normalizeLexeme = (value) => String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
 
     const fetchPoints = async () => {
         const response = await fetch(pointsUrl, {
@@ -582,7 +702,80 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
         };
     };
 
-    const renderSurface = (payload) => {
+    const lexicalMatchesFeature = (feature, query) => {
+        const normalized = normalizeLexeme(query);
+        if (normalized === '') {
+            return true;
+        }
+
+        const properties = feature?.properties || {};
+        const kind = String(properties.kind || '');
+        const haystack = normalizeLexeme([
+            properties.slug,
+            properties.username,
+            properties.from_slug,
+            properties.to_slug,
+            properties.from_username,
+            properties.to_username,
+            properties.activity_label,
+            properties.timezone,
+            kind,
+        ].filter(Boolean).join(' '));
+
+        if (normalized === 'aide' || normalized === '?') {
+            return true;
+        }
+
+        if (normalized === 'terres') {
+            return kind === 'land';
+        }
+
+        if (normalized === 'courants') {
+            return kind === 'current';
+        }
+
+        if (normalized === 'chaud' || normalized === 'chaude' || normalized === 'hot') {
+            return Number(properties.activity_heat || 0) >= 0.42;
+        }
+
+        if (normalized.startsWith('@')) {
+            const slugNeedle = normalized.slice(1);
+            return normalizeLexeme(properties.slug || properties.from_slug || '').includes(slugNeedle)
+                || normalizeLexeme(properties.to_slug || '').includes(slugNeedle);
+        }
+
+        return haystack.includes(normalized);
+    };
+
+    const renderLexicalOutput = (payload, query) => {
+        if (!(lexicalOutput instanceof HTMLElement)) {
+            return;
+        }
+
+        const normalized = normalizeLexeme(query);
+        const features = Array.isArray(payload?.features) ? payload.features : [];
+        if (normalized === '' || normalized === 'aide' || normalized === '?') {
+            lexicalOutput.innerHTML = '<p>Commandes : <strong>chaud</strong>, <strong>terres</strong>, <strong>courants</strong>, <strong>@slug</strong>, ou n’importe quel fragment lexical.</p>';
+            return;
+        }
+
+        const matches = features.filter((feature) => lexicalMatchesFeature(feature, query)).slice(0, 8);
+        if (!matches.length) {
+            lexicalOutput.innerHTML = `<p>Aucun nœud ne répond à <strong>${escapeHtml(query)}</strong>. Essaie une racine plus courte.</p>`;
+            return;
+        }
+
+        lexicalOutput.innerHTML = matches.map((feature) => {
+            const properties = feature?.properties || {};
+            if (properties.kind === 'land') {
+                return `<p>terre · <a href="${escapeHtml(properties.land_url || '/land')}">${escapeHtml(properties.username || properties.slug || 'inconnue')}</a> · chaleur ${formatPercent(properties.activity_heat)}</p>`;
+            }
+
+            return `<p>courant · ${escapeHtml(properties.from_username || properties.from_slug || 'origine')} → ${escapeHtml(properties.to_username || properties.to_slug || 'destination')} · chaleur ${formatPercent(properties.activity_heat)}</p>`;
+        }).join('');
+    };
+
+    const renderSurface = (payload, query = '') => {
         if (!(surfaceRoot instanceof HTMLElement)) {
             return;
         }
@@ -590,6 +783,14 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
         const features = Array.isArray(payload?.features) ? payload.features : [];
         const lands = features.filter((feature) => feature?.properties?.kind === 'land');
         const currents = features.filter((feature) => feature?.properties?.kind === 'current');
+        const hasLexicalQuery = normalizeLexeme(query) !== '' && normalizeLexeme(query) !== 'aide' && normalizeLexeme(query) !== '?';
+        const matchingFeatures = hasLexicalQuery ? features.filter((feature) => lexicalMatchesFeature(feature, query)) : features;
+        const matchingLandSlugs = new Set(matchingFeatures
+            .filter((feature) => feature?.properties?.kind === 'land')
+            .map((feature) => String(feature?.properties?.slug || '')));
+        const matchingCurrentKeys = new Set(matchingFeatures
+            .filter((feature) => feature?.properties?.kind === 'current')
+            .map((feature) => `${feature?.properties?.from_slug || ''}|${feature?.properties?.to_slug || ''}`));
         const svgWidth = 960;
         const svgHeight = 540;
         const dust = buildTorusDust(`${lands.length}|${currents.length}`, svgWidth, svgHeight);
@@ -612,7 +813,9 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
             const heat = Math.max(0.18, Math.min(1, Number(feature?.properties?.activity_heat || 0.18)));
             const opacity = (0.025 + heat * 0.08).toFixed(3);
             const strokeWidth = (0.5 + heat * 1.35).toFixed(2);
-            return `<path class="map-line-ghost" d="M ${startX.toFixed(2)} ${startY.toFixed(2)} ${segments}" fill="none" stroke="rgba(217,255,240,${opacity})" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" />`;
+            const currentKey = `${feature?.properties?.from_slug || ''}|${feature?.properties?.to_slug || ''}`;
+            const matchClass = hasLexicalQuery && matchingCurrentKeys.has(currentKey) ? ' map-line-ghost--match' : '';
+            return `<path class="map-line-ghost${matchClass}" d="M ${startX.toFixed(2)} ${startY.toFixed(2)} ${segments}" fill="none" stroke="rgba(217,255,240,${opacity})" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" />`;
         }).join('');
 
         const landDots = lands.map((feature) => {
@@ -624,11 +827,12 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
             const glow = (18 + heat * 42).toFixed(2);
             const slug = escapeHtml(feature?.properties?.slug || 'terre');
             const username = escapeHtml(feature?.properties?.username || slug);
+            const matchClass = hasLexicalQuery && matchingLandSlugs.has(String(feature?.properties?.slug || '')) ? ' map-core-node--match' : '';
             return `
                 <g>
                     <circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${glow}" fill="rgba(159,226,195,${(0.028 + heat * 0.055).toFixed(3)})" />
                     <a href="${escapeHtml(feature?.properties?.land_url || '/land')}" aria-label="ouvrir la terre ${username}">
-                        <circle class="map-core-node" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${radius}" fill="rgba(236,255,248,0.74)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
+                        <circle class="map-core-node${matchClass}" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${radius}" fill="rgba(236,255,248,0.74)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
                     </a>
                     <title>${username} · @${slug}</title>
                 </g>
@@ -718,15 +922,18 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
 
         if (note) {
             note.textContent = lands.length > 0
-                ? `Tore local dense : ${lands.length} terre(s), ${currents.length} courant(s), figures et présences dessinées par densité depuis ${pointsUrl}.`
+                ? `Tore local dense : ${lands.length} terre(s), ${currents.length} courant(s), console lexicale ${hasLexicalQuery ? 'active' : 'en veille'}.`
                 : 'Tore local actif, mais aucune terre publique n’alimente encore la surface.';
         }
+
+        renderLexicalOutput(payload, query);
     };
 
     const bootSurface = async () => {
         try {
             const payload = await fetchPoints();
-            renderSurface(payload);
+            currentPayload = payload;
+            renderSurface(payload, currentLexicalQuery);
         } catch (error) {
             console.error('Impossible de charger la surface torique locale', error);
             if (surfaceRoot instanceof HTMLElement) {
@@ -739,6 +946,23 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
     };
 
     bootSurface();
+
+    if (lexicalForm instanceof HTMLFormElement && lexicalInput instanceof HTMLInputElement) {
+        lexicalForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            currentLexicalQuery = lexicalInput.value;
+            if (currentPayload) {
+                renderSurface(currentPayload, currentLexicalQuery);
+            }
+        });
+
+        lexicalInput.addEventListener('input', () => {
+            currentLexicalQuery = lexicalInput.value;
+            if (currentPayload) {
+                renderSurface(currentPayload, currentLexicalQuery);
+            }
+        });
+    }
 })();
 </script>
 </body>
