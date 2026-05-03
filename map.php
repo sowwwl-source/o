@@ -74,10 +74,23 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
             overflow: hidden;
             border: 1px solid rgba(158, 220, 193, 0.11);
             border-radius: 18px;
+            cursor: grab;
+            touch-action: pan-y;
             background:
                 radial-gradient(circle at 52% 48%, rgba(227, 255, 245, 0.11), transparent 24%),
                 radial-gradient(circle at 50% 54%, rgba(158, 220, 193, 0.05), transparent 56%),
                 linear-gradient(180deg, rgba(3, 6, 8, 0.96), rgba(5, 9, 12, 0.985));
+        }
+
+        .map-fallback.is-map-navigating .map-fallback__frame {
+            cursor: grabbing;
+            touch-action: none;
+        }
+
+        .map-fallback.is-map-arming .map-fallback__frame {
+            box-shadow:
+                inset 0 0 0 1px rgba(217, 255, 240, 0.16),
+                0 0 2rem rgba(159, 226, 195, 0.1);
         }
 
         .map-fallback__frame::before {
@@ -156,6 +169,13 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
 
         .map-fallback__legend strong {
             color: #e8fff4;
+        }
+
+        .map-fallback__nav {
+            margin-left: auto;
+            color: rgba(228, 247, 239, 0.52);
+            text-transform: none;
+            letter-spacing: 0.02em;
         }
 
         .map-fallback__dot,
@@ -454,6 +474,22 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
     const lexicalOutput = document.querySelector('[data-map-lexical-output]');
     let currentPayload = null;
     let currentLexicalQuery = '';
+    let renderFrame = 0;
+    const mapNavigationState = {
+        yaw: 0,
+        pitch: 0,
+        zoom: 1,
+        pointerId: null,
+        armed: false,
+        active: false,
+        moved: false,
+        suppressClick: false,
+        longTouchTimer: 0,
+        startX: 0,
+        startY: 0,
+        lastX: 0,
+        lastY: 0,
+    };
 
     const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
 
@@ -506,12 +542,42 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
         return response.json();
     };
 
+    const wrapLongitude = (lng) => ((((lng + 180) % 360) + 360) % 360) - 180;
+
+    const setNavigationMode = (mode) => {
+        if (!(surfaceRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        surfaceRoot.classList.toggle('is-map-arming', mode === 'arming');
+        surfaceRoot.classList.toggle('is-map-navigating', mode === 'navigating');
+    };
+
+    const scheduleSurfaceRender = () => {
+        if (!currentPayload || renderFrame) {
+            return;
+        }
+
+        renderFrame = window.requestAnimationFrame(() => {
+            renderFrame = 0;
+            renderSurface(currentPayload, currentLexicalQuery);
+        });
+    };
+
     const projectPoint = (lng, lat, width, height) => {
         const safeLng = Number.isFinite(Number(lng)) ? Number(lng) : 0;
         const safeLat = Number.isFinite(Number(lat)) ? Number(lat) : 0;
-        const x = ((safeLng + 180) / 360) * width;
-        const y = ((90 - safeLat) / 180) * height;
-        return [Math.max(0, Math.min(width, x)), Math.max(0, Math.min(height, y))];
+        const navigatedLng = wrapLongitude(safeLng + mapNavigationState.yaw);
+        const navigatedLat = clamp(safeLat + mapNavigationState.pitch, -84, 84);
+        const baseX = ((navigatedLng + 180) / 360) * width;
+        const baseY = ((90 - navigatedLat) / 180) * height;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const zoom = mapNavigationState.zoom;
+        const torusDepth = 1 + (Math.cos((navigatedLng / 180) * Math.PI) * 0.045);
+        const x = centerX + ((baseX - centerX) * zoom * torusDepth);
+        const y = centerY + ((baseY - centerY) * zoom);
+        return [Math.max(-80, Math.min(width + 80, x)), Math.max(-80, Math.min(height + 80, y))];
     };
 
     const buildTorusDust = (seed, width, height, count = 540) => {
@@ -875,6 +941,7 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                     <span><span class="map-fallback__dot"></span> <strong>${lands.length}</strong> terre(s)</span>
                     <span><span class="map-fallback__line"></span> <strong>${currents.length}</strong> courant(s)</span>
                     <span>rendu local autonome</span>
+                    <span class="map-fallback__nav">scroll = zoom · clic/glisse = dérive · appui long tactile</span>
                 </div>
                 <div class="map-fallback__frame">
                     <svg class="map-fallback__svg" viewBox="0 0 ${svgWidth} ${svgHeight}" role="img" aria-label="Vue torique simplifiée des terres actives">
@@ -922,7 +989,7 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
 
         if (note) {
             note.textContent = lands.length > 0
-                ? `Tore local dense : ${lands.length} terre(s), ${currents.length} courant(s), console lexicale ${hasLexicalQuery ? 'active' : 'en veille'}.`
+                ? `Tore local dense : ${lands.length} terre(s), ${currents.length} courant(s), zoom ${mapNavigationState.zoom.toFixed(2)}x, console lexicale ${hasLexicalQuery ? 'active' : 'en veille'}.`
                 : 'Tore local actif, mais aucune terre publique n’alimente encore la surface.';
         }
 
@@ -945,6 +1012,142 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
         }
     };
 
+    const endNavigationGesture = () => {
+        const shouldSuppressClick = mapNavigationState.active && mapNavigationState.moved;
+        if (mapNavigationState.pointerId !== null && surfaceRoot instanceof HTMLElement && surfaceRoot.hasPointerCapture?.(mapNavigationState.pointerId)) {
+            surfaceRoot.releasePointerCapture(mapNavigationState.pointerId);
+        }
+
+        window.clearTimeout(mapNavigationState.longTouchTimer);
+        mapNavigationState.longTouchTimer = 0;
+        mapNavigationState.pointerId = null;
+        mapNavigationState.armed = false;
+        mapNavigationState.active = false;
+        mapNavigationState.moved = false;
+        mapNavigationState.suppressClick = shouldSuppressClick;
+        setNavigationMode('');
+
+        if (shouldSuppressClick) {
+            window.setTimeout(() => {
+                mapNavigationState.suppressClick = false;
+            }, 0);
+        }
+    };
+
+    const activateNavigationGesture = () => {
+        if (mapNavigationState.pointerId === null) {
+            return;
+        }
+
+        mapNavigationState.armed = false;
+        mapNavigationState.active = true;
+        setNavigationMode('navigating');
+    };
+
+    const updateNavigationFromDelta = (deltaX, deltaY) => {
+        mapNavigationState.yaw = wrapLongitude(mapNavigationState.yaw + (deltaX * 0.18 / mapNavigationState.zoom));
+        mapNavigationState.pitch = clamp(mapNavigationState.pitch - (deltaY * 0.12 / mapNavigationState.zoom), -46, 46);
+        scheduleSurfaceRender();
+    };
+
+    const bindMapNavigation = () => {
+        if (!(surfaceRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        surfaceRoot.addEventListener('wheel', (event) => {
+            const frame = event.target instanceof Element ? event.target.closest('.map-fallback__frame') : null;
+            if (!frame) {
+                return;
+            }
+
+            event.preventDefault();
+            const direction = event.deltaY > 0 ? -1 : 1;
+            const nextZoom = mapNavigationState.zoom * (direction > 0 ? 1.08 : 0.92);
+            mapNavigationState.zoom = clamp(nextZoom, 0.72, 1.9);
+            scheduleSurfaceRender();
+        }, { passive: false });
+
+        surfaceRoot.addEventListener('pointerdown', (event) => {
+            const target = event.target instanceof Element ? event.target : null;
+            if (!target || !target.closest('.map-fallback__frame') || target.closest('a')) {
+                return;
+            }
+
+            mapNavigationState.pointerId = event.pointerId;
+            mapNavigationState.startX = event.clientX;
+            mapNavigationState.startY = event.clientY;
+            mapNavigationState.lastX = event.clientX;
+            mapNavigationState.lastY = event.clientY;
+            mapNavigationState.moved = false;
+            surfaceRoot.setPointerCapture?.(event.pointerId);
+
+            if (event.pointerType === 'touch') {
+                mapNavigationState.armed = true;
+                setNavigationMode('arming');
+                mapNavigationState.longTouchTimer = window.setTimeout(activateNavigationGesture, 333);
+                return;
+            }
+
+            event.preventDefault();
+            activateNavigationGesture();
+        });
+
+        surfaceRoot.addEventListener('pointermove', (event) => {
+            if (mapNavigationState.pointerId !== event.pointerId) {
+                return;
+            }
+
+            const deltaFromStart = Math.hypot(
+                event.clientX - mapNavigationState.startX,
+                event.clientY - mapNavigationState.startY
+            );
+
+            if (mapNavigationState.armed && deltaFromStart > 12) {
+                endNavigationGesture();
+                return;
+            }
+
+            if (!mapNavigationState.active) {
+                return;
+            }
+
+            event.preventDefault();
+            const deltaX = event.clientX - mapNavigationState.lastX;
+            const deltaY = event.clientY - mapNavigationState.lastY;
+            mapNavigationState.lastX = event.clientX;
+            mapNavigationState.lastY = event.clientY;
+            mapNavigationState.moved = true;
+            updateNavigationFromDelta(deltaX, deltaY);
+        });
+
+        surfaceRoot.addEventListener('click', (event) => {
+            const target = event.target instanceof Element ? event.target : null;
+            const frame = target ? target.closest('.map-fallback__frame') : null;
+            if (!frame || target?.closest('a')) {
+                return;
+            }
+
+            if (mapNavigationState.suppressClick) {
+                event.preventDefault();
+                mapNavigationState.suppressClick = false;
+                return;
+            }
+
+            const rect = frame.getBoundingClientRect();
+            const offsetX = event.clientX - (rect.left + (rect.width / 2));
+            const offsetY = event.clientY - (rect.top + (rect.height / 2));
+            mapNavigationState.yaw = wrapLongitude(mapNavigationState.yaw + (offsetX * 0.018));
+            mapNavigationState.pitch = clamp(mapNavigationState.pitch - (offsetY * 0.012), -46, 46);
+            scheduleSurfaceRender();
+        });
+
+        surfaceRoot.addEventListener('pointerup', endNavigationGesture);
+        surfaceRoot.addEventListener('pointercancel', endNavigationGesture);
+        surfaceRoot.addEventListener('lostpointercapture', endNavigationGesture);
+    };
+
+    bindMapNavigation();
     bootSurface();
 
     if (lexicalForm instanceof HTMLFormElement && lexicalInput instanceof HTMLInputElement) {
