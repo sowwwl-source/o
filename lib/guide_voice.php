@@ -254,6 +254,166 @@ function guide_voice_route_label(string $route, string $language = 'fr'): string
     return guide_voice_message('route_' . $route, $language);
 }
 
+function guide_voice_interaction_state(): array
+{
+    $state = $_SESSION['guide_voice_state'] ?? [];
+    if (!is_array($state)) {
+        return [];
+    }
+
+    return [
+        'last_intent' => trim((string) ($state['last_intent'] ?? '')),
+        'last_language' => trim((string) ($state['last_language'] ?? 'fr')) ?: 'fr',
+        'last_route_href' => trim((string) ($state['last_route_href'] ?? '')),
+    ];
+}
+
+function guide_voice_store_interaction_state(array $state): void
+{
+    $_SESSION['guide_voice_state'] = [
+        'last_intent' => trim((string) ($state['last_intent'] ?? '')),
+        'last_language' => trim((string) ($state['last_language'] ?? 'fr')) ?: 'fr',
+        'last_route_href' => trim((string) ($state['last_route_href'] ?? '')),
+    ];
+}
+
+function guide_voice_followup_requested(string $text): bool
+{
+    return guide_voice_contains($text, [
+        'et apres', 'et après', 'apres', 'après', 'ensuite', 'puis', 'et ensuite',
+        'and after', 'what next', 'then what', 'after that',
+        'y despues', 'y después', 'despues', 'después', 'luego',
+        'e depois', 'depois', 'depois disso',
+        'e poi', 'dopo', 'dopo di che'
+    ]);
+}
+
+function guide_voice_prompt_text(string $language = 'fr', bool $hasLand = false): string
+{
+    return match ($language) {
+        'en' => $hasLand
+            ? 'Tell me simply: do you want to look around, write, archive, or reopen your land?'
+            : 'Tell me simply: do you want to look around, write, archive, or create a land?',
+        'es' => $hasLand
+            ? 'Dímelo simple: ¿quieres mirar, escribir, archivar o reabrir tu tierra?'
+            : 'Dímelo simple: ¿quieres mirar, escribir, archivar o crear una tierra?',
+        'pt' => $hasLand
+            ? 'Diz-me de forma simples: queres olhar, escrever, arquivar ou reabrir a tua terra?'
+            : 'Diz-me de forma simples: queres olhar, escrever, arquivar ou criar uma terra?',
+        'it' => $hasLand
+            ? 'Dimmi in modo semplice: vuoi guardare, scrivere, archiviare o riaprire la tua terra?'
+            : 'Dimmi in modo semplice: vuoi guardare, scrivere, archiviare o creare una terra?',
+        default => $hasLand
+            ? 'Dis-moi simplement : tu veux regarder, écrire, archiver, ou rouvrir ta terre ?'
+            : 'Dis-moi simplement : tu veux regarder, écrire, archiver, ou poser une terre ?',
+    };
+}
+
+function guide_voice_build_prompt_reply(string $reply, string $language, ?array $authenticatedLand = null, ?string $intent = null): array
+{
+    $hasLand = trim((string) ($authenticatedLand['slug'] ?? '')) !== '';
+
+    return [
+        'reply' => trim($reply . ' ' . guide_voice_prompt_text($language, $hasLand)),
+        'route' => null,
+        'source' => 'local',
+        '_intent' => $intent,
+        '_language' => $language,
+    ];
+}
+
+function guide_voice_contextual_followup_reply(string $lastIntent, string $language, ?array $authenticatedLand = null): ?array
+{
+    $slug = trim((string) ($authenticatedLand['slug'] ?? ''));
+
+    return match ($lastIntent) {
+        'signal' => $slug !== ''
+            ? guide_voice_build_route_reply(
+                match ($language) {
+                    'en' => 'If you want to write now, stay with Signal. That is where your land opens a conversation and keeps its address.',
+                    'es' => 'Si quieres escribir ahora, quédate con Signal. Ahí tu tierra abre una conversación y conserva su dirección.',
+                    'pt' => 'Se queres escrever agora, fica com Signal. É aí que a tua terra abre uma conversa e guarda o endereço.',
+                    'it' => 'Se vuoi scrivere adesso, resta su Signal. È lì che la tua terra apre una conversazione e conserva il suo indirizzo.',
+                    default => 'Si tu veux écrire maintenant, reste sur Signal. C’est là que ta terre ouvre un fil et garde son adresse.',
+                },
+                '/signal',
+                guide_voice_route_label('signal', $language),
+                ''
+            )
+            : guide_voice_build_prompt_reply(
+                match ($language) {
+                    'en' => 'Signal really opens once a land is linked.',
+                    'es' => 'Signal se abre de verdad cuando una tierra está vinculada.',
+                    'pt' => 'Signal abre-se de verdade quando uma terra está ligada.',
+                    'it' => 'Signal si apre davvero quando una terra è collegata.',
+                    default => 'Signal s’ouvre vraiment quand une terre est liée.',
+                },
+                $language,
+                $authenticatedLand,
+                'signal'
+            ),
+        'str3m', 'public' => guide_voice_build_route_reply(
+            match ($language) {
+                'en' => 'After public discovery, the next step is usually to create a land if you want to stay and write.',
+                'es' => 'Después de la visite publique, el siguiente paso suele ser crear una tierra si quieres quedarte y escribir.',
+                'pt' => 'Depois da visita pública, o passo seguinte costuma ser criar uma terra se quiseres ficar e escrever.',
+                'it' => 'Dopo la visita pubblica, il passo successivo è di solito creare una terra se vuoi restare e scrivere.',
+                default => 'Après la visite publique, l’étape suivante est souvent de poser une terre si tu veux rester et écrire.',
+            },
+            '/rejoindre.php',
+            guide_voice_route_label('create', $language),
+            ''
+        ),
+        'aza' => guide_voice_build_route_reply(
+            match ($language) {
+                'en' => 'You can read aZa publicly right away. Depositing traces comes once a land is linked.',
+                'es' => 'Puedes leer aZa públicamente enseguida. Depositar trazas viene después, con una tierra vinculada.',
+                'pt' => 'Podes ler aZa publicamente já. Depositar vestígios vem depois, com uma terra ligada.',
+                'it' => 'Puoi leggere aZa pubblicamente subito. Depositare tracce viene dopo, con una terra collegata.',
+                default => 'Tu peux lire aZa publiquement tout de suite. Déposer des traces vient ensuite, avec une terre liée.',
+            },
+            '/aza',
+            guide_voice_route_label('aza', $language),
+            ''
+        ),
+        'create' => guide_voice_build_route_reply(
+            match ($language) {
+                'en' => 'The next move is to choose a land name, read the AzA pages, then seal the land.',
+                'es' => 'El siguiente gesto es elegir un nombre de tierra, leer las páginas de AzA y luego sellarla.',
+                'pt' => 'O próximo gesto é escolher um nome de terra, ler as páginas de AzA e depois selá-la.',
+                'it' => 'Il prossimo gesto è scegliere un nome di terra, leggere le pagine di AzA e poi sigillarla.',
+                default => 'Le prochain geste est de choisir un nom de terre, lire les pages d’AzA, puis la sceller.',
+            },
+            '/rejoindre.php',
+            guide_voice_route_label('create', $language),
+            ''
+        ),
+        'overview', 'compare', 'confused', 'unknown', 'greeting' => guide_voice_build_prompt_reply(
+            match ($language) {
+                'en' => 'We can narrow it down now.',
+                'es' => 'Ahora podemos afinar.',
+                'pt' => 'Agora podemos afinar.',
+                'it' => 'Ora possiamo stringere.',
+                default => 'On peut resserrer maintenant.',
+            },
+            $language,
+            $authenticatedLand,
+            $lastIntent
+        ),
+        default => null,
+    };
+}
+
+function guide_voice_commit_interaction_state(array $result, string $defaultLanguage = 'fr'): void
+{
+    $state = guide_voice_interaction_state();
+    $state['last_intent'] = trim((string) ($result['_intent'] ?? $state['last_intent'] ?? ''));
+    $state['last_language'] = trim((string) ($result['_language'] ?? $defaultLanguage)) ?: 'fr';
+    $state['last_route_href'] = trim((string) ($result['route']['href'] ?? $state['last_route_href'] ?? ''));
+
+    guide_voice_store_interaction_state($state);
+}
+
 function guide_voice_reply(string $utterance, ?array $authenticatedLand = null): array
 {
     $normalizedUtterance = guide_voice_normalize_text($utterance);
@@ -268,6 +428,14 @@ function guide_voice_reply(string $utterance, ?array $authenticatedLand = null):
     $result['source'] = trim((string) ($result['source'] ?? 'local')) ?: 'local';
     $result['heard'] = $normalizedUtterance;
     $result['ok'] = true;
+
+    guide_voice_commit_interaction_state($result, guide_voice_detect_language($normalizedUtterance));
+
+    foreach (array_keys($result) as $key) {
+        if (is_string($key) && str_starts_with($key, '_')) {
+            unset($result[$key]);
+        }
+    }
 
     guide_voice_store_turn($normalizedUtterance, $result['reply']);
 
@@ -308,7 +476,7 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
         'authenticated_land_slug' => trim((string) ($authenticatedLand['slug'] ?? '')),
         'route_map' => [
             'home' => '/',
-            'create_land' => '/#poser',
+            'create_land' => '/rejoindre.php',
             'signal' => '/signal',
             'str3m' => '/str3m',
             'aza' => '/aza',
@@ -495,13 +663,25 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
     $slug = trim((string) ($authenticatedLand['slug'] ?? ''));
     $intent = guide_voice_detect_intent($text);
     $language = guide_voice_detect_language($text);
+    $state = guide_voice_interaction_state();
 
     if ($text === '') {
         return [
             'reply' => guide_voice_message('not_heard', $language),
             'route' => null,
             'source' => 'local',
+            '_intent' => 'silence',
+            '_language' => $language,
         ];
+    }
+
+    if (guide_voice_followup_requested($text) && trim((string) ($state['last_intent'] ?? '')) !== '') {
+        $contextual = guide_voice_contextual_followup_reply((string) $state['last_intent'], $language, $authenticatedLand);
+        if (is_array($contextual)) {
+            $contextual['_intent'] = (string) ($state['last_intent'] ?? '');
+            $contextual['_language'] = $language;
+            return $contextual;
+        }
     }
 
     if ($intent === 'goodbye') {
@@ -509,117 +689,112 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
             'reply' => guide_voice_message('goodbye', $language),
             'route' => null,
             'source' => 'local',
+            '_intent' => $intent,
+            '_language' => $language,
         ];
     }
 
     if ($intent === 'greeting') {
-        return [
-            'reply' => guide_voice_message('greeting', $language),
-            'route' => null,
-            'source' => 'local',
-        ];
+        return guide_voice_build_prompt_reply(guide_voice_message('greeting', $language), $language, $authenticatedLand, $intent);
     }
 
     if ($intent === 'confused') {
-        return [
-            'reply' => guide_voice_message('confused', $language),
-            'route' => [
-                'href' => '/str3m',
-                'label' => guide_voice_route_label('str3m', $language),
-                'auto_navigate' => guide_voice_should_auto_navigate($text),
-            ],
-            'source' => 'local',
-        ];
+        return guide_voice_build_prompt_reply(guide_voice_message('confused', $language), $language, $authenticatedLand, $intent);
     }
 
     if ($intent === 'compare') {
-        return [
-            'reply' => guide_voice_message('compare', $language),
-            'route' => [
-                'href' => '/str3m',
-                'label' => guide_voice_route_label('str3m', $language),
-                'auto_navigate' => guide_voice_should_auto_navigate($text),
-            ],
-            'source' => 'local',
-        ];
+        return guide_voice_build_prompt_reply(guide_voice_message('compare', $language), $language, $authenticatedLand, $intent);
     }
 
     if ($intent === 'signal') {
-        return guide_voice_build_route_reply(
+        $reply = guide_voice_build_route_reply(
             guide_voice_message('signal_reply', $language),
             '/signal',
             guide_voice_route_label('signal', $language),
             $text
         );
+        $reply['_intent'] = $intent;
+        $reply['_language'] = $language;
+        return $reply;
     }
 
     if ($intent === 'str3m' || $intent === 'public') {
-        return guide_voice_build_route_reply(
+        $reply = guide_voice_build_route_reply(
             guide_voice_message('str3m_reply', $language),
             '/str3m',
             guide_voice_route_label('str3m', $language),
             $text
         );
+        $reply['_intent'] = $intent;
+        $reply['_language'] = $language;
+        return $reply;
     }
 
     if ($intent === 'aza') {
-        return guide_voice_build_route_reply(
+        $reply = guide_voice_build_route_reply(
             guide_voice_message('aza_reply', $language),
             '/aza',
             guide_voice_route_label('aza', $language),
             $text
         );
+        $reply['_intent'] = $intent;
+        $reply['_language'] = $language;
+        return $reply;
     }
 
     if ($intent === 'echo') {
-        return guide_voice_build_route_reply(
+        $reply = guide_voice_build_route_reply(
             guide_voice_message('echo_reply', $language),
             '/echo',
             guide_voice_route_label('echo', $language),
             $text
         );
+        $reply['_intent'] = $intent;
+        $reply['_language'] = $language;
+        return $reply;
     }
 
     if ($intent === 'create') {
-        return guide_voice_build_route_reply(
+        $reply = guide_voice_build_route_reply(
             guide_voice_message('create_reply', $language),
-            '/#poser',
+            '/rejoindre.php',
             guide_voice_route_label('create', $language),
             $text
         );
+        $reply['_intent'] = $intent;
+        $reply['_language'] = $language;
+        return $reply;
     }
 
     if ($intent === 'reopen') {
         if ($slug !== '') {
-            return guide_voice_build_route_reply(
+            $reply = guide_voice_build_route_reply(
                 guide_voice_message('reopen_reply_auth', $language),
                 '/land.php?u=' . rawurlencode($slug),
                 guide_voice_route_label('reopen', $language),
                 $text
             );
+            $reply['_intent'] = $intent;
+            $reply['_language'] = $language;
+            return $reply;
         }
 
-        return guide_voice_build_route_reply(
+        $reply = guide_voice_build_route_reply(
             guide_voice_message('reopen_reply_guest', $language),
             '/',
             guide_voice_route_label('home', $language),
             $text
         );
+        $reply['_intent'] = $intent;
+        $reply['_language'] = $language;
+        return $reply;
     }
 
     if ($intent === 'overview') {
-        return [
-            'reply' => guide_voice_message('overview', $language),
-            'route' => null,
-            'source' => 'local',
-        ];
+        return guide_voice_build_prompt_reply(guide_voice_message('overview', $language), $language, $authenticatedLand, $intent);
     }
 
-    return [
-        'reply' => guide_voice_message('unknown', $language),
-        'route' => null,
-        'source' => 'local',
-    ];
+    return guide_voice_build_prompt_reply(guide_voice_message('unknown', $language), $language, $authenticatedLand, $intent);
 }
 
 function guide_voice_detect_intent(string $text): string
@@ -644,7 +819,7 @@ function guide_voice_detect_intent(string $text): string
         return 'compare';
     }
 
-    if (guide_voice_contains($text, ['signal', 'message', 'messagerie', 'mailbox', 'inbox', 'courrier', 'boite', 'boîte', 'mensaje', 'mensagem', 'messaggio'])) {
+    if (guide_voice_contains($text, ['signal', 'message', 'messagerie', 'mailbox', 'inbox', 'courrier', 'boite', 'boîte', 'mensaje', 'mensagem', 'messaggio', 'ecrire', 'écrire', 'write', 'send', 'envoyer', 'escribir', 'scrivere'])) {
         return 'signal';
     }
 
@@ -664,7 +839,7 @@ function guide_voice_detect_intent(string $text): string
         return 'echo';
     }
 
-    if (guide_voice_contains($text, ['poser une terre', 'creer une terre', 'créer une terre', 'creation', 'création', 'inscription', 'commencer', 'entrer', 'create a land', 'sign up', 'start', 'crear una tierra', 'crear tierra', 'crear conta', 'criar uma terra', 'criar terra', 'iniziare', 'creare una terra'])) {
+    if (guide_voice_contains($text, ['poser une terre', 'creer une terre', 'créer une terre', 'creation', 'création', 'inscription', 'commencer', 'entrer', 'rejoindre', 'create a land', 'sign up', 'start', 'join', 'crear una tierra', 'crear tierra', 'crear conta', 'criar uma terra', 'criar terra', 'iniziare', 'creare una terra'])) {
         return 'create';
     }
 
@@ -777,7 +952,7 @@ function guide_voice_infer_route_from_text(string $reply, string $utterance = ''
         'str3m', 'public', 'confused', 'compare' => ['href' => '/str3m', 'label' => guide_voice_route_label('str3m', $language), 'auto_navigate' => false],
         'aza' => ['href' => '/aza', 'label' => guide_voice_route_label('aza', $language), 'auto_navigate' => false],
         'echo' => ['href' => '/echo', 'label' => guide_voice_route_label('echo', $language), 'auto_navigate' => false],
-        'create' => ['href' => '/#poser', 'label' => guide_voice_route_label('create', $language), 'auto_navigate' => false],
+        'create' => ['href' => '/rejoindre.php', 'label' => guide_voice_route_label('create', $language), 'auto_navigate' => false],
         default => null,
     };
 }

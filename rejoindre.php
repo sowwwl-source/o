@@ -48,11 +48,6 @@ function signup_stage_link(int $step, array $form): string
 }
 
 $host = request_host();
-if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
-    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/rejoindre.php');
-    header('Location: https://sowwwl.com' . $path, true, 302);
-    exit;
-}
 
 $csrfToken = csrf_token();
 $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';

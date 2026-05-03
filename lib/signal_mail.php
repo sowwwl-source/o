@@ -11,16 +11,84 @@ const SIGNAL_IDENTITY_VERIFIED = 'verified';
 const SIGNAL_IDENTITY_TTL_SECONDS = 86400;
 const SIGNAL_IDENTITY_RESEND_SECONDS = 120;
 
-function signal_mail_tables_ready(): bool
+function signal_mail_schema_status(): array
 {
+    $status = [
+        'database_available' => false,
+        'signal_mailboxes' => false,
+        'signal_messages' => false,
+        'lands_notification_email' => false,
+        'ready' => false,
+        'issues' => [],
+    ];
+
     try {
         $pdo = get_pdo();
-        $pdo->query('SELECT 1 FROM signal_mailboxes LIMIT 1');
-        $pdo->query('SELECT 1 FROM signal_messages LIMIT 1');
-        return true;
+        $status['database_available'] = true;
+
+        $mailboxes = $pdo->query("SHOW TABLES LIKE 'signal_mailboxes'");
+        $status['signal_mailboxes'] = $mailboxes instanceof PDOStatement && $mailboxes->fetchColumn() !== false;
+
+        $messages = $pdo->query("SHOW TABLES LIKE 'signal_messages'");
+        $status['signal_messages'] = $messages instanceof PDOStatement && $messages->fetchColumn() !== false;
+
+        $column = $pdo->query("SHOW COLUMNS FROM lands LIKE 'notification_email'");
+        $status['lands_notification_email'] = $column instanceof PDOStatement && $column->fetchColumn() !== false;
     } catch (Throwable $exception) {
-        return false;
+        $status['issues'][] = 'sql-unreachable';
+        $status['issues'][] = trim($exception->getMessage()) !== '' ? trim($exception->getMessage()) : 'Connexion SQL indisponible.';
+        return $status;
     }
+
+    if (!$status['signal_mailboxes']) {
+        $status['issues'][] = 'signal_mailboxes';
+    }
+    if (!$status['signal_messages']) {
+        $status['issues'][] = 'signal_messages';
+    }
+    if (!$status['lands_notification_email']) {
+        $status['issues'][] = 'lands.notification_email';
+    }
+
+    $status['ready'] = $status['signal_mailboxes'] && $status['signal_messages'];
+
+    return $status;
+}
+
+function signal_mail_schema_status_hint(array $status): string
+{
+    if (!($status['database_available'] ?? false)) {
+        $detail = trim((string) ($status['issues'][1] ?? ''));
+        return $detail !== ''
+            ? 'La base SQL ne répond pas encore. ' . $detail
+            : 'La base SQL ne répond pas encore. Vérifie le service MySQL et ses identifiants.';
+    }
+
+    if (($status['ready'] ?? false) === true) {
+        return 'Le socle SQL de Signal est prêt.';
+    }
+
+    $missing = [];
+    if (!($status['signal_mailboxes'] ?? false)) {
+        $missing[] = 'signal_mailboxes';
+    }
+    if (!($status['signal_messages'] ?? false)) {
+        $missing[] = 'signal_messages';
+    }
+    if (!($status['lands_notification_email'] ?? false)) {
+        $missing[] = 'lands.notification_email';
+    }
+
+    if ($missing === []) {
+        return 'Signal voit la base, mais le schéma reste incohérent.';
+    }
+
+    return 'Éléments SQL manquants : ' . implode(', ', $missing) . '.';
+}
+
+function signal_mail_tables_ready(): bool
+{
+    return (bool) (signal_mail_schema_status()['ready'] ?? false);
 }
 
 function signal_virtual_address(array $land): string

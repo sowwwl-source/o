@@ -5,11 +5,6 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/signals.php';
 
 $host = request_host();
-if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
-    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/signal');
-    header('Location: https://sowwwl.com' . $path, true, 302);
-    exit;
-}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

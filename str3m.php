@@ -7,11 +7,6 @@ require_once __DIR__ . '/lib/str3m_daily.php';
 require_once __DIR__ . '/lib/signals.php';
 
 $host = request_host();
-if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
-    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/str3m');
-    header('Location: https://sowwwl.com' . $path, true, 302);
-    exit;
-}
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';

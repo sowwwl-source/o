@@ -2,13 +2,9 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/lib/signal_mail.php';
 
 $host = request_host();
-if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
-    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/echo');
-    header('Location: https://sowwwl.com' . $path, true, 302);
-    exit;
-}
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
@@ -28,7 +24,9 @@ $myUsername = (string) $land['username'];
 $targetIdentifier = trim((string) ($_GET['u'] ?? ''));
 $message = '';
 $messageType = 'info';
-$messagingReady = signal_mail_tables_ready();
+$signalSchemaStatus = signal_mail_schema_status();
+$messagingReady = (bool) ($signalSchemaStatus['ready'] ?? false);
+$signalSchemaHint = signal_mail_schema_status_hint($signalSchemaStatus);
 $targetLand = $targetIdentifier !== '' ? signal_find_land_by_identifier($targetIdentifier) : null;
 $targetUsername = trim((string) ($targetLand['username'] ?? ''));
 $targetSlug = trim((string) ($targetLand['slug'] ?? ''));
@@ -40,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = "La résonance s'est dissipée. Réessaie.";
         $messageType = 'warning';
     } elseif (!$messagingReady) {
-        $message = "Écho attend encore sa base de messagerie. Déploie la couche SQL pour ouvrir cette liaison.";
+        $message = "Écho attend encore sa base de messagerie. " . $signalSchemaHint;
         $messageType = 'warning';
     } else {
         $body = trim((string) ($_POST['body'] ?? ''));
@@ -144,6 +142,7 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
         <div class="echo-conversation panel">
             <?php if (!$messagingReady): ?>
                 <p class="panel-copy">Écho reste en veille tant que la base SQL unifiée de Signal n’est pas active.</p>
+                <p class="panel-copy"><?= h($signalSchemaHint) ?></p>
             <?php elseif ($targetSlug === '' || !$targetLand): ?>
                 <div class="echo-empty-state">
                     <p class="panel-copy">Choisis une terre à gauche pour ouvrir la liaison. Si tu préfères commencer par l’adresse et le fil, passe par Signal.</p>

@@ -2,14 +2,10 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/lib/signal_mail.php';
 require_once __DIR__ . '/lib/signals.php';
 
 $host = request_host();
-if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
-    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/signal');
-    header('Location: https://sowwwl.com' . $path, true, 302);
-    exit;
-}
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
@@ -18,6 +14,7 @@ $guideHref = '/0wlslw0';
 $signalGuide = guide_path('signal');
 $csrfToken = csrf_token();
 $land = current_authenticated_land();
+$signalSchemaStatus = signal_mail_schema_status();
 
 $verifyToken = trim((string) ($_GET['verify'] ?? ''));
 $verifyLand = trim((string) ($_GET['land'] ?? ''));
@@ -27,10 +24,11 @@ if ($verifyToken !== '' && $verifyLand !== '') {
     exit;
 }
 
-$tablesReady = signal_mail_tables_ready();
+$tablesReady = (bool) ($signalSchemaStatus['ready'] ?? false);
 $ambientProfile = $land ? land_visual_profile($land) : land_collective_profile('dense');
 $message = '';
 $messageType = 'info';
+$signalSchemaHint = signal_mail_schema_status_hint($signalSchemaStatus);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$land) {
@@ -99,7 +97,7 @@ if ($errorCode !== '') {
     $message = match ($errorCode) {
         'auth' => 'Ouvre une terre pour accéder à la messagerie Signal.',
         'csrf' => 'Le jeton de session a expiré. Recharge la page et réessaie.',
-        'messaging' => 'La messagerie Signal n’est pas encore initialisée côté base. Lance la migration SQL Signal du projet pour ouvrir la boîte.',
+        'messaging' => 'La messagerie Signal n’est pas encore prête côté base. ' . $signalSchemaHint,
         'identity-invalid' => 'Le lien de validation est invalide ou expiré.',
         'delivery' => 'Le message ou la validation n’a pas pu être distribué pour le moment.',
         'validation' => 'Les informations transmises sont incomplètes ou invalides.',
@@ -223,9 +221,10 @@ $signalHistoryHash = sha1($signalHistoryHtml);
             <div class="section-topline">
                 <div>
                     <h2>Messagerie non initialisée</h2>
-                    <p class="panel-copy">Le code est prêt, mais les tables SQL de Signal ne sont pas encore présentes. Exécute la migration Signal du projet (<code>../migrations/2026_05_02_signal_mail.sql</code> depuis le dossier <code>o/</code>) pour activer durablement la boîte et Écho.</p>
+                    <p class="panel-copy"><?= h($signalSchemaHint) ?></p>
+                    <p class="panel-copy">Si la base vient de revenir, rejoue au besoin la migration Signal du projet (<code>../migrations/2026_05_02_signal_mail.sql</code> depuis le dossier <code>o/</code>) puis redémarre l’app.</p>
                 </div>
-                <span class="badge">migration requise</span>
+                <span class="badge"><?= ($signalSchemaStatus['database_available'] ?? false) ? 'schéma à compléter' : 'sql indisponible' ?></span>
             </div>
         </section>
     <?php else: ?>
