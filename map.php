@@ -56,26 +56,28 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
             display: grid;
             gap: 1rem;
             align-content: start;
-            padding: 1rem;
-            border: 1px solid var(--o-line);
-            border-radius: 10px;
+            padding: 0.9rem;
+            border: 1px solid rgba(158, 220, 193, 0.1);
+            border-radius: 18px;
             overflow: hidden;
-            box-shadow: var(--o-shadow);
+            box-shadow:
+                0 1.5rem 4rem rgba(0, 0, 0, 0.28),
+                inset 0 0 4rem rgba(159, 226, 195, 0.025);
             background:
-                radial-gradient(circle at 50% 50%, rgba(158, 220, 193, 0.12), transparent 34%),
-                radial-gradient(circle at 50% 50%, rgba(158, 220, 193, 0.06), transparent 58%),
-                linear-gradient(180deg, rgba(6, 10, 14, 0.98), rgba(8, 14, 18, 0.98));
+                radial-gradient(circle at 36% 38%, rgba(220, 255, 244, 0.11), transparent 28%),
+                radial-gradient(circle at 66% 58%, rgba(120, 205, 185, 0.08), transparent 36%),
+                linear-gradient(180deg, rgba(5, 8, 11, 0.985), rgba(7, 12, 15, 0.99));
         }
 
         .map-fallback__frame {
             position: relative;
             overflow: hidden;
-            border: 1px solid rgba(158, 220, 193, 0.16);
-            border-radius: 14px;
+            border: 1px solid rgba(158, 220, 193, 0.11);
+            border-radius: 18px;
             background:
-                radial-gradient(circle at 50% 50%, rgba(158, 220, 193, 0.14), transparent 26%),
-                radial-gradient(circle at 50% 50%, rgba(158, 220, 193, 0.08), transparent 52%),
-                linear-gradient(180deg, rgba(5, 8, 11, 0.96), rgba(6, 11, 14, 0.98));
+                radial-gradient(circle at 52% 48%, rgba(227, 255, 245, 0.11), transparent 24%),
+                radial-gradient(circle at 50% 54%, rgba(158, 220, 193, 0.05), transparent 56%),
+                linear-gradient(180deg, rgba(3, 6, 8, 0.96), rgba(5, 9, 12, 0.985));
         }
 
         .map-fallback__frame::before {
@@ -83,9 +85,10 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
             position: absolute;
             inset: 0;
             background:
-                linear-gradient(90deg, transparent 0%, rgba(159, 226, 195, 0.04) 48%, transparent 100%),
-                linear-gradient(180deg, transparent 0%, rgba(159, 226, 195, 0.03) 52%, transparent 100%);
-            mix-blend-mode: screen;
+                radial-gradient(circle at 50% 50%, transparent 0 23%, rgba(255, 255, 255, 0.018) 23.4% 23.8%, transparent 24.2%),
+                radial-gradient(circle at 50% 50%, transparent 0 44%, rgba(255, 255, 255, 0.014) 44.3% 44.7%, transparent 45.2%),
+                linear-gradient(90deg, transparent 0%, rgba(159, 226, 195, 0.018) 48%, transparent 100%);
+            mix-blend-mode: plus-lighter;
             pointer-events: none;
         }
 
@@ -94,11 +97,25 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
             width: 100%;
             height: auto;
             aspect-ratio: 16 / 9;
-            filter: saturate(1.08) contrast(1.02);
+            filter: saturate(1.03) contrast(1.04);
+        }
+
+        .map-fallback__svg .map-line-ghost {
+            opacity: 0.18;
+            mix-blend-mode: screen;
+        }
+
+        .map-fallback__svg .map-current-field {
+            mix-blend-mode: screen;
+            opacity: 0.84;
+        }
+
+        .map-fallback__svg .map-density-field {
+            mix-blend-mode: plus-lighter;
         }
 
         .map-fallback__svg .map-particle {
-            animation: mapParticlePulse 6.4s ease-in-out infinite;
+            animation: mapParticlePulse 8.4s ease-in-out infinite;
             transform-origin: center;
         }
 
@@ -111,17 +128,19 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
         }
 
         .map-fallback__svg .map-current-particle {
-            animation: mapCurrentDrift 7.2s linear infinite;
+            animation: mapCurrentDrift 8.8s ease-in-out infinite;
+            transform-origin: center;
         }
 
         .map-fallback__svg .map-core-node {
-            transition: transform 180ms ease, filter 180ms ease;
+            transition: transform 220ms ease, filter 220ms ease, opacity 220ms ease;
         }
 
         .map-fallback__svg a:hover .map-core-node,
         .map-fallback__svg a:focus-visible .map-core-node {
             transform: scale(1.08);
-            filter: drop-shadow(0 0 0.7rem rgba(208, 255, 238, 0.46));
+            filter: drop-shadow(0 0 0.95rem rgba(208, 255, 238, 0.54));
+            opacity: 1;
         }
 
         .map-fallback__legend {
@@ -150,16 +169,16 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
             width: 0.72rem;
             height: 0.72rem;
             border-radius: 50%;
-            background: #9fe2c3;
-            box-shadow: 0 0 0.9rem rgba(159, 226, 195, 0.42);
+            background: radial-gradient(circle, #f1fff8, #9fe2c3 58%, rgba(159, 226, 195, 0.18));
+            box-shadow: 0 0 1.2rem rgba(159, 226, 195, 0.34);
         }
 
         .map-fallback__line {
             width: 1.4rem;
             height: 2px;
             border-radius: 999px;
-            background: linear-gradient(90deg, rgba(126, 224, 172, 0.35), rgba(217, 255, 240, 0.9));
-            box-shadow: 0 0 0.7rem rgba(126, 224, 172, 0.3);
+            background: linear-gradient(90deg, rgba(126, 224, 172, 0.02), rgba(217, 255, 240, 0.56), rgba(126, 224, 172, 0.02));
+            box-shadow: 0 0 0.9rem rgba(126, 224, 172, 0.18);
         }
 
         .map-fallback__grid {
@@ -262,24 +281,27 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
         @keyframes mapParticlePulse {
             0%,
             100% {
-                opacity: 0.42;
-                transform: scale(0.92);
+                opacity: 0.34;
+                transform: scale(0.9);
             }
             50% {
-                opacity: 1;
-                transform: scale(1.08);
+                opacity: 0.88;
+                transform: scale(1.14);
             }
         }
 
         @keyframes mapCurrentDrift {
             0% {
-                opacity: 0.24;
+                opacity: 0.16;
+                transform: scale(0.92);
             }
             50% {
-                opacity: 0.92;
+                opacity: 0.8;
+                transform: scale(1.08);
             }
             100% {
-                opacity: 0.24;
+                opacity: 0.16;
+                transform: scale(0.92);
             }
         }
 
@@ -385,8 +407,8 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
             const minorRadius = 72 + (rng() * 48);
             const x = centerX + Math.cos(theta) * (majorRadius + (Math.cos(phi) * minorRadius * 0.46));
             const y = centerY + (Math.sin(theta) * 126) + (Math.sin(phi) * (36 + rng() * 20));
-            const size = 0.45 + (rng() * 1.55);
-            const opacity = 0.03 + (rng() * 0.24);
+            const size = 0.34 + (rng() * 1.18);
+            const opacity = 0.025 + (rng() * 0.18);
             const hueShift = Math.round(180 + (rng() * 35));
             const speedClass = index % 5 === 0 ? 'map-particle--fast' : (index % 3 === 0 ? 'map-particle--slow' : '');
             particles.push(`<circle class="map-particle ${speedClass}" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${size.toFixed(2)}" fill="hsla(${hueShift}, 72%, 84%, ${opacity.toFixed(3)})" />`);
@@ -475,19 +497,21 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
             const [x, y] = projectPoint(coords[0], coords[1], width, height);
             const heat = clamp(Number(properties.activity_heat || 0.18), 0.18, 1);
             const rng = makeRng(`land-cloud|${properties.slug || index}`);
-            const count = Math.round(42 + (heat * 132));
-            const radiusX = 12 + (heat * 34);
-            const radiusY = 9 + (heat * 26);
+            const count = Math.round(96 + (heat * 260));
+            const radiusX = 16 + (heat * 48);
+            const radiusY = 11 + (heat * 34);
 
             for (let particleIndex = 0; particleIndex < count; particleIndex += 1) {
                 const angle = rng() * Math.PI * 2;
-                const radius = Math.pow(rng(), 0.68);
-                const driftX = Math.cos(angle) * radiusX * radius;
+                const radius = Math.pow(rng(), 1.85);
+                const orbit = 1 + (Math.sin(angle * 3 + rng() * 2) * 0.08);
+                const driftX = Math.cos(angle) * radiusX * radius * orbit;
                 const driftY = Math.sin(angle) * radiusY * radius;
                 const px = x + driftX;
                 const py = y + driftY;
-                const size = 0.5 + (rng() * 1.8) + (heat * 0.95);
-                const opacity = 0.1 + (rng() * 0.34) + (heat * 0.18);
+                const coreBias = 1 - radius;
+                const size = 0.28 + (rng() * 1.25) + (coreBias * heat * 1.45);
+                const opacity = 0.045 + (rng() * 0.22) + (coreBias * heat * 0.4);
                 const speedClass = particleIndex % 6 === 0 ? 'map-particle--slow' : '';
                 cloud.push(`<circle class="map-particle ${speedClass}" cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${size.toFixed(2)}" fill="rgba(191, 255, 228, ${opacity.toFixed(3)})" />`);
             }
@@ -504,6 +528,7 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
 
     const buildCurrentParticleCloud = (currents, width, height) => {
         const particles = [];
+        const veils = [];
 
         currents.forEach((feature, currentIndex) => {
             const coords = Array.isArray(feature?.geometry?.coordinates) ? feature.geometry.coordinates : [];
@@ -517,7 +542,7 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
 
             const heat = clamp(Number(feature?.properties?.activity_heat || 0.18), 0.18, 1);
             const rng = makeRng(`current-cloud|${feature?.properties?.from_slug || currentIndex}|${feature?.properties?.to_slug || currentIndex}`);
-            const count = Math.round(18 + (heat * 56));
+            const count = Math.round(88 + (heat * 230));
 
             for (let particleIndex = 0; particleIndex < count; particleIndex += 1) {
                 const segmentIndex = Math.min(projected.length - 2, Math.floor(rng() * (projected.length - 1)));
@@ -531,16 +556,30 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                 const length = Math.max(1, Math.hypot(dx, dy));
                 const normalX = -dy / length;
                 const normalY = dx / length;
-                const spread = (rng() - 0.5) * (6 + heat * 10);
+                const centerPull = Math.pow(rng(), 2.35);
+                const spread = (rng() - 0.5) * (10 + heat * 34) * centerPull;
                 const px = baseX + (normalX * spread);
                 const py = baseY + (normalY * spread);
-                const size = 0.42 + (rng() * 1.36) + (heat * 0.7);
-                const opacity = 0.14 + (rng() * 0.42) + (heat * 0.12);
+                const size = 0.22 + (rng() * 1.2) + ((1 - centerPull) * heat * 0.9);
+                const opacity = 0.035 + (rng() * 0.22) + ((1 - centerPull) * heat * 0.28);
                 particles.push(`<circle class="map-current-particle" cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${size.toFixed(2)}" fill="rgba(217, 255, 240, ${opacity.toFixed(3)})" />`);
             }
+
+            projected.forEach((point, pointIndex) => {
+                if (pointIndex % 2 !== 0) {
+                    return;
+                }
+
+                const veilRadius = (14 + heat * 32 + rng() * 18).toFixed(2);
+                const veilOpacity = (0.018 + heat * 0.055).toFixed(3);
+                veils.push(`<circle cx="${point[0].toFixed(2)}" cy="${point[1].toFixed(2)}" r="${veilRadius}" fill="rgba(217,255,240,${veilOpacity})" />`);
+            });
         });
 
-        return particles.join('');
+        return {
+            particles: particles.join(''),
+            veils: veils.join(''),
+        };
     };
 
     const renderSurface = (payload) => {
@@ -571,9 +610,9 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                 return `L ${x.toFixed(2)} ${y.toFixed(2)}`;
             }).join(' ');
             const heat = Math.max(0.18, Math.min(1, Number(feature?.properties?.activity_heat || 0.18)));
-            const opacity = (0.18 + heat * 0.55).toFixed(3);
-            const strokeWidth = (1.2 + heat * 3.8).toFixed(2);
-            return `<path d="M ${startX.toFixed(2)} ${startY.toFixed(2)} ${segments}" fill="none" stroke="rgba(159,226,195,${opacity})" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" />`;
+            const opacity = (0.025 + heat * 0.08).toFixed(3);
+            const strokeWidth = (0.5 + heat * 1.35).toFixed(2);
+            return `<path class="map-line-ghost" d="M ${startX.toFixed(2)} ${startY.toFixed(2)} ${segments}" fill="none" stroke="rgba(217,255,240,${opacity})" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" />`;
         }).join('');
 
         const landDots = lands.map((feature) => {
@@ -581,15 +620,15 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
             const [lng, lat] = coords;
             const [x, y] = projectPoint(lng, lat, svgWidth, svgHeight);
             const heat = Math.max(0.18, Math.min(1, Number(feature?.properties?.activity_heat || 0.18)));
-            const radius = (3.8 + heat * 8.6).toFixed(2);
-            const glow = (10 + heat * 16).toFixed(2);
+            const radius = (2.2 + heat * 4.2).toFixed(2);
+            const glow = (18 + heat * 42).toFixed(2);
             const slug = escapeHtml(feature?.properties?.slug || 'terre');
             const username = escapeHtml(feature?.properties?.username || slug);
             return `
                 <g>
-                    <circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${glow}" fill="rgba(159,226,195,0.08)" />
+                    <circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${glow}" fill="rgba(159,226,195,${(0.028 + heat * 0.055).toFixed(3)})" />
                     <a href="${escapeHtml(feature?.properties?.land_url || '/land')}" aria-label="ouvrir la terre ${username}">
-                        <circle class="map-core-node" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${radius}" fill="rgba(208,255,238,0.96)" stroke="rgba(255,255,255,0.42)" stroke-width="1.2" />
+                        <circle class="map-core-node" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${radius}" fill="rgba(236,255,248,0.74)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
                     </a>
                     <title>${username} · @${slug}</title>
                 </g>
@@ -648,14 +687,19 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
                         </defs>
                         <rect width="${svgWidth}" height="${svgHeight}" fill="rgba(4,7,9,0.88)" />
                         <rect width="${svgWidth}" height="${svgHeight}" fill="url(#torusDenseGlow)" opacity="0.65" />
-                        <ellipse cx="${svgWidth / 2}" cy="${svgHeight / 2}" rx="300" ry="124" fill="none" stroke="rgba(159,226,195,0.12)" stroke-width="1.5" />
-                        <ellipse cx="${svgWidth / 2}" cy="${svgHeight / 2}" rx="188" ry="68" fill="none" stroke="rgba(159,226,195,0.08)" stroke-width="1.2" />
+                        <ellipse cx="${svgWidth / 2}" cy="${svgHeight / 2}" rx="300" ry="124" fill="none" stroke="rgba(217,255,240,0.045)" stroke-width="1" />
+                        <ellipse cx="${svgWidth / 2}" cy="${svgHeight / 2}" rx="188" ry="68" fill="none" stroke="rgba(217,255,240,0.028)" stroke-width="0.8" />
                         <ellipse cx="${svgWidth / 2}" cy="${svgHeight / 2}" rx="156" ry="54" fill="url(#torusCore)" />
                         ${dust}
-                        ${currentPaths}
-                        ${currentParticles}
-                        ${landParticles.figures}
-                        ${landParticles.cloud}
+                        <g class="map-current-field">
+                            ${currentParticles.veils}
+                            ${currentPaths}
+                            ${currentParticles.particles}
+                        </g>
+                        <g class="map-density-field">
+                            ${landParticles.figures}
+                            ${landParticles.cloud}
+                        </g>
                         ${landDots}
                     </svg>
                 </div>
