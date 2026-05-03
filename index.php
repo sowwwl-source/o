@@ -235,7 +235,7 @@ $homeLead = $authenticatedLand
     : 'Un espace numérique épuré, public et partagé. Rejoins le mouvement pour un lieu à toi, discret et vivant.';
 $homePrimaryActionHref = $authenticatedLand
     ? '/land.php?u=' . rawurlencode($activeLandSlug)
-    : '#poser';
+    : '/rejoindre.php';
 $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Rejoindre le peuple de l\'O';
 $guideHref = '/0wlslw0';
 $promptSeeds = guide_prompt_seeds();
@@ -324,7 +324,7 @@ $promptSeeds = guide_prompt_seeds();
                 </label>
                 <button type="submit">entrer</button>
             </form>
-            <a class="connection-meter__create" href="#poser">poser une terre</a>
+            <a class="connection-meter__create" href="/rejoindre.php">poser une terre</a>
         <?php endif; ?>
     </div>
 </details>
@@ -581,7 +581,7 @@ $promptSeeds = guide_prompt_seeds();
                     <strong>Entrer publiquement</strong>
                     <span>Lire le courant, regarder les îles, sentir la surface.</span>
                 </a>
-                <a href="#poser" class="entry-card">
+                <a href="/rejoindre.php" class="entry-card">
                     <span class="summary-label">02 · terre</span>
                     <strong>Poser une terre</strong>
                     <span>Créer un lieu à toi, discret, situé, lié à une fréquence.</span>
@@ -667,7 +667,7 @@ $promptSeeds = guide_prompt_seeds();
         <details class="minimal-auth home-secondary-panel"<?= $message !== '' ? ' open' : '' ?>>
             <summary class="signup-summary"><?= $authenticatedLand ? 'Relier une autre terre' : 'Poser une terre' ?></summary>
             <div class="auth-box">
-                <p class="panel-copy">L’entrée est minimale. Le rituel complet reste ici, un cran plus bas.</p>
+                <p class="panel-copy">L’entrée reste minimale ici : on valide le nom, puis la lecture et la configuration d’aZa prennent une page entière.</p>
 
                 <?php if ($message !== ''): ?>
                     <div class="flash flash-<?= h($messageType) ?>" aria-live="polite">
@@ -675,16 +675,8 @@ $promptSeeds = guide_prompt_seeds();
                     </div>
                 <?php endif; ?>
 
-                <form method="post" class="land-form" autocomplete="off">
-                    <input type="hidden" name="action" value="create">
-                    <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-
-                    <div class="form-trap" aria-hidden="true">
-                        <label>
-                            Site web
-                            <input type="text" name="website" tabindex="-1" autocomplete="off">
-                        </label>
-                    </div>
+                <form method="get" action="/rejoindre.php" class="land-form" autocomplete="off">
+                    <input type="hidden" name="step" value="1">
 
                     <label>
                         Nom d’usage
@@ -698,102 +690,10 @@ $promptSeeds = guide_prompt_seeds();
                             value="<?= h($form['username']) ?>"
                             data-username-input
                         >
-                        <span class="input-hint">Le nom devient ton repère.</span>
+                        <span class="input-hint">Le nom devient le seuil. Ensuite, AzA s’ouvre en lecture pleine page.</span>
                     </label>
 
-                    <?php if ($signupPortals): ?>
-                        <section class="signup-portal-ritual" aria-labelledby="signup-portal-title">
-                            <div class="signup-head signup-portal-head">
-                                <div>
-                                    <span class="summary-label">Passage aZa</span>
-                                    <h3 id="signup-portal-title">Configurer la terre avant de la sceller</h3>
-                                    <p class="panel-copy">On ne pose pas juste un compte : on choisit un axe, une amplitude, une manière d’entrer.</p>
-                                </div>
-                            </div>
-
-                            <ol class="signup-portal-grid" aria-label="Parcours aZa pour l’inscription">
-                                <?php foreach ($signupPortals as $portal): ?>
-                                    <li class="signup-portal-card">
-                                        <span class="summary-label">Portail <?= h((string) $portal['slug']) ?> · <?= h((string) $portal['label']) ?></span>
-                                        <div class="signup-portal-copy"><?= $portal['markup'] ?></div>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ol>
-                        </section>
-                    <?php endif; ?>
-
-                    <section class="signup-spectrum" aria-labelledby="signup-spectrum-title">
-                        <div class="signup-head signup-spectrum-head">
-                            <div>
-                                <span class="summary-label">Signature native</span>
-                                <h3 id="signup-spectrum-title">Choisis le programme et la longueur d’onde de ta terre</h3>
-                                <p class="panel-copy">Ici tu règles l’identité durable. Le slider 24h du noyau restera ensuite une modulation légère, pas un remplacement.</p>
-                            </div>
-                        </div>
-
-                        <div class="signup-program-grid" role="radiogroup" aria-label="Choisir un programme de terre">
-                            <?php foreach ($signupPrograms as $programKey => $programDefinition): ?>
-                                <?php [$programMin, $programMax] = land_visual_lambda_range($programKey); ?>
-                                <?php $programDefaultLambda = land_visual_default_lambda($programKey, $signupPreviewSeed); ?>
-                                <label class="signup-program-card" data-signup-program-card>
-                                    <input
-                                        type="radio"
-                                        name="land_program"
-                                        value="<?= h($programKey) ?>"
-                                        <?= $selectedSignupProgram === $programKey ? 'checked' : '' ?>
-                                        data-signup-program-input
-                                        data-program-label="<?= h((string) ($programDefinition['label'] ?? $programKey)) ?>"
-                                        data-program-tone="<?= h((string) ($programDefinition['tone'] ?? '')) ?>"
-                                        data-lambda-min="<?= h((string) $programMin) ?>"
-                                        data-lambda-max="<?= h((string) $programMax) ?>"
-                                        data-lambda-default="<?= h((string) $programDefaultLambda) ?>"
-                                    >
-                                    <span class="summary-label"><?= h($programKey) ?></span>
-                                    <strong><?= h((string) ($programDefinition['label'] ?? $programKey)) ?></strong>
-                                    <span><?= h((string) ($programDefinition['tone'] ?? '')) ?></span>
-                                    <span>λ <?= h((string) $programMin) ?>–<?= h((string) $programMax) ?> nm</span>
-                                </label>
-                            <?php endforeach; ?>
-                        </div>
-
-                        <label class="signup-lambda-field">
-                            <span class="input-hint">Amplitude choisie pour la terre</span>
-                            <strong><span data-signup-program-label><?= h($selectedSignupLabel) ?></span> · λ <span data-signup-lambda-value><?= h((string) $selectedSignupLambda) ?></span> nm</strong>
-                            <input
-                                type="range"
-                                name="lambda_nm"
-                                min="<?= h((string) $selectedSignupMinLambda) ?>"
-                                max="<?= h((string) $selectedSignupMaxLambda) ?>"
-                                step="1"
-                                value="<?= h((string) $selectedSignupLambda) ?>"
-                                data-signup-lambda-input
-                            >
-                            <span class="signup-lambda-range"><span data-signup-program-tone><?= h($selectedSignupTone) ?></span> · plage <span data-signup-lambda-range><?= h((string) $selectedSignupMinLambda) ?>–<?= h((string) $selectedSignupMaxLambda) ?> nm</span></span>
-                        </label>
-                    </section>
-
-                    <label>
-                        Secret
-                        <input
-                            type="password"
-                            name="password"
-                            placeholder="8 caractères minimum"
-                            required
-                            minlength="<?= AUTH_MIN_PASSWORD_LENGTH ?>"
-                            value="<?= h($form['password']) ?>"
-                            autocomplete="new-password"
-                        >
-                        <span class="input-hint">Il protège ta terre.</span>
-                    </label>
-
-                    <input
-                        type="hidden"
-                        name="timezone"
-                        value="<?= h($previewTimezone) ?>"
-                        data-timezone-input
-                    >
-
-                    <button type="submit">Rejoindre le peuple de l'O</button>
+                    <button type="submit">Valider le nom et entrer dans AzA</button>
                 </form>
 
                 <div class="signup-preview auth-login-preview" aria-labelledby="login-title">
@@ -835,21 +735,14 @@ $promptSeeds = guide_prompt_seeds();
                     </form>
                 </div>
 
-                <div
-                    class="signup-preview"
-                    data-origin-base="<?= h($originBase) ?>"
-                    data-preview-shell
-                >
-                    <span class="summary-label">Aperçu</span>
+                <div class="signup-preview" data-origin-base="<?= h($originBase) ?>" data-preview-shell>
+                    <span class="summary-label">Aperçu du seuil</span>
                     <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
                     <div class="preview-grid">
                         <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land.php?u=' . $previewSlug) ?></code></p>
                         <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
-                        <p><span>Fuseau</span><strong data-preview-timezone><?= h($previewTimezone) ?></strong></p>
-                        <p><span>Programme</span><strong data-preview-program-label><?= h($selectedSignupLabel) ?></strong></p>
-                        <p><span>Tonalité</span><strong data-preview-program-tone><?= h($selectedSignupTone) ?></strong></p>
-                        <p><span>Signature</span><strong>λ <span data-signup-lambda-value><?= h((string) $selectedSignupLambda) ?></span> nm</strong></p>
                     </div>
+                    <p class="panel-copy">Lecture AzA, fuseau, signature et secret s’ouvrent juste après, sur des pages dédiées.</p>
                 </div>
             </div>
         </details>
@@ -874,7 +767,7 @@ $promptSeeds = guide_prompt_seeds();
                 <div class="action-row">
                     <a class="ghost-link" href="<?= h($guideHref) ?>">Voir le guide complet</a>
                     <a class="ghost-link" href="/str3m">Entrer publiquement</a>
-                    <a class="ghost-link" href="/#poser">Poser une terre</a>
+                    <a class="ghost-link" href="/rejoindre.php">Poser une terre</a>
                 </div>
             </article>
 

@@ -18,6 +18,7 @@ const torusCanvases = Array.from(document.querySelectorAll("[data-torus-cloud]")
 
 // === SIGNUP SPECTRUM LOGIC ===
 const signupProgramInputs = Array.from(document.querySelectorAll('[data-signup-program-input]'));
+const signupProgramCards = Array.from(document.querySelectorAll('[data-signup-program-card]'));
 const signupLambdaInput = document.querySelector('[data-signup-lambda-input]');
 const signupProgramLabelOutputs = Array.from(document.querySelectorAll('[data-signup-program-label], [data-preview-program-label]'));
 const signupProgramToneOutputs = Array.from(document.querySelectorAll('[data-signup-program-tone], [data-preview-program-tone]'));

@@ -2121,6 +2121,166 @@ button:hover,
 	color: inherit;
 }
 
+.signup-journey-shell {
+	max-width: min(1100px, calc(100% - 3rem));
+	padding-top: 2rem;
+	padding-bottom: 3.4rem;
+}
+
+.signup-journey-header {
+	display: grid;
+	gap: 1rem;
+	margin-bottom: 1.8rem;
+}
+
+.signup-journey-title {
+	max-width: 11ch;
+}
+
+.signup-journey-lead {
+	max-width: 42rem;
+}
+
+.signup-journey-progress {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.7rem 1rem;
+	font-size: 0.72rem;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+.signup-journey-progress li {
+	padding: 0 0 0.2rem;
+	border-bottom: 1px solid rgba(var(--fg-rgb) / 0.12);
+}
+
+.signup-journey-progress li.is-current {
+	color: rgb(var(--land-secondary-rgb));
+	border-bottom-color: rgba(var(--land-secondary-rgb) / 0.54);
+}
+
+.signup-journey-progress li.is-done {
+	color: rgba(var(--fg-rgb) / 0.82);
+	border-bottom-color: rgba(var(--fg-rgb) / 0.26);
+}
+
+.signup-journey-stage {
+	margin-top: 0;
+	padding-top: 0.3rem;
+}
+
+.signup-journey-grid {
+	display: grid;
+	gap: 2rem;
+	align-items: start;
+}
+
+.signup-journey-grid--name,
+.signup-journey-grid--reading,
+.signup-journey-grid--config {
+	grid-template-columns: minmax(0, 1.2fr) minmax(18rem, 0.8fr);
+}
+
+.signup-journey-form {
+	padding-right: 1rem;
+}
+
+.signup-journey-preview {
+	margin-top: 0;
+	position: sticky;
+	top: 1.6rem;
+	padding-left: 1rem;
+	border-left: 1px solid rgba(var(--fg-rgb) / 0.12);
+	background: radial-gradient(circle at 0% 18%, rgba(var(--land-secondary-rgb) / 0.06), transparent 54%);
+}
+
+.signup-journey-reading {
+	padding: 1.2rem 0 0.2rem;
+	min-height: 24rem;
+	border-top: 1px solid rgba(var(--fg-rgb) / 0.12);
+	border-bottom: 1px solid rgba(var(--fg-rgb) / 0.08);
+	background: radial-gradient(circle at 0% 22%, rgba(var(--land-secondary-rgb) / 0.05), transparent 48%);
+}
+
+.signup-journey-reading__copy {
+	gap: 1rem;
+	max-width: 44rem;
+}
+
+.signup-journey-reading__copy h2,
+.signup-journey-reading__copy h3 {
+	font-size: clamp(1.4rem, 2.6vw, 2.2rem);
+	letter-spacing: -0.02em;
+	text-transform: none;
+}
+
+.signup-journey-reading__copy p {
+	font-size: 1rem;
+	line-height: 1.8;
+	max-width: 40rem;
+	color: rgba(var(--fg-rgb) / 0.86);
+}
+
+.signup-journey-aside {
+	display: grid;
+	gap: 1.4rem;
+}
+
+.signup-journey-nav {
+	padding-left: 1rem;
+	border-left: 1px solid rgba(var(--fg-rgb) / 0.12);
+}
+
+.signup-journey-portal-card {
+	display: grid;
+	gap: 0.8rem;
+}
+
+.signup-journey-portal-summary {
+	max-height: 11rem;
+	overflow: hidden;
+	mask-image: linear-gradient(180deg, black 0 78%, transparent 100%);
+}
+
+.signup-journey-stage--config .signup-portal-grid {
+	grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+@media (max-width: 900px) {
+	.signup-journey-shell {
+		max-width: min(100% - 1.5rem, 100%);
+	}
+
+	.signup-journey-grid--name,
+	.signup-journey-grid--reading,
+	.signup-journey-grid--config {
+		grid-template-columns: 1fr;
+	}
+
+	.signup-journey-form,
+	.signup-journey-preview,
+	.signup-journey-nav {
+		padding-right: 0;
+		padding-left: 0;
+		border-left: none;
+	}
+
+	.signup-journey-preview {
+		position: static;
+		border-top: 1px solid rgba(var(--fg-rgb) / 0.12);
+		padding-top: 1rem;
+	}
+
+	.signup-journey-reading {
+		min-height: 0;
+	}
+}
+
 .panel {
 	padding: 0;
 	margin-top: 2rem;
