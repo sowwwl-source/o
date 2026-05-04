@@ -19,7 +19,24 @@ function sensor_ingest_expected_token(): string
 
 function sensor_ingest_authorization_token(): string
 {
-    $authorization = trim((string) ($_SERVER['HTTP_AUTHORIZATION'] ?? ''));
+    $authorization = trim((string) (
+        $_SERVER['HTTP_AUTHORIZATION']
+        ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
+        ?? ''
+    ));
+
+    if ($authorization === '' && function_exists('apache_request_headers')) {
+        $headers = apache_request_headers();
+        if (is_array($headers)) {
+            foreach ($headers as $name => $value) {
+                if (strcasecmp((string) $name, 'Authorization') === 0) {
+                    $authorization = trim((string) $value);
+                    break;
+                }
+            }
+        }
+    }
+
     if (stripos($authorization, 'Bearer ') === 0) {
         return trim(substr($authorization, 7));
     }
