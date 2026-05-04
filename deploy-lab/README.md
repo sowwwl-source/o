@@ -105,6 +105,45 @@ Wake it again:
 docker start sowwwl-o-lab-pocket-1
 ```
 
+## Raspberry Pi sensor ingest
+
+The lab app exposes a token-protected endpoint for the first 3ternet physical signals:
+
+- `POST https://lab.sowwwl.cloud/ingest/sensor`
+- `Authorization: Bearer $SOWWWL_PI_TOKEN`
+- JSON body with at least `event`
+
+Set a long random `SOWWWL_PI_TOKEN` in `.env.lab`, then rebuild the app:
+
+```bash
+cd /opt/o-3ternet-lab/deploy-lab
+openssl rand -hex 32
+nano .env.lab
+docker compose -p sowwwl-o-lab --env-file .env.lab -f docker-compose.lab.yml up --build -d app pocket
+```
+
+Smoke-test from the droplet:
+
+```bash
+source .env.lab
+curl -sS -X POST https://lab.sowwwl.cloud/ingest/sensor \
+  -H "Authorization: Bearer $SOWWWL_PI_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"event":"lab_ping","camera":"console","message":"hello plasma"}'
+
+docker exec sowwwl-o-lab-app-1 sh -lc 'tail -n 5 /var/www/runtime/plasma/sensor-events.jsonl'
+```
+
+Run the Pi daemon:
+
+```bash
+export SOWWWL_PI_ENDPOINT=https://lab.sowwwl.cloud/ingest/sensor
+export SOWWWL_PI_TOKEN=replace-with-lab-token
+export SOWWWL_PI_LAND_SLUG=lab-pocket
+export SOWWWL_PI_CAMERAS=0,1
+python3 scripts/sowwwl-pi.py
+```
+
 ## See also
 
 - `../3TERNET_ARCHITECTURE.md`

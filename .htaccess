@@ -36,9 +36,12 @@ Options -Indexes
   RewriteRule ^n\.php$ https://%{HTTP_HOST}/n [R=302,L]
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*n0de\.php(?:\?|\s) [NC]
   RewriteRule ^n0de\.php$ https://%{HTTP_HOST}/n0de [R=302,L]
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*ingest_sensor\.php(?:\?|\s) [NC]
+  RewriteRule ^ingest_sensor\.php$ https://%{HTTP_HOST}/ingest/sensor [R=302,L]
 
   RewriteRule ^0wlslw0/voice/$ https://%{HTTP_HOST}/0wlslw0/voice [R=302,L,NC]
   RewriteRule ^(land|echo|map|signal|str3m|aza|rejoindre|0wlslw0|sh0re|n|n0de)/$ https://%{HTTP_HOST}/$1 [R=302,L,NC]
+  RewriteRule ^ingest/sensor/$ https://%{HTTP_HOST}/ingest/sensor [R=302,L,NC]
 
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
@@ -56,6 +59,7 @@ Options -Indexes
   RewriteRule ^sh0re$ sh0re.php [L,NC,QSA]
   RewriteRule ^n$ n.php [L,NC,QSA]
   RewriteRule ^n0de$ n0de.php [L,NC,QSA]
+  RewriteRule ^ingest/sensor$ ingest_sensor.php [L,NC,QSA]
   RewriteRule ^0wlslw0/voice$ 0wlslw0_voice.php [L,NC,QSA]
   RewriteRule ^0wlslw0$ 0wlslw0.php [L,NC,QSA]
   RewriteRule ^aza/0*([0-9]{1,2})$ aza.php?p=$1 [L,NC,QSA]

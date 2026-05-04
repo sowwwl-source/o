@@ -106,6 +106,7 @@ Replace at least:
 - `SOWWWL_ADMIN_PIN`
 - `SOWWWL_MAGIC_LINK_SECRET`
 - `SOWWWL_ADMIN_EMAIL`
+- `SOWWWL_PI_TOKEN`
 
 Keep these values aligned with the lab domains:
 
@@ -238,7 +239,39 @@ The lab is considered real when all of this works:
 4. the `pocket` container can be stopped and restarted independently
 5. `Signal` and `aZa` can be exercised without touching production
 
-## Step 13 — the first real 3ternet experiment
+## Step 13 — first Raspberry / plasma ingest
+
+The lab app exposes a narrow endpoint for physical signals:
+
+```bash
+POST https://lab.sowwwl.cloud/ingest/sensor
+Authorization: Bearer $SOWWWL_PI_TOKEN
+```
+
+Smoke-test from the lab droplet:
+
+```bash
+cd /opt/o-3ternet-lab/deploy-lab
+source .env.lab
+curl -sS -X POST https://lab.sowwwl.cloud/ingest/sensor \
+  -H "Authorization: Bearer $SOWWWL_PI_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"event":"lab_ping","camera":"console","message":"hello plasma"}'
+
+docker exec sowwwl-o-lab-app-1 sh -lc 'tail -n 5 /var/www/runtime/plasma/sensor-events.jsonl'
+```
+
+Run the Pi daemon with environment variables, never hard-coded secrets:
+
+```bash
+export SOWWWL_PI_ENDPOINT=https://lab.sowwwl.cloud/ingest/sensor
+export SOWWWL_PI_TOKEN=replace-with-lab-token
+export SOWWWL_PI_LAND_SLUG=lab-pocket
+export SOWWWL_PI_CAMERAS=0,1
+python3 scripts/sowwwl-pi.py
+```
+
+## Step 14 — the first real 3ternet experiment
 
 Once the lab stack is stable, the next move is not another deploy.
 
@@ -251,7 +284,7 @@ The next move is:
 
 That is the first real `3ternet` behavior.
 
-## Step 14 — later replacement by the Raspberry Pi
+## Step 15 — later replacement by the Raspberry Pi
 
 When the Pi is ready:
 
