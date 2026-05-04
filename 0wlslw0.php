@@ -386,6 +386,7 @@ $guideVoiceNotes = [
         data-guide-voice-label="<?= h((string) ($voiceState['land_label'] ?? $guideLandLabel)) ?>"
         data-guide-voice-lambda="<?= h((string) ($voiceState['land_lambda'] ?? $guideLandLambda)) ?>"
         data-guide-voice-tone="<?= h((string) ($voiceState['land_tone'] ?? $guideLandTone)) ?>"
+        data-guide-voice-starter-prompts="<?= h((string) json_encode($voiceState['starter_prompts'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     >
         <div class="section-topline">
             <div>
@@ -405,6 +406,18 @@ $guideVoiceNotes = [
                 <p class="guide-voice-status" data-guide-voice-status>Prêt. Active la voix puis parle naturellement.</p>
                 <p class="guide-voice-transcript" data-guide-voice-transcript>Exemples : « explique O. », « ouvre Signal », “take me to Str3m”.</p>
                 <p class="guide-voice-reply" data-guide-voice-reply>Owl répondra ici puis lira sa réponse à voix haute.</p>
+                <div class="guide-voice-suggestions" data-guide-voice-suggestions aria-label="Impulsions proposées par Owl">
+                    <?php foreach (($voiceState['starter_prompts'] ?? []) as $prompt): ?>
+                        <?php
+                        $promptUtterance = trim((string) ($prompt['utterance'] ?? ''));
+                        $promptLabel = trim((string) ($prompt['label'] ?? $promptUtterance));
+                        if ($promptUtterance === '' || $promptLabel === '') {
+                            continue;
+                        }
+                        ?>
+                        <button type="button" class="guide-voice-suggestion" data-guide-voice-suggestion data-utterance="<?= h($promptUtterance) ?>"><?= h($promptLabel) ?></button>
+                    <?php endforeach; ?>
+                </div>
                 <div class="guide-voice-signature" aria-live="polite">
                     <span class="summary-label">Signature vocale</span>
                     <strong data-guide-voice-signature>Voix spectrale · λ <?= h((string) $guideLandLambda) ?> nm</strong>

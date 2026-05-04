@@ -71,7 +71,41 @@ function guide_voice_browser_state(?array $authenticatedLand = null): array
         'land_label' => (string) ($profile['label'] ?? 'collectif'),
         'land_lambda' => (int) ($profile['lambda_nm'] ?? 548),
         'land_tone' => (string) ($profile['tone'] ?? 'str3m public'),
+        'starter_prompts' => guide_voice_starter_prompts($authenticatedLand),
     ];
+}
+
+function guide_voice_starter_prompts(?array $authenticatedLand = null): array
+{
+    $hasLand = trim((string) ($authenticatedLand['slug'] ?? '')) !== '';
+
+    $prompts = $hasLand
+        ? [
+            'Rouvre ma terre.',
+            'Guide-moi vers Signal.',
+            'Explique-moi la différence entre Signal et aZa.',
+        ]
+        : array_slice(guide_prompt_seeds(), 0, 3);
+
+    return guide_voice_format_suggestions($prompts);
+}
+
+function guide_voice_format_suggestions(array $prompts): array
+{
+    $formatted = [];
+    foreach ($prompts as $prompt) {
+        $utterance = guide_voice_compact_reply_text((string) $prompt);
+        if ($utterance === '') {
+            continue;
+        }
+
+        $formatted[] = [
+            'utterance' => $utterance,
+            'label' => $utterance,
+        ];
+    }
+
+    return array_slice($formatted, 0, 4);
 }
 
 function guide_voice_default_greeting(?array $authenticatedLand = null): string
@@ -414,6 +448,90 @@ function guide_voice_commit_interaction_state(array $result, string $defaultLang
     guide_voice_store_interaction_state($state);
 }
 
+function guide_voice_suggestions_for_intent(string $intent, string $language = 'fr', ?array $authenticatedLand = null): array
+{
+    $hasLand = trim((string) ($authenticatedLand['slug'] ?? '')) !== '';
+
+    $prompts = match ($intent) {
+        'signal' => match ($language) {
+            'en' => ['Open Signal.', 'How do I validate my contact address?', 'What next?'],
+            'es' => ['Abre Signal.', '¿Cómo valido mi dirección de contacto?', '¿Y después?'],
+            'pt' => ['Abre o Signal.', 'Como valido o meu endereço de contacto?', 'E depois?'],
+            'it' => ['Apri Signal.', 'Come valido il mio indirizzo di contatto?', 'E poi?'],
+            default => ['Ouvre Signal.', 'Comment valider mon adresse ?', 'Et après ?'],
+        },
+        'str3m', 'public' => match ($language) {
+            'en' => ['Take me to Str3m.', 'What can I read publicly?', 'How do I create a land?'],
+            'es' => ['Llévame a Str3m.', '¿Qué puedo leer públicamente?', '¿Cómo creo una tierra?'],
+            'pt' => ['Leva-me ao Str3m.', 'O que posso ler publicamente?', 'Como crio uma terra?'],
+            'it' => ['Portami a Str3m.', 'Cosa posso leggere pubblicamente?', 'Come creo una terra?'],
+            default => ['Emmène-moi vers Str3m.', 'Que puis-je lire publiquement ?', 'Comment poser une terre ?'],
+        },
+        'aza' => match ($language) {
+            'en' => ['Open aZa.', 'What does aZa keep?', 'What next?'],
+            'es' => ['Abre aZa.', '¿Qué guarda aZa?', '¿Y después?'],
+            'pt' => ['Abre aZa.', 'O que aZa guarda?', 'E depois?'],
+            'it' => ['Apri aZa.', 'Che cosa conserva aZa?', 'E poi?'],
+            default => ['Ouvre aZa.', 'Que garde aZa ?', 'Et après ?'],
+        },
+        'echo' => match ($language) {
+            'en' => ['Open Echo.', 'Explain the difference with Signal.', 'What next?'],
+            'es' => ['Abre Echo.', 'Explícame la diferencia con Signal.', '¿Y después?'],
+            'pt' => ['Abre o Echo.', 'Explica a diferença com Signal.', 'E depois?'],
+            'it' => ['Apri Echo.', 'Spiegami la differenza con Signal.', 'E poi?'],
+            default => ['Ouvre Echo.', 'Explique-moi la différence avec Signal.', 'Et après ?'],
+        },
+        'create' => match ($language) {
+            'en' => ['Open the land creation path.', 'Explain the steps.', 'Can I look around first?'],
+            'es' => ['Abre el parcours de creación.', 'Explícame las etapas.', '¿Puedo mirar primero?'],
+            'pt' => ['Abre o percurso de criação.', 'Explica as etapas.', 'Posso olhar primeiro?'],
+            'it' => ['Apri il percorso di creazione.', 'Spiegami i passaggi.', 'Posso guardare prima?'],
+            default => ['Ouvre le parcours de création.', 'Explique-moi les étapes.', 'Puis-je regarder d’abord ?'],
+        },
+        'reopen' => $hasLand
+            ? match ($language) {
+                'en' => ['Open my land.', 'Guide me to Signal.', 'What next?'],
+                'es' => ['Abre mi tierra.', 'Guíame hacia Signal.', '¿Y después?'],
+                'pt' => ['Abre a minha terra.', 'Guia-me até ao Signal.', 'E depois?'],
+                'it' => ['Apri la mia terra.', 'Guidami verso Signal.', 'E poi?'],
+                default => ['Ouvre ma terre.', 'Guide-moi vers Signal.', 'Et après ?'],
+            }
+            : match ($language) {
+                'en' => ['Take me back to core.', 'I want to create a land.', 'Explain O.'],
+                'es' => ['Llévame al núcleo.', 'Quiero crear una tierra.', 'Explica O.'],
+                'pt' => ['Leva-me ao núcleo.', 'Quero criar uma terra.', 'Explica O.'],
+                'it' => ['Portami al nucleo.', 'Voglio creare una terra.', 'Spiega O.'],
+                default => ['Ramène-moi au noyau.', 'Je veux poser une terre.', 'Explique O.'],
+            },
+        'confused', 'compare', 'overview', 'unknown', 'greeting' => $hasLand
+            ? match ($language) {
+                'en' => ['Reopen my land.', 'Guide me to Signal.', 'Explain the difference between Signal and aZa.'],
+                'es' => ['Reabre mi tierra.', 'Guíame hacia Signal.', 'Explícame la diferencia entre Signal y aZa.'],
+                'pt' => ['Reabre a minha terra.', 'Guia-me até ao Signal.', 'Explica a diferença entre Signal e aZa.'],
+                'it' => ['Riapri la mia terra.', 'Guidami verso Signal.', 'Spiegami la differenza tra Signal e aZa.'],
+                default => ['Rouvre ma terre.', 'Guide-moi vers Signal.', 'Explique-moi la différence entre Signal et aZa.'],
+            }
+            : match ($language) {
+                'en' => ['Explain O.', 'Take me to Str3m.', 'I want to create a land.'],
+                'es' => ['Explícame O.', 'Llévame a Str3m.', 'Quiero crear una tierra.'],
+                'pt' => ['Explica O.', 'Leva-me ao Str3m.', 'Quero criar uma terra.'],
+                'it' => ['Spiega O.', 'Portami a Str3m.', 'Voglio creare una terra.'],
+                default => ['Explique O.', 'Emmène-moi vers Str3m.', 'Je veux poser une terre.'],
+            },
+        default => [],
+    };
+
+    return guide_voice_format_suggestions($prompts);
+}
+
+function guide_voice_attach_suggestions(array $result, ?array $authenticatedLand = null): array
+{
+    $intent = trim((string) ($result['_intent'] ?? 'unknown')) ?: 'unknown';
+    $language = trim((string) ($result['_language'] ?? 'fr')) ?: 'fr';
+    $result['suggestions'] = guide_voice_suggestions_for_intent($intent, $language, $authenticatedLand);
+    return $result;
+}
+
 function guide_voice_reply(string $utterance, ?array $authenticatedLand = null): array
 {
     $normalizedUtterance = guide_voice_normalize_text($utterance);
@@ -428,6 +546,7 @@ function guide_voice_reply(string $utterance, ?array $authenticatedLand = null):
     $result['source'] = trim((string) ($result['source'] ?? 'local')) ?: 'local';
     $result['heard'] = $normalizedUtterance;
     $result['ok'] = true;
+    $result = guide_voice_attach_suggestions($result, $authenticatedLand);
 
     guide_voice_commit_interaction_state($result, guide_voice_detect_language($normalizedUtterance));
 
@@ -556,11 +675,23 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
         $route = $localFallback['route'];
     }
 
-    return [
+    $result = [
         'reply' => $reply,
         'route' => $route,
         'source' => 'remote',
     ];
+
+    if (!empty($localFallback['_intent'])) {
+        $result['_intent'] = (string) $localFallback['_intent'];
+    }
+    if (!empty($localFallback['_language'])) {
+        $result['_language'] = (string) $localFallback['_language'];
+    }
+    if (!empty($localFallback['suggestions']) && is_array($localFallback['suggestions'])) {
+        $result['suggestions'] = $localFallback['suggestions'];
+    }
+
+    return $result;
 }
 
 function guide_voice_http_status(array $headers): int

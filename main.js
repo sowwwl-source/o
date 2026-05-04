@@ -2716,6 +2716,7 @@ function createGuideVoiceDock(config = {}) {
 	shell.dataset.guideVoiceLabel = config.land_label || document.body?.dataset?.landLabel || "collectif";
 	shell.dataset.guideVoiceLambda = String(config.land_lambda || document.body?.dataset?.landLambda || "548");
 	shell.dataset.guideVoiceTone = config.land_tone || document.body?.dataset?.landTone || "";
+	shell.dataset.guideVoiceStarterPrompts = JSON.stringify(normalizeGuideVoiceSuggestions(config.starter_prompts));
 	shell.dataset.voiceState = "idle";
 	shell.dataset.voiceMuted = readGuideVoiceMutedState() ? "1" : "0";
 	shell.setAttribute("aria-label", "Dock vocal 0wlslw0");
@@ -2737,6 +2738,7 @@ function createGuideVoiceDock(config = {}) {
 			<p class="guide-voice-status" data-guide-voice-status>0wlslw0 peut te suivre ici.</p>
 			<p class="guide-voice-transcript" data-guide-voice-transcript>La continuité vocale se réamorce après navigation.</p>
 			<p class="guide-voice-reply" data-guide-voice-reply>Active la voix une fois, puis continue ta traversée.</p>
+			<div class="guide-voice-suggestions" data-guide-voice-suggestions aria-label="Impulsions proposées par 0wlslw0"></div>
 			<div class="guide-voice-signature" aria-live="polite">
 				<span class="summary-label">Signature vocale</span>
 				<strong data-guide-voice-signature>Voix spectrale · λ 548 nm</strong>
@@ -2768,6 +2770,29 @@ function normalizeGuideVoiceRoute(route) {
 		label: typeof route.label === "string" && route.label ? route.label : "Continuer",
 		auto_navigate: Boolean(route.auto_navigate),
 	};
+}
+
+function normalizeGuideVoiceSuggestions(value) {
+	if (!Array.isArray(value)) {
+		return [];
+	}
+
+	return value
+		.filter((item) => item && typeof item === "object")
+		.map((item) => {
+			const utterance = typeof item.utterance === "string" ? item.utterance.trim() : "";
+			const label = typeof item.label === "string" ? item.label.trim() : "";
+			if (!utterance) {
+				return null;
+			}
+
+			return {
+				utterance,
+				label: label || utterance,
+			};
+		})
+		.filter(Boolean)
+		.slice(0, 4);
 }
 
 function normalizeGuideVoiceText(value) {
@@ -3074,6 +3099,7 @@ function mountGuideVoice(root) {
 	const statusNode = root.querySelector("[data-guide-voice-status]");
 	const transcriptNode = root.querySelector("[data-guide-voice-transcript]");
 	const replyNode = root.querySelector("[data-guide-voice-reply]");
+	const suggestionsNode = root.querySelector("[data-guide-voice-suggestions]");
 	const signatureNode = root.querySelector("[data-guide-voice-signature]");
 	const profileNode = root.querySelector("[data-guide-voice-profile]");
 	const muteIndicatorNode = root.querySelector("[data-guide-voice-mute-indicator]");
@@ -3086,15 +3112,30 @@ function mountGuideVoice(root) {
 	const apiPath = root.dataset.guideVoiceApi || "/0wlslw0/voice";
 	const csrfToken = root.dataset.guideVoiceCsrf || "";
 	const chatUrl = root.dataset.guideVoiceChatUrl || "";
+	const starterPrompts = (() => {
+		const raw = root.dataset.guideVoiceStarterPrompts || "";
+		if (!raw) {
+			return [];
+		}
+
+		try {
+			const parsed = JSON.parse(raw);
+			return normalizeGuideVoiceSuggestions(parsed);
+		} catch {
+			return [];
+		}
+	})();
 	const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 	const isDock = root.dataset.guideVoiceDock === "1";
 	const persisted = readGuideVoiceSession();
+	const persistedSuggestions = normalizeGuideVoiceSuggestions(persisted.suggestions);
 	let recognition = null;
 	let isActive = Boolean(persisted.active);
 	let isMuted = readGuideVoiceMutedState();
 	let isSpeaking = false;
 	let isWaitingReply = false;
 	let interactionsBound = false;
+	let activeSuggestions = persistedSuggestions.length ? persistedSuggestions : starterPrompts;
 
 	function syncDockState() {
 		if (!isDock) {
@@ -3152,6 +3193,7 @@ function mountGuideVoice(root) {
 			csrfToken,
 			chatUrl,
 			greeting,
+			suggestions: activeSuggestions,
 			lastPath: currentPath,
 			autoResume: isActive,
 			updatedAt: Date.now(),
@@ -3212,6 +3254,35 @@ function mountGuideVoice(root) {
 		if (replyNode instanceof HTMLElement && text) {
 			replyNode.textContent = text;
 		}
+		persistSession();
+	}
+
+	function renderSuggestions(suggestions) {
+		if (!(suggestionsNode instanceof HTMLElement)) {
+			return;
+		}
+
+		const normalized = normalizeGuideVoiceSuggestions(suggestions);
+		const explicitSuggestions = Array.isArray(suggestions);
+		const items = normalized.length
+			? normalized
+			: explicitSuggestions
+				? []
+				: (activeSuggestions.length ? activeSuggestions : starterPrompts);
+
+		activeSuggestions = items;
+		suggestionsNode.innerHTML = "";
+		items.forEach((item) => {
+			const button = document.createElement("button");
+			button.type = "button";
+			button.className = "guide-voice-suggestion";
+			button.dataset.guideVoiceSuggestion = "1";
+			button.dataset.utterance = item.utterance.trim();
+			button.textContent = typeof item.label === "string" && item.label.trim()
+				? item.label.trim()
+				: item.utterance.trim();
+			suggestionsNode.appendChild(button);
+		});
 		persistSession();
 	}
 
@@ -3423,9 +3494,11 @@ function mountGuideVoice(root) {
 				? payload.reply.trim()
 				: "Le passage vocal hésite un instant. Réessaie avec une phrase plus courte.";
 			const route = payload && typeof payload === "object" ? payload.route : null;
+			const suggestions = payload && typeof payload === "object" ? payload.suggestions : null;
 
 			setReply(reply);
 			showRoute(route);
+			renderSuggestions(suggestions);
 			isWaitingReply = false;
 
 			speakReply(reply, () => {
@@ -3528,12 +3601,47 @@ function mountGuideVoice(root) {
 		setReply(persisted.reply);
 	}
 
+	renderSuggestions();
+
+	const bindSuggestionClicks = () => {
+		if (!(suggestionsNode instanceof HTMLElement) || suggestionsNode.dataset.bound === "1") {
+			return;
+		}
+
+		suggestionsNode.dataset.bound = "1";
+		suggestionsNode.addEventListener("click", (event) => {
+			const target = event.target;
+			if (!(target instanceof Element)) {
+				return;
+			}
+
+			const button = target.closest("[data-guide-voice-suggestion]");
+			if (!(button instanceof HTMLButtonElement)) {
+				return;
+			}
+
+			const utterance = (button.dataset.utterance || "").trim();
+			if (!utterance || isWaitingReply) {
+				return;
+			}
+
+			if (synth) {
+				synth.cancel();
+			}
+			isSpeaking = false;
+			stopListening();
+			sendUtterance(utterance);
+		});
+	};
+
+	bindSuggestionClicks();
+
 	if (!RecognitionCtor) {
-		startButton.setAttribute("disabled", "disabled");
+		startButton.hidden = true;
 		setReply(chatUrl
 			? "Ce navigateur ne propose pas la reconnaissance vocale Web. Tu peux ouvrir le relais externe en attendant."
-			: "Ce navigateur ne propose pas la reconnaissance vocale Web. Essaie Safari ou Chrome récents.");
-		setState("idle", "Reconnaissance vocale indisponible dans ce navigateur.");
+			: "Ce navigateur ne propose pas la reconnaissance vocale Web. Utilise les impulsions ci-dessous ou essaie Safari ou Chrome récents.");
+		setState("idle", "Reconnaissance vocale indisponible. Owl reste guidable par impulsions.");
 		return;
 	}
 
@@ -3615,6 +3723,7 @@ function mountGuideVoice(root) {
 		setReply(firstActivation
 			? "0wlslw0 répondra ici puis lira sa réponse à voix haute."
 			: "0wlslw0 reste avec toi et reprend l’écoute sur cette page.");
+		renderSuggestions(starterPrompts);
 		persistSession({ active: true, autoResume: true, everActivated: true, pendingNavigation: "" });
 
 		if (firstActivation) {
@@ -3639,6 +3748,8 @@ function mountGuideVoice(root) {
 			prepareNavigation(routeLink.href || "");
 		});
 	}
+
+	bindSuggestionClicks();
 
 	window.addEventListener("o:land-signature-change", () => {
 		applyGuideVoiceSignature();
