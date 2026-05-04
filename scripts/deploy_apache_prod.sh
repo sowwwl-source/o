@@ -23,8 +23,8 @@ Usage:
 	scripts/deploy_apache_prod.sh [--host user@host] [--stage-dir /tmp] --execute --no-verify --profile homepage
 
 Profiles:
-  homepage   Uploads index.php, main.js, styles.css
-  aza        Uploads aza.php, config.php
+  homepage   Uploads index.php, main.js, styles.css and the installable shell assets
+  aza        Uploads aza.php, config.php and the installable shell assets
 	full-web   Uploads the main public PHP/CSS/JS surfaces served from /var/www/html
 
 Examples:
@@ -52,13 +52,13 @@ EOF
 profile_files() {
 	case "$1" in
 		homepage)
-			printf '%s\n' index.php main.js styles.css
+			printf '%s\n' index.php main.js styles.css manifest.php site-sw.js apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
 			;;
 		aza)
-			printf '%s\n' aza.php config.php
+			printf '%s\n' aza.php config.php manifest.php site-sw.js apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
 			;;
 		full-web)
-			printf '%s\n' index.php land.php aza.php config.php main.js styles.css manifest.json site-sw.js favicon.svg
+			printf '%s\n' index.php land.php aza.php config.php main.js styles.css manifest.php manifest.json site-sw.js favicon.svg apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
 			;;
 		*)
 			echo "Unknown profile: $1" >&2

@@ -140,6 +140,7 @@ $guideVoiceNotes = [
     <meta name="theme-color" content="#09090b">
     <title>0wlslw0 — <?= h($siteTitle) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<?= render_pwa_head_tags('owl') ?>
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>

@@ -179,6 +179,176 @@ require_once __DIR__ . '/lib/security.php';
 require_once __DIR__ . '/lib/meaning.php';
 require_once __DIR__ . '/lib/signal_mail.php';
 
+function pwa_app_catalog(): array
+{
+    static $catalog = null;
+
+    if (is_array($catalog)) {
+        return $catalog;
+    }
+
+    $icons = [
+        [
+            'src' => '/icons/icon-192.png',
+            'sizes' => '192x192',
+            'type' => 'image/png',
+            'purpose' => 'any',
+        ],
+        [
+            'src' => '/icons/icon-512.png',
+            'sizes' => '512x512',
+            'type' => 'image/png',
+            'purpose' => 'any',
+        ],
+        [
+            'src' => '/icons/icon-mask-192.png',
+            'sizes' => '192x192',
+            'type' => 'image/png',
+            'purpose' => 'maskable',
+        ],
+        [
+            'src' => '/icons/icon-mask-512.png',
+            'sizes' => '512x512',
+            'type' => 'image/png',
+            'purpose' => 'maskable',
+        ],
+        [
+            'src' => '/icons/icon.svg',
+            'sizes' => 'any',
+            'type' => 'image/svg+xml',
+            'purpose' => 'any',
+        ],
+        [
+            'src' => '/icons/icon-mask.svg',
+            'sizes' => 'any',
+            'type' => 'image/svg+xml',
+            'purpose' => 'maskable',
+        ],
+    ];
+
+    $catalog = [
+        'main' => [
+            'id' => '/app/main',
+            'name' => SITE_TITLE,
+            'short_name' => 'O.',
+            'description' => 'O. le réseau minimal — un espace vivant, personnel, discret. Pose ta terre et laisse la nuit coder le reste.',
+            'start_url' => '/',
+            'scope' => '/',
+            'theme_color' => '#09090b',
+            'background_color' => '#09090b',
+            'shortcuts' => [
+                ['name' => 'Signal', 'short_name' => 'Signal', 'url' => '/signal'],
+                ['name' => 'Str3m', 'short_name' => 'Str3m', 'url' => '/str3m'],
+                ['name' => '0wlslw0', 'short_name' => 'Owl', 'url' => '/0wlslw0'],
+            ],
+        ],
+        'owl' => [
+            'id' => '/app/owl',
+            'name' => '0wlslw0',
+            'short_name' => 'Owl',
+            'description' => '0wlslw0 — guide d entree pour comprendre O. et trouver la bonne porte sans se perdre.',
+            'start_url' => '/0wlslw0',
+            'scope' => '/0wlslw0',
+            'theme_color' => '#09090b',
+            'background_color' => '#09090b',
+            'shortcuts' => [
+                ['name' => 'Retour au noyau', 'short_name' => 'Noyau', 'url' => '/'],
+                ['name' => 'Ouvrir Str3m', 'short_name' => 'Str3m', 'url' => '/str3m'],
+                ['name' => 'Poser une terre', 'short_name' => 'Terre', 'url' => '/rejoindre.php'],
+            ],
+        ],
+        'xyz' => [
+            'id' => '/app/xyz',
+            'name' => 'SOWWWL XYZ',
+            'short_name' => 'XYZ',
+            'description' => 'SOWWWL XYZ — surface torique, carte sensible et seuil d entree dans le tore.',
+            'start_url' => '/',
+            'scope' => '/',
+            'theme_color' => '#09090b',
+            'background_color' => '#09090b',
+            'shortcuts' => [
+                ['name' => 'Ouvrir 0wlslw0', 'short_name' => 'Owl', 'url' => '/0wlslw0'],
+                ['name' => 'Lire Str3m', 'short_name' => 'Str3m', 'url' => '/str3m'],
+                ['name' => 'Revenir au noyau', 'short_name' => 'Noyau', 'url' => '/'],
+            ],
+        ],
+    ];
+
+    foreach ($catalog as $appId => $config) {
+        $catalog[$appId]['lang'] = 'fr';
+        $catalog[$appId]['display'] = 'standalone';
+        $catalog[$appId]['orientation'] = 'portrait';
+        $catalog[$appId]['icons'] = $icons;
+    }
+
+    return $catalog;
+}
+
+function pwa_default_app_id(?string $host = null): string
+{
+    $resolvedHost = request_host($host);
+
+    return match ($resolvedHost) {
+        '0wlslw0.com', 'www.0wlslw0.com' => 'owl',
+        'sowwwl.xyz', 'www.sowwwl.xyz' => 'xyz',
+        default => 'main',
+    };
+}
+
+function pwa_app_config(?string $preferred = null, ?string $host = null): array
+{
+    $catalog = pwa_app_catalog();
+    $resolvedId = is_string($preferred) && isset($catalog[$preferred])
+        ? $preferred
+        : pwa_default_app_id($host);
+
+    return $catalog[$resolvedId] ?? $catalog['main'];
+}
+
+function pwa_manifest_version(): string
+{
+    static $version = null;
+
+    if (is_string($version) && $version !== '') {
+        return $version;
+    }
+
+    $manifestMtime = @filemtime(__DIR__ . '/manifest.php') ?: 0;
+    $configMtime = @filemtime(__FILE__) ?: 0;
+    $version = (string) max($manifestMtime, $configMtime, 1);
+
+    return $version;
+}
+
+function pwa_manifest_href(?string $preferred = null, ?string $host = null): string
+{
+    $catalog = pwa_app_catalog();
+    $appId = is_string($preferred) && isset($catalog[$preferred])
+        ? $preferred
+        : pwa_default_app_id($host);
+
+    return '/manifest.php?app=' . rawurlencode($appId) . '&v=' . rawurlencode(pwa_manifest_version());
+}
+
+function render_pwa_head_tags(?string $preferred = null, ?string $host = null): string
+{
+    $config = pwa_app_config($preferred, $host);
+    $manifestHref = h(pwa_manifest_href($preferred, $host));
+    $appName = h((string) ($config['name'] ?? SITE_TITLE));
+    $shortName = h((string) ($config['short_name'] ?? 'O.'));
+    $appleIcon = h('/apple-touch-icon.png?v=' . pwa_manifest_version());
+
+    return <<<HTML
+    <link rel="manifest" href="{$manifestHref}">
+    <meta name="application-name" content="{$appName}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="{$shortName}">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="{$appleIcon}">
+HTML;
+}
+
 function visual_profile_tokens(?array $visualProfile = null, string $streamMood = 'calm'): array
 {
     $resolvedMood = trim($streamMood) !== '' ? trim($streamMood) : 'calm';

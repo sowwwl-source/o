@@ -24,7 +24,7 @@ COPY composer.json ./
 RUN composer install --no-dev --prefer-dist --no-interaction --no-progress
 
 COPY .htaccess ./
-COPY index.php land.php config.php styles.css main.js manifest.json site-sw.js favicon.svg aza.php rejoindre.php signal.php signal_item.php signal_post.php signal_live.php logout.php echo.php 0wlslw0.php 0wlslw0_voice.php str3m.php map.php map_points.php sh0re.php n.php n0de.php qr.js ingest_sensor.php ./
+COPY index.php land.php config.php styles.css main.js manifest.php manifest.json site-sw.js favicon.svg apple-touch-icon.png aza.php rejoindre.php signal.php signal_item.php signal_post.php signal_live.php logout.php echo.php 0wlslw0.php 0wlslw0_voice.php str3m.php map.php map_points.php sh0re.php n.php n0de.php qr.js ingest_sensor.php ./
 COPY aza_portals ./aza_portals
 COPY lib ./lib
 COPY icons ./icons

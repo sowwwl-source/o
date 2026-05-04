@@ -110,12 +110,7 @@ function guide_voice_format_suggestions(array $prompts): array
 
 function guide_voice_default_greeting(?array $authenticatedLand = null): string
 {
-    $slug = trim((string) ($authenticatedLand['slug'] ?? ''));
-    if ($slug !== '') {
-        return 'Je suis 0wlslw0. Tu peux me parler en français, English, español, português ou italiano. On peut faire simple : retrouver ta terre, visiter publiquement, ou passer par la bonne porte.';
-    }
-
-    return 'Je suis 0wlslw0. Tu peux me parler en français, English, español, português ou italiano. Je peux t’aider à comprendre O., visiter sans compte, ou poser une terre sans te perdre.';
+    return "Je suis Owl O et serai votre guide pour rejoindre le peuple de l'O.";
 }
 
 function guide_voice_detect_language(string $text): string
@@ -125,7 +120,11 @@ function guide_voice_detect_language(string $text): string
     }
 
     $markers = [
-        'en' => ['hello', 'hi', 'please', 'i want', 'take me', 'guide me', 'explain', 'what is', 'public entry', 'archive'],
+        'en' => [
+            'hello', 'hi', 'please', 'i want', 'take me', 'guide me', 'explain', 'what is',
+            'public entry', 'archive', 'what next', 'how do i', 'where should i', 'publicly',
+            'my land', 'signal or', 'or aza', 'or signal', 'or str3m', 'or echo',
+        ],
         'es' => ['hola', 'quiero', 'explica', 'llevame', 'llévame', 'ayuda', 'publico', 'público', 'archivo', 'tierra'],
         'pt' => ['ola', 'olá', 'quero', 'explica', 'leva-me', 'leva me', 'ajuda', 'publico', 'público', 'terra', 'mensagem'],
         'it' => ['ciao', 'voglio', 'spiega', 'portami', 'aiuto', 'pubblico', 'terra', 'archivio', 'messaggio'],
@@ -946,7 +945,16 @@ function guide_voice_detect_intent(string $text): string
         return 'confused';
     }
 
-    if (guide_voice_contains($text, ['difference', 'différence', 'choisir entre', 'quel ferry', 'quelle porte', 'signal ou', 'str3m ou', 'aza ou', 'echo ou', 'difference between', 'which door', 'which ferry', 'cual puerta', 'cuál puerta', 'elegir entre', 'qual porta', 'qual ferry', 'scegliere tra', 'quale porta'])) {
+    if (guide_voice_contains($text, [
+        'difference', 'différence', 'choisir entre', 'quel ferry', 'quelle porte',
+        'signal ou', 'str3m ou', 'aza ou', 'echo ou',
+        'signal or', 'str3m or', 'aza or', 'echo or',
+        'or signal', 'or str3m', 'or aza', 'or echo',
+        'difference between', 'which door', 'which ferry',
+        'cual puerta', 'cuál puerta', 'elegir entre',
+        'qual porta', 'qual ferry',
+        'scegliere tra', 'quale porta'
+    ])) {
         return 'compare';
     }
 
@@ -958,7 +966,7 @@ function guide_voice_detect_intent(string $text): string
         return 'str3m';
     }
 
-    if (guide_voice_contains($text, ['visiter', 'public', 'voir', 'observer', 'decouvrir', 'découvrir', 'regarder', 'visit', 'look around', 'discover', 'watch', 'visitar', 'ver', 'mirar', 'descubrir', 'visitar', 'olhar', 'guardare', 'visitare', 'scoprire'])) {
+    if (guide_voice_contains($text, ['visiter', 'public', 'voir', 'observer', 'decouvrir', 'découvrir', 'regarder', 'visit', 'look around', 'discover', 'watch', 'publicly', 'read publicly', 'browse publicly', 'visitar', 'ver', 'mirar', 'descubrir', 'visitar', 'olhar', 'guardare', 'visitare', 'scoprire'])) {
         return 'public';
     }
 

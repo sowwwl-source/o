@@ -173,6 +173,7 @@ $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($si
     <meta name="theme-color" content="#09090b">
     <title>Rejoindre le peuple de l'O — <?= h(SITE_TITLE) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<?= render_pwa_head_tags('main') ?>
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>

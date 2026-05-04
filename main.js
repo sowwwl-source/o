@@ -2709,7 +2709,7 @@ function createGuideVoiceDock(config = {}) {
 	shell.dataset.cornerDockActive = "0";
 	shell.dataset.guideVoiceApi = config.api_path || "/0wlslw0/voice";
 	shell.dataset.guideVoiceCsrf = config.csrf_token || "";
-	shell.dataset.guideVoiceGreeting = config.greeting || "Je suis 0wlslw0. Je te suis d’une page à l’autre.";
+	shell.dataset.guideVoiceGreeting = config.greeting || "Je suis Owl O et serai votre guide pour rejoindre le peuple de l'O.";
 	shell.dataset.guideVoiceUpstream = config.upstream_configured ? "1" : "0";
 	shell.dataset.guideVoiceChatUrl = config.chat_url || "";
 	shell.dataset.guideVoiceProgram = config.land_program || document.body?.dataset?.landProgram || "collective";
@@ -3108,7 +3108,7 @@ function mountGuideVoice(root) {
 	const dockStateNode = root.querySelector("[data-guide-voice-dock-state]");
 	const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 	const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
-	const greeting = root.dataset.guideVoiceGreeting || "Je suis 0wlslw0. Dis-moi ce que tu veux faire.";
+	const greeting = root.dataset.guideVoiceGreeting || "Je suis Owl O et serai votre guide pour rejoindre le peuple de l'O.";
 	const apiPath = root.dataset.guideVoiceApi || "/0wlslw0/voice";
 	const csrfToken = root.dataset.guideVoiceCsrf || "";
 	const chatUrl = root.dataset.guideVoiceChatUrl || "";

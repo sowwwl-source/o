@@ -1,11 +1,15 @@
-const VERSION = "sowwwl-site-v1";
+const VERSION = "sowwwl-site-v2";
 const APP_SHELL = [
 	"/styles.css",
 	"/main.js",
-	"/manifest.json",
 	"/favicon.svg",
+	"/apple-touch-icon.png",
 	"/icons/icon.svg",
 	"/icons/icon-mask.svg",
+	"/icons/icon-192.png",
+	"/icons/icon-512.png",
+	"/icons/icon-mask-192.png",
+	"/icons/icon-mask-512.png",
 ];
 
 self.addEventListener("install", (event) => {

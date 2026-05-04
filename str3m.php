@@ -57,6 +57,7 @@ $recentB0t3s = b0t3_recent_public(20);
     <meta name="theme-color" content="#09090b">
     <title>Str3m — <?= h(SITE_TITLE) ?></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<?= render_pwa_head_tags('main') ?>
     <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>

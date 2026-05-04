@@ -1,5 +1,5 @@
 {
-	"id": "/",
+	"id": "/app/main",
 	"name": "O. le réseau minimal",
 	"short_name": "O.",
 	"description": "O. le réseau minimal — un espace vivant, personnel, discret. Pose ta terre et laisse la nuit coder le reste.",
@@ -12,6 +12,30 @@
 	"orientation": "portrait",
 	"icons": [
 		{
+			"src": "/icons/icon-192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "/icons/icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "/icons/icon-mask-192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "maskable"
+		},
+		{
+			"src": "/icons/icon-mask-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable"
+		},
+		{
 			"src": "/icons/icon.svg",
 			"sizes": "any",
 			"type": "image/svg+xml",
@@ -22,6 +46,23 @@
 			"sizes": "any",
 			"type": "image/svg+xml",
 			"purpose": "maskable"
+		}
+	],
+	"shortcuts": [
+		{
+			"name": "Signal",
+			"short_name": "Signal",
+			"url": "/signal"
+		},
+		{
+			"name": "Str3m",
+			"short_name": "Str3m",
+			"url": "/str3m"
+		},
+		{
+			"name": "0wlslw0",
+			"short_name": "Owl",
+			"url": "/0wlslw0"
 		}
 	]
 }
