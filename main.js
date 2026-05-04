@@ -1036,6 +1036,7 @@ function initTorusCloud(canvas) {
 			state.velocityPanY *= 0.2;
 			canvas.classList.add("is-nav-armed");
 			document.body.classList.add("torus-nav-active");
+			canvas.setPointerCapture(pointerId);
 			updateTouchHint();
 		}, 360);
 	}
@@ -1279,9 +1280,11 @@ function initTorusCloud(canvas) {
 			setLongPressDirection("");
 			recordGesturePoint(event.clientX, event.clientY);
 			state.dragging = true;
-			canvas.classList.add("is-dragging");
 			canvas.focus({ preventScroll: true });
-			canvas.setPointerCapture(event.pointerId);
+			if (state.pointerType !== "touch") {
+				canvas.classList.add("is-dragging");
+				canvas.setPointerCapture(event.pointerId);
+			}
 			queueLongPress(event.pointerId);
 		});
 
@@ -1295,11 +1298,20 @@ function initTorusCloud(canvas) {
 			const travelDistance = Math.hypot(travelX, travelY);
 			if (!state.longPressActive && travelDistance > 14) {
 				clearLongPressTimer();
+				if (state.pointerType === "touch") {
+					releasePointer(event);
+					return;
+				}
 			}
 
 			if (state.longPressActive) {
+				event.preventDefault();
 				const direction = detectCardinalDirection(travelX, travelY, travelDistance, 18, 1.08);
 				setLongPressDirection(direction || "");
+				return;
+			}
+
+			if (state.pointerType === "touch") {
 				return;
 			}
 
