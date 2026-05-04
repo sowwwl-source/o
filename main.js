@@ -2600,10 +2600,14 @@ function syncCornerDocks(force = false) {
 		}
 
 		dock.dataset.cornerDockCompact = "1";
+		const isPrimaryDock = dock.dataset.cornerDockPriority === "primary";
+		const isGuideVoiceDock = dock.dataset.guideVoiceDock === "1";
 		if (force || dock.dataset.cornerDockInitialized !== "1") {
-			dock.open = shouldStayOpen;
+			dock.open = shouldStayOpen || (isPrimaryDock && !isGuideVoiceDock);
 		} else if (shouldStayOpen) {
 			dock.open = true;
+		} else if (isGuideVoiceDock) {
+			dock.open = false;
 		}
 
 		dock.dataset.cornerDockInitialized = "1";
@@ -2696,11 +2700,12 @@ function createGuideVoiceDock(config = {}) {
 
 	const shell = document.createElement("details");
 	shell.className = "panel reveal on guide-panel guide-voice-shell guide-voice-dock";
-	shell.open = true;
+	shell.open = false;
 	shell.dataset.guideVoice = "";
 	shell.dataset.guideVoiceDock = "1";
 	shell.dataset.cornerDock = "";
 	shell.dataset.cornerDockSide = "right";
+	shell.dataset.cornerDockPriority = "secondary";
 	shell.dataset.cornerDockActive = "0";
 	shell.dataset.guideVoiceApi = config.api_path || "/0wlslw0/voice";
 	shell.dataset.guideVoiceCsrf = config.csrf_token || "";

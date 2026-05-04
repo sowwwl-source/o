@@ -796,6 +796,23 @@ body.xyz-surface-view .main-torus {
 	margin-top: 0.1rem;
 }
 
+.home-start-panel .section-topline {
+	margin-bottom: 0.8rem;
+}
+
+.home-start-panel .public-entry-grid {
+	margin-top: 0.2rem;
+}
+
+.home-start-panel .signup-preview {
+	border-top: 1px solid rgba(var(--fg-rgb) / 0.12);
+	padding-top: 1rem;
+}
+
+.home-start-panel .panel-copy {
+	max-width: 38ch;
+}
+
 .home-secondary-grid {
 	display: grid;
 	grid-template-columns: minmax(18rem, 0.9fr) minmax(22rem, 1.1fr);
@@ -4097,16 +4114,17 @@ body.xyz-surface-view .guide-prompt-list li code {
 	right: max(1rem, env(safe-area-inset-right));
 	bottom: max(1rem, env(safe-area-inset-bottom));
 	z-index: 48;
-	width: min(26rem, calc(100vw - 2rem));
+	width: min(22rem, calc(100vw - 2rem));
 	padding: 1rem 1rem 0.9rem 1.1rem;
-	background: linear-gradient(180deg, rgba(var(--panel-rgb) / 0.82), rgba(var(--panel-rgb) / 0.68));
+	background: linear-gradient(180deg, rgba(var(--panel-rgb) / 0.78), rgba(var(--panel-rgb) / 0.62));
 	backdrop-filter: blur(16px) saturate(135%);
 	-webkit-backdrop-filter: blur(16px) saturate(135%);
 	border: 1px solid rgba(var(--fg-rgb) / 0.08);
-	box-shadow: 0 1rem 2.8rem rgba(0, 0, 0, 0.24);
+	box-shadow: 0 0.85rem 2.2rem rgba(0, 0, 0, 0.2);
 	border-radius: 1.1rem;
 	overflow: hidden;
 	background-image: radial-gradient(circle at top left, rgba(var(--land-secondary-rgb) / 0.08), transparent 40%);
+	opacity: 0.93;
 }
 
 .guide-voice-dock::before {
@@ -4145,13 +4163,13 @@ body.xyz-surface-view .guide-prompt-list li code {
 }
 
 .guide-voice-dock .guide-voice-status {
-	font-size: 0.78rem;
+	font-size: 0.74rem;
 	letter-spacing: 0.12em;
 }
 
 .guide-voice-dock .guide-voice-transcript,
 .guide-voice-dock .guide-voice-reply {
-	font-size: 0.9rem;
+	font-size: 0.86rem;
 	line-height: 1.55;
 }
 
@@ -4167,6 +4185,21 @@ body.xyz-surface-view .guide-prompt-list li code {
 .guide-voice-dock .guide-voice-actions {
 	margin-top: 0.15rem;
 	gap: 0.8rem;
+}
+
+.signal-directory-block {
+	margin-top: 0.5rem;
+}
+
+.signal-directory-shell {
+	display: grid;
+	gap: 1rem;
+}
+
+.signal-directory-copy {
+	max-width: 34ch;
+	margin-top: -0.2rem;
+	color: rgba(var(--fg-rgb) / 0.66);
 }
 
 body.has-guide-voice-dock {
@@ -4289,20 +4322,24 @@ body:has(.connection-meter) {
 		left: auto;
 		right: max(0.75rem, env(safe-area-inset-right));
 		width: min(21rem, calc(100vw - 1.5rem));
-		bottom: max(0.75rem, env(safe-area-inset-bottom));
+		bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 4.8rem);
 		padding: 0.95rem 0.9rem 0.85rem 1rem;
 	}
 
 	body.has-guide-voice-dock {
-		padding-bottom: 5.8rem;
+		padding-bottom: 9rem;
 	}
 
 	body:has(.connection-meter) {
-		padding-bottom: 5.8rem;
+		padding-bottom: 9rem;
 	}
 
 	.guide-voice-signature {
 		max-width: none;
+	}
+
+	.guide-voice-dock__toggle strong {
+		font-size: 0.82rem;
 	}
 }
 
@@ -5338,9 +5375,10 @@ body:has(.connection-meter) {
 }
 
 .signal-identity-block {
-	margin-top: 1.8rem;
-	padding-top: 1rem;
+	margin-top: 1.4rem;
+	padding-top: 0.85rem;
 	border-top: 1px solid rgba(var(--fg-rgb) / 0.12);
+	opacity: 0.92;
 }
 
 .signal-identity-status {

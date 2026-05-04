@@ -241,21 +241,13 @@ $signalHistoryHash = sha1($signalHistoryHtml);
             <section class="panel signal-col" aria-labelledby="signal-mailbox-title">
                 <div class="section-topline">
                     <div>
-                        <h2 id="signal-mailbox-title">Choisir une terre</h2>
-                        <p class="panel-copy">Ouvre un fil, retrouve une conversation, puis écris. Le reste peut attendre.</p>
+                        <h2 id="signal-mailbox-title">Ouvrir un fil</h2>
+                        <p class="panel-copy">Choisis une terre, ouvre la liaison, puis écris. Les raffinements restent en retrait tant que tu n’en as pas besoin.</p>
                     </div>
                     <span class="badge"><?= h((string) count($contacts)) ?> terre<?= count($contacts) > 1 ? 's' : '' ?></span>
                 </div>
 
                 <div class="signal-list-block">
-                    <div class="section-topline signal-subhead">
-                        <div>
-                            <h2>Contacts</h2>
-                            <p class="panel-copy">Cherche une terre, ouvre un fil, puis laisse les détails avancés se révéler seulement si besoin.</p>
-                        </div>
-                        <span class="badge">@<?= h((string) $land['slug']) ?></span>
-                    </div>
-
                     <div class="signal-flow-shell">
                         <form action="/signal" method="get" class="land-form signal-form signal-open-form" data-signal-open-form>
                             <label>
@@ -333,16 +325,6 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                                 <?php endforeach; ?>
                             </div>
                         <?php endif; ?>
-
-                        <label class="signal-filter-label">
-                            Filtrer le plasma de contact
-                            <input
-                                type="search"
-                                placeholder="Rechercher une terre ou un fil"
-                                autocomplete="off"
-                                data-signal-contact-filter
-                            >
-                        </label>
                     </div>
 
                     <datalist id="signal-contact-options">
@@ -370,60 +352,76 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                         <?php endforeach; ?>
                     </datalist>
 
-                    <div class="echo-contacts" data-signal-contact-list>
-                        <?php foreach ($contacts as $contact): ?>
-                            <?php
-                            $contactUsername = (string) ($contact['counterpart_username'] ?? '');
-                            $contactSlug = (string) ($contact['counterpart_slug'] ?? '');
-                            $lastSnippet = !empty($contact['last_subject'])
-                                ? (string) $contact['last_subject']
-                                : (!empty($contact['last_body']) ? signal_excerpt((string) $contact['last_body'], 90) : 'Aucune conversation ouverte.');
-                            $contactHeat = (string) ($contact['activity_heat'] ?? 'dormant');
-                            $contactHeatLabel = (string) ($contact['activity_label'] ?? 'latente');
-                            $lastMessageLabel = human_created_label((string) ($contact['last_message_at'] ?? '')) ?? '';
-                            $contactPhase = (string) ($contact['resonance_phase'] ?? 'drift');
-                            $contactPhaseLabel = (string) ($contact['resonance_label'] ?? 'déphasage léger');
-                            $contactLambda = (int) ($contact['counterpart_lambda_nm'] ?? 548);
-                            $contactGap = (int) ($contact['resonance_gap_nm'] ?? 0);
-                            $contactProgramLabel = (string) ($contact['counterpart_program_label'] ?? ($contact['counterpart_program'] ?? 'collectif'));
-                            $contactNameFilter = function_exists('mb_strtolower')
-                                ? mb_strtolower($contactUsername, 'UTF-8')
-                                : strtolower($contactUsername);
-                            $contactLastFilter = function_exists('mb_strtolower')
-                                ? mb_strtolower($lastSnippet, 'UTF-8')
-                                : strtolower($lastSnippet);
-                            ?>
-                            <a
-                                href="/signal?u=<?= rawurlencode($contactSlug) ?>"
-                                class="echo-contact signal-contact signal-contact--<?= h($contactHeat) ?> signal-contact--<?= h($contactPhase) ?> <?= $contactSlug === (string) ($targetLand['slug'] ?? '') ? 'is-active' : '' ?>"
-                                data-signal-contact-item
-                                data-signal-contact-name="<?= h($contactNameFilter) ?>"
-                                data-signal-contact-slug="<?= h(strtolower($contactSlug)) ?>"
-                                data-signal-contact-last="<?= h($contactLastFilter) ?>"
-                            >
-                                <div class="signal-card-topline">
-                                    <strong><?= h($contactUsername) ?></strong>
-                                    <?php if ((int) ($contact['unread_count'] ?? 0) > 0): ?>
-                                        <span class="badge"><?= (int) $contact['unread_count'] ?></span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="signal-card-spectrum" aria-hidden="true">
-                                    <span class="signal-spectrum-pill">λ <?= h((string) $contactLambda) ?> nm</span>
-                                    <span class="signal-spectrum-pill signal-spectrum-pill--<?= h($contactPhase) ?>"><?= h($contactPhaseLabel) ?></span>
-                                    <span class="signal-spectrum-pill">Δ <?= h((string) $contactGap) ?> nm</span>
-                                </div>
-                                <p class="signal-card-meta">@<?= h($contactSlug) ?> · <?= h($contactProgramLabel) ?> · <?= h($contactHeatLabel) ?><?= $lastMessageLabel !== '' ? ' · ' . h($lastMessageLabel) : '' ?></p>
-                                <?php if (!empty($contact['last_subject'])): ?>
-                                    <p class="signal-card-copy"><?= h((string) $contact['last_subject']) ?></p>
-                                <?php elseif (!empty($contact['last_body'])): ?>
-                                    <p class="signal-card-copy"><?= h(signal_excerpt((string) $contact['last_body'], 90)) ?></p>
-                                <?php else: ?>
-                                    <p class="signal-card-copy">Aucune conversation ouverte.</p>
-                                <?php endif; ?>
-                                <p class="signal-card-meta signal-card-meta--resonance"><?= h((string) ($contact['resonance_summary'] ?? '')) ?></p>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
+                    <details class="signal-secondary-block signal-directory-block"<?= $targetLand ? '' : ' open' ?>>
+                        <summary class="signal-secondary-summary">Voir tout le carnet de terres</summary>
+                        <div class="signal-directory-shell">
+                            <label class="signal-filter-label">
+                                Filtrer le carnet
+                                <input
+                                    type="search"
+                                    placeholder="Rechercher une terre ou un fil"
+                                    autocomplete="off"
+                                    data-signal-contact-filter
+                                >
+                            </label>
+                            <p class="panel-copy signal-directory-copy">Le carnet complet reste ici si tu préfères parcourir avant d’ouvrir.</p>
+
+                            <div class="echo-contacts" data-signal-contact-list>
+                                <?php foreach ($contacts as $contact): ?>
+                                    <?php
+                                    $contactUsername = (string) ($contact['counterpart_username'] ?? '');
+                                    $contactSlug = (string) ($contact['counterpart_slug'] ?? '');
+                                    $lastSnippet = !empty($contact['last_subject'])
+                                        ? (string) $contact['last_subject']
+                                        : (!empty($contact['last_body']) ? signal_excerpt((string) $contact['last_body'], 90) : 'Aucune conversation ouverte.');
+                                    $contactHeat = (string) ($contact['activity_heat'] ?? 'dormant');
+                                    $contactHeatLabel = (string) ($contact['activity_label'] ?? 'latente');
+                                    $lastMessageLabel = human_created_label((string) ($contact['last_message_at'] ?? '')) ?? '';
+                                    $contactPhase = (string) ($contact['resonance_phase'] ?? 'drift');
+                                    $contactPhaseLabel = (string) ($contact['resonance_label'] ?? 'déphasage léger');
+                                    $contactLambda = (int) ($contact['counterpart_lambda_nm'] ?? 548);
+                                    $contactGap = (int) ($contact['resonance_gap_nm'] ?? 0);
+                                    $contactProgramLabel = (string) ($contact['counterpart_program_label'] ?? ($contact['counterpart_program'] ?? 'collectif'));
+                                    $contactNameFilter = function_exists('mb_strtolower')
+                                        ? mb_strtolower($contactUsername, 'UTF-8')
+                                        : strtolower($contactUsername);
+                                    $contactLastFilter = function_exists('mb_strtolower')
+                                        ? mb_strtolower($lastSnippet, 'UTF-8')
+                                        : strtolower($lastSnippet);
+                                    ?>
+                                    <a
+                                        href="/signal?u=<?= rawurlencode($contactSlug) ?>"
+                                        class="echo-contact signal-contact signal-contact--<?= h($contactHeat) ?> signal-contact--<?= h($contactPhase) ?> <?= $contactSlug === (string) ($targetLand['slug'] ?? '') ? 'is-active' : '' ?>"
+                                        data-signal-contact-item
+                                        data-signal-contact-name="<?= h($contactNameFilter) ?>"
+                                        data-signal-contact-slug="<?= h(strtolower($contactSlug)) ?>"
+                                        data-signal-contact-last="<?= h($contactLastFilter) ?>"
+                                    >
+                                        <div class="signal-card-topline">
+                                            <strong><?= h($contactUsername) ?></strong>
+                                            <?php if ((int) ($contact['unread_count'] ?? 0) > 0): ?>
+                                                <span class="badge"><?= (int) $contact['unread_count'] ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="signal-card-spectrum" aria-hidden="true">
+                                            <span class="signal-spectrum-pill">λ <?= h((string) $contactLambda) ?> nm</span>
+                                            <span class="signal-spectrum-pill signal-spectrum-pill--<?= h($contactPhase) ?>"><?= h($contactPhaseLabel) ?></span>
+                                            <span class="signal-spectrum-pill">Δ <?= h((string) $contactGap) ?> nm</span>
+                                        </div>
+                                        <p class="signal-card-meta">@<?= h($contactSlug) ?> · <?= h($contactProgramLabel) ?> · <?= h($contactHeatLabel) ?><?= $lastMessageLabel !== '' ? ' · ' . h($lastMessageLabel) : '' ?></p>
+                                        <?php if (!empty($contact['last_subject'])): ?>
+                                            <p class="signal-card-copy"><?= h((string) $contact['last_subject']) ?></p>
+                                        <?php elseif (!empty($contact['last_body'])): ?>
+                                            <p class="signal-card-copy"><?= h(signal_excerpt((string) $contact['last_body'], 90)) ?></p>
+                                        <?php else: ?>
+                                            <p class="signal-card-copy">Aucune conversation ouverte.</p>
+                                        <?php endif; ?>
+                                        <p class="signal-card-meta signal-card-meta--resonance"><?= h((string) ($contact['resonance_summary'] ?? '')) ?></p>
+                                    </a>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </details>
                 </div>
 
                 <div class="signal-identity-block">
@@ -433,7 +431,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                             <span class="summary-label"><?= h(signal_identity_status_label($identityStatus)) ?></span>
                             <strong><?= h($identityHint !== '' ? $identityHint : 'Validation non initialisée.') ?></strong>
                         </div>
-                        <p class="panel-copy">Adresse interne : <?= h($virtualAddress) ?>. Pour relier ce Signal à une présence réelle, ajoute une adresse de notification et valide-la.</p>
+                        <p class="panel-copy">Adresse interne : <?= h($virtualAddress) ?>. Ce bloc ne sert que pour relier Signal à une présence réelle.</p>
 
                         <form action="/signal" method="post" class="land-form signal-form">
                             <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
@@ -457,12 +455,12 @@ $signalHistoryHash = sha1($signalHistoryHtml);
             <aside class="panel signal-col" aria-labelledby="signal-inbox-title">
                 <div class="section-topline">
                     <div>
-                        <h2 id="signal-inbox-title">Conversation</h2>
+                        <h2 id="signal-inbox-title"><?= $targetLand ? 'Conversation' : 'Écrire et lire' ?></h2>
                         <p class="panel-copy">
                             <?php if ($targetLand): ?>
                                 Liaison avec <?= h((string) $targetLand['username']) ?> via <?= h(signal_virtual_address($targetLand)) ?>.
                             <?php else: ?>
-                                Choisis une terre pour ouvrir le fil.
+                                Ouvre d’abord un fil, puis écris. Sujet et réglages peuvent attendre.
                             <?php endif; ?>
                         </p>
                     </div>
@@ -474,7 +472,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                 <?php if (!$targetLand): ?>
                     <div class="signal-empty-state">
                         <div class="signal-compose-head">
-                            <p class="panel-copy">Commence simplement : une destination, un message. Le sujet et la trajectoire viennent après.</p>
+                            <p class="panel-copy">Commence simplement : une destination, un message, puis laisse le fil se former.</p>
                         </div>
 
                         <form action="/signal" method="post" class="land-form signal-form signal-compose-form" data-signal-compose data-draft-scope="new">

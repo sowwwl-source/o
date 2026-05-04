@@ -232,13 +232,18 @@ if ($authenticatedLand) {
 $homeStatusLabel = $authenticatedLand ? 'terre liée' : 'surface collective';
 $homeLead = $authenticatedLand
     ? 'Le torus suit la fréquence de ta terre. Signal adresse, aZa retient, Str3m affleure.'
-    : 'Un espace numérique épuré, public et partagé. Rejoins le mouvement pour un lieu à toi, discret et vivant.';
+    : 'Trois portes suffisent : entrer publiquement, poser une terre, ou demander le bon passage à Owl.';
 $homePrimaryActionHref = $authenticatedLand
     ? '/land.php?u=' . rawurlencode($activeLandSlug)
     : '/rejoindre.php';
 $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Rejoindre le peuple de l\'O';
 $guideHref = '/0wlslw0';
 $promptSeeds = guide_prompt_seeds();
+$homeHeroTitle = $authenticatedLand ? 'La terre colore le torus.' : 'Entrer, poser, demander.';
+$homeHeroTone = $authenticatedLand ? $activeLandTone : 'trois portes nettes / aucune précipitation';
+$homeHeroNote = $authenticatedLand
+    ? 'Trois gestes reviennent vite : ouvrir, écrire, dériver.'
+    : 'Le noyau montre d’abord l’essentiel. Le reste attend plus loin, sans pousser.';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -267,6 +272,7 @@ $promptSeeds = guide_prompt_seeds();
     id="connexion"
     data-corner-dock
     data-corner-dock-side="left"
+    data-corner-dock-priority="primary"
     aria-labelledby="connection-meter-title"
     open
 >
@@ -547,14 +553,14 @@ $promptSeeds = guide_prompt_seeds();
     <section class="hero-archipelago reveal">
         <article class="world-intro world-intro--entry">
             <span class="summary-label"><?= h($homeStatusLabel) ?></span>
-            <h1><span><?= $authenticatedLand ? 'La terre colore le torus.' : 'O. le réseau minimal' ?></span> <em><?= h($activeLandTone) ?></em></h1>
+            <h1><span><?= h($homeHeroTitle) ?></span> <em><?= h($homeHeroTone) ?></em></h1>
             <p class="vortex" aria-hidden="true">(.λ.)</p>
             <p class="lead"><?= h($homeLead) ?></p>
-            <p class="world-intro-note">Trois gestes suffisent&nbsp;: entrer, poser, retrouver.</p>
+            <p class="world-intro-note"><?= h($homeHeroNote) ?></p>
             <div class="secondary-links" aria-label="Passages secondaires du noyau">
-                <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0</a>
+                <a class="ghost-link" href="<?= h($guideHref) ?>">Owl</a>
                 <a class="ghost-link" href="/map">Map</a>
-                <a class="ghost-link" href="/aza.php">Fichiers</a>
+                <a class="ghost-link" href="/aza.php">aZa</a>
             </div>
         </article>
 
@@ -586,22 +592,28 @@ $promptSeeds = guide_prompt_seeds();
                     <strong>Poser une terre</strong>
                     <span>Créer un lieu à toi, discret, situé, lié à une fréquence.</span>
                 </a>
-                <a href="#connexion" class="entry-card">
-                    <span class="summary-label">03 · retour</span>
-                    <strong>Retrouver ma terre</strong>
-                    <span>Revenir par le compteur de connexion, sans détour.</span>
+                <a href="<?= h($guideHref) ?>" class="entry-card">
+                    <span class="summary-label">03 · owl</span>
+                    <strong>Demander à Owl</strong>
+                    <span>Entrer par 0wlslw0 pour être orienté sans tout lire d’un coup.</span>
                 </a>
             <?php endif; ?>
         </nav>
 
         <aside class="entry-secondary" aria-label="Passages secondaires">
-            <p class="summary-label">Autres passages</p>
+            <p class="summary-label"><?= $authenticatedLand ? 'Passages secondaires' : 'Si tu reviens' ?></p>
             <div class="entry-secondary-links">
-                <a class="ghost-link" href="/echo">Écho<?= $unreadEchoes > 0 ? ' · ' . $unreadEchoes : '' ?></a>
-                <a class="ghost-link" href="/signal">Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal : '' ?></a>
-                <a class="ghost-link" href="<?= h($guideHref) ?>">Comprendre</a>
+                <?php if ($authenticatedLand): ?>
+                    <a class="ghost-link" href="/echo">Écho<?= $unreadEchoes > 0 ? ' · ' . $unreadEchoes : '' ?></a>
+                    <a class="ghost-link" href="/signal">Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal : '' ?></a>
+                    <a class="ghost-link" href="<?= h($guideHref) ?>">Owl</a>
+                <?php else: ?>
+                    <a class="ghost-link" href="#connexion">Retrouver ma terre</a>
+                    <a class="ghost-link" href="/aza.php">Lire aZa</a>
+                    <a class="ghost-link" href="/signal">Voir Signal</a>
+                <?php endif; ?>
             </div>
-            <p class="panel-copy">Le noyau n’explique plus tout d’un coup. Il ouvre, puis laisse respirer.</p>
+            <p class="panel-copy"><?= h($authenticatedLand ? 'Le noyau garde des passages latéraux, mais la priorité reste simple : terre, adresse, courant.' : 'La connexion reste en bas à gauche pour les retours rapides. Le noyau n’en fait plus le centre, mais ne l’oublie pas.') ?></p>
         </aside>
     </section>
 
@@ -664,88 +676,55 @@ $promptSeeds = guide_prompt_seeds();
             <?php endif; ?>
         </section>
 
-        <details class="minimal-auth home-secondary-panel"<?= $message !== '' ? ' open' : '' ?>>
-            <summary class="signup-summary"><?= $authenticatedLand ? 'Relier une autre terre' : 'Poser une terre' ?></summary>
-            <div class="auth-box">
-                <p class="panel-copy">L’entrée reste minimale ici : on valide le nom, puis la lecture et la configuration d’aZa prennent une page entière.</p>
-
-                <?php if ($message !== ''): ?>
-                    <div class="flash flash-<?= h($messageType) ?>" aria-live="polite">
-                        <p><?= h($message) ?></p>
-                    </div>
-                <?php endif; ?>
-
-                <form method="get" action="/rejoindre.php" class="land-form" autocomplete="off">
-                    <input type="hidden" name="step" value="1">
-
-                    <label>
-                        Nom d’usage
-                        <input
-                            type="text"
-                            name="username"
-                            placeholder="ex: nox"
-                            required
-                            minlength="2"
-                            maxlength="42"
-                            value="<?= h($form['username']) ?>"
-                            data-username-input
-                        >
-                        <span class="input-hint">Le nom devient le seuil. Ensuite, AzA s’ouvre en lecture pleine page.</span>
-                    </label>
-
-                    <button type="submit">Valider le nom et entrer dans AzA</button>
-                </form>
-
-                <div class="signup-preview auth-login-preview" aria-labelledby="login-title">
-                    <div class="signup-head auth-head">
-                        <div>
-                            <h3 id="login-title">Connexion</h3>
-                            <p class="panel-copy">Retrouver une terre.</p>
-                        </div>
-                    </div>
-
-                    <form method="post" class="land-form" autocomplete="on">
-                        <input type="hidden" name="action" value="login">
-                        <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-
-                        <label>
-                            Terre
-                            <input
-                                type="text"
-                                name="login_identifier"
-                                placeholder="ex: nox"
-                                required
-                                value="<?= h($form['login_identifier']) ?>"
-                                autocomplete="username"
-                            >
-                        </label>
-
-                        <label>
-                            Secret
-                            <input
-                                type="password"
-                                name="password"
-                                placeholder="mot de passe"
-                                required
-                                autocomplete="current-password"
-                            >
-                        </label>
-
-                        <button type="submit">Affirmer sa présence</button>
-                    </form>
-                </div>
-
-                <div class="signup-preview" data-origin-base="<?= h($originBase) ?>" data-preview-shell>
-                    <span class="summary-label">Aperçu du seuil</span>
-                    <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
-                    <div class="preview-grid">
-                        <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land.php?u=' . $previewSlug) ?></code></p>
-                        <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
-                    </div>
-                    <p class="panel-copy">Lecture AzA, fuseau, signature et secret s’ouvrent juste après, sur des pages dédiées.</p>
+        <section class="minimal-auth home-secondary-panel home-start-panel" aria-labelledby="home-start-title">
+            <div class="section-topline">
+                <div>
+                    <span class="summary-label">Départ net</span>
+                    <h2 id="home-start-title"><?= $authenticatedLand ? 'Reprendre sans détour' : 'Commencer sans se perdre' ?></h2>
+                    <p class="panel-copy"><?= h($authenticatedLand ? 'La terre est déjà liée. Reviens au noyau, écris, ou laisse Owl te recadrer.' : 'Le nom, la lecture d’aZa et le scellement ont maintenant leur propre rythme. Ici, le noyau montre seulement où commencer.') ?></p>
                 </div>
             </div>
-        </details>
+
+            <div class="public-entry-grid">
+                <?php if ($authenticatedLand): ?>
+                    <a class="public-entry-card" href="/land.php?u=<?= rawurlencode($activeLandSlug) ?>">
+                        <strong>Retour à ma terre</strong>
+                        <span>Revenir tout de suite à ton espace situé.</span>
+                    </a>
+                    <a class="public-entry-card" href="/signal">
+                        <strong>Écrire maintenant</strong>
+                        <span>Aller droit à Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : '' ?>.</span>
+                    </a>
+                    <a class="public-entry-card" href="<?= h($guideHref) ?>">
+                        <strong>Passer par Owl</strong>
+                        <span>Recevoir un cap rapide avant de changer de ferry.</span>
+                    </a>
+                <?php else: ?>
+                    <a class="public-entry-card" href="/rejoindre.php">
+                        <strong>Poser une terre</strong>
+                        <span>Nom, lecture, configuration, scellement : le parcours entier est hors du noyau.</span>
+                    </a>
+                    <a class="public-entry-card" href="<?= h($guideHref) ?>">
+                        <strong>Demander à Owl</strong>
+                        <span>0wlslw0 t’oriente en quelques phrases, sans te noyer dans le projet.</span>
+                    </a>
+                    <a class="public-entry-card" href="#connexion">
+                        <strong>Retrouver ma terre</strong>
+                        <span>Le compteur de connexion reste en bas à gauche pour les retours rapides.</span>
+                    </a>
+                <?php endif; ?>
+            </div>
+
+            <div class="signup-preview" data-origin-base="<?= h($originBase) ?>" data-preview-shell>
+                <span class="summary-label">Aperçu du seuil</span>
+                <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
+                <div class="preview-grid">
+                    <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land.php?u=' . $previewSlug) ?></code></p>
+                    <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
+                </div>
+                <p class="panel-copy"><?= h($authenticatedLand ? 'La signature publique reste visible ici, même quand la terre est déjà ouverte ailleurs.' : 'Le seuil peut être aperçu ici, mais sa lecture complète et sa création ont maintenant leur propre page.') ?></p>
+            </div>
+        </section>
     </section>
     <?php endif; ?>
 
@@ -753,19 +732,19 @@ $promptSeeds = guide_prompt_seeds();
     <section class="panel reveal guide-panel guide-home-callout" aria-labelledby="guide-home-title">
         <div class="section-topline">
             <div>
-                <h2 id="guide-home-title">Porte 00 · 0wlslw0</h2>
-                <p class="panel-copy">Le projet entier gagne en clarté quand l’entrée n’est pas un simple formulaire mais une intelligence d’orientation. 0wlslw0 est cette couche-là : le seuil qui comprend avant d’envoyer.</p>
+                <h2 id="guide-home-title">Porte 00 · Owl</h2>
+                <p class="panel-copy">0wlslw0, prononcé Owl, sert de guide d’entrée : comprendre vite, choisir une porte, puis se retirer.</p>
             </div>
-            <a class="pill-link" href="<?= h($guideHref) ?>">Ouvrir 0wlslw0</a>
+            <a class="pill-link" href="<?= h($guideHref) ?>">Ouvrir Owl</a>
         </div>
 
         <div class="guide-grid">
             <article class="guide-panel">
                 <span class="summary-label">Rôle</span>
-                <strong>Faire tenir ensemble les ferries.</strong>
-                <p class="panel-copy">Signal adresse, Str3m montre, aZa sédimente, Écho relie — mais 0wlslw0 donne la bonne première phrase au visiteur pour qu’il ne dérive pas avant même d’avoir commencé.</p>
+                <strong>Éclaircir la première phrase.</strong>
+                <p class="panel-copy">Owl aide à choisir entre courant public, terre personnelle et lecture du projet, sans transformer l’entrée en manifeste.</p>
                 <div class="action-row">
-                    <a class="ghost-link" href="<?= h($guideHref) ?>">Voir le guide complet</a>
+                    <a class="ghost-link" href="<?= h($guideHref) ?>">Voir Owl</a>
                     <a class="ghost-link" href="/str3m">Entrer publiquement</a>
                     <a class="ghost-link" href="/rejoindre.php">Poser une terre</a>
                 </div>
@@ -778,7 +757,7 @@ $promptSeeds = guide_prompt_seeds();
                         <li><code><?= h($prompt) ?></code></li>
                     <?php endforeach; ?>
                 </ul>
-                <p class="panel-copy guide-embed-note">Le centre du torus et le geste en O ouvrent aussi cette porte. Pour une fois, le secret sert à éclaircir plutôt qu’à obscurcir.</p>
+                <p class="panel-copy guide-embed-note">Le centre du torus et le geste en O ouvrent aussi cette porte. L’idée est simple : demander, choisir, continuer.</p>
             </article>
         </div>
     </section>
