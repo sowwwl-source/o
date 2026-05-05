@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/config.php';
 
+const SIGNUP_ROUTE = '/rejoindre';
+
 function signup_portal_steps(): array
 {
     $steps = [
@@ -44,7 +46,7 @@ function signup_stage_link(int $step, array $form): string
         }
     }
 
-    return '/rejoindre.php?' . http_build_query($params);
+    return SIGNUP_ROUTE . '?' . http_build_query($params);
 }
 
 $host = request_host();
@@ -226,7 +228,7 @@ $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($si
             </div>
 
             <div class="signup-journey-grid signup-journey-grid--name">
-                <form method="get" action="/rejoindre.php" class="land-form signup-journey-form" autocomplete="off">
+                <form method="get" action="<?= h(SIGNUP_ROUTE) ?>" class="land-form signup-journey-form" autocomplete="off">
                     <input type="hidden" name="step" value="1">
 
                     <label>
@@ -332,7 +334,7 @@ $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($si
             </div>
 
             <div class="signup-journey-grid signup-journey-grid--config">
-                <form method="post" action="/rejoindre.php" class="land-form signup-journey-form" autocomplete="off">
+                <form method="post" action="<?= h(SIGNUP_ROUTE) ?>" class="land-form signup-journey-form" autocomplete="off">
                     <input type="hidden" name="action" value="create">
                     <input type="hidden" name="step" value="<?= h((string) $configStep) ?>">
                     <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">

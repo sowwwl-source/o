@@ -13,32 +13,60 @@ Options -Indexes
   RewriteRule \.key$ - [F,L,NC]
   RewriteRule ^(?:Dockerfile|docker-compose.*\.yml|\.dockerignore|init\.sql)$ - [F,L,NC]
 
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*index\.php(?:\?|\s) [NC]
   RewriteRule ^index\.php$ https://%{HTTP_HOST}/ [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*land\.php(?:\?|\s) [NC]
   RewriteRule ^land\.php$ https://%{HTTP_HOST}/land [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*echo\.php(?:\?|\s) [NC]
   RewriteRule ^echo\.php$ https://%{HTTP_HOST}/echo [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*map\.php(?:\?|\s) [NC]
   RewriteRule ^map\.php$ https://%{HTTP_HOST}/map [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*signal\.php(?:\?|\s) [NC]
   RewriteRule ^signal\.php$ https://%{HTTP_HOST}/signal [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*str3m\.php(?:\?|\s) [NC]
   RewriteRule ^str3m\.php$ https://%{HTTP_HOST}/str3m [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*aza\.php(?:\?|\s) [NC]
   RewriteRule ^aza\.php$ https://%{HTTP_HOST}/aza [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*island\.php(?:\?|\s) [NC]
   RewriteRule ^island\.php$ https://%{HTTP_HOST}/island [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*rejoindre\.php(?:\?|\s) [NC]
   RewriteRule ^rejoindre\.php$ https://%{HTTP_HOST}/rejoindre [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*0wlslw0\.php(?:\?|\s) [NC]
   RewriteRule ^0wlslw0\.php$ https://%{HTTP_HOST}/0wlslw0 [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*sh0re\.php(?:\?|\s) [NC]
   RewriteRule ^sh0re\.php$ https://%{HTTP_HOST}/sh0re [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*n\.php(?:\?|\s) [NC]
   RewriteRule ^n\.php$ https://%{HTTP_HOST}/n [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*n0de\.php(?:\?|\s) [NC]
   RewriteRule ^n0de\.php$ https://%{HTTP_HOST}/n0de [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*ingest_sensor\.php(?:\?|\s) [NC]
   RewriteRule ^ingest_sensor\.php$ https://%{HTTP_HOST}/ingest/sensor [R=302,L]
 
