@@ -192,6 +192,9 @@ $connectionNeedleAngle = max(-44, min(44, $connectionNeedleAngle));
 $connectionNeedleClass = $connectionNeedleAngle < -12
     ? ' connection-meter--low'
     : ($connectionNeedleAngle > 12 ? ' connection-meter--high' : ' connection-meter--mid');
+$homeHeroVuState = $connectionNeedleAngle < -12
+    ? 'low'
+    : ($connectionNeedleAngle > 12 ? 'high' : 'mid');
 $connectionStatusText = $authenticatedLand ? 'terre liée 3h33' : 'surface publique';
 
 $pdoConn = null;
@@ -239,7 +242,8 @@ $homePrimaryActionHref = $authenticatedLand
 $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Rejoindre le peuple de l\'O';
 $guideHref = '/0wlslw0';
 $promptSeeds = guide_prompt_seeds();
-$homeHeroTitle = $authenticatedLand ? 'La terre colore le torus.' : 'Entrer, poser, demander.';
+$homeHeroLineOne = $authenticatedLand ? 'La terre' : 'O.';
+$homeHeroLineTwo = $authenticatedLand ? 'colore le torus.' : 'le réseau minimal';
 $homeHeroTone = $authenticatedLand ? $activeLandTone : 'trois portes nettes / aucune précipitation';
 $homeHeroNote = $authenticatedLand
     ? 'Trois gestes reviennent vite : ouvrir, écrire, dériver.'
@@ -265,6 +269,7 @@ $homeHeroNote = $authenticatedLand
     data-land-lambda="<?= h((string) $activeLambda) ?>"
     data-land-tone="<?= h($activeLandTone) ?>"
 >
+<?= render_skip_link() ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 
@@ -364,7 +369,7 @@ $homeHeroNote = $authenticatedLand
     ></canvas>
 </div>
 
-<main class="layout ui-overlay">
+<main <?= main_landmark_attrs() ?> class="layout ui-overlay">
     <?php if ($isSowwwlXyz): ?>
     <section class="xyz-surface-shell reveal" data-xyz-surface>
         <div class="xyz-surface-shell__veil" aria-hidden="true">
@@ -552,9 +557,13 @@ $homeHeroNote = $authenticatedLand
     </header>
 
     <section class="hero-archipelago reveal">
-        <article class="world-intro world-intro--entry">
+        <article class="world-intro world-intro--entry world-intro--vu-<?= h($homeHeroVuState) ?>" data-vu-state="<?= h($homeHeroVuState) ?>">
             <span class="summary-label"><?= h($homeStatusLabel) ?></span>
-            <h1><span><?= h($homeHeroTitle) ?></span> <em><?= h($homeHeroTone) ?></em></h1>
+            <h1 class="world-intro-title <?= $authenticatedLand ? 'world-intro-title--linked' : 'world-intro-title--public' ?>">
+                <span class="world-intro-title__line world-intro-title__line--primary"><?= h($homeHeroLineOne) ?></span>
+                <span class="world-intro-title__line world-intro-title__line--secondary"><?= h($homeHeroLineTwo) ?></span>
+            </h1>
+            <p class="world-intro-signal"><?= h($homeHeroTone) ?></p>
             <p class="vortex" aria-hidden="true">(.λ.)</p>
             <p class="lead"><?= h($homeLead) ?></p>
             <p class="world-intro-note"><?= h($homeHeroNote) ?></p>
