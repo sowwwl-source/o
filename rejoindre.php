@@ -184,11 +184,12 @@ $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($si
     data-land-lambda="<?= h((string) $selectedSignupLambda) ?>"
     data-land-tone="<?= h($selectedSignupTone) ?>"
 >
+<?= render_skip_link() ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'calm', 'land') ?>
 
-<main class="layout page-shell signup-journey-shell">
+<main <?= main_landmark_attrs() ?> class="layout page-shell signup-journey-shell">
     <header class="hero page-header reveal signup-journey-header">
         <p class="eyebrow"><strong><?= h($brandDomain) ?></strong> <span>rejoindre / lecture AzA / configuration</span></p>
         <h1 class="land-title signup-journey-title">

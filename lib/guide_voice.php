@@ -39,10 +39,34 @@ function guide_voice_config(): array
     return $config;
 }
 
+function guide_voice_value_looks_placeholder(string $value): bool
+{
+    $normalized = strtolower(trim($value));
+    if ($normalized === '') {
+        return false;
+    }
+
+    $markers = [
+        'your-public-chat-url',
+        'your-agent-endpoint',
+        'replace-with-endpoint-key',
+        'change-me',
+        'example.com',
+    ];
+
+    foreach ($markers as $marker) {
+        if (str_contains($normalized, $marker)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function guide_voice_upstream_configured(): bool
 {
     $config = guide_voice_config();
-    return $config['endpoint'] !== '';
+    return $config['endpoint'] !== '' && !guide_voice_value_looks_placeholder((string) $config['endpoint']);
 }
 
 function guide_voice_mode_label(): string
@@ -65,7 +89,7 @@ function guide_voice_browser_state(?array $authenticatedLand = null): array
         'csrf_token' => csrf_token(),
         'greeting' => guide_voice_default_greeting($authenticatedLand),
         'upstream_configured' => guide_voice_upstream_configured(),
-        'chat_url' => (string) $config['chat_url'],
+        'chat_url' => guide_voice_value_looks_placeholder((string) $config['chat_url']) ? '' : (string) $config['chat_url'],
         'land_slug' => $landSlug,
         'land_program' => (string) ($profile['program'] ?? 'collective'),
         'land_label' => (string) ($profile['label'] ?? 'collectif'),
@@ -564,7 +588,7 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
 {
     $config = guide_voice_config();
     $endpoint = (string) $config['endpoint'];
-    if ($endpoint === '') {
+    if ($endpoint === '' || guide_voice_value_looks_placeholder($endpoint)) {
         return null;
     }
 
@@ -650,7 +674,9 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
     ]);
 
     $raw = @file_get_contents($endpoint, false, $contextResource);
-    $responseHeaders = $http_response_header ?? [];
+    $responseHeaders = function_exists('http_get_last_response_headers')
+        ? (http_get_last_response_headers() ?: [])
+        : ($http_response_header ?? []);
     $statusCode = guide_voice_http_status($responseHeaders);
     if ($statusCode < 200 || $statusCode >= 300 || !is_string($raw) || trim($raw) === '') {
         return null;

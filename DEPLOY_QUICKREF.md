@@ -43,7 +43,7 @@ For a fuller schema-state checklist, see `DB_MIGRATION_PROTOCOL.md`.
 ## 4. Verify the container contents
 
 ```bash
-docker exec sowwwl-o-app-1 sh -lc 'ls -la /var/www/html/.htaccess /var/www/html/0wlslw0.php /var/www/html/0wlslw0_voice.php /var/www/html/str3m.php /var/www/html/map.php /var/www/html/map_points.php'
+docker exec sowwwl-o-app-1 sh -lc 'ls -la /var/www/html/.htaccess /var/www/html/0wlslw0.php /var/www/html/0wlslw0_voice.php /var/www/html/str3m.php /var/www/html/map.php /var/www/html/map_points.php /var/www/html/land.php /var/www/html/aza.php /var/www/html/island.php'
 docker exec sowwwl-o-app-1 sh -lc 'printenv | grep -E "SOWWWL_0WLSLW0_(CHAT_URL|AGENT_ENDPOINT|AGENT_MODE|AGENT_INPUT_FIELD|AGENT_TIMEOUT_SECONDS)"'
 ```
 
@@ -58,6 +58,8 @@ curl -sL https://sowwwl.com/0wlslw0 | grep -E 'Accompagnement vocal|voice only|g
 curl -I https://sowwwl.com/signal
 curl -I https://sowwwl.com/str3m
 curl -I https://sowwwl.com/map
+curl -I 'https://sowwwl.com/island?u=<slug-connu>'
+curl -sL 'https://sowwwl.com/island?u=<slug-connu>' | grep -E 'île classique|Relief|Finder mémoire|Dernières traces'
 ```
 
 ## 6. Expected results
@@ -68,6 +70,7 @@ curl -I https://sowwwl.com/map
 - `signal` should expose mailbox behavior
 - `str3m` should stay public
 - `map` should respond from the O. app
+- `island?u=<slug-connu>` should return `200` and expose the classic island reading
 
 ## 7. If something breaks
 
@@ -109,4 +112,5 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 ```
 
 For a focused post-deploy checklist, see `LIVE_VERIFICATION.md`.
+For the dedicated island rollout, see `ISLAND_DEPLOY_CHECKLIST.md`.
 For a deliberate recovery path, see `ROLLBACK_PROTOCOL.md`.

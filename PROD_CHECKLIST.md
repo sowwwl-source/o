@@ -23,6 +23,7 @@ Use this as the shortest operational checklist before and after touching product
 - Check `https://sowwwl.com/signal`
 - Check `https://sowwwl.com/str3m`
 - Check `https://sowwwl.com/map`
+- Check `https://sowwwl.com/island?u=<slug-connu>`
 - Confirm the old placeholder is gone
 
 ## Minimum proof that prod is good
@@ -30,6 +31,7 @@ Use this as the shortest operational checklist before and after touching product
 - public `curl` matches expected behavior
 - app container contains expected files
 - feature route behaves as intended
+- island route renders the expected classic reading for at least one known land slug
 - no critical regression appears on key domains
 
 ## If prod is suspicious
@@ -46,5 +48,6 @@ Use this as the shortest operational checklist before and after touching product
 - `SESSION_RITUAL.md`
 - `DEPLOY_QUICKREF.md`
 - `LIVE_VERIFICATION.md`
+- `ISLAND_DEPLOY_CHECKLIST.md`
 - `ROLLBACK_PROTOCOL.md`
 - `DB_MIGRATION_PROTOCOL.md`

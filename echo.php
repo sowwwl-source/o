@@ -95,11 +95,12 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>
 <body class="experience signal-view">
+<?= render_skip_link() ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'dense', 'echo') ?>
 
-<main class="layout page-shell">
+<main <?= main_landmark_attrs() ?> class="layout page-shell">
     <header class="hero page-header reveal">
         <p class="eyebrow"><strong>écho</strong> <span>liaison inter-terres</span></p>
         <h1 class="land-title signal-title">
@@ -159,7 +160,7 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
                         <p class="panel-copy">Direct, sans détour, sur la même trame que Signal.</p>
                     </div>
                     <span class="badge"><?= h(signal_virtual_address($targetLand)) ?></span>
-                    <span class="meta-pill" data-message-live-indicator>direct · veille</span>
+                    <span class="meta-pill" data-message-live-indicator role="status" aria-live="polite" aria-atomic="true">direct · veille</span>
                 </div>
                 
                 <div class="echo-history" data-message-live-history>
@@ -186,15 +187,5 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
     </section>
 
 </main>
-
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const historyContainer = document.querySelector('.echo-history');
-        if (historyContainer) {
-            // Fait défiler la vue jusqu'en bas pour voir le dernier message
-            historyContainer.scrollTop = historyContainer.scrollHeight;
-        }
-    });
-</script>
 </body>
 </html>

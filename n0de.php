@@ -94,11 +94,12 @@ $ambientProfile = $authenticatedLand
     <script defer src="/qr.js"></script>
 </head>
 <body class="experience n0de-view">
+<?= render_skip_link() ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'nocturnal', 'n0de') ?>
 
-<main class="layout page-shell">
+<main <?= main_landmark_attrs() ?> class="layout page-shell">
 
     <header class="hero page-header reveal">
         <p class="eyebrow"><strong>n0des</strong> <span>objets physiques porteurs</span></p>

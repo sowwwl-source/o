@@ -156,11 +156,12 @@ $signalHistoryHash = sha1($signalHistoryHtml);
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>
 <body class="experience signal-view">
+<?= render_skip_link() ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'dense', 'signal') ?>
 
-<main class="layout page-shell">
+<main <?= main_landmark_attrs() ?> class="layout page-shell">
     <header class="hero page-header reveal">
         <p class="eyebrow"><strong>signal</strong> <span>messagerie située</span></p>
         <h1 class="land-title signal-title">
@@ -178,7 +179,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                 <?php if ($tablesReady): ?>
                     <span class="meta-pill"><?= h(signal_identity_status_label($identityStatus)) ?></span>
                     <span class="meta-pill" data-signal-unread-label><?= $unreadTotal ?> message<?= $unreadTotal > 1 ? 's' : '' ?> non lu<?= $unreadTotal > 1 ? 's' : '' ?></span>
-                    <span class="meta-pill" data-message-live-indicator><?= $signalLiveTarget !== '' ? 'direct · veille' : 'direct · en attente' ?></span>
+                    <span class="meta-pill" data-message-live-indicator role="status" aria-live="polite" aria-atomic="true"><?= $signalLiveTarget !== '' ? 'direct · veille' : 'direct · en attente' ?></span>
                 <?php endif; ?>
             <?php else: ?>
                 <span class="meta-pill">lecture de principe</span>
@@ -541,7 +542,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
 
                             <div class="action-row signal-flow-actions">
                                 <button type="submit">Ouvrir et transmettre</button>
-                                <span class="signal-flow-hint" data-signal-draft-status>Signal créera le fil au premier envoi. ⌘/Ctrl + Entrée envoie.</span>
+                                <span class="signal-flow-hint" data-signal-draft-status role="status" aria-live="polite" aria-atomic="true">Signal créera le fil au premier envoi. ⌘/Ctrl + Entrée envoie.</span>
                             </div>
                         </form>
                     </div>
@@ -582,7 +583,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
 
                         <div class="action-row">
                             <button type="submit">Transmettre</button>
-                            <span class="signal-flow-hint" data-signal-draft-status>Brouillon gardé localement. ⌘/Ctrl + Entrée envoie.</span>
+                            <span class="signal-flow-hint" data-signal-draft-status role="status" aria-live="polite" aria-atomic="true">Brouillon gardé localement. ⌘/Ctrl + Entrée envoie.</span>
                             <a class="ghost-link" href="/echo?u=<?= rawurlencode((string) $targetLand['username']) ?>">Basculer vers Écho</a>
                         </div>
                     </form>

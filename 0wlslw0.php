@@ -151,11 +151,12 @@ $guideVoiceNotes = [
     data-land-lambda="<?= h((string) $guideLandLambda) ?>"
     data-land-tone="<?= h($guideLandTone) ?>"
 >
+<?= render_skip_link() ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'calm', '0wlslw0') ?>
 
-<main class="layout page-shell">
+<main <?= main_landmark_attrs() ?> class="layout page-shell">
     <header class="hero page-header reveal">
         <p class="eyebrow"><strong>0wlslw0 (Owl)</strong> <span>guide d entree</span></p>
         <h1 class="land-title">
@@ -392,9 +393,9 @@ $guideVoiceNotes = [
         <div class="section-topline">
             <div>
                 <h2 id="guide-voice-title">Accompagnement vocal</h2>
-                <p class="panel-copy">Ici, Owl écoute, répond à voix haute, puis oriente sans chat classique. <strong>I</strong> inverse et coupe aussi la voix ; sur tactile, un appui long reprend le même geste.</p>
+                <p class="panel-copy">Ici, Owl écoute, répond à voix haute, ou prend un texte court si tu préfères le silence. <strong>I</strong> inverse et coupe aussi la voix ; sur tactile, un appui long reprend le même geste.</p>
             </div>
-            <span class="badge">voice only</span>
+            <span class="badge">voix + texte</span>
         </div>
 
         <div class="guide-grid guide-voice-grid">
@@ -404,9 +405,20 @@ $guideVoiceNotes = [
                     <span class="guide-voice-orb-ring"></span>
                 </div>
 
-                <p class="guide-voice-status" data-guide-voice-status>Prêt. Active la voix puis parle naturellement.</p>
+                <p class="guide-voice-status" data-guide-voice-status role="status" aria-live="polite" aria-atomic="true">Prêt. Active la voix puis parle naturellement.</p>
                 <p class="guide-voice-transcript" data-guide-voice-transcript>Exemples : « explique O. », « ouvre Signal », “take me to Str3m”.</p>
-                <p class="guide-voice-reply" data-guide-voice-reply>Owl répondra ici puis lira sa réponse à voix haute.</p>
+                <p class="guide-voice-reply" data-guide-voice-reply aria-live="polite" aria-atomic="true">Owl répondra ici puis lira sa réponse à voix haute.</p>
+                <div class="guide-voice-meta" aria-live="polite">
+                    <span class="guide-voice-origin-badge" data-guide-voice-origin data-guide-voice-origin-state="<?= !empty($voiceState['upstream_configured']) ? 'remote-ready' : 'local' ?>"><?= !empty($voiceState['upstream_configured']) ? 'remote prêt' : 'local' ?></span>
+                    <span class="guide-voice-meta-copy">texte disponible · historique court</span>
+                </div>
+                <ol class="guide-voice-history" data-guide-voice-history aria-label="Historique récent avec Owl" hidden></ol>
+                <form class="guide-voice-form" data-guide-voice-form>
+                    <label class="sr-only" for="guide-voice-text-input">Écrire à Owl</label>
+                    <input id="guide-voice-text-input" type="text" name="guide_voice_text" maxlength="280" autocomplete="off" placeholder="Écris à Owl si tu préfères le silence." data-guide-voice-input>
+                    <button type="submit" class="pill-link guide-voice-submit" data-guide-voice-submit>Envoyer</button>
+                </form>
+                <p class="guide-voice-input-hint" data-guide-voice-input-hint>Le texte reste disponible même si la reconnaissance vocale Web manque ici.</p>
                 <div class="guide-voice-suggestions" data-guide-voice-suggestions aria-label="Impulsions proposées par Owl">
                     <?php foreach (($voiceState['starter_prompts'] ?? []) as $prompt): ?>
                         <?php

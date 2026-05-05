@@ -144,11 +144,12 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>
 <body class="experience sh0re-view">
+<?= render_skip_link() ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'nocturnal', 'sh0re') ?>
 
-<main class="layout page-shell">
+<main <?= main_landmark_attrs() ?> class="layout page-shell">
 
     <header class="hero page-header reveal">
         <p class="eyebrow"><strong>sh0re</strong> <span>rivage · n0us · t0ks</span></p>

@@ -51,11 +51,12 @@ $statusLabel = $t0k ? t0k_status_label((string) ($t0k['status'] ?? '')) : '';
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>
 <body class="experience n-view">
+<?= render_skip_link() ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'nocturnal', 'n0us') ?>
 
-<main class="layout page-shell">
+<main <?= main_landmark_attrs() ?> class="layout page-shell">
 
     <header class="hero page-header reveal">
         <p class="eyebrow"><strong>t0k</strong> <span>fragment du n0us</span></p>

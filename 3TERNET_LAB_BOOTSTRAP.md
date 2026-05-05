@@ -27,6 +27,8 @@ without touching the live domains.
 - VPS path: `/opt/o-3ternet-lab`
 - compose project: `sowwwl-o-lab`
 
+If `/opt` is read-only on the droplet image, use `/root/o-3ternet-lab` instead.
+
 ## Domains to attach
 
 Start with:
@@ -89,10 +91,29 @@ git checkout main
 git pull --ff-only origin main
 ```
 
+If `/opt` is not writable, use this variant instead:
+
+```bash
+cd /root
+rm -rf /root/o-3ternet-lab
+git clone https://github.com/sowwwl-source/o.git /root/o-3ternet-lab
+cd /root/o-3ternet-lab
+git checkout main
+git pull --ff-only origin main
+```
+
 ## Step 4 — prepare the lab env file
 
 ```bash
 cd /opt/o-3ternet-lab/deploy-lab
+cp .env.lab.example .env.lab
+nano .env.lab
+```
+
+If you used the fallback root path:
+
+```bash
+cd /root/o-3ternet-lab/deploy-lab
 cp .env.lab.example .env.lab
 nano .env.lab
 ```
@@ -131,8 +152,29 @@ cd /opt/o-3ternet-lab/deploy-lab
 docker compose -p sowwwl-o-lab --env-file .env.lab -f docker-compose.lab.yml up --build -d
 ```
 
+Fallback root path:
+
+```bash
+cd /root/o-3ternet-lab/deploy-lab
+docker compose -p sowwwl-o-lab --env-file .env.lab -f docker-compose.lab.yml up --build -d
+```
+
 The DB init files are built into the lab DB image from `deploy-lab/db/init/`.
 Do not add bind mounts for `init.sql`; the lab should remain clone-and-build.
+
+For later refreshes, use the repository helper instead of retyping the whole sequence:
+
+```bash
+cd /opt/o-3ternet-lab
+bash scripts/deploy_lab_update.sh
+```
+
+Or, from the fallback root path:
+
+```bash
+cd /root/o-3ternet-lab
+bash scripts/deploy_lab_update.sh --root /root/o-3ternet-lab
+```
 
 ## Step 7 — verify the containers
 
@@ -178,6 +220,9 @@ Inside the droplet:
 curl -I https://lab.sowwwl.cloud
 curl -I https://lab.sowwwl.cloud/0wlslw0
 curl -I https://lab.sowwwl.cloud/signal
+curl -I https://lab.sowwwl.cloud/aza
+curl -I 'https://lab.sowwwl.cloud/island?u=<slug-lab-connu>'
+curl -I 'https://lab.sowwwl.cloud/island.php?u=<slug-lab-connu>'
 curl -I https://pocket.lab.sowwwl.cloud
 curl -I https://api.lab.sowwwl.cloud/healthz
 ```
@@ -185,7 +230,7 @@ curl -I https://api.lab.sowwwl.cloud/healthz
 ## Step 9 — verify the app internals
 
 ```bash
-docker exec sowwwl-o-lab-app-1 sh -lc 'ls -la /var/www/html/0wlslw0.php /var/www/html/signal.php /var/www/html/aza.php /var/www/html/echo.php'
+docker exec sowwwl-o-lab-app-1 sh -lc 'ls -la /var/www/html/0wlslw0.php /var/www/html/signal.php /var/www/html/aza.php /var/www/html/island.php /var/www/html/echo.php'
 docker exec sowwwl-o-lab-app-1 sh -lc 'printenv | grep -E "SOWWWL_(PUBLIC_ORIGIN|AZA_DIRECT_ORIGIN|ADMIN_PIN)"'
 docker exec sowwwl-o-lab-pocket-1 sh -lc 'printenv | grep -E "SOWWWL_(PUBLIC_ORIGIN|POCKET_PUBLIC_ORIGIN)"'
 ```
@@ -237,7 +282,7 @@ The lab is considered real when all of this works:
 2. `pocket.lab.sowwwl.cloud` serves the fake pocket app
 3. `api.lab.sowwwl.cloud/healthz` responds
 4. the `pocket` container can be stopped and restarted independently
-5. `Signal` and `aZa` can be exercised without touching production
+5. `Signal`, `aZa`, and `island` can be exercised without touching production
 
 ## Step 13 — first Raspberry / plasma ingest
 

@@ -171,6 +171,7 @@ try {
 require_once __DIR__ . '/lib/lands.php';
 require_once __DIR__ . '/lib/aza_archive.php';
 require_once __DIR__ . '/lib/aza_ingest.php';
+require_once __DIR__ . '/lib/aza_memory.php';
 require_once __DIR__ . '/lib/t0k.php';
 require_once __DIR__ . '/lib/n0de.php';
 require_once __DIR__ . '/lib/b0t3.php';
@@ -347,6 +348,21 @@ function render_pwa_head_tags(?string $preferred = null, ?string $host = null): 
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="{$appleIcon}">
 HTML;
+}
+
+function render_skip_link(string $targetId = 'main-content', string $label = 'Aller au contenu'): string
+{
+    $target = htmlspecialchars($targetId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $copy = htmlspecialchars($label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+    return '<a class="skip-link" href="#' . $target . '" data-skip-link>' . $copy . '</a>';
+}
+
+function main_landmark_attrs(string $id = 'main-content'): string
+{
+    $target = htmlspecialchars($id, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+    return 'id="' . $target . '" tabindex="-1" data-skip-target';
 }
 
 function visual_profile_tokens(?array $visualProfile = null, string $streamMood = 'calm'): array

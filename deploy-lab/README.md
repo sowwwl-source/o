@@ -2,6 +2,9 @@
 
 This directory deploys a dedicated lab stack for `164.92.220.248`.
 
+Preferred checkout path on the droplet is `/opt/o-3ternet-lab`.
+If `/opt` is mounted read-only on the chosen image, use `/root/o-3ternet-lab` instead.
+
 It exists to test:
 
 - a lab copy of O.
@@ -49,6 +52,20 @@ cp .env.lab.example .env.lab
 docker compose -p sowwwl-o-lab --env-file .env.lab -f docker-compose.lab.yml up --build -d
 ```
 
+For subsequent updates on the lab droplet:
+
+```bash
+cd /opt/o-3ternet-lab
+bash scripts/deploy_lab_update.sh
+```
+
+If the lab checkout lives under `/root`:
+
+```bash
+cd /root/o-3ternet-lab
+bash scripts/deploy_lab_update.sh --root /root/o-3ternet-lab
+```
+
 ## Recovery checklist
 
 Use this on the DigitalOcean console when the lab is half-up, when Caddy cannot bind `80/443`, or when Docker says it cannot reach `/var/run/docker.sock`.
@@ -89,9 +106,17 @@ Do not remove a container unless it clearly belongs to the disposable lab or an 
 ```bash
 curl -I https://lab.sowwwl.cloud
 curl -I https://lab.sowwwl.cloud/0wlslw0
+curl -I https://lab.sowwwl.cloud/aza
+curl -I 'https://lab.sowwwl.cloud/island?u=<slug-lab-connu>'
+curl -I 'https://lab.sowwwl.cloud/island.php?u=<slug-lab-connu>'
 curl -I https://pocket.lab.sowwwl.cloud
 curl -I https://api.lab.sowwwl.cloud/healthz
 ```
+
+Expected island behavior:
+
+- `https://lab.sowwwl.cloud/island?u=<slug-lab-connu>` returns `200`
+- `https://lab.sowwwl.cloud/island.php?u=<slug-lab-connu>` redirects to the canonical `/island` route
 
 ## Simulate a sleeping land
 

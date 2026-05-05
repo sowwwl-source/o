@@ -46,11 +46,12 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>
 <body class="experience signal-view">
+<?= render_skip_link() ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'dense', 'signal') ?>
 
-<main class="layout page-shell">
+<main <?= main_landmark_attrs() ?> class="layout page-shell">
     <?php if ($signal): ?>
         <header class="hero page-header reveal">
             <p class="eyebrow"><strong>ferry 01</strong> <span>Flux / <?= h((string) $signal['kind']) ?></span></p>

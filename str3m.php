@@ -62,11 +62,12 @@ $recentB0t3s = b0t3_recent_public(20);
     <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
 </head>
 <body class="experience str3m-view">
+<?= render_skip_link() ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, (string) ($dailyStream['mood'] ?? 'calm'), 'str3m') ?>
 
-<main class="layout page-shell">
+<main <?= main_landmark_attrs() ?> class="layout page-shell">
     <header class="hero page-header reveal">
         <p class="eyebrow"><strong>str3m</strong> <span>océan public</span></p>
         <h1 class="land-title signal-title">

@@ -47,6 +47,7 @@ Use it for:
 - public `curl` checks
 - expected live behavior
 - distinguishing stale image vs wrong proxy vs wrong content
+- the reusable refresh script `scripts/deploy_lab_update.sh`
 
 ### Production is worse and I may need to revert
 Open:
