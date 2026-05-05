@@ -4,6 +4,7 @@ declare(strict_types=1);
 require __DIR__ . '/config.php';
 
 const SIGNUP_ROUTE = '/rejoindre';
+const LAND_ROUTE = '/land';
 
 function signup_portal_steps(): array
 {
@@ -100,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $form['lambda_nm'] !== '' ? (int) $form['lambda_nm'] : null
                 );
                 login_land($land);
-                header('Location: /land.php?u=' . urlencode((string) $land['slug']) . '&created=1&session=1', true, 303);
+                header('Location: ' . LAND_ROUTE . '?u=' . urlencode((string) $land['slug']) . '&created=1&session=1', true, 303);
                 exit;
             } catch (InvalidArgumentException | RuntimeException $exception) {
                 $message = $exception->getMessage();
@@ -273,7 +274,7 @@ $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($si
                     <span class="summary-label">Aperçu immédiat</span>
                     <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
                     <div class="preview-grid">
-                        <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land.php?u=' . $previewSlug) ?></code></p>
+                        <p><span>Lien</span><code data-land-link-output><?= h($originBase . LAND_ROUTE . '?u=' . $previewSlug) ?></code></p>
                         <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
                         <p><span>Fuseau</span><strong data-preview-timezone><?= h($previewTimezone) ?></strong></p>
                     </div>
@@ -290,7 +291,7 @@ $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($si
                     <h2 id="signup-reading-title"><?= h((string) $currentPortal['label']) ?></h2>
                     <p class="panel-copy">Lecture complète avant création : on laisse à ce passage la place d'être lu, pas juste survolé.</p>
                 </div>
-                <a class="ghost-link" href="/aza.php">Lire aZa au complet</a>
+                <a class="ghost-link" href="/aza">Lire aZa au complet</a>
             </div>
 
             <div class="signup-journey-grid signup-journey-grid--reading">
@@ -305,7 +306,7 @@ $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($si
                         <span class="summary-label">Terre en préparation</span>
                         <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
                         <div class="preview-grid">
-                            <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land.php?u=' . $previewSlug) ?></code></p>
+                            <p><span>Lien</span><code data-land-link-output><?= h($originBase . LAND_ROUTE . '?u=' . $previewSlug) ?></code></p>
                             <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
                             <p><span>Fuseau</span><strong data-preview-timezone><?= h($previewTimezone) ?></strong></p>
                         </div>
@@ -477,7 +478,7 @@ $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($si
                     <span class="summary-label">Terre scellée à venir</span>
                     <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
                     <div class="preview-grid">
-                        <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land.php?u=' . $previewSlug) ?></code></p>
+                        <p><span>Lien</span><code data-land-link-output><?= h($originBase . LAND_ROUTE . '?u=' . $previewSlug) ?></code></p>
                         <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
                         <p><span>Fuseau</span><strong data-preview-timezone><?= h($previewTimezone) ?></strong></p>
                         <p><span>Programme</span><strong data-preview-program-label><?= h($selectedSignupLabel) ?></strong></p>
@@ -487,7 +488,7 @@ $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($si
                     <p class="panel-copy">Une fois créée, la terre sera immédiatement liée à ta session et t'emmènera vers son espace situé.</p>
                     <?php if ($authenticatedLand): ?>
                         <div class="action-row">
-                            <a class="ghost-link" href="/land.php?u=<?= rawurlencode((string) ($authenticatedLand['slug'] ?? '')) ?>">Retour à ma terre actuelle</a>
+                            <a class="ghost-link" href="<?= h(LAND_ROUTE) ?>?u=<?= rawurlencode((string) ($authenticatedLand['slug'] ?? '')) ?>">Retour à ma terre actuelle</a>
                         </div>
                     <?php endif; ?>
                 </aside>

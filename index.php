@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 login_land($land);
-                header('Location: /land.php?u=' . urlencode((string) $land['slug']) . '&session=1', true, 303);
+                header('Location: /land?u=' . urlencode((string) $land['slug']) . '&session=1', true, 303);
                 exit;
             } catch (InvalidArgumentException | RuntimeException $exception) {
                 $message = $exception->getMessage();
@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $form['lambda_nm'] !== '' ? (int) $form['lambda_nm'] : null
                 );
                 login_land($land);
-                header('Location: /land.php?u=' . urlencode((string) $land['slug']) . '&created=1&session=1', true, 303);
+                header('Location: /land?u=' . urlencode((string) $land['slug']) . '&created=1&session=1', true, 303);
                 exit;
             } catch (InvalidArgumentException $exception) {
                 $message = $exception->getMessage();
@@ -237,8 +237,8 @@ $homeLead = $authenticatedLand
     ? 'Le torus suit la fréquence de ta terre. Signal adresse, aZa retient, Str3m affleure.'
     : 'Trois portes suffisent : entrer publiquement, poser une terre, ou demander le bon passage à Owl.';
 $homePrimaryActionHref = $authenticatedLand
-    ? '/land.php?u=' . rawurlencode($activeLandSlug)
-    : '/rejoindre.php';
+    ? '/land?u=' . rawurlencode($activeLandSlug)
+    : '/rejoindre';
 $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Rejoindre le peuple de l\'O';
 $guideHref = '/0wlslw0';
 $promptSeeds = guide_prompt_seeds();
@@ -306,7 +306,7 @@ $homeHeroNote = $authenticatedLand
         <?php if ($authenticatedLand): ?>
             <p class="connection-meter__copy">λ <?= h((string) $activeLambda) ?> nm · <?= h($activeLandUsername) ?></p>
             <div class="connection-meter__actions">
-                <a class="pill-link" href="/land.php?u=<?= rawurlencode($activeLandSlug) ?>">ouvrir</a>
+                <a class="pill-link" href="/land?u=<?= rawurlencode($activeLandSlug) ?>">ouvrir</a>
                 <a class="ghost-link" href="/logout.php">retirer</a>
             </div>
         <?php else: ?>
@@ -336,7 +336,7 @@ $homeHeroNote = $authenticatedLand
                 </label>
                 <button type="submit">entrer</button>
             </form>
-            <a class="connection-meter__create" href="/rejoindre.php">poser une terre</a>
+            <a class="connection-meter__create" href="/rejoindre">poser une terre</a>
         <?php endif; ?>
     </div>
 </details>
@@ -597,7 +597,7 @@ $homeHeroNote = $authenticatedLand
                     <strong>Entrer publiquement</strong>
                     <span>Lire le courant, regarder les îles, sentir la surface.</span>
                 </a>
-                <a href="/rejoindre.php" class="entry-card">
+                <a href="/rejoindre" class="entry-card">
                     <span class="summary-label">02 · terre</span>
                     <strong>Poser une terre</strong>
                     <span>Créer un lieu à toi, discret, situé, lié à une fréquence.</span>
@@ -680,7 +680,7 @@ $homeHeroNote = $authenticatedLand
             </section>
             <?php if ($authenticatedLand): ?>
                 <div class="action-row auth-action-row">
-                    <a class="pill-link" href="/land.php?u=<?= rawurlencode($activeLandSlug) ?>">Ouvrir la terre</a>
+                    <a class="pill-link" href="/land?u=<?= rawurlencode($activeLandSlug) ?>">Ouvrir la terre</a>
                     <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
                 </div>
             <?php endif; ?>
@@ -697,7 +697,7 @@ $homeHeroNote = $authenticatedLand
 
             <div class="public-entry-grid">
                 <?php if ($authenticatedLand): ?>
-                    <a class="public-entry-card" href="/land.php?u=<?= rawurlencode($activeLandSlug) ?>">
+                    <a class="public-entry-card" href="/land?u=<?= rawurlencode($activeLandSlug) ?>">
                         <strong>Retour à ma terre</strong>
                         <span>Revenir tout de suite à ton espace situé.</span>
                     </a>
@@ -710,7 +710,7 @@ $homeHeroNote = $authenticatedLand
                         <span>Recevoir un cap rapide avant de changer de ferry.</span>
                     </a>
                 <?php else: ?>
-                    <a class="public-entry-card" href="/rejoindre.php">
+                    <a class="public-entry-card" href="/rejoindre">
                         <strong>Poser une terre</strong>
                         <span>Nom, lecture, configuration, scellement : le parcours entier est hors du noyau.</span>
                     </a>
@@ -729,7 +729,7 @@ $homeHeroNote = $authenticatedLand
                 <span class="summary-label">Aperçu du seuil</span>
                 <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
                 <div class="preview-grid">
-                    <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land.php?u=' . $previewSlug) ?></code></p>
+                    <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land?u=' . $previewSlug) ?></code></p>
                     <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
                 </div>
                 <p class="panel-copy"><?= h($authenticatedLand ? 'La signature publique reste visible ici, même quand la terre est déjà ouverte ailleurs.' : 'Le seuil peut être aperçu ici, mais sa lecture complète et sa création ont maintenant leur propre page.') ?></p>
@@ -756,7 +756,7 @@ $homeHeroNote = $authenticatedLand
                 <div class="action-row">
                     <a class="ghost-link" href="<?= h($guideHref) ?>">Voir Owl</a>
                     <a class="ghost-link" href="/str3m">Entrer publiquement</a>
-                    <a class="ghost-link" href="/rejoindre.php">Poser une terre</a>
+                    <a class="ghost-link" href="/rejoindre">Poser une terre</a>
                 </div>
             </article>
 
