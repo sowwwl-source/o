@@ -342,6 +342,7 @@ $magicInfo = '';
 
 $action = (string) ($_GET['action'] ?? '');
 $magicToken = (string) ($_GET['token'] ?? '');
+$passwordLoginEnabled = false;
 
 if ($action === 'magic_login' && $magicToken !== '') {
     try {
@@ -366,7 +367,11 @@ if ($action === 'magic_login' && $magicToken !== '') {
     }
 }
 $configuredPin = trim((string) (getenv('SOWWWL_ADMIN_PIN') ?: ''));
-$adminPin = ($configuredPin !== '' && !str_starts_with($configuredPin, 'CHANGE_ME')) ? $configuredPin : 'pablo';
+$adminPin = '';
+$passwordLoginEnabled = $configuredPin !== '' && !str_starts_with($configuredPin, 'CHANGE_ME');
+if ($passwordLoginEnabled) {
+    $adminPin = $configuredPin;
+}
 $error = '';
 
 if (isset($_GET['logout'])) {
@@ -390,7 +395,10 @@ if (isset($_GET['logout'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
     $submittedPassword = (string) $_POST['password'];
 
-    if (hash_equals($adminPin, $submittedPassword)) {
+    if (!$passwordLoginEnabled) {
+        admin_log('auth.login.disabled', $adminEmail);
+        $error = 'Password login is disabled on this server.';
+    } elseif (hash_equals($adminPin, $submittedPassword)) {
         session_regenerate_id(true);
         $_SESSION['user_email'] = $adminEmail;
         admin_log('auth.login.success', $adminEmail);
