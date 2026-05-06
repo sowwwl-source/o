@@ -6,6 +6,17 @@ require_once __DIR__ . '/lib/str3m_media.php';
 require_once __DIR__ . '/lib/str3m_daily.php';
 require_once __DIR__ . '/lib/signals.php';
 
+function str3m_signal_kind_label(string $kind): string
+{
+    return match (trim($kind)) {
+        'pulse' => 'impulsion',
+        'image' => 'image',
+        'link' => 'lien',
+        'fragment' => 'fragment',
+        default => 'note',
+    };
+}
+
 $host = request_host();
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
@@ -54,6 +65,10 @@ $recentT0ks = t0k_recent_public(12);
 
 // B0t3s visibles dans le courant
 $recentB0t3s = b0t3_recent_public(20);
+$publicSignalCount = count($publicSignals);
+$publicSignalPreview = array_slice($publicSignals, 0, 6);
+$recentT0kCount = count($recentT0ks);
+$recentB0t3Count = count($recentB0t3s);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -97,6 +112,30 @@ $recentB0t3s = b0t3_recent_public(20);
                 <p class="panel-copy"><?= h((string) ($str3mGuide['copy'] ?? 'Explorer le courant public sans forcer l’entrée.')) ?></p>
             </div>
             <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0 : me guider</a>
+        </div>
+    </section>
+
+    <section class="panel reveal" aria-labelledby="str3m-proof-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="str3m-proof-title">Ce qui circule déjà</h2>
+                <p class="panel-copy">Même quand le str3m du jour reste léger, le courant public laisse déjà des preuves : signaux, t0ks et b0t3s.</p>
+            </div>
+        </div>
+
+        <div class="public-entry-grid">
+            <article class="public-entry-card">
+                <strong><?= h((string) $publicSignalCount) ?> signal<?= $publicSignalCount > 1 ? 's' : '' ?> public<?= $publicSignalCount > 1 ? 's' : '' ?></strong>
+                <span><?= $publicSignalCount > 0 ? 'Des traces lisibles publiquement existent déjà dans le courant.' : 'Aucun signal public n’est publié pour le moment, mais la porte est prête à les rendre visibles.' ?></span>
+            </article>
+            <article class="public-entry-card">
+                <strong><?= h((string) $recentT0kCount) ?> t0k<?= $recentT0kCount > 1 ? 's' : '' ?> en vue</strong>
+                <span><?= $recentT0kCount > 0 ? 'Des gestes publics circulent déjà entre terres et montrent que quelque chose passe.' : 'Aucun geste public n’est remonté pour l’instant.' ?></span>
+            </article>
+            <article class="public-entry-card">
+                <strong><?= h((string) $recentB0t3Count) ?> b0t3<?= $recentB0t3Count > 1 ? 's' : '' ?> lisible<?= $recentB0t3Count > 1 ? 's' : '' ?></strong>
+                <span><?= $recentB0t3Count > 0 ? 'Des lignes déposées restent consultables sans compte et donnent déjà une matière de lecture.' : 'Le champ reste ouvert, mais aucune ligne publique n’a encore été déposée.' ?></span>
+            </article>
         </div>
     </section>
 
@@ -254,6 +293,35 @@ $recentB0t3s = b0t3_recent_public(20);
         </div>
     </section>
 
+    <section class="panel reveal" aria-labelledby="str3m-signals-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="str3m-signals-title">Signaux publics récents</h2>
+                <p class="panel-copy">Les traces explicitement rendues visibles par des terres. C’est ici que le public voit qu’une présence devient lecture.</p>
+            </div>
+            <span class="badge"><?= h((string) $publicSignalCount) ?> visible<?= $publicSignalCount > 1 ? 's' : '' ?></span>
+        </div>
+
+        <?php if ($publicSignalPreview !== []): ?>
+            <div class="public-entry-grid">
+                <?php foreach ($publicSignalPreview as $signal): ?>
+                    <a class="public-entry-card" href="/signal_item.php?id=<?= rawurlencode((string) ($signal['id'] ?? '')) ?>">
+                        <strong><?= h((string) ($signal['title'] ?? 'Signal sans titre')) ?></strong>
+                        <span><?= h((string) ($signal['excerpt'] ?? 'Trace visible dans le courant.')) ?></span>
+                        <span><?= h((string) ($signal['land_username'] ?? $signal['land_slug'] ?? 'terre')) ?> · <?= h(str3m_signal_kind_label((string) ($signal['kind'] ?? 'note'))) ?> · <?= h(human_created_label((string) (($signal['published_at'] ?? '') ?: ($signal['created_at'] ?? ''))) ?? 'récemment') ?></span>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <p class="panel-copy">Aucun signal public n’est encore publié. Pour faire apparaître une terre ici, il faut publier au moins un signal public depuis une terre existante.</p>
+            <div class="action-row">
+                <a class="pill-link" href="/rejoindre">Poser une terre</a>
+                <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par Owl</a>
+                <a class="ghost-link" href="/signal">Voir Signal</a>
+            </div>
+        <?php endif; ?>
+    </section>
+
     <section class="panel reveal" aria-labelledby="islands-title">
         <div class="section-topline">
             <div>
@@ -264,7 +332,7 @@ $recentB0t3s = b0t3_recent_public(20);
         </div>
 
         <?php if (empty($activeIslands)): ?>
-            <p class="panel-copy">Aucune île n'a émis de signal pour le moment.</p>
+            <p class="panel-copy">Aucune île n'a encore assez publié pour apparaître ici. Les t0ks et les b0t3s plus bas montrent déjà le courant ; l’archipel apparaîtra dès qu’une terre laissera un signal public.</p>
         <?php else: ?>
             <?php
             // Calcule des positions 3D en spirale pour l'archipel
