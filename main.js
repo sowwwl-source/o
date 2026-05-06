@@ -846,6 +846,75 @@ function initStr3mParallax() {
 	window.requestAnimationFrame(renderParallax);
 }
 
+function initStr3mShellFutureBridge() {
+	const shellCards = Array.from(document.querySelectorAll("[data-shell-future='land']"))
+		.filter((node) => node instanceof HTMLElement);
+
+	if (!shellCards.length) {
+		return;
+	}
+
+	const buildDetail = (card) => ({
+		landSlug: card.dataset.landSlug || "",
+		landLabel: card.dataset.landLabel || "",
+		state: card.dataset.shellState || card.dataset.presence || "unknown",
+		source: card.dataset.shellSource || "str3m",
+		route: card.dataset.shellRoute || "",
+		manifestRoute: card.dataset.shellManifestRoute || "",
+	});
+
+	const announce = (eventName, card) => {
+		const detail = buildDetail(card);
+		document.body.dataset.str3mShellLand = detail.landSlug;
+		document.body.dataset.str3mShellState = detail.state;
+		window.dispatchEvent(new CustomEvent(eventName, { detail }));
+	};
+
+	shellCards.forEach((card) => {
+		card.addEventListener("pointerenter", () => {
+			card.classList.add("is-shell-armed");
+			announce("o:str3m-shell-preview", card);
+		});
+
+		card.addEventListener("pointerleave", () => {
+			card.classList.remove("is-shell-armed");
+		});
+
+		card.addEventListener("focusin", () => {
+			card.classList.add("is-shell-armed");
+			announce("o:str3m-shell-preview", card);
+		});
+
+		card.addEventListener("focusout", () => {
+			card.classList.remove("is-shell-armed");
+		});
+
+		card.addEventListener("pointerdown", () => {
+			card.classList.add("is-shell-pressed");
+			announce("o:str3m-shell-intent", card);
+		});
+
+		card.addEventListener("pointerup", () => {
+			card.classList.remove("is-shell-pressed");
+		});
+
+		card.addEventListener("pointercancel", () => {
+			card.classList.remove("is-shell-pressed");
+		});
+
+		card.addEventListener("keydown", (event) => {
+			if (event.key === "Enter" || event.key === " ") {
+				card.classList.add("is-shell-pressed");
+				announce("o:str3m-shell-intent", card);
+			}
+		});
+
+		card.addEventListener("keyup", () => {
+			card.classList.remove("is-shell-pressed");
+		});
+	});
+}
+
 function bindStr3mIntegratedPlayer(root) {
 	if (!(root instanceof HTMLElement) || root.dataset.str3mPlayerBound === "1") {
 		return;
@@ -6473,6 +6542,7 @@ initSignalFlow();
 initSpectralTuner();
 initStr3mArchipelago();
 initStr3mParallax();
+initStr3mShellFutureBridge();
 initStr3mIntegratedPlayer();
 initIslandReaderStation();
 initIslandReaderFullscreen();

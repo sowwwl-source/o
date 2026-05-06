@@ -99,6 +99,7 @@ $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $authenticatedLand = current_authenticated_land();
 $guideHref = '/0wlslw0';
 $str3mGuide = guide_path('str3m');
+$futureShellRoute = '/n0de';
 
 // 1. Chargement du courant quotidien (Str3m)
 $dailyStream = str3m_build_daily_stream(null);
@@ -563,7 +564,17 @@ unset($land);
             <div class="public-entry-grid">
                 <?php foreach ($visibleLandPreview as $landProfile): ?>
                     <?php $state = (array) ($landProfile['state'] ?? []); ?>
-                    <article class="public-entry-card public-entry-card--presence <?= h(str3m_presence_class($state)) ?>" data-presence="<?= h((string) ($state['key'] ?? 'unknown')) ?>">
+                    <article
+                        class="public-entry-card public-entry-card--presence <?= h(str3m_presence_class($state)) ?>"
+                        data-presence="<?= h((string) ($state['key'] ?? 'unknown')) ?>"
+                        data-shell-future="land"
+                        data-shell-source="str3m-visible"
+                        data-land-slug="<?= h((string) ($landProfile['slug'] ?? '')) ?>"
+                        data-land-label="<?= h((string) ($landProfile['username'] ?? $landProfile['slug'] ?? 'terre')) ?>"
+                        data-shell-route="/land.php?u=<?= rawurlencode((string) ($landProfile['slug'] ?? '')) ?>"
+                        data-shell-manifest-route="<?= h($futureShellRoute) ?>"
+                        data-shell-state="<?= h((string) ($state['key'] ?? 'unknown')) ?>"
+                    >
                         <strong><?= h((string) ($landProfile['username'] ?? $landProfile['slug'] ?? 'terre')) ?></strong>
                         <span class="presence-chip">
                             <span class="presence-chip__pulse" aria-hidden="true"></span>
@@ -654,6 +665,17 @@ unset($land);
                         >
                             <div class="archipelago-card-wrapper">
                                 <article class="str3m-island-card <?= $island['slug'] === $newestIslandSlug ? 'is-glowing ' : '' ?><?= h(str3m_presence_class($state)) ?>" data-presence="<?= h((string) ($state['key'] ?? 'unknown')) ?>">
+                                <article
+                                    class="str3m-island-card <?= $island['slug'] === $newestIslandSlug ? 'is-glowing ' : '' ?><?= h(str3m_presence_class($state)) ?>"
+                                    data-presence="<?= h((string) ($state['key'] ?? 'unknown')) ?>"
+                                    data-shell-future="land"
+                                    data-shell-source="archipelago"
+                                    data-land-slug="<?= h((string) ($island['slug'] ?? '')) ?>"
+                                    data-land-label="<?= h((string) ($island['username'] ?? $island['slug'] ?? 'terre')) ?>"
+                                    data-shell-route="/land.php?u=<?= rawurlencode((string) ($island['slug'] ?? '')) ?>"
+                                    data-shell-manifest-route="<?= h($futureShellRoute) ?>"
+                                    data-shell-state="<?= h((string) ($state['key'] ?? 'unknown')) ?>"
+                                >
                                     <div>
                                         <span class="summary-label">Terre</span>
                                         <strong class="summary-value"><?= h($island['username']) ?></strong>
@@ -685,6 +707,31 @@ unset($land);
                 <p class="panel-copy">Aucune de ces terres n’a encore publié de signal public durable ; l’archipel montre donc le courant visible avant publication, sans mentir sur son état.</p>
             <?php endif; ?>
         <?php endif; ?>
+    </section>
+
+    <section class="panel reveal" aria-labelledby="str3m-shell-future-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="str3m-shell-future-title">Vers le shell porté</h2>
+                <p class="panel-copy">Ces cartes préparent un futur shell web3/3ternet : un espace où une terre visible pourra ouvrir son n0de, son manifest, sa possession portée et ses passages d’interface sans casser la lecture publique.</p>
+            </div>
+            <a class="ghost-link" href="<?= h($futureShellRoute) ?>">Voir n0de</a>
+        </div>
+
+        <div class="public-entry-grid">
+            <article class="public-entry-card public-entry-card--future-shell">
+                <strong>4 · tactilité</strong>
+                <span>Le hover, le focus et l’appui commencent déjà à différencier les états publics.</span>
+            </article>
+            <article class="public-entry-card public-entry-card--future-shell">
+                <strong>5 · hooks</strong>
+                <span>Chaque terre visible expose maintenant des métadonnées et des événements pour un shell futur.</span>
+            </article>
+            <article class="public-entry-card public-entry-card--future-shell">
+                <strong>6 · possession portée</strong>
+                <span>Le pont naturel est `n0de` : manifest, sync, objet physique, et plus tard ouverture d’un shell de relation.</span>
+            </article>
+        </div>
     </section>
 
     <?php if ($recentT0ks): ?>

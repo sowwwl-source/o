@@ -2359,6 +2359,69 @@ button:hover,
 	box-shadow: inset 0 0 0 1px rgba(var(--fg-rgb) / 0.03);
 }
 
+.public-entry-card--presence[data-shell-future="land"],
+.str3m-island-card[data-shell-future="land"] {
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.public-entry-card--presence.is-shell-armed,
+.public-entry-card--presence:focus-within,
+.str3m-island-card.is-shell-armed,
+.str3m-island-card:focus-within {
+	box-shadow:
+		inset 0 0 0 1px rgba(var(--presence-rgb) / 0.12),
+		0 0 1.4rem rgba(var(--presence-glow-rgb) / 0.16);
+		transform: translateX(0.18rem) scale(1.008);
+}
+
+.public-entry-card--presence.is-shell-pressed,
+.public-entry-card--presence:active,
+.str3m-island-card.is-shell-pressed,
+.str3m-island-card:active {
+	transform: translateX(0.08rem) scale(0.992);
+	box-shadow:
+		inset 0 0 0 1px rgba(var(--presence-rgb) / 0.2),
+		0 0 1.8rem rgba(var(--presence-glow-rgb) / 0.2);
+}
+
+.str3m-island-card.is-shell-armed .summary-value,
+.str3m-island-card:focus-within .summary-value,
+.public-entry-card--presence.is-shell-armed strong,
+.public-entry-card--presence:focus-within strong {
+	color: rgba(var(--presence-rgb) / 0.98);
+	text-shadow: 0 0 1rem rgba(var(--presence-glow-rgb) / 0.18);
+}
+
+.str3m-island-card.is-shell-pressed .presence-chip__pulse,
+.public-entry-card--presence.is-shell-pressed .presence-chip__pulse {
+	box-shadow: 0 0 0 0.55rem rgba(var(--presence-glow-rgb) / 0.14);
+	transform: scale(1.14);
+}
+
+.public-entry-card--future-shell {
+	padding-left: 1rem;
+	position: relative;
+}
+
+.public-entry-card--future-shell::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0.85rem;
+	bottom: 0.85rem;
+	width: 1px;
+	background: linear-gradient(180deg, rgba(var(--fg-rgb) / 0), rgba(var(--land-secondary-rgb) / 0.28), rgba(var(--fg-rgb) / 0));
+}
+
+.archipelago-node[data-presence="present"] .str3m-island-card.is-shell-armed,
+.archipelago-node[data-presence="near"] .str3m-island-card.is-shell-armed,
+.archipelago-node[data-presence="roaming"] .str3m-island-card.is-shell-armed,
+.archipelago-node[data-presence="asleep"] .str3m-island-card.is-shell-armed {
+	outline: 1px solid rgba(var(--presence-rgb) / 0.22);
+	outline-offset: 0.16rem;
+}
+
 .presence-chip {
 	display: inline-flex;
 	align-items: center;
