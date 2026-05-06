@@ -200,6 +200,87 @@ function signal_identity_delivery_mode(): string
     return in_array($mode, ['mail', 'log', 'display'], true) ? $mode : 'mail';
 }
 
+function signal_identity_delivery_status(): array
+{
+    $mode = signal_identity_delivery_mode();
+    $issues = [];
+    $details = [];
+
+    if ($mode !== 'mail') {
+        $details[] = $mode === 'log'
+            ? 'Le lien de validation est journalisé côté serveur.'
+            : 'Le lien de validation est rendu ou journalisé dans un contexte de test contrôlé.';
+
+        return [
+            'mode' => $mode,
+            'ready' => true,
+            'issues' => $issues,
+            'details' => $details,
+        ];
+    }
+
+    $smtpHost = trim((string) (getenv('SOWWWL_SMTP_HOST') ?: ''));
+    $smtpUsername = trim((string) (getenv('SOWWWL_SMTP_USERNAME') ?: ''));
+    $smtpPassword = trim((string) (getenv('SOWWWL_SMTP_PASSWORD') ?: ''));
+    $from = trim((string) (getenv('SOWWWL_MAGIC_LINK_FROM') ?: ''));
+
+    $hostLooksPlaceholder = $smtpHost === ''
+        || str_contains(strtolower($smtpHost), 'example.com')
+        || str_starts_with(strtolower($smtpHost), 'change_me');
+    $usernameLooksPlaceholder = $smtpUsername !== ''
+        && (
+            str_contains(strtolower($smtpUsername), 'change_me')
+            || str_contains(strtolower($smtpUsername), 'example.com')
+        );
+
+    if ($hostLooksPlaceholder) {
+        $issues[] = 'smtp-host';
+        $details[] = 'Le serveur SMTP n’est pas configuré avec une valeur exploitable.';
+    }
+
+    if ($usernameLooksPlaceholder) {
+        $issues[] = 'smtp-username';
+        $details[] = 'Le compte SMTP semble encore sur une valeur placeholder.';
+    }
+
+    if ($smtpPassword === '') {
+        $issues[] = 'smtp-password';
+        $details[] = 'Le mot de passe SMTP est vide.';
+    }
+
+    if ($from === '' || str_contains(strtolower($from), 'example.com')) {
+        $issues[] = 'from-address';
+        $details[] = 'L’adresse expéditrice email n’est pas encore proprement définie.';
+    }
+
+    return [
+        'mode' => $mode,
+        'ready' => $issues === [],
+        'issues' => $issues,
+        'details' => $details,
+    ];
+}
+
+function signal_identity_delivery_status_hint(?array $status = null): string
+{
+    $status = is_array($status) ? $status : signal_identity_delivery_status();
+    $mode = (string) ($status['mode'] ?? 'mail');
+
+    if (($status['ready'] ?? false) === true) {
+        return match ($mode) {
+            'log' => 'Le lien de validation sera inscrit dans les logs du serveur.',
+            'display' => 'Le lien de validation sera rendu visible dans un contexte de test contrôlé.',
+            default => 'Le lien de validation partira par email via le relais SMTP configuré.',
+        };
+    }
+
+    $details = array_values(array_filter(array_map('strval', $status['details'] ?? [])));
+
+    return $details !== []
+        ? implode(' ', $details)
+        : 'La livraison de validation n’est pas prête pour le moment.';
+}
+
 function signal_identity_seconds_until_resend(array $mailbox): int
 {
     if (($mailbox['identity_status'] ?? '') !== SIGNAL_IDENTITY_PENDING) {
@@ -664,6 +745,11 @@ function signal_request_identity_verification(array $land, string $notificationE
     $notificationEmail = trim($notificationEmail);
     if ($notificationEmail === '' || !filter_var($notificationEmail, FILTER_VALIDATE_EMAIL)) {
         throw new InvalidArgumentException('Adresse email invalide.');
+    }
+
+    $deliveryStatus = signal_identity_delivery_status();
+    if (!(bool) ($deliveryStatus['ready'] ?? false)) {
+        throw new RuntimeException(signal_identity_delivery_status_hint($deliveryStatus));
     }
 
     $mailbox = ensure_signal_mailbox($land);

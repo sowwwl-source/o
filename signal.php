@@ -129,6 +129,12 @@ if ($land && $tablesReady) {
 $identityStatus = trim((string) ($mailbox['identity_status'] ?? SIGNAL_IDENTITY_UNVERIFIED));
 $notificationEmail = trim((string) ($mailbox['notification_email'] ?? ''));
 $identityHint = $mailbox ? signal_identity_status_hint($mailbox) : '';
+$identityDeliveryStatus = function_exists('signal_identity_delivery_status')
+    ? signal_identity_delivery_status()
+    : ['mode' => 'mail', 'ready' => false, 'issues' => ['missing-helper'], 'details' => ['Le statut de livraison n’est pas disponible.']];
+$identityDeliveryHint = function_exists('signal_identity_delivery_status_hint')
+    ? signal_identity_delivery_status_hint($identityDeliveryStatus)
+    : 'Le statut de livraison n’est pas disponible.';
 $identityResendWait = $mailbox ? signal_identity_seconds_until_resend($mailbox) : 0;
 $identitySubmitLabel = $identityStatus === SIGNAL_IDENTITY_VERIFIED ? 'Changer l’adresse validée' : ($identityStatus === SIGNAL_IDENTITY_PENDING ? 'Renvoyer le lien' : 'Valider cette identité');
 $identitySubmitDisabled = $identityResendWait > 0;
@@ -428,6 +434,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                             <span class="summary-label"><?= h(signal_identity_status_label($identityStatus)) ?></span>
                             <strong><?= h($identityHint !== '' ? $identityHint : 'Validation non initialisée.') ?></strong>
                         </div>
+                        <p class="panel-copy">Mode de livraison : <strong><?= h((string) ($identityDeliveryStatus['mode'] ?? 'mail')) ?></strong>. <?= h($identityDeliveryHint) ?></p>
                         <p class="panel-copy">Adresse interne : <?= h($virtualAddress) ?>. Ce bloc ne sert que pour relier Signal à une présence réelle.</p>
 
                         <form action="/signal" method="post" class="land-form signal-form">
