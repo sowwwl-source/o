@@ -66,6 +66,25 @@ cd /root/o-3ternet-lab
 bash scripts/deploy_lab_update.sh --root /root/o-3ternet-lab
 ```
 
+The deploy helper is intentionally resilient now:
+
+- it first tries the full lab stack, including `caddy`
+- if that local `caddy` cannot start because `80/443` are already owned elsewhere or because `/opt` is mounted read-only, it automatically retries with `db`, `api`, `app`, and `pocket` only
+- public verification still runs through the active ingress on `lab.sowwwl.cloud`
+
+Useful switches:
+
+```bash
+# Force the fallback path when you know the host ingress already lives elsewhere.
+bash scripts/deploy_lab_update.sh --skip-caddy
+
+# Force a full local caddy attempt.
+bash scripts/deploy_lab_update.sh --with-caddy
+
+# Send a harmless sensor event after deploy to verify the physical -> digital bridge.
+bash scripts/deploy_lab_update.sh --smoke-sensor
+```
+
 ## Recovery checklist
 
 Use this on the DigitalOcean console when the lab is half-up, when Caddy cannot bind `80/443`, or when Docker says it cannot reach `/var/run/docker.sock`.
@@ -172,6 +191,9 @@ curl -sS -X POST https://lab.sowwwl.cloud/ingest/sensor \
 
 docker exec sowwwl-o-lab-app-1 sh -lc 'tail -n 5 /var/www/runtime/plasma/sensor-events.jsonl'
 ```
+
+The deploy helper can perform a smaller version of that smoke test automatically with `--smoke-sensor`.
+It sends a `lab_deploy_ping` event through the public lab endpoint, then tails the latest plasma log lines inside the app container.
 
 Run the Pi daemon:
 
