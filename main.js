@@ -624,6 +624,13 @@ function initStr3mArchipelago() {
 		.filter((wrapper) => wrapper instanceof HTMLElement);
 	const nodes = Array.from(scene.querySelectorAll(".archipelago-node"))
 		.filter((node) => node instanceof HTMLElement);
+	const motionProfiles = {
+		present: { sway: 5, bob: 8, depth: 10, tilt: 1.4, scale: 1.02, speed: 0.0011 },
+		near: { sway: 8, bob: 12, depth: 14, tilt: 1.9, scale: 1.01, speed: 0.00135 },
+		roaming: { sway: 14, bob: 18, depth: 22, tilt: 2.8, scale: 1.005, speed: 0.0018 },
+		asleep: { sway: 3, bob: 5, depth: 6, tilt: 0.9, scale: 0.992, speed: 0.00072 },
+		unknown: { sway: 4, bob: 6, depth: 8, tilt: 1.1, scale: 1, speed: 0.00094 },
+	};
 	const hint = container.querySelector("[data-str3m-archipelago-hint]");
 	const setHint = (copy) => {
 		if (hint instanceof HTMLElement) {
@@ -631,11 +638,27 @@ function initStr3mArchipelago() {
 		}
 	};
 
-	nodes.forEach((node) => {
+	const nodeEntries = nodes.map((node, index) => {
 		const x = Number(node.dataset.archipelagoX || 0);
 		const y = Number(node.dataset.archipelagoY || 0);
 		const z = Number(node.dataset.archipelagoZ || 0);
+		const presence = node.dataset.presence || "unknown";
+		const wrapper = node.querySelector(".archipelago-card-wrapper");
+		const profile = motionProfiles[presence] || motionProfiles.unknown;
+		const phase = index * 1.61803398875;
+
 		node.style.transform = `translate3d(${x}px, ${y}px, ${z}px)`;
+
+		return {
+			node,
+			wrapper: wrapper instanceof HTMLElement ? wrapper : null,
+			baseX: x,
+			baseY: y,
+			baseZ: z,
+			presence,
+			profile,
+			phase,
+		};
 	});
 
 	const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -764,14 +787,31 @@ function initStr3mArchipelago() {
 		targetPosZ = clamp(targetPosZ, -4000, 800);
 	}, { passive: false });
 
-	const render = () => {
+	const render = (time = 0) => {
 		rotX += (targetRotX - rotX) * 0.08;
 		rotY += (targetRotY - rotY) * 0.08;
 		posZ += (targetPosZ - posZ) * 0.08;
 		scene.style.transform = `translateZ(${posZ}px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
 
-		wrappers.forEach((wrapper) => {
-			wrapper.style.transform = `translate(-50%, -50%) rotateY(${-rotY}deg) rotateX(${-rotX}deg)`;
+		nodeEntries.forEach((entry) => {
+			const motionFactor = reducedMotion ? 0.14 : 1;
+			const primaryPhase = time * entry.profile.speed + entry.phase;
+			const secondaryPhase = time * (entry.profile.speed * 0.63) + entry.phase * 0.5;
+			const tertiaryPhase = time * (entry.profile.speed * 0.42) + entry.phase * 1.24;
+
+			const swayX = Math.sin(primaryPhase) * entry.profile.sway * motionFactor;
+			const bobY = Math.cos(secondaryPhase) * entry.profile.bob * motionFactor;
+			const driftZ = Math.sin(tertiaryPhase) * entry.profile.depth * motionFactor;
+			entry.node.style.transform = `translate3d(${entry.baseX + swayX}px, ${entry.baseY + bobY}px, ${entry.baseZ + driftZ}px)`;
+
+			if (!(entry.wrapper instanceof HTMLElement)) {
+				return;
+			}
+
+			const tiltX = Math.sin(secondaryPhase) * entry.profile.tilt * motionFactor;
+			const tiltY = Math.cos(primaryPhase) * entry.profile.tilt * motionFactor;
+			const scale = 1 + ((entry.profile.scale - 1) * motionFactor) + (Math.sin(primaryPhase) * 0.008 * motionFactor);
+			entry.wrapper.style.transform = `translate(-50%, -50%) rotateY(${-rotY + tiltY}deg) rotateX(${-rotX + tiltX}deg) scale(${scale.toFixed(4)})`;
 		});
 
 		window.requestAnimationFrame(render);

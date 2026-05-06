@@ -7166,6 +7166,7 @@ body:has(.connection-meter) {
 .archipelago-node {
 	position: absolute;
 	transform-style: preserve-3d;
+	will-change: transform;
 }
 
 .archipelago-card-wrapper {
@@ -7179,6 +7180,7 @@ body:has(.connection-meter) {
 .archipelago-node .str3m-island-card {
 	width: 100%;
 	margin: 0;
+	will-change: transform, box-shadow, border-color;
 }
 
 .archipelago-node[data-presence="present"] .str3m-island-card {
