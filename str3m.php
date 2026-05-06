@@ -32,27 +32,41 @@ function str3m_visible_land_state(array $profile): array
 {
     $signalCount = (int) ($profile['signal_count'] ?? 0);
     $t0kCount = (int) ($profile['t0k_count'] ?? 0);
+    $t0kPendingCount = (int) ($profile['t0k_pending_count'] ?? 0);
+    $t0kActiveCount = (int) ($profile['t0k_active_count'] ?? 0);
     $b0t3Count = (int) ($profile['b0t3_count'] ?? 0);
     $latestTs = (int) ($profile['latest_ts'] ?? 0);
     $hoursSinceLatest = $latestTs > 0 ? max(0.0, (time() - $latestTs) / 3600) : 999.0;
+    $publicWeight = ($signalCount * 4) + ($t0kActiveCount * 3) + ($t0kPendingCount * 2) + $b0t3Count;
 
-    if ($signalCount > 0) {
+    if ($signalCount > 0 && $hoursSinceLatest <= 72) {
         return [
-            'label' => 'signal public',
-            'summary' => 'Cette terre a déjà rendu une trace lisible publiquement.',
+            'label' => 'présente',
+            'hint' => 'indice public · present',
+            'summary' => 'Une trace publique récente tient cette terre ouverte dans le courant.',
         ];
     }
 
-    if (($t0kCount + $b0t3Count) >= 3 || $hoursSinceLatest <= 24) {
+    if ($t0kActiveCount > 0 || ($publicWeight >= 6 && $hoursSinceLatest <= 96)) {
         return [
-            'label' => 'en circulation',
-            'summary' => 'Quelque chose passe déjà ici : gestes, lignes ou circulation récente.',
+            'label' => 'proche',
+            'hint' => 'indice public · near',
+            'summary' => 'Des gestes actifs et des lignes récentes laissent penser qu’un échange peut reprendre vite.',
+        ];
+    }
+
+    if ($t0kPendingCount > 0 || $t0kCount > 0 || $b0t3Count > 0) {
+        return [
+            'label' => 'en dérive',
+            'hint' => 'indice public · roaming',
+            'summary' => 'La terre circule encore entre gestes, attentes et dépôts, sans ancrage public stable.',
         ];
     }
 
     return [
-        'label' => 'veille visible',
-        'summary' => 'La terre apparaît dans le courant, mais n’a pas encore laissé de signal public durable.',
+        'label' => 'endormie',
+        'hint' => 'indice public · asleep',
+        'summary' => 'Des traces subsistent, mais la terre repose pour l’instant dans le courant public.',
     ];
 }
 
@@ -122,6 +136,8 @@ foreach ($publicSignals as $signal) {
             'username' => trim((string) ($signal['land_username'] ?? $slug)),
             'signal_count' => 0,
             't0k_count' => 0,
+            't0k_pending_count' => 0,
+            't0k_active_count' => 0,
             'b0t3_count' => 0,
             'latest_at' => '',
             'latest_ts' => 0,
@@ -150,6 +166,8 @@ foreach ($recentT0ks as $t0k) {
                 'username' => $slug,
                 'signal_count' => 0,
                 't0k_count' => 0,
+                't0k_pending_count' => 0,
+                't0k_active_count' => 0,
                 'b0t3_count' => 0,
                 'latest_at' => '',
                 'latest_ts' => 0,
@@ -157,6 +175,12 @@ foreach ($recentT0ks as $t0k) {
         }
 
         $visibleLands[$slug]['t0k_count']++;
+        $t0kStatus = strtolower(trim((string) ($t0k['status'] ?? '')));
+        if ($t0kStatus === 'active') {
+            $visibleLands[$slug]['t0k_active_count']++;
+        } elseif ($t0kStatus === 'pending') {
+            $visibleLands[$slug]['t0k_pending_count']++;
+        }
         $t0kAt = trim((string) (($t0k['formed_at'] ?? '') ?: ($t0k['sent_at'] ?? '')));
         $t0kTs = str3m_timestamp($t0kAt);
         if ($t0kTs > ($visibleLands[$slug]['latest_ts'] ?? 0)) {
@@ -178,6 +202,8 @@ foreach ($recentB0t3s as $b0t3) {
             'username' => $slug,
             'signal_count' => 0,
             't0k_count' => 0,
+            't0k_pending_count' => 0,
+            't0k_active_count' => 0,
             'b0t3_count' => 0,
             'latest_at' => '',
             'latest_ts' => 0,
@@ -480,7 +506,7 @@ $visibleLandPreview = array_slice($visibleLands, 0, 6);
         <div class="section-topline">
             <div>
                 <h2 id="str3m-visible-lands-title">Terres visibles maintenant</h2>
-                <p class="panel-copy">A, B, C : des terres apparaissent, portent un état lisible, puis ouvrent une action claire.</p>
+                <p class="panel-copy">A, B+++++++ : des terres apparaissent avec un indice public de présence — inspiré de 3ternet, sans faire semblant qu’un accès direct existe déjà.</p>
             </div>
             <span class="badge"><?= h((string) count($visibleLandPreview)) ?> visible<?= count($visibleLandPreview) > 1 ? 's' : '' ?></span>
         </div>
@@ -492,7 +518,8 @@ $visibleLandPreview = array_slice($visibleLands, 0, 6);
                     <article class="public-entry-card">
                         <strong><?= h((string) ($landProfile['username'] ?? $landProfile['slug'] ?? 'terre')) ?></strong>
                         <span><?= h((string) ($state['summary'] ?? 'Trace visible dans le courant.')) ?></span>
-                        <span><?= h((string) ($state['label'] ?? 'visible')) ?> · <?= h((string) ($landProfile['signal_count'] ?? 0)) ?> signal<?= ((int) ($landProfile['signal_count'] ?? 0)) > 1 ? 'aux' : '' ?> · <?= h((string) $landProfile['t0k_count']) ?> t0k<?= ((int) ($landProfile['t0k_count'] ?? 0)) > 1 ? 's' : '' ?> · <?= h((string) $landProfile['b0t3_count']) ?> b0t3<?= ((int) ($landProfile['b0t3_count'] ?? 0)) > 1 ? 's' : '' ?><?= !empty($landProfile['latest_at']) ? ' · ' . h(human_created_label((string) $landProfile['latest_at']) ?? 'récemment') : '' ?></span>
+                        <span><?= h((string) ($state['label'] ?? 'visible')) ?> · <?= h((string) ($state['hint'] ?? 'indice public')) ?></span>
+                        <span><?= h((string) ($landProfile['signal_count'] ?? 0)) ?> signal<?= ((int) ($landProfile['signal_count'] ?? 0)) > 1 ? 'aux' : '' ?> · <?= h((string) ($landProfile['t0k_active_count'] ?? 0)) ?> t0k actif<?= ((int) ($landProfile['t0k_active_count'] ?? 0)) > 1 ? 's' : '' ?> · <?= h((string) ($landProfile['t0k_pending_count'] ?? 0)) ?> en chemin · <?= h((string) ($landProfile['b0t3_count'] ?? 0)) ?> b0t3<?= ((int) ($landProfile['b0t3_count'] ?? 0)) > 1 ? 's' : '' ?><?= !empty($landProfile['latest_at']) ? ' · ' . h(human_created_label((string) $landProfile['latest_at']) ?? 'récemment') : '' ?></span>
                         <span>
                             <a class="pill-link" href="/land.php?u=<?= rawurlencode((string) ($landProfile['slug'] ?? '')) ?>">Explorer l'île</a>
                         </span>
