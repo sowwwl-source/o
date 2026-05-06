@@ -41,6 +41,7 @@ function str3m_visible_land_state(array $profile): array
 
     if ($signalCount > 0 && $hoursSinceLatest <= 72) {
         return [
+            'key' => 'present',
             'label' => 'présente',
             'hint' => 'indice public · present',
             'summary' => 'Une trace publique récente tient cette terre ouverte dans le courant.',
@@ -49,6 +50,7 @@ function str3m_visible_land_state(array $profile): array
 
     if ($t0kActiveCount > 0 || ($publicWeight >= 6 && $hoursSinceLatest <= 96)) {
         return [
+            'key' => 'near',
             'label' => 'proche',
             'hint' => 'indice public · near',
             'summary' => 'Des gestes actifs et des lignes récentes laissent penser qu’un échange peut reprendre vite.',
@@ -57,6 +59,7 @@ function str3m_visible_land_state(array $profile): array
 
     if ($t0kPendingCount > 0 || $t0kCount > 0 || $b0t3Count > 0) {
         return [
+            'key' => 'roaming',
             'label' => 'en dérive',
             'hint' => 'indice public · roaming',
             'summary' => 'La terre circule encore entre gestes, attentes et dépôts, sans ancrage public stable.',
@@ -64,10 +67,22 @@ function str3m_visible_land_state(array $profile): array
     }
 
     return [
+        'key' => 'asleep',
         'label' => 'endormie',
         'hint' => 'indice public · asleep',
         'summary' => 'Des traces subsistent, mais la terre repose pour l’instant dans le courant public.',
     ];
+}
+
+function str3m_presence_class(array $state): string
+{
+    return match ((string) ($state['key'] ?? '')) {
+        'present' => 'is-presence-present',
+        'near' => 'is-presence-near',
+        'roaming' => 'is-presence-roaming',
+        'asleep' => 'is-presence-asleep',
+        default => 'is-presence-unknown',
+    };
 }
 
 $host = request_host();
@@ -233,6 +248,21 @@ foreach ($visibleLands as $slug => &$profile) {
     $profile['state'] = str3m_visible_land_state($profile);
 }
 unset($profile);
+
+$visibleLandIndex = $visibleLands;
+
+foreach ($activeIslands as $slug => &$island) {
+    $matchedProfile = $visibleLandIndex[$slug] ?? null;
+    $island['state'] = is_array($matchedProfile['state'] ?? null)
+        ? $matchedProfile['state']
+        : [
+            'key' => 'present',
+            'label' => 'présente',
+            'hint' => 'indice public · present',
+            'summary' => 'Cette terre a laissé un signal public récent dans l’archipel.',
+        ];
+}
+unset($island);
 
 usort(
     $visibleLands,
@@ -515,11 +545,15 @@ $visibleLandPreview = array_slice($visibleLands, 0, 6);
             <div class="public-entry-grid">
                 <?php foreach ($visibleLandPreview as $landProfile): ?>
                     <?php $state = (array) ($landProfile['state'] ?? []); ?>
-                    <article class="public-entry-card">
+                    <article class="public-entry-card public-entry-card--presence <?= h(str3m_presence_class($state)) ?>" data-presence="<?= h((string) ($state['key'] ?? 'unknown')) ?>">
                         <strong><?= h((string) ($landProfile['username'] ?? $landProfile['slug'] ?? 'terre')) ?></strong>
+                        <span class="presence-chip">
+                            <span class="presence-chip__pulse" aria-hidden="true"></span>
+                            <span><?= h((string) ($state['label'] ?? 'visible')) ?></span>
+                        </span>
                         <span><?= h((string) ($state['summary'] ?? 'Trace visible dans le courant.')) ?></span>
-                        <span><?= h((string) ($state['label'] ?? 'visible')) ?> · <?= h((string) ($state['hint'] ?? 'indice public')) ?></span>
-                        <span><?= h((string) ($landProfile['signal_count'] ?? 0)) ?> signal<?= ((int) ($landProfile['signal_count'] ?? 0)) > 1 ? 'aux' : '' ?> · <?= h((string) ($landProfile['t0k_active_count'] ?? 0)) ?> t0k actif<?= ((int) ($landProfile['t0k_active_count'] ?? 0)) > 1 ? 's' : '' ?> · <?= h((string) ($landProfile['t0k_pending_count'] ?? 0)) ?> en chemin · <?= h((string) ($landProfile['b0t3_count'] ?? 0)) ?> b0t3<?= ((int) ($landProfile['b0t3_count'] ?? 0)) > 1 ? 's' : '' ?><?= !empty($landProfile['latest_at']) ? ' · ' . h(human_created_label((string) $landProfile['latest_at']) ?? 'récemment') : '' ?></span>
+                        <span class="presence-hint"><?= h((string) ($state['hint'] ?? 'indice public')) ?></span>
+                        <span class="presence-ledger"><?= h((string) ($landProfile['signal_count'] ?? 0)) ?> signal<?= ((int) ($landProfile['signal_count'] ?? 0)) > 1 ? 'aux' : '' ?> · <?= h((string) ($landProfile['t0k_active_count'] ?? 0)) ?> t0k actif<?= ((int) ($landProfile['t0k_active_count'] ?? 0)) > 1 ? 's' : '' ?> · <?= h((string) ($landProfile['t0k_pending_count'] ?? 0)) ?> en chemin · <?= h((string) ($landProfile['b0t3_count'] ?? 0)) ?> b0t3<?= ((int) ($landProfile['b0t3_count'] ?? 0)) > 1 ? 's' : '' ?><?= !empty($landProfile['latest_at']) ? ' · ' . h(human_created_label((string) $landProfile['latest_at']) ?? 'récemment') : '' ?></span>
                         <span>
                             <a class="pill-link" href="/land.php?u=<?= rawurlencode((string) ($landProfile['slug'] ?? '')) ?>">Explorer l'île</a>
                         </span>
@@ -581,18 +615,27 @@ $visibleLandPreview = array_slice($visibleLands, 0, 6);
                 <div class="archipelago-scene">
                     <?php foreach ($islandNodes as $node): ?>
                         <?php $island = $node['island']; ?>
+                        <?php $state = (array) ($island['state'] ?? []); ?>
                         <div
                             class="archipelago-node"
                             data-archipelago-x="<?= h((string) $node['x']) ?>"
                             data-archipelago-y="<?= h((string) $node['y']) ?>"
                             data-archipelago-z="<?= h((string) $node['z']) ?>"
+                            data-presence="<?= h((string) ($state['key'] ?? 'unknown')) ?>"
                         >
                             <div class="archipelago-card-wrapper">
-                                <article class="str3m-island-card <?= $island['slug'] === $newestIslandSlug ? 'is-glowing' : '' ?>">
+                                <article class="str3m-island-card <?= $island['slug'] === $newestIslandSlug ? 'is-glowing ' : '' ?><?= h(str3m_presence_class($state)) ?>" data-presence="<?= h((string) ($state['key'] ?? 'unknown')) ?>">
                                     <div>
                                         <span class="summary-label">Terre</span>
                                         <strong class="summary-value"><?= h($island['username']) ?></strong>
                                     </div>
+                                    <p class="island-presence">
+                                        <span class="presence-chip">
+                                            <span class="presence-chip__pulse" aria-hidden="true"></span>
+                                            <span><?= h((string) ($state['label'] ?? 'présente')) ?></span>
+                                        </span>
+                                    </p>
+                                    <p class="island-presence-hint"><?= h((string) ($state['hint'] ?? 'indice public · present')) ?></p>
                                     <?php if ($island['last_active']): ?>
                                         <p class="island-meta">Dernière trace : <?= h(human_created_label($island['last_active']) ?? 'récemment') ?></p>
                                     <?php endif; ?>
