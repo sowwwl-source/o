@@ -233,7 +233,7 @@ if ($authenticatedLand) {
 $homeStatusLabel = $authenticatedLand ? 'terre liée' : 'surface collective';
 $homeLead = $authenticatedLand
     ? 'Le torus suit la fréquence de ta terre. Signal adresse, aZa retient, Str3m affleure.'
-    : 'Trois portes suffisent : entrer publiquement, poser une terre, ou demander le bon passage à Owl.';
+    : 'Commence ici. Trois portes suffisent : entrer publiquement, poser une terre, ou demander à Owl quelle porte choisir.';
 $homePrimaryActionHref = $authenticatedLand
     ? '/land?u=' . rawurlencode($activeLandSlug)
     : '/rejoindre';
@@ -242,17 +242,17 @@ $guideHref = '/0wlslw0';
 $promptSeeds = guide_prompt_seeds();
 $homeHeroLineOne = $authenticatedLand ? 'La terre' : 'O.';
 $homeHeroLineTwo = $authenticatedLand ? 'colore le torus.' : 'le réseau minimal';
-$homeHeroTone = $authenticatedLand ? $activeLandTone : 'trois portes nettes / aucune précipitation';
+$homeHeroTone = $authenticatedLand ? $activeLandTone : 'porte d’usage / trois gestes / aucune précipitation';
 $homeHeroNote = $authenticatedLand
     ? 'Trois gestes reviennent vite : ouvrir, écrire, dériver.'
-    : 'Le noyau montre d’abord l’essentiel. Le reste attend plus loin, sans pousser.';
+    : 'sowwwl.com sert à entrer et utiliser O. sowwwl.org sert à comprendre la carte avant d’aller plus loin.';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="<?= h(SITE_TITLE) ?> — un espace vivant, personnel, discret. Pose ta terre et laisse la nuit coder le reste.">
+    <meta name="description" content="<?= h(SITE_TITLE) ?> — entre publiquement, pose une terre, ou laisse Owl te guider vers la bonne porte.">
     <meta name="theme-color" content="#09090b">
     <title><?= h(SITE_TITLE) ?></title>
 <?= render_o_page_head_assets($isSowwwlXyz ? 'xyz' : 'main') ?>
@@ -591,17 +591,17 @@ $homeHeroNote = $authenticatedLand
                 <a href="/str3m" class="entry-card entry-card--primary">
                     <span class="summary-label">01 · public</span>
                     <strong>Entrer publiquement</strong>
-                    <span>Lire le courant, regarder les îles, sentir la surface.</span>
+                    <span>Lire Str3m, regarder les îles et sentir le courant avant de créer quoi que ce soit.</span>
                 </a>
                 <a href="/rejoindre" class="entry-card">
                     <span class="summary-label">02 · terre</span>
                     <strong>Poser une terre</strong>
-                    <span>Créer un lieu à toi, discret, situé, lié à une fréquence.</span>
+                    <span>Créer un lieu à toi, discret, situé, avec sa fréquence et sa propre adresse.</span>
                 </a>
                 <a href="<?= h($guideHref) ?>" class="entry-card">
                     <span class="summary-label">03 · owl</span>
                     <strong>Demander à Owl</strong>
-                    <span>Entrer par 0wlslw0 pour être orienté sans tout lire d’un coup.</span>
+                    <span>Passer par 0wlslw0 pour être orienté rapidement si tu hésites entre public, terre ou projet.</span>
                 </a>
             <?php endif; ?>
         </nav>
@@ -620,7 +620,7 @@ $homeHeroNote = $authenticatedLand
                     <a class="ghost-link" href="https://sowwwl.org">Comprendre la carte</a>
                 <?php endif; ?>
             </div>
-            <p class="panel-copy"><?= h($authenticatedLand ? 'Le noyau garde des passages latéraux, mais la priorité reste simple : terre, adresse, courant.' : 'La connexion reste en bas à gauche pour les retours rapides. Le noyau n’en fait plus le centre, mais ne l’oublie pas. Pour comprendre le rôle des domaines sans quitter le public, sowwwl.org sert de couche d’explication.') ?></p>
+            <p class="panel-copy"><?= h($authenticatedLand ? 'Le noyau garde des passages latéraux, mais la priorité reste simple : terre, adresse, courant.' : 'La connexion reste en bas à gauche pour les retours rapides. Le noyau n’en fait plus le centre, mais ne l’oublie pas. Si tu veux comprendre les rôles de domaines avant d’agir, sowwwl.org sert de couche d’explication.') ?></p>
         </aside>
     </section>
 
@@ -688,7 +688,7 @@ $homeHeroNote = $authenticatedLand
                 <div>
                     <span class="summary-label">Départ net</span>
                     <h2 id="home-start-title"><?= $authenticatedLand ? 'Reprendre sans détour' : 'Commencer sans se perdre' ?></h2>
-                    <p class="panel-copy"><?= h($authenticatedLand ? 'La terre est déjà liée. Reviens au noyau, écris, ou laisse Owl te recadrer.' : 'Le nom, la lecture d’aZa et le scellement ont maintenant leur propre rythme. Ici, le noyau montre seulement où commencer.') ?></p>
+                    <p class="panel-copy"><?= h($authenticatedLand ? 'La terre est déjà liée. Reviens au noyau, écris, ou laisse Owl te recadrer.' : 'Ici, on choisit seulement la première action. Le parcours complet vit ensuite sur sa propre page, pour garder l’entrée nette.') ?></p>
                 </div>
             </div>
 
@@ -709,11 +709,11 @@ $homeHeroNote = $authenticatedLand
                 <?php else: ?>
                     <a class="public-entry-card" href="/rejoindre">
                         <strong>Poser une terre</strong>
-                        <span>Nom, lecture, configuration, scellement : le parcours entier est hors du noyau.</span>
+                        <span>Nom, lecture, configuration, scellement : tout le parcours existe, mais il ne surcharge plus l’accueil.</span>
                     </a>
                     <a class="public-entry-card" href="<?= h($guideHref) ?>">
                         <strong>Demander à Owl</strong>
-                        <span>0wlslw0 t’oriente en quelques phrases, sans te noyer dans le projet.</span>
+                        <span>0wlslw0 t’oriente en quelques phrases si tu ne sais pas encore quelle porte prendre.</span>
                     </a>
                     <a class="public-entry-card" href="#connexion">
                         <strong>Retrouver ma terre</strong>
@@ -729,7 +729,7 @@ $homeHeroNote = $authenticatedLand
                     <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land?u=' . $previewSlug) ?></code></p>
                     <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
                 </div>
-                <p class="panel-copy"><?= h($authenticatedLand ? 'La signature publique reste visible ici, même quand la terre est déjà ouverte ailleurs.' : 'Le seuil peut être aperçu ici, mais sa lecture complète et sa création ont maintenant leur propre page.') ?></p>
+                <p class="panel-copy"><?= h($authenticatedLand ? 'La signature publique reste visible ici, même quand la terre est déjà ouverte ailleurs.' : 'Le seuil reste visible depuis l’accueil, mais sa lecture complète et sa création vivent désormais hors de la home pour garder la porte simple.') ?></p>
             </div>
         </section>
     </section>
@@ -740,7 +740,7 @@ $homeHeroNote = $authenticatedLand
         <div class="section-topline">
             <div>
                 <h2 id="guide-home-title">Porte 00 · Owl</h2>
-                <p class="panel-copy">0wlslw0, prononcé Owl, sert de guide d’entrée : comprendre vite, choisir une porte, puis se retirer.</p>
+                <p class="panel-copy">0wlslw0, prononcé Owl, sert de guide d’entrée : comprendre vite, choisir une porte, puis se retirer. Si tu sais déjà où aller, inutile d’y camper.</p>
             </div>
             <a class="pill-link" href="<?= h($guideHref) ?>">Ouvrir Owl</a>
         </div>
@@ -749,7 +749,7 @@ $homeHeroNote = $authenticatedLand
             <article class="guide-panel">
                 <span class="summary-label">Rôle</span>
                 <strong>Éclaircir la première phrase.</strong>
-                <p class="panel-copy">Owl aide à choisir entre courant public, terre personnelle et lecture du projet, sans transformer l’entrée en manifeste.</p>
+                <p class="panel-copy">Owl aide à choisir entre courant public, terre personnelle et lecture du projet, sans transformer l’entrée de sowwwl.com en manifeste ni en mode d’emploi complet.</p>
                 <div class="action-row">
                     <a class="ghost-link" href="<?= h($guideHref) ?>">Voir Owl</a>
                     <a class="ghost-link" href="/str3m">Entrer publiquement</a>
