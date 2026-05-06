@@ -62,6 +62,23 @@ curl -I 'https://sowwwl.com/island?u=<slug-connu>'
 curl -sL 'https://sowwwl.com/island?u=<slug-connu>' | grep -E 'île classique|Relief|Finder mémoire|Dernières traces'
 ```
 
+### 5b. Verify island video compatibility when a land has multiple video formats
+
+Use this when the target island contains both browser-friendly video and formats like `.mov`.
+
+```bash
+curl -I 'https://sowwwl.com/island?u=<slug-video>'
+curl -I 'https://sowwwl.com/storage/aza/files/<video-mov>.mov'
+curl -I 'https://sowwwl.com/storage/aza/files/<video-mp4>.mp4'
+curl -sL 'https://sowwwl.com/island?u=<slug-video>' | grep -E 'Station de lecture|Vidéo disponible, mais pas lisible directement ici|ouvrir la vidéo'
+```
+
+Expected interpretation:
+
+- if a land has `mp4`, `webm`, `ogv`, or `m4v`, `island` should prefer that video in the embedded reader
+- if only non-browser-safe video exists, the island must show the explicit fallback copy instead of a broken inline player
+- `.mov` may still be publicly downloadable; it should not silently win over a playable `.mp4`
+
 ## 6. Expected results
 
 - `0wlslw0.com` should not serve the old static placeholder
@@ -71,6 +88,8 @@ curl -sL 'https://sowwwl.com/island?u=<slug-connu>' | grep -E 'île classique|Re
 - `str3m` should stay public
 - `map` should respond from the O. app
 - `island?u=<slug-connu>` should return `200` and expose the classic island reading
+- `island` video reader should prefer browser-playable video over `.mov` when both exist
+- if only `.mov`-like formats exist, the user should see the explicit island fallback message, not a dead player
 
 ## 7. If something breaks
 

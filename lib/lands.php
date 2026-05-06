@@ -83,6 +83,115 @@ function land_file_path(string $slug): string
     return lands_dir() . DIRECTORY_SEPARATOR . $slug . '.json';
 }
 
+function normalize_land_record(array $land): ?array
+{
+    $username = trim((string) ($land['username'] ?? ''));
+    $slugCandidate = trim((string) ($land['slug'] ?? ''));
+
+    if ($slugCandidate === '') {
+        if ($username === '') {
+            return null;
+        }
+
+        try {
+            $slugCandidate = normalize_username($username);
+        } catch (InvalidArgumentException $exception) {
+            return null;
+        }
+    }
+
+    $land['slug'] = $slugCandidate;
+
+    if (!isset($land['username']) || $username === '') {
+        $land['username'] = $slugCandidate;
+    }
+
+    if (!isset($land['email_virtual']) || trim((string) $land['email_virtual']) === '') {
+        $land['email_virtual'] = $slugCandidate . '@o.local';
+    }
+
+    if (!isset($land['timezone']) || trim((string) $land['timezone']) === '') {
+        $land['timezone'] = DEFAULT_TIMEZONE;
+    }
+
+    if (!isset($land['zone_code']) || trim((string) $land['zone_code']) === '') {
+        $land['zone_code'] = (string) $land['timezone'];
+    }
+
+    return $land;
+}
+
+function load_land_from_database(string $identifier): ?array
+{
+    try {
+        $pdo = get_pdo();
+    } catch (Throwable $exception) {
+        return null;
+    }
+
+    $identifier = trim($identifier);
+    if ($identifier === '') {
+        return null;
+    }
+
+    $slug = normalize_username($identifier);
+    $emailVirtual = $slug . '@o.local';
+
+    $statement = $pdo->prepare(
+        'SELECT username, password_hash, email_virtual, timezone, zone_code, created_at
+         FROM lands
+         WHERE username = :username
+            OR email_virtual = :email_virtual
+         ORDER BY id DESC
+         LIMIT 1'
+    );
+    $statement->execute([
+        ':username' => $identifier,
+        ':email_virtual' => $emailVirtual,
+    ]);
+
+    $land = $statement->fetch(PDO::FETCH_ASSOC);
+
+    return is_array($land) ? normalize_land_record($land) : null;
+}
+
+function load_land_snapshot_from_database(): array
+{
+    try {
+        $pdo = get_pdo();
+    } catch (Throwable $exception) {
+        return [];
+    }
+
+    $statement = $pdo->query(
+        'SELECT username, password_hash, email_virtual, timezone, zone_code, created_at
+         FROM lands
+         ORDER BY created_at DESC, id DESC'
+    );
+
+    if (!$statement instanceof PDOStatement) {
+        return [];
+    }
+
+    $lands = [];
+    foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+
+        $normalized = normalize_land_record($row);
+        if (!is_array($normalized)) {
+            continue;
+        }
+
+        $timestamp = strtotime((string) ($normalized['created_at'] ?? ''));
+        $normalized['_mtime'] = $timestamp !== false ? $timestamp : 0;
+        $lands[] = $normalized;
+    }
+
+    return $lands;
+}
+
 function open_land_file_for_creation(string $path): mixed
 {
     if (is_file($path)) {
@@ -395,16 +504,20 @@ function find_land(string $identifier): ?array
     $path = land_file_path($slug);
 
     if (!is_file($path)) {
-        return null;
+        return load_land_from_database($identifier);
     }
 
     $raw = file_get_contents($path);
     if ($raw === false) {
-        return null;
+        return load_land_from_database($identifier);
     }
 
     $decoded = json_decode($raw, true);
-    return is_array($decoded) ? $decoded : null;
+    if (!is_array($decoded)) {
+        return load_land_from_database($identifier);
+    }
+
+    return normalize_land_record($decoded);
 }
 
 function authenticate_land(string $identifier, string $password): ?array
@@ -444,8 +557,17 @@ function land_snapshot(): array
             continue;
         }
 
-        $decoded['_mtime'] = filemtime($file) ?: 0;
-        $lands[] = $decoded;
+        $normalized = normalize_land_record($decoded);
+        if (!is_array($normalized)) {
+            continue;
+        }
+
+        $normalized['_mtime'] = filemtime($file) ?: 0;
+        $lands[] = $normalized;
+    }
+
+    if ($lands === []) {
+        $lands = load_land_snapshot_from_database();
     }
 
     usort(

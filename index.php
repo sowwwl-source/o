@@ -165,8 +165,6 @@ $selectedSignupLabel = (string) ($selectedSignupDefinition['label'] ?? $selected
 $selectedSignupTone = (string) ($selectedSignupDefinition['tone'] ?? '');
 $originBase = site_origin();
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
-$stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
-$scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $homeVisualOnly = $isSowwwlXyz;
 $dailyStream = str3m_build_daily_stream(null);
 $dailyTextItem = is_array($dailyStream['items']['text'] ?? null) ? $dailyStream['items']['text'] : null;
@@ -257,10 +255,7 @@ $homeHeroNote = $authenticatedLand
     <meta name="description" content="<?= h(SITE_TITLE) ?> — un espace vivant, personnel, discret. Pose ta terre et laisse la nuit coder le reste.">
     <meta name="theme-color" content="#09090b">
     <title><?= h(SITE_TITLE) ?></title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<?= render_pwa_head_tags($isSowwwlXyz ? 'xyz' : 'main') ?>
-    <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
-    <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
+<?= render_o_page_head_assets($isSowwwlXyz ? 'xyz' : 'main') ?>
 </head>
 <body
     class="experience home<?= $isSowwwlXyz ? ' xyz-surface-view' : '' ?>"

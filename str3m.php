@@ -9,8 +9,6 @@ require_once __DIR__ . '/lib/signals.php';
 $host = request_host();
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
-$stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
-$scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 
 $authenticatedLand = current_authenticated_land();
 $guideHref = '/0wlslw0';
@@ -25,6 +23,15 @@ $dailyTextBody = $dailyTextItem ? str3m_load_text_body($dailyTextItem) : '';
 $dailyTextExcerpt = trim((string) (($dailyTextItem['meta']['excerpt'] ?? '') ?: ''));
 $dailyImagePath = $dailyImageItem ? str3m_resolve_media_path($dailyImageItem) : '';
 $dailyAudioPath = $dailyAudioItem ? str3m_resolve_media_path($dailyAudioItem) : '';
+$dailyImageAlt = (string) ($dailyImageItem['meta']['alt'] ?? $dailyImageItem['title'] ?? 'Image str3m');
+$dailyAudioTitle = $dailyAudioItem ? (string) ($dailyAudioItem['title'] ?? 'Nappe du jour') : 'Nappe en veille';
+$dailyAudioCaption = trim((string) (($dailyAudioItem['meta']['excerpt'] ?? '') ?: ($dailyAudioItem['meta']['description'] ?? '')));
+$dailyAudioCaption = $dailyAudioCaption !== ''
+    ? $dailyAudioCaption
+    : ($dailyAudioPath !== ''
+        ? 'Lecture continue du courant du jour, avec vitesse, égalisation et navigation intégrées.'
+        : 'Le lecteur est prêt, mais aucune nappe publique n’est publiée aujourd’hui.');
+$dailyAudioHasSource = $dailyAudioPath !== '';
 
 // 2. Découverte de l'Archipel (Terres actives dans le flux)
 $publicSignals = list_public_signals();
@@ -56,10 +63,7 @@ $recentB0t3s = b0t3_recent_public(20);
     <meta name="description" content="Str3m — explorer le courant quotidien et les îles dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
     <title>Str3m — <?= h(SITE_TITLE) ?></title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<?= render_pwa_head_tags('main') ?>
-    <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
-    <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
+<?= render_o_page_head_assets('main') ?>
 </head>
 <body class="experience str3m-view">
 <?= render_skip_link() ?>
@@ -123,22 +127,129 @@ $recentB0t3s = b0t3_recent_public(20);
             <section class="str3m-card str3m-card-visual">
                 <p class="summary-label">Surface</p>
                 <h3><?= $dailyImageItem ? h((string) $dailyImageItem['title']) : 'Surface en suspens' ?></h3>
-                <?php if ($dailyImagePath !== ''): ?>
-                    <figure class="str3m-figure">
-                        <img src="<?= h($dailyImagePath) ?>" alt="<?= h((string) ($dailyImageItem['meta']['alt'] ?? $dailyImageItem['title'] ?? 'Image str3m')) ?>" class="str3m-image" loading="lazy">
-                    </figure>
-                <?php else: ?>
-                    <p class="str3m-fallback-copy">Le str3m visuel attend sa trace.</p>
-                <?php endif; ?>
+                <div class="str3m-media-stage<?= $dailyAudioHasSource ? '' : ' is-passive' ?>">
+                    <?php if ($dailyImagePath !== ''): ?>
+                        <figure class="str3m-figure str3m-figure--player">
+                            <img src="<?= h($dailyImagePath) ?>" alt="<?= h($dailyImageAlt) ?>" class="str3m-image" loading="lazy">
+                        </figure>
+                    <?php else: ?>
+                        <div class="str3m-figure str3m-figure--player str3m-figure--void" aria-hidden="true">
+                            <span class="str3m-void-orbit"></span>
+                            <span class="str3m-void-pulse"></span>
+                            <strong>surface latente</strong>
+                        </div>
+                    <?php endif; ?>
 
-                <?php if ($dailyAudioPath !== ''): ?>
-                    <div class="str3m-audio-shell">
-                        <p class="summary-label">Nappe</p>
-                        <audio controls preload="none" class="str3m-audio">
-                            <source src="<?= h($dailyAudioPath) ?>">
+                    <section
+                        class="str3m-player<?= $dailyAudioHasSource ? '' : ' is-empty' ?>"
+                        data-str3m-player
+                        data-str3m-player-has-source="<?= $dailyAudioHasSource ? '1' : '0' ?>"
+                        data-str3m-player-title="<?= h($dailyAudioTitle) ?>"
+                        data-str3m-player-mood="<?= h((string) ($dailyStream['mood'] ?? 'calm')) ?>"
+                        data-str3m-player-template="<?= h((string) ($dailyStream['template'] ?? 'empty')) ?>"
+                        tabindex="0"
+                        aria-label="Lecteur intégré du str3m quotidien"
+                    >
+                        <div class="str3m-player__hero">
+                            <div>
+                                <p class="summary-label">Lecteur</p>
+                                <h4><?= h($dailyAudioTitle) ?></h4>
+                                <p class="str3m-player__copy"><?= h($dailyAudioCaption) ?></p>
+                            </div>
+                            <div class="str3m-player__hero-meta" aria-label="État du lecteur">
+                                <span class="meta-pill">mood : <?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></span>
+                                <span class="meta-pill">template : <?= h((string) ($dailyStream['template'] ?? 'empty')) ?></span>
+                            </div>
+                        </div>
+
+                        <div class="str3m-player__dock">
+                            <section class="str3m-player__transport" aria-labelledby="str3m-player-transport-title">
+                                <div class="str3m-player__section-topline">
+                                    <h5 id="str3m-player-transport-title">Transport</h5>
+                                    <span class="str3m-player__state" data-str3m-player-status><?= $dailyAudioHasSource ? 'prêt' : 'veille' ?></span>
+                                </div>
+
+                                <div class="str3m-player__buttons">
+                                    <button type="button" class="str3m-player__button" data-str3m-player-back aria-label="Reculer de cinq secondes"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>−5 s</button>
+                                    <button type="button" class="str3m-player__button str3m-player__button--primary" data-str3m-player-toggle aria-label="Lecture ou pause"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>lecture</button>
+                                    <button type="button" class="str3m-player__button" data-str3m-player-forward aria-label="Avancer de cinq secondes"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>+5 s</button>
+                                </div>
+
+                                <label class="str3m-player__range-wrap">
+                                    <span class="sr-only">Progression du str3m</span>
+                                    <input type="range" min="0" max="1" step="0.001" value="0" data-str3m-player-progress<?= $dailyAudioHasSource ? '' : ' disabled' ?>>
+                                </label>
+
+                                <div class="str3m-player__times" aria-live="polite">
+                                    <span data-str3m-player-current>00:00</span>
+                                    <span data-str3m-player-duration>00:00</span>
+                                </div>
+                            </section>
+
+                            <section class="str3m-player__controls" aria-labelledby="str3m-player-controls-title">
+                                <div class="str3m-player__section-topline">
+                                    <h5 id="str3m-player-controls-title">Lecture</h5>
+                                    <output class="str3m-player__rate" data-str3m-player-rate-output>1.00×</output>
+                                </div>
+
+                                <div class="str3m-player__buttons str3m-player__buttons--compact">
+                                    <button type="button" class="str3m-player__button" data-str3m-player-rate-step="-0.25"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>−</button>
+                                    <button type="button" class="str3m-player__button" data-str3m-player-rate-step="0.25"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>+</button>
+                                    <button type="button" class="str3m-player__button" data-str3m-player-reset<?= $dailyAudioHasSource ? '' : ' disabled' ?>>reset</button>
+                                </div>
+
+                                <label class="str3m-player__toggle">
+                                    <input type="checkbox" data-str3m-player-preserve-pitch checked<?= $dailyAudioHasSource ? '' : ' disabled' ?>>
+                                    <span>Conserver la hauteur</span>
+                                </label>
+                            </section>
+
+                            <section class="str3m-player__eq" aria-labelledby="str3m-player-eq-title">
+                                <div class="str3m-player__section-topline">
+                                    <h5 id="str3m-player-eq-title">EQ audio</h5>
+                                    <span class="str3m-player__eq-state" data-str3m-player-eq-state><?= $dailyAudioHasSource ? 'actif' : 'hors source' ?></span>
+                                </div>
+
+                                <div class="str3m-player__sliders">
+                                    <label class="str3m-player__slider">
+                                        <span>Bass <output data-str3m-player-bass-value>0.0 dB</output></span>
+                                        <input type="range" min="-12" max="12" step="0.5" value="0" data-str3m-player-bass<?= $dailyAudioHasSource ? '' : ' disabled' ?>>
+                                    </label>
+                                    <label class="str3m-player__slider">
+                                        <span>Mid <output data-str3m-player-mid-value>0.0 dB</output></span>
+                                        <input type="range" min="-12" max="12" step="0.5" value="0" data-str3m-player-mid<?= $dailyAudioHasSource ? '' : ' disabled' ?>>
+                                    </label>
+                                    <label class="str3m-player__slider">
+                                        <span>Treble <output data-str3m-player-treble-value>0.0 dB</output></span>
+                                        <input type="range" min="-12" max="12" step="0.5" value="0" data-str3m-player-treble<?= $dailyAudioHasSource ? '' : ' disabled' ?>>
+                                    </label>
+                                    <label class="str3m-player__slider">
+                                        <span>Gain <output data-str3m-player-gain-value>100%</output></span>
+                                        <input type="range" min="0" max="150" step="1" value="100" data-str3m-player-gain<?= $dailyAudioHasSource ? '' : ' disabled' ?>>
+                                    </label>
+                                </div>
+                            </section>
+
+                            <section class="str3m-player__status-panel" aria-labelledby="str3m-player-status-title">
+                                <div class="str3m-player__section-topline">
+                                    <h5 id="str3m-player-status-title">État</h5>
+                                </div>
+                                <div class="str3m-player__status-grid">
+                                    <p><span>Source</span><strong data-str3m-player-source><?= $dailyAudioHasSource ? h($dailyAudioTitle) : 'aucune nappe' ?></strong></p>
+                                    <p><span>Vitesse</span><strong data-str3m-player-rate-state>1.00×</strong></p>
+                                    <p><span>EQ</span><strong data-str3m-player-summary>plat</strong></p>
+                                    <p><span>Raccourcis</span><strong>Espace · ← →</strong></p>
+                                </div>
+                            </section>
+                        </div>
+
+                        <audio preload="metadata" class="str3m-player__native" data-str3m-player-audio<?= $dailyAudioHasSource ? '' : ' aria-hidden="true"' ?>>
+                            <?php if ($dailyAudioHasSource): ?>
+                                <source src="<?= h($dailyAudioPath) ?>">
+                            <?php endif; ?>
                         </audio>
-                    </div>
-                <?php endif; ?>
+                    </section>
+                </div>
             </section>
         </div>
     </section>

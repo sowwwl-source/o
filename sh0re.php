@@ -6,8 +6,6 @@ require __DIR__ . '/config.php';
 $host              = request_host();
 $csrfToken         = csrf_token();
 $brandDomain       = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
-$stylesVersion     = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
-$scriptVersion     = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $authenticatedLand = current_authenticated_land();
 
 // Which land's shore are we visiting?
@@ -138,10 +136,7 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
     <meta name="description" content="Sh0re — le rivage de <?= h((string) ($viewLand['username'] ?? 'cette land')) ?> dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
     <title>Sh0re<?= $viewLand ? ' · ' . h((string) $viewLand['username']) : '' ?> — <?= h(SITE_TITLE) ?></title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<?= render_pwa_head_tags('main') ?>
-    <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
-    <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
+<?= render_o_page_head_assets('main') ?>
 </head>
 <body class="experience sh0re-view">
 <?= render_skip_link() ?>

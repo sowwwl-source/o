@@ -70,6 +70,7 @@ const DEFAULT_AZA_MAX_UPLOAD_BYTES = 2147483648;
 $publicOriginOverride = trim((string) (getenv('SOWWWL_PUBLIC_ORIGIN') ?: ''));
 $rateLimitOverride = trim((string) (getenv('SOWWWL_RATE_LIMIT_DIR') ?: ''));
 $storageOverride = trim((string) (getenv('SOWWWL_STORAGE_DIR') ?: ''));
+$azaStorageOverride = trim((string) (getenv('SOWWWL_AZA_STORAGE_DIR') ?: ''));
 $azaUploadOverride = trim((string) (getenv('SOWWWL_AZA_MAX_UPLOAD_BYTES') ?: ''));
 $azaDirectOriginOverride = trim((string) (getenv('SOWWWL_AZA_DIRECT_ORIGIN') ?: ''));
 define(
@@ -94,7 +95,11 @@ define(
 
 define(
     'AZA_STORAGE_DIR',
-    __DIR__ . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'aza'
+    $azaStorageOverride !== ''
+        ? rtrim($azaStorageOverride, DIRECTORY_SEPARATOR)
+        : (is_dir('/var/www/runtime')
+            ? '/var/www/runtime/aza'
+            : __DIR__ . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'aza')
 );
 
 define(
@@ -125,6 +130,99 @@ define(
         ? rtrim($azaDirectOriginOverride, '/')
         : ''
 );
+
+function aza_public_storage_root(): string
+{
+    return 'storage/aza';
+}
+
+function aza_public_storage_path(string $suffix = ''): string
+{
+    $normalizedSuffix = ltrim(str_replace('\\', '/', $suffix), '/');
+    $base = aza_public_storage_root();
+
+    return $normalizedSuffix !== ''
+        ? $base . '/' . $normalizedSuffix
+        : $base;
+}
+
+function aza_absolute_storage_path(?string $publicPath): ?string
+{
+    $publicPath = trim((string) $publicPath);
+    if ($publicPath === '') {
+        return null;
+    }
+
+    $normalized = ltrim(str_replace('\\', '/', $publicPath), '/');
+    $publicRoot = aza_public_storage_root();
+
+    if ($normalized === $publicRoot) {
+        return AZA_STORAGE_DIR;
+    }
+
+    $prefix = $publicRoot . '/';
+    if (str_starts_with($normalized, $prefix)) {
+        $relative = substr($normalized, strlen($prefix));
+        return AZA_STORAGE_DIR . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative);
+    }
+
+    return __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $normalized);
+}
+
+function o_mount_prefix(): string
+{
+    static $prefix = null;
+
+    if (is_string($prefix)) {
+        return $prefix;
+    }
+
+    $parentDir = dirname(__DIR__);
+    $parentMain = $parentDir . DIRECTORY_SEPARATOR . 'main.js';
+    $parentStyles = $parentDir . DIRECTORY_SEPARATOR . 'styles.css';
+    $localMain = __DIR__ . DIRECTORY_SEPARATOR . 'main.js';
+    $localStyles = __DIR__ . DIRECTORY_SEPARATOR . 'styles.css';
+
+    $hasBridgedWrapper = is_file($parentMain)
+        && is_file($parentStyles)
+        && is_file($localMain)
+        && is_file($localStyles)
+        && (
+            (filesize($parentMain) ?: 0) !== (filesize($localMain) ?: 0)
+            || (filesize($parentStyles) ?: 0) !== (filesize($localStyles) ?: 0)
+        );
+
+    $prefix = $hasBridgedWrapper ? '/o' : '';
+
+    return $prefix;
+}
+
+function o_public_href(string $asset, bool $withVersion = false, ?string $filePath = null): string
+{
+    $relative = ltrim($asset, '/');
+    $prefix = o_mount_prefix();
+    $href = ($prefix !== '' ? $prefix : '') . '/' . $relative;
+
+    if (!$withVersion) {
+        return $href;
+    }
+
+    $resolvedPath = is_string($filePath) && $filePath !== ''
+        ? $filePath
+        : __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative);
+    $mtime = @filemtime($resolvedPath) ?: 0;
+
+    if ($mtime > 0) {
+        $href .= '?v=' . rawurlencode((string) $mtime);
+    }
+
+    return $href;
+}
+
+function o_asset_href(string $asset): string
+{
+    return o_public_href($asset, true);
+}
 
 function get_pdo(): PDO
 {
@@ -190,37 +288,37 @@ function pwa_app_catalog(): array
 
     $icons = [
         [
-            'src' => '/icons/icon-192.png',
+            'src' => o_public_href('icons/icon-192.png'),
             'sizes' => '192x192',
             'type' => 'image/png',
             'purpose' => 'any',
         ],
         [
-            'src' => '/icons/icon-512.png',
+            'src' => o_public_href('icons/icon-512.png'),
             'sizes' => '512x512',
             'type' => 'image/png',
             'purpose' => 'any',
         ],
         [
-            'src' => '/icons/icon-mask-192.png',
+            'src' => o_public_href('icons/icon-mask-192.png'),
             'sizes' => '192x192',
             'type' => 'image/png',
             'purpose' => 'maskable',
         ],
         [
-            'src' => '/icons/icon-mask-512.png',
+            'src' => o_public_href('icons/icon-mask-512.png'),
             'sizes' => '512x512',
             'type' => 'image/png',
             'purpose' => 'maskable',
         ],
         [
-            'src' => '/icons/icon.svg',
+            'src' => o_public_href('icons/icon.svg'),
             'sizes' => 'any',
             'type' => 'image/svg+xml',
             'purpose' => 'any',
         ],
         [
-            'src' => '/icons/icon-mask.svg',
+            'src' => o_public_href('icons/icon-mask.svg'),
             'sizes' => 'any',
             'type' => 'image/svg+xml',
             'purpose' => 'maskable',
@@ -328,7 +426,9 @@ function pwa_manifest_href(?string $preferred = null, ?string $host = null): str
         ? $preferred
         : pwa_default_app_id($host);
 
-    return '/manifest.php?app=' . rawurlencode($appId) . '&v=' . rawurlencode(pwa_manifest_version());
+    return o_public_href('manifest.php')
+        . '?app=' . rawurlencode($appId)
+        . '&v=' . rawurlencode(pwa_manifest_version());
 }
 
 function render_pwa_head_tags(?string $preferred = null, ?string $host = null): string
@@ -337,7 +437,7 @@ function render_pwa_head_tags(?string $preferred = null, ?string $host = null): 
     $manifestHref = h(pwa_manifest_href($preferred, $host));
     $appName = h((string) ($config['name'] ?? SITE_TITLE));
     $shortName = h((string) ($config['short_name'] ?? 'O.'));
-    $appleIcon = h('/apple-touch-icon.png?v=' . pwa_manifest_version());
+    $appleIcon = h(o_public_href('apple-touch-icon.png', true));
 
     return <<<HTML
     <link rel="manifest" href="{$manifestHref}">
@@ -347,6 +447,24 @@ function render_pwa_head_tags(?string $preferred = null, ?string $host = null): 
     <meta name="apple-mobile-web-app-title" content="{$shortName}">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="{$appleIcon}">
+HTML;
+}
+
+function render_o_page_head_assets(?string $preferred = null, ?string $host = null): string
+{
+    $bridgePrefix = h(o_mount_prefix());
+    $disableServiceWorker = o_mount_prefix() !== '' ? 'true' : 'false';
+    $faviconHref = h(o_public_href('favicon.svg'));
+    $pwaHead = render_pwa_head_tags($preferred, $host);
+    $stylesHref = h(o_asset_href('styles.css'));
+    $scriptHref = h(o_asset_href('main.js'));
+
+    return <<<HTML
+    <script>window.__O_BRIDGE_PREFIX__ = '{$bridgePrefix}'; window.__O_DISABLE_SW__ = {$disableServiceWorker};</script>
+    <link rel="icon" href="{$faviconHref}" type="image/svg+xml">
+{$pwaHead}
+    <link rel="stylesheet" href="{$stylesHref}">
+    <script defer src="{$scriptHref}"></script>
 HTML;
 }
 

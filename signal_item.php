@@ -15,8 +15,6 @@ if (!$signal || !signal_can_view($signal, $currentLand)) {
 }
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
-$stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
-$scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $created = isset($_GET['created']) && $_GET['created'] === '1';
 $isOwner = $signal ? signal_is_owner($signal, $currentLand) : false;
 $signalDate = $signal ? human_created_label((string) (($signal['published_at'] ?? '') ?: ($signal['created_at'] ?? ''))) : null;
@@ -40,10 +38,7 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
     <meta name="description" content="Signal — détail d'une transmission dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
     <title><?= $signal ? h((string) $signal['title']) . ' — Signal · ' . h(SITE_TITLE) : 'Signal introuvable — ' . h(SITE_TITLE) ?></title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<?= render_pwa_head_tags('main') ?>
-    <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
-    <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
+<?= render_o_page_head_assets('main') ?>
 </head>
 <body class="experience signal-view">
 <?= render_skip_link() ?>

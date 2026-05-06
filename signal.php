@@ -8,8 +8,6 @@ require_once __DIR__ . '/lib/signals.php';
 $host = request_host();
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
-$stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
-$scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $guideHref = '/0wlslw0';
 $signalGuide = guide_path('signal');
 $csrfToken = csrf_token();
@@ -150,10 +148,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
     <meta name="description" content="Signal — boîte de réception située dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
     <title>Signal — <?= h(SITE_TITLE) ?></title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<?= render_pwa_head_tags('main') ?>
-    <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
-    <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
+<?= render_o_page_head_assets('main') ?>
 </head>
 <body class="experience signal-view">
 <?= render_skip_link() ?>

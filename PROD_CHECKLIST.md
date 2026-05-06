@@ -6,6 +6,7 @@ Use this as the shortest operational checklist before and after touching product
 
 - Am I in the right repo (`o/`)?
 - Am I deploying from the right stack (`o/deploy`)?
+- Am I updating the runtime that the public domains actually use (`sowwwl-o-caddy-1` -> `sowwwl-o-app-1`)?
 - Is the change pushed to `origin/main`?
 - Do I know whether a DB migration is required?
 - Do I know which domains I must verify right after deploy?
@@ -15,6 +16,7 @@ Use this as the shortest operational checklist before and after touching product
 - Sync VPS source to `origin/main`
 - Rebuild `sowwwl-o` app image
 - Restart the stack
+- Confirm the running `app` container contains the expected files
 - Apply migration manually if the DB volume already existed
 
 ## After prod
@@ -24,6 +26,7 @@ Use this as the shortest operational checklist before and after touching product
 - Check `https://sowwwl.com/str3m`
 - Check `https://sowwwl.com/map`
 - Check `https://sowwwl.com/island?u=<slug-connu>`
+- If that island has video, confirm the embedded reader prefers a browser-playable source over `.mov`
 - Confirm the old placeholder is gone
 
 ## Minimum proof that prod is good
@@ -32,6 +35,7 @@ Use this as the shortest operational checklist before and after touching product
 - app container contains expected files
 - feature route behaves as intended
 - island route renders the expected classic reading for at least one known land slug
+- if that land has both `.mov` and `.mp4`, the island reader prefers the `.mp4`
 - no critical regression appears on key domains
 
 ## If prod is suspicious

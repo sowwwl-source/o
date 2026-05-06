@@ -73,8 +73,6 @@ if ($requestPath === '/0wlslw0.php') {
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $isSpatialMappingHost = ($brandDomain === 'sowwwl.xyz');
-$stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
-$scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $authenticatedLand = current_authenticated_land();
 $ambientProfile = $authenticatedLand ? land_visual_profile($authenticatedLand) : land_collective_profile('calm');
 $ambientTokens = visual_profile_tokens($ambientProfile, 'calm');
@@ -139,10 +137,7 @@ $guideVoiceNotes = [
     <meta name="description" content="0wlslw0 — Owl, guide d entree pour comprendre <?= h($siteTitle) ?> et trouver la bonne porte sans se perdre.">
     <meta name="theme-color" content="#09090b">
     <title>0wlslw0 — <?= h($siteTitle) ?></title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<?= render_pwa_head_tags('owl') ?>
-    <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
-    <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
+<?= render_o_page_head_assets('owl') ?>
 </head>
 <body
     class="experience guide-view<?= $isSpatialMappingHost ? ' mapping-host-view' : '' ?>"

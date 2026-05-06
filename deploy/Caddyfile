@@ -53,6 +53,47 @@ api.sowwwl.cloud {
 	reverse_proxy api:80
 }
 
+lab.sowwwl.cloud {
+	import common_headers
+	header {
+		Cross-Origin-Opener-Policy same-origin
+		Cross-Origin-Resource-Policy same-origin
+		Permissions-Policy "camera=(self), geolocation=(), microphone=()"
+		X-Permitted-Cross-Domain-Policies none
+	}
+	reverse_proxy sowwwl-o-lab-app-1:80
+}
+
+www.lab.sowwwl.cloud {
+	redir https://lab.sowwwl.cloud{uri} 308
+}
+
+api.lab.sowwwl.cloud {
+	encode zstd gzip
+	header {
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Headers "Authorization, Content-Type"
+		Access-Control-Allow-Methods "GET, POST, OPTIONS"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+	@preflight_lab method OPTIONS
+	respond @preflight_lab 204
+	reverse_proxy sowwwl-o-lab-api-1:80
+}
+
+pocket.lab.sowwwl.cloud {
+	import common_headers
+	header {
+		Cross-Origin-Opener-Policy same-origin
+		Cross-Origin-Resource-Policy same-origin
+		Permissions-Policy "camera=(self), geolocation=(), microphone=()"
+		X-Permitted-Cross-Domain-Policies none
+	}
+	reverse_proxy sowwwl-o-lab-pocket-1:80
+}
+
 0.user.o.sowwwl.cloud {
 	import common_headers
 	root * /srv/sites/0.user.o.sowwwl.cloud

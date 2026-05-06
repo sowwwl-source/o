@@ -38,6 +38,7 @@ services:
       SOWWWL_AZA_DIRECT_ORIGIN: ${SOWWWL_AZA_DIRECT_ORIGIN:-https://upload.sowwwl.com}
       SOWWWL_STORAGE_DIR: /var/www/runtime/lands
       SOWWWL_RATE_LIMIT_DIR: /var/www/runtime/rate-limit
+      SOWWWL_AZA_STORAGE_DIR: /var/www/runtime/aza
       SOWWWL_ADMIN_PIN: ${SOWWWL_ADMIN_PIN:-CHANGE_ME_ADMIN_PIN}
       SOWWWL_ADMIN_EMAIL: ${SOWWWL_ADMIN_EMAIL:-pablo@sowwwl.com}
       SOWWWL_0WLSLW0_CHAT_URL: ${SOWWWL_0WLSLW0_CHAT_URL:-}

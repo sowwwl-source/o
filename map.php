@@ -11,8 +11,6 @@ if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
 }
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
-$stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
-$scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -22,10 +20,7 @@ $scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/
     <meta name="description" content="Map — surface torique vivante de <?= h(SITE_TITLE) ?>, terres et courants d’activité.">
     <meta name="theme-color" content="#09090b">
     <title>Map — <?= h(SITE_TITLE) ?></title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<?= render_pwa_head_tags('main') ?>
-    <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
-    <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
+<?= render_o_page_head_assets('main') ?>
 </head>
 <body class="experience map-view">
 <?= render_skip_link() ?>

@@ -53,8 +53,6 @@ function signup_stage_link(int $step, array $form): string
 $host = request_host();
 
 $csrfToken = csrf_token();
-$stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
-$scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $authenticatedLand = current_authenticated_land();
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $originBase = site_origin();
@@ -175,10 +173,7 @@ $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($si
     <meta name="description" content="Rejoindre le peuple de l'O — lecture AzA et configuration complète de la terre.">
     <meta name="theme-color" content="#09090b">
     <title>Rejoindre le peuple de l'O — <?= h(SITE_TITLE) ?></title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<?= render_pwa_head_tags('main') ?>
-    <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
-    <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
+<?= render_o_page_head_assets('main') ?>
 </head>
 <body
     class="experience signup-journey-view"

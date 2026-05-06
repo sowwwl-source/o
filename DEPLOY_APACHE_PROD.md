@@ -1,21 +1,33 @@
 # Deploy production Apache direct (`/var/www/html`)
 
-Ce fichier documente le **vrai chemin de déploiement actuellement utilisé en production** pour `sowwwl.com`.
+Ce fichier documente un **chemin serveur direct utile pour maintenance manuelle**, mais **pas le chemin principal actuellement servi au public** pour `sowwwl.com`.
 
 ## État réel
 
-La production active ne tourne **pas** depuis un clone Git ni depuis la stack Docker du dossier `deploy/`.
+Le droplet expose encore un Apache avec `DocumentRoot /var/www/html`, mais le trafic public principal observé sur `sowwwl.com` passe aujourd’hui par :
 
-Elle tourne avec :
+- `sowwwl-o-caddy-1` sur `80/443`
+- reverse proxy vers `sowwwl-o-app-1`
+- source applicative sous `/var/www/sowwwl.com`
+- rebuild/recreate du conteneur `app` pour rendre les changements effectifs publiquement
 
-- Apache sur le droplet DigitalOcean
-- `DocumentRoot /var/www/html`
-- configuration runtime dans `/var/www/.env`
-- mises à jour par **copie manuelle** de fichiers vers `/var/www/html`
+En pratique :
+
+- modifier seulement `/var/www/html` peut mettre à jour une copie serveur
+- mais cela **ne suffit pas** pour la version publique si le conteneur `sowwwl-o-app-1` n’est pas reconstruit
+- pour la prod publique, le réflexe prioritaire reste `DEPLOY_QUICKREF.md`
 
 ## Quand utiliser ce document
 
-Utiliser cette procédure quand on modifie en prod :
+Utiliser cette procédure seulement pour :
+
+- inspection manuelle du docroot Apache
+- maintenance locale hors trafic public principal
+- comparaison entre docroot direct et source Docker
+
+Si l’objectif est de mettre à jour ce que sert réellement `https://sowwwl.com`, préférer la stack Docker du dossier `deploy/` sous `/var/www/sowwwl.com`.
+
+Les fichiers concernés restent souvent :
 
 - `index.php`
 - `main.js`
@@ -65,6 +77,8 @@ Depuis la machine locale, envoyer les fichiers dans `/tmp/` du serveur.
 
 ## Chemin recommandé : one-shot local
 
+⚠️ Ce helper copie dans `/var/www/html`. Il est utile pour maintenance directe, mais il ne remplace pas un rebuild de `sowwwl-o-app-1` quand le trafic public passe par Caddy → Docker.
+
 Depuis la racine `o/`, utiliser le helper :
 
 ```bash
@@ -103,6 +117,8 @@ Pour `aZa`, il vérifie automatiquement :
 - les marqueurs `gros ZIP`, `entrée directe` ou `upload.sowwwl.com` sur `https://sowwwl.com/aza.php`
 - la réponse HTTPS de `https://upload.sowwwl.com/aza.php`
 
+Pour `full-web`, il ajoute aussi une vérification simple de route sur `https://sowwwl.com/island?u=pablo-espallergues`.
+
 Si on veut exécuter le déploiement sans attendre ces checks live, utiliser :
 
 ```bash
@@ -113,7 +129,7 @@ scripts/deploy_apache_prod.sh --execute --no-verify --profile homepage
 
 - `homepage` : `index.php`, `main.js`, `styles.css`
 - `aza` : `aza.php`, `config.php`
-- `full-web` : `index.php`, `land.php`, `aza.php`, `config.php`, `main.js`, `styles.css`, `manifest.json`, `site-sw.js`, `favicon.svg`
+- `full-web` : `index.php`, `land.php`, `island.php`, `aza.php`, `config.php`, `main.js`, `styles.css`, `manifest.json`, `site-sw.js`, `favicon.svg`
 
 Utiliser `full-web` quand une évolution touche plusieurs surfaces publiques à la fois et qu’on veut garder un seul déploiement cohérent.
 

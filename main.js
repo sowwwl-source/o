@@ -806,6 +806,827 @@ function initStr3mParallax() {
 	window.requestAnimationFrame(renderParallax);
 }
 
+function bindStr3mIntegratedPlayer(root) {
+	if (!(root instanceof HTMLElement) || root.dataset.str3mPlayerBound === "1") {
+		return;
+	}
+	root.dataset.str3mPlayerBound = "1";
+
+	const audio = root.querySelector("[data-str3m-player-audio]");
+	if (!(audio instanceof HTMLAudioElement)) {
+		return;
+	}
+
+	const hasSource = root.dataset.str3mPlayerHasSource === "1";
+	const toggleButton = root.querySelector("[data-str3m-player-toggle]");
+	const backButton = root.querySelector("[data-str3m-player-back]");
+	const forwardButton = root.querySelector("[data-str3m-player-forward]");
+	const progressInput = root.querySelector("[data-str3m-player-progress]");
+	const currentOutput = root.querySelector("[data-str3m-player-current]");
+	const durationOutput = root.querySelector("[data-str3m-player-duration]");
+	const statusOutput = root.querySelector("[data-str3m-player-status]");
+	const rateOutput = root.querySelector("[data-str3m-player-rate-output]");
+	const rateStateOutput = root.querySelector("[data-str3m-player-rate-state]");
+	const eqStateOutput = root.querySelector("[data-str3m-player-eq-state]");
+	const eqSummaryOutput = root.querySelector("[data-str3m-player-summary]");
+	const sourceOutput = root.querySelector("[data-str3m-player-source]");
+	const preservePitchInput = root.querySelector("[data-str3m-player-preserve-pitch]");
+	const resetButton = root.querySelector("[data-str3m-player-reset]");
+	const rateStepButtons = Array.from(root.querySelectorAll("[data-str3m-player-rate-step]"));
+	const bassInput = root.querySelector("[data-str3m-player-bass]");
+	const midInput = root.querySelector("[data-str3m-player-mid]");
+	const trebleInput = root.querySelector("[data-str3m-player-treble]");
+	const gainInput = root.querySelector("[data-str3m-player-gain]");
+	const bassValue = root.querySelector("[data-str3m-player-bass-value]");
+	const midValue = root.querySelector("[data-str3m-player-mid-value]");
+	const trebleValue = root.querySelector("[data-str3m-player-treble-value]");
+	const gainValue = root.querySelector("[data-str3m-player-gain-value]");
+	const title = root.dataset.str3mPlayerTitle || "str3m quotidien";
+	const storageKey = "o:str3m-player:v1";
+
+	const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+	const formatTime = (value) => {
+		if (!Number.isFinite(value) || value < 0) {
+			return "00:00";
+		}
+
+		const totalSeconds = Math.floor(value);
+		const minutes = Math.floor(totalSeconds / 60);
+		const seconds = totalSeconds % 60;
+		return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+	};
+
+	const readSettings = () => {
+		try {
+			const raw = window.localStorage.getItem(storageKey);
+			if (!raw) {
+				return null;
+			}
+			return JSON.parse(raw);
+		} catch (_error) {
+			return null;
+		}
+	};
+
+	const defaultSettings = {
+		rate: 1,
+		preservePitch: true,
+		bass: 0,
+		mid: 0,
+		treble: 0,
+		gain: 100,
+	};
+
+	const settings = {
+		...defaultSettings,
+		...(readSettings() || {}),
+	};
+
+	let graph = null;
+
+	const saveSettings = () => {
+		try {
+			window.localStorage.setItem(storageKey, JSON.stringify(settings));
+		} catch (_error) {
+			// storage unavailable — keep the stream moving
+		}
+	};
+
+	const setStatus = (copy) => {
+		if (statusOutput instanceof HTMLElement) {
+			statusOutput.textContent = copy;
+		}
+	};
+
+	const syncToggleLabel = () => {
+		if (toggleButton instanceof HTMLButtonElement) {
+			toggleButton.textContent = audio.paused ? "lecture" : "pause";
+		}
+	};
+
+	const setPreservePitch = (enabled) => {
+		if ("preservesPitch" in audio) {
+			audio.preservesPitch = enabled;
+		}
+		if ("mozPreservesPitch" in audio) {
+			audio.mozPreservesPitch = enabled;
+		}
+		if ("webkitPreservesPitch" in audio) {
+			audio.webkitPreservesPitch = enabled;
+		}
+	};
+
+	const syncRate = () => {
+		audio.playbackRate = clamp(Number(settings.rate) || 1, 0.5, 2);
+		const label = `${audio.playbackRate.toFixed(2)}×`;
+		if (rateOutput instanceof HTMLElement) {
+			rateOutput.textContent = label;
+		}
+		if (rateStateOutput instanceof HTMLElement) {
+			rateStateOutput.textContent = label;
+		}
+	};
+
+	const syncEqSummary = () => {
+		const isFlat = [settings.bass, settings.mid, settings.treble].every((value) => Math.abs(Number(value) || 0) < 0.01)
+			&& Math.abs((Number(settings.gain) || 100) - 100) < 0.01;
+		const summary = isFlat
+			? "plat"
+			: `B ${Number(settings.bass).toFixed(1)} · M ${Number(settings.mid).toFixed(1)} · T ${Number(settings.treble).toFixed(1)} · G ${Math.round(Number(settings.gain))}%`;
+		if (eqSummaryOutput instanceof HTMLElement) {
+			eqSummaryOutput.textContent = summary;
+		}
+	};
+
+	const syncSliderOutputs = () => {
+		if (bassValue instanceof HTMLElement) {
+			bassValue.textContent = `${Number(settings.bass).toFixed(1)} dB`;
+		}
+		if (midValue instanceof HTMLElement) {
+			midValue.textContent = `${Number(settings.mid).toFixed(1)} dB`;
+		}
+		if (trebleValue instanceof HTMLElement) {
+			trebleValue.textContent = `${Number(settings.treble).toFixed(1)} dB`;
+		}
+		if (gainValue instanceof HTMLElement) {
+			gainValue.textContent = `${Math.round(Number(settings.gain))}%`;
+		}
+	};
+
+	const syncProgress = () => {
+		if (!(progressInput instanceof HTMLInputElement)) {
+			return;
+		}
+
+		const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+		progressInput.value = duration > 0 ? String(audio.currentTime / duration) : "0";
+		if (currentOutput instanceof HTMLElement) {
+			currentOutput.textContent = formatTime(audio.currentTime);
+		}
+		if (durationOutput instanceof HTMLElement) {
+			durationOutput.textContent = formatTime(duration);
+		}
+	};
+
+	const applyEqSettings = () => {
+		syncSliderOutputs();
+		syncEqSummary();
+
+		if (!graph) {
+			return;
+		}
+
+		graph.bass.gain.value = Number(settings.bass) || 0;
+		graph.mid.gain.value = Number(settings.mid) || 0;
+		graph.treble.gain.value = Number(settings.treble) || 0;
+		graph.gain.gain.value = clamp((Number(settings.gain) || 100) / 100, 0, 1.5);
+	};
+
+	const ensureAudioGraph = async () => {
+		if (!hasSource) {
+			return null;
+		}
+
+		if (graph) {
+			if (graph.context.state === "suspended") {
+				await graph.context.resume().catch(() => {});
+			}
+			return graph;
+		}
+
+		const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+		if (!AudioContextClass) {
+			if (eqStateOutput instanceof HTMLElement) {
+				eqStateOutput.textContent = "natif";
+			}
+			return null;
+		}
+
+		const context = new AudioContextClass();
+		const source = context.createMediaElementSource(audio);
+		const bass = context.createBiquadFilter();
+		const mid = context.createBiquadFilter();
+		const treble = context.createBiquadFilter();
+		const gain = context.createGain();
+
+		bass.type = "lowshelf";
+		bass.frequency.value = 180;
+		mid.type = "peaking";
+		mid.frequency.value = 1000;
+		mid.Q.value = 0.85;
+		treble.type = "highshelf";
+		treble.frequency.value = 3200;
+
+		source.connect(bass);
+		bass.connect(mid);
+		mid.connect(treble);
+		treble.connect(gain);
+		gain.connect(context.destination);
+
+		graph = { context, bass, mid, treble, gain };
+		applyEqSettings();
+
+		if (eqStateOutput instanceof HTMLElement) {
+			eqStateOutput.textContent = "actif";
+		}
+
+		if (context.state === "suspended") {
+			await context.resume().catch(() => {});
+		}
+
+		return graph;
+	};
+
+	const resetPlayer = () => {
+		settings.rate = defaultSettings.rate;
+		settings.preservePitch = defaultSettings.preservePitch;
+		settings.bass = defaultSettings.bass;
+		settings.mid = defaultSettings.mid;
+		settings.treble = defaultSettings.treble;
+		settings.gain = defaultSettings.gain;
+
+		if (bassInput instanceof HTMLInputElement) {
+			bassInput.value = String(defaultSettings.bass);
+		}
+		if (midInput instanceof HTMLInputElement) {
+			midInput.value = String(defaultSettings.mid);
+		}
+		if (trebleInput instanceof HTMLInputElement) {
+			trebleInput.value = String(defaultSettings.treble);
+		}
+		if (gainInput instanceof HTMLInputElement) {
+			gainInput.value = String(defaultSettings.gain);
+		}
+		if (preservePitchInput instanceof HTMLInputElement) {
+			preservePitchInput.checked = defaultSettings.preservePitch;
+		}
+
+		setPreservePitch(settings.preservePitch);
+		syncRate();
+		applyEqSettings();
+		saveSettings();
+		setStatus(hasSource ? "réglages remis à plat" : "veille");
+	};
+
+	setPreservePitch(Boolean(settings.preservePitch));
+	syncRate();
+	syncSliderOutputs();
+	syncEqSummary();
+	syncProgress();
+	syncToggleLabel();
+
+	if (preservePitchInput instanceof HTMLInputElement) {
+		preservePitchInput.checked = Boolean(settings.preservePitch);
+	}
+	if (bassInput instanceof HTMLInputElement) {
+		bassInput.value = String(settings.bass);
+	}
+	if (midInput instanceof HTMLInputElement) {
+		midInput.value = String(settings.mid);
+	}
+	if (trebleInput instanceof HTMLInputElement) {
+		trebleInput.value = String(settings.treble);
+	}
+	if (gainInput instanceof HTMLInputElement) {
+		gainInput.value = String(settings.gain);
+	}
+
+	if (sourceOutput instanceof HTMLElement && !hasSource) {
+		sourceOutput.textContent = "aucune nappe";
+	}
+
+	if (!hasSource) {
+		setStatus("veille");
+		if (eqStateOutput instanceof HTMLElement) {
+			eqStateOutput.textContent = "hors source";
+		}
+		return;
+	}
+
+	setStatus("prêt");
+	if (sourceOutput instanceof HTMLElement) {
+		sourceOutput.textContent = title;
+	}
+
+	const seekBy = (offset) => {
+		audio.currentTime = clamp(audio.currentTime + offset, 0, Number.isFinite(audio.duration) ? audio.duration : audio.currentTime + offset);
+		syncProgress();
+	};
+
+	const updateEqFromInput = (input, key) => {
+		if (!(input instanceof HTMLInputElement)) {
+			return;
+		}
+		settings[key] = Number(input.value);
+		applyEqSettings();
+		saveSettings();
+	};
+
+	if (toggleButton instanceof HTMLButtonElement) {
+		toggleButton.addEventListener("click", async () => {
+			await ensureAudioGraph();
+			if (audio.paused) {
+				audio.play().then(() => {
+					setStatus("en lecture");
+				}).catch(() => {
+					setStatus("interaction requise");
+				});
+				return;
+			}
+
+			audio.pause();
+			setStatus("pause");
+		});
+	}
+
+	if (backButton instanceof HTMLButtonElement) {
+		backButton.addEventListener("click", () => {
+			seekBy(-5);
+			setStatus("recul −5 s");
+		});
+	}
+
+	if (forwardButton instanceof HTMLButtonElement) {
+		forwardButton.addEventListener("click", () => {
+			seekBy(5);
+			setStatus("avance +5 s");
+		});
+	}
+
+	if (progressInput instanceof HTMLInputElement) {
+		progressInput.addEventListener("input", () => {
+			if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
+				return;
+			}
+			audio.currentTime = audio.duration * Number(progressInput.value);
+			syncProgress();
+		});
+	}
+
+	rateStepButtons.forEach((button) => {
+		if (!(button instanceof HTMLButtonElement)) {
+			return;
+		}
+
+		button.addEventListener("click", () => {
+			const delta = Number(button.dataset.str3mPlayerRateStep || 0);
+			settings.rate = clamp((Number(settings.rate) || 1) + delta, 0.5, 2);
+			syncRate();
+			saveSettings();
+			setStatus(`vitesse ${audio.playbackRate.toFixed(2)}×`);
+		});
+	});
+
+	if (preservePitchInput instanceof HTMLInputElement) {
+		preservePitchInput.addEventListener("change", () => {
+			settings.preservePitch = preservePitchInput.checked;
+			setPreservePitch(settings.preservePitch);
+			saveSettings();
+			setStatus(settings.preservePitch ? "hauteur conservée" : "hauteur libre");
+		});
+	}
+
+	if (bassInput instanceof HTMLInputElement) {
+		bassInput.addEventListener("input", () => updateEqFromInput(bassInput, "bass"));
+	}
+	if (midInput instanceof HTMLInputElement) {
+		midInput.addEventListener("input", () => updateEqFromInput(midInput, "mid"));
+	}
+	if (trebleInput instanceof HTMLInputElement) {
+		trebleInput.addEventListener("input", () => updateEqFromInput(trebleInput, "treble"));
+	}
+	if (gainInput instanceof HTMLInputElement) {
+		gainInput.addEventListener("input", () => updateEqFromInput(gainInput, "gain"));
+	}
+
+	if (resetButton instanceof HTMLButtonElement) {
+		resetButton.addEventListener("click", resetPlayer);
+	}
+
+	audio.addEventListener("loadedmetadata", syncProgress);
+	audio.addEventListener("durationchange", syncProgress);
+	audio.addEventListener("timeupdate", syncProgress);
+	audio.addEventListener("play", () => {
+		syncToggleLabel();
+		setStatus("en lecture");
+	});
+	audio.addEventListener("pause", () => {
+		syncToggleLabel();
+		if (audio.ended) {
+			setStatus("terminé");
+			return;
+		}
+		setStatus("pause");
+	});
+	audio.addEventListener("ended", () => {
+		syncToggleLabel();
+		setStatus("terminé");
+	});
+	audio.addEventListener("waiting", () => {
+		setStatus("mise en mémoire…");
+	});
+	audio.addEventListener("canplay", () => {
+		if (audio.paused) {
+			setStatus("prêt");
+		}
+	});
+
+	root.addEventListener("keydown", async (event) => {
+		const target = event.target;
+		if (target instanceof HTMLElement && target.closest("input, textarea, select")) {
+			return;
+		}
+
+		if (event.code === "Space") {
+			event.preventDefault();
+			await ensureAudioGraph();
+			if (audio.paused) {
+				audio.play().catch(() => {
+					setStatus("interaction requise");
+				});
+			} else {
+				audio.pause();
+			}
+			return;
+		}
+
+		if (event.key === "ArrowLeft") {
+			event.preventDefault();
+			seekBy(-5);
+			return;
+		}
+
+		if (event.key === "ArrowRight") {
+			event.preventDefault();
+			seekBy(5);
+			return;
+		}
+
+		if (event.key === "-" || event.key === "_") {
+			event.preventDefault();
+			settings.rate = clamp((Number(settings.rate) || 1) - 0.25, 0.5, 2);
+			syncRate();
+			saveSettings();
+			return;
+		}
+
+		if (event.key === "+" || event.key === "=") {
+			event.preventDefault();
+			settings.rate = clamp((Number(settings.rate) || 1) + 0.25, 0.5, 2);
+			syncRate();
+			saveSettings();
+		}
+	});
+}
+
+function initStr3mIntegratedPlayer() {
+	const roots = Array.from(document.querySelectorAll("[data-str3m-player]"));
+	if (!roots.length) {
+		return;
+	}
+
+	roots.forEach((root) => {
+		bindStr3mIntegratedPlayer(root);
+	});
+}
+
+function initIslandReaderStation() {
+	const shell = document.querySelector("[data-island-reader-shell]");
+	if (!(shell instanceof HTMLElement) || shell.dataset.islandReaderBound === "1") {
+		return;
+	}
+	shell.dataset.islandReaderBound = "1";
+
+	const tabs = Array.from(shell.querySelectorAll("[data-island-reader-tab]"))
+		.filter((tab) => tab instanceof HTMLButtonElement);
+	const navItems = Array.from(shell.querySelectorAll("[data-island-reader-nav]"))
+		.filter((item) => item instanceof HTMLButtonElement);
+	const panels = Array.from(shell.querySelectorAll("[data-island-reader-panel]"))
+		.filter((panel) => panel instanceof HTMLElement);
+	const previousButton = shell.querySelector("[data-island-reader-prev]");
+	const nextButton = shell.querySelector("[data-island-reader-next]");
+	const autoplayButton = shell.querySelector("[data-island-reader-autoplay]");
+	const counter = shell.querySelector("[data-island-reader-counter]");
+	const currentLabel = shell.querySelector("[data-island-reader-current-label]");
+	const currentMeta = shell.querySelector("[data-island-reader-current-meta]");
+	const recommendationLabel = shell.querySelector("[data-island-reader-recommendation-label]");
+	const recommendationCopy = shell.querySelector("[data-island-reader-recommendation-copy]");
+
+	if (!tabs.length || !panels.length) {
+		return;
+	}
+
+	const availableKeys = tabs
+		.filter((tab) => tab.dataset.islandReaderEmpty !== "1")
+		.map((tab) => tab.dataset.islandReaderTab || "")
+		.filter(Boolean);
+	const autoplayDelayMs = 12000;
+	let currentKey = "";
+	let autoplayEnabled = false;
+	let autoplayTimer = null;
+
+	const formatCounter = (value, size) => String(value).padStart(2, "0") + " / " + String(size).padStart(2, "0");
+
+	const getReaderMeta = (key) => {
+		const tab = tabs.find((candidate) => candidate.dataset.islandReaderTab === key) || null;
+		const navItem = navItems.find((candidate) => candidate.dataset.islandReaderNav === key) || null;
+		const format = tab?.querySelector("small")?.textContent?.trim() || "veille";
+		const source = navItem?.querySelector(".island-reader-playlist__line--meta small:last-child")?.textContent?.trim() || "Veille";
+		const label = tab?.querySelector("span")?.textContent?.trim() || navItem?.querySelector("strong")?.textContent?.trim() || key;
+		return { label, format, source };
+	};
+
+	const syncCurator = (key) => {
+		if (!(currentLabel instanceof HTMLElement) && !(counter instanceof HTMLElement) && !(currentMeta instanceof HTMLElement)) {
+			return;
+		}
+
+		const meta = getReaderMeta(key);
+		const availableIndex = availableKeys.indexOf(key);
+		const nextKey = availableIndex >= 0 && availableKeys.length
+			? availableKeys[(availableIndex + 1) % availableKeys.length]
+			: (availableKeys[0] || "");
+		const nextMeta = nextKey ? getReaderMeta(nextKey) : null;
+
+		if (currentLabel instanceof HTMLElement) {
+			currentLabel.textContent = meta.label || "Veille";
+		}
+
+		if (currentMeta instanceof HTMLElement) {
+			currentMeta.textContent = [meta.format, meta.source].filter(Boolean).join(" · ");
+		}
+
+		if (counter instanceof HTMLElement) {
+			counter.textContent = availableIndex >= 0 ? formatCounter(availableIndex + 1, Math.max(availableKeys.length, 1)) : "veille";
+		}
+
+		if (recommendationLabel instanceof HTMLElement) {
+			recommendationLabel.textContent = nextMeta?.label || "Aucune suite";
+		}
+
+		if (recommendationCopy instanceof HTMLElement) {
+			recommendationCopy.textContent = nextMeta
+				? `Ensuite : ${nextMeta.label} · ${nextMeta.format}`
+				: "Aucune matière active recommandée pour l’instant.";
+		}
+
+		if (previousButton instanceof HTMLButtonElement) {
+			previousButton.disabled = availableKeys.length <= 1;
+		}
+
+		if (nextButton instanceof HTMLButtonElement) {
+			nextButton.disabled = availableKeys.length <= 1;
+		}
+
+		if (autoplayButton instanceof HTMLButtonElement) {
+			autoplayButton.disabled = availableKeys.length <= 1;
+			autoplayButton.textContent = `parcours auto · ${autoplayEnabled ? "on" : "off"}`;
+			autoplayButton.setAttribute("aria-pressed", autoplayEnabled ? "true" : "false");
+		}
+	};
+
+	const clearAutoplay = () => {
+		if (autoplayTimer !== null) {
+			window.clearTimeout(autoplayTimer);
+			autoplayTimer = null;
+		}
+	};
+
+	const stepAvailable = (direction = 1, focus = false) => {
+		if (availableKeys.length <= 1) {
+			return;
+		}
+
+		const activeIndex = availableKeys.indexOf(currentKey);
+		const safeIndex = activeIndex >= 0 ? activeIndex : 0;
+		const nextIndex = (safeIndex + direction + availableKeys.length) % availableKeys.length;
+		const nextKey = availableKeys[nextIndex] || availableKeys[0];
+		activate(nextKey, { focusTarget: focus ? "tab" : null, fromAutoplay: false });
+	};
+
+	const scheduleAutoplay = () => {
+		clearAutoplay();
+		if (!autoplayEnabled || availableKeys.length <= 1) {
+			return;
+		}
+
+		autoplayTimer = window.setTimeout(() => {
+			stepAvailable(1, false);
+			scheduleAutoplay();
+		}, autoplayDelayMs);
+	};
+
+	const activate = (key, options = {}) => {
+		const { focusTarget = null, fromAutoplay = false } = options;
+		currentKey = key;
+
+		tabs.forEach((tab) => {
+			const isActive = tab.dataset.islandReaderTab === key;
+			tab.classList.toggle("is-active", isActive);
+			tab.setAttribute("aria-selected", isActive ? "true" : "false");
+			tab.tabIndex = isActive ? 0 : -1;
+		});
+
+		panels.forEach((panel) => {
+			const isActive = panel.dataset.islandReaderPanel === key;
+			panel.classList.toggle("is-open", isActive);
+			panel.hidden = !isActive;
+		});
+
+		navItems.forEach((item) => {
+			const isActive = item.dataset.islandReaderNav === key;
+			item.classList.toggle("is-active", isActive);
+			item.setAttribute("aria-current", isActive ? "true" : "false");
+			item.tabIndex = isActive ? 0 : -1;
+		});
+
+		syncCurator(key);
+
+		if (!fromAutoplay) {
+			scheduleAutoplay();
+		}
+
+		if (focusTarget === "tab") {
+			const activeTab = tabs.find((tab) => tab.dataset.islandReaderTab === key);
+			activeTab?.focus();
+		}
+
+		if (focusTarget === "nav") {
+			const activeNavItem = navItems.find((item) => item.dataset.islandReaderNav === key);
+			activeNavItem?.focus();
+		}
+	};
+
+	tabs.forEach((tab) => {
+		tab.addEventListener("click", () => {
+			activate(tab.dataset.islandReaderTab || "", { fromAutoplay: false });
+		});
+
+		tab.addEventListener("keydown", (event) => {
+			const currentIndex = tabs.indexOf(tab);
+			if (currentIndex < 0) {
+				return;
+			}
+
+			let nextIndex = currentIndex;
+			if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+				nextIndex = (currentIndex + 1) % tabs.length;
+			} else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+				nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+			} else if (event.key === "Home") {
+				nextIndex = 0;
+			} else if (event.key === "End") {
+				nextIndex = tabs.length - 1;
+			} else {
+				return;
+			}
+
+			event.preventDefault();
+			const nextTab = tabs[nextIndex];
+			activate(nextTab.dataset.islandReaderTab || "", { focusTarget: "tab", fromAutoplay: false });
+		});
+	});
+
+	navItems.forEach((item) => {
+		item.addEventListener("click", () => {
+			activate(item.dataset.islandReaderNav || "", { fromAutoplay: false });
+		});
+
+		item.addEventListener("keydown", (event) => {
+			const currentIndex = navItems.indexOf(item);
+			if (currentIndex < 0) {
+				return;
+			}
+
+			let nextIndex = currentIndex;
+			if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+				nextIndex = (currentIndex + 1) % navItems.length;
+			} else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+				nextIndex = (currentIndex - 1 + navItems.length) % navItems.length;
+			} else if (event.key === "Home") {
+				nextIndex = 0;
+			} else if (event.key === "End") {
+				nextIndex = navItems.length - 1;
+			} else {
+				return;
+			}
+
+			event.preventDefault();
+			const nextItem = navItems[nextIndex];
+			activate(nextItem.dataset.islandReaderNav || "", { focusTarget: "nav", fromAutoplay: false });
+		});
+	});
+
+	previousButton?.addEventListener("click", () => {
+		stepAvailable(-1, true);
+	});
+
+	nextButton?.addEventListener("click", () => {
+		stepAvailable(1, true);
+	});
+
+	autoplayButton?.addEventListener("click", () => {
+		autoplayEnabled = !autoplayEnabled;
+		syncCurator(currentKey || availableKeys[0] || tabs[0]?.dataset.islandReaderTab || "");
+		scheduleAutoplay();
+	});
+
+	shell.addEventListener("pointerdown", () => {
+		if (autoplayEnabled) {
+			scheduleAutoplay();
+		}
+	});
+
+	document.addEventListener("keydown", (event) => {
+		if (!shell.contains(document.activeElement) && !shell.matches(":hover")) {
+			return;
+		}
+
+		if (event.target instanceof HTMLElement) {
+			const tagName = event.target.tagName;
+			if (tagName === "INPUT" || tagName === "TEXTAREA" || event.target.isContentEditable) {
+				return;
+			}
+		}
+
+		if (event.key === "PageDown") {
+			event.preventDefault();
+			stepAvailable(1, true);
+		} else if (event.key === "PageUp") {
+			event.preventDefault();
+			stepAvailable(-1, true);
+		}
+	});
+
+	const initiallyActive = tabs.find((tab) => tab.classList.contains("is-active")) || tabs[0];
+	activate(initiallyActive.dataset.islandReaderTab || "", { fromAutoplay: false });
+}
+
+function initIslandReaderFullscreen() {
+	const buttons = Array.from(document.querySelectorAll("[data-island-reader-fullscreen]"))
+		.filter((button) => button instanceof HTMLButtonElement);
+
+	if (!buttons.length) {
+		return;
+	}
+
+	const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+	const requestFullscreen = async (element) => {
+		if (element.requestFullscreen) {
+			await element.requestFullscreen();
+			return;
+		}
+
+		if (element.webkitRequestFullscreen) {
+			element.webkitRequestFullscreen();
+		}
+	};
+
+	const exitFullscreen = async () => {
+		if (document.exitFullscreen) {
+			await document.exitFullscreen();
+			return;
+		}
+
+		if (document.webkitExitFullscreen) {
+			document.webkitExitFullscreen();
+		}
+	};
+
+	const syncButtons = () => {
+		const fullscreenElement = getFullscreenElement();
+		buttons.forEach((button) => {
+			const stage = button.closest(".island-reader-stage");
+			const isActive = stage instanceof HTMLElement && fullscreenElement === stage;
+			button.textContent = isActive ? "quitter" : "plein cadre";
+			button.setAttribute("aria-pressed", isActive ? "true" : "false");
+		});
+	};
+
+	buttons.forEach((button) => {
+		button.addEventListener("click", async () => {
+			const stage = button.closest(".island-reader-stage");
+			if (!(stage instanceof HTMLElement)) {
+				return;
+			}
+
+			const fullscreenElement = getFullscreenElement();
+			if (fullscreenElement === stage) {
+				await exitFullscreen().catch(() => {});
+				syncButtons();
+				return;
+			}
+
+			await requestFullscreen(stage).catch(() => {});
+			syncButtons();
+		});
+	});
+
+	document.addEventListener("fullscreenchange", syncButtons);
+	document.addEventListener("webkitfullscreenchange", syncButtons);
+	syncButtons();
+}
+
 function ensureTorusTouchHint() {
 	if (!document.body) {
 		return null;
@@ -2096,7 +2917,7 @@ function initSpectralTuner() {
 	}
 }
 
-if ("serviceWorker" in navigator) {
+if ("serviceWorker" in navigator && window.__O_DISABLE_SW__ !== true) {
 	window.addEventListener("load", () => {
 		navigator.serviceWorker.register("/site-sw.js").catch(() => {
 			// Fail silently: the site still works as a regular document.
@@ -5612,6 +6433,9 @@ initSignalFlow();
 initSpectralTuner();
 initStr3mArchipelago();
 initStr3mParallax();
+initStr3mIntegratedPlayer();
+initIslandReaderStation();
+initIslandReaderFullscreen();
 
 function initAzaTabs() {
 	const tabs = document.querySelectorAll('.aza-tab[data-tab]');

@@ -12,6 +12,7 @@
 # Runtime storage
 /storage/lands/*.json
 !/storage/lands/.gitignore
+/storage/aza/
 /storage/runtime/rate-limit/*.json
 !/storage/runtime/rate-limit/.gitignore
 /storage/signals/

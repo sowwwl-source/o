@@ -25,8 +25,6 @@ $sessionBound = isset($_GET['session']) && $_GET['session'] === '1';
 $sharePath = $land ? '/land?u=' . rawurlencode((string) $land['slug']) : '/';
 $shareUrl = site_origin() . $sharePath;
 $brandDomain = preg_replace('/^www\./', '', $host ?: 'sowwwl.com');
-$stylesVersion = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
-$scriptVersion = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $landRawArchives = $land ? get_archives_for_land((string) $land['slug']) : [];
 $landChronology = aza_prepare_chronology($landRawArchives);
 $landSorted = $landChronology['sorted'];
@@ -75,10 +73,7 @@ if ($land && $isAuthenticatedHere) {
     <meta name="description" content="<?= $land ? h((string) $land['username']) . ' — espace personnel dans ' . h(SITE_TITLE) : 'Terre introuvable — ' . h(SITE_TITLE) ?>">
     <meta name="theme-color" content="#09090b">
     <title><?= $land ? h((string) $land['username']) . ' — ' . h(SITE_TITLE) : 'Terre introuvable — ' . h(SITE_TITLE) ?></title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<?= render_pwa_head_tags('main') ?>
-    <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
-    <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
+<?= render_o_page_head_assets('main') ?>
 </head>
 <body class="experience land-view">
 <?= render_skip_link() ?>

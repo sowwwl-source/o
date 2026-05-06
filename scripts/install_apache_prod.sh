@@ -39,7 +39,7 @@ profile_files() {
 			printf '%s\n' aza.php config.php manifest.php site-sw.js apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
 			;;
 		full-web)
-			printf '%s\n' index.php land.php aza.php config.php main.js styles.css manifest.php manifest.json site-sw.js favicon.svg apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
+			printf '%s\n' index.php land.php island.php aza.php config.php main.js styles.css manifest.php manifest.json site-sw.js favicon.svg apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
 			;;
 		*)
 			echo "Unknown profile: $1" >&2
@@ -160,7 +160,18 @@ apachectl configtest
 
 echo
 echo "Reload Apache:"
-systemctl reload apache2
+if systemctl is-active --quiet apache2; then
+	systemctl reload apache2
+	printf '%s\n' 'apache2 reloaded via systemctl'
+elif systemctl is-active --quiet httpd; then
+	systemctl reload httpd
+	printf '%s\n' 'httpd reloaded via systemctl'
+elif apachectl graceful; then
+	printf '%s\n' 'apache reloaded via apachectl graceful'
+else
+	echo 'Unable to reload Apache automatically.' >&2
+	exit 1
+fi
 
 echo
 echo "Deployment complete. Optional checks:"
@@ -172,6 +183,7 @@ elif [[ "$profile" == "aza" ]]; then
 elif [[ "$profile" == "full-web" ]]; then
 	echo "curl -s https://sowwwl.com/ | grep -n 'hero-backdrop\\|torus-shell\\|data-torus-cloud'"
 	echo "curl -s https://sowwwl.com/aza.php | grep -n 'gros ZIP\\|entrée directe\\|upload.sowwwl.com'"
+	echo "curl -I 'https://sowwwl.com/island?u=pablo-espallergues'"
 	echo "curl -I https://upload.sowwwl.com/aza.php"
 else
 	echo "# run the appropriate curl checks for the files you deployed"

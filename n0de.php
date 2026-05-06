@@ -6,8 +6,6 @@ require __DIR__ . '/config.php';
 $host              = request_host();
 $csrfToken         = csrf_token();
 $brandDomain       = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
-$stylesVersion     = is_file(__DIR__ . '/styles.css') ? (string) filemtime(__DIR__ . '/styles.css') : '1';
-$scriptVersion     = is_file(__DIR__ . '/main.js') ? (string) filemtime(__DIR__ . '/main.js') : '1';
 $authenticatedLand = current_authenticated_land();
 
 // ─── Manifest download (SD card export) ──────────────────────────────────────
@@ -87,10 +85,7 @@ $ambientProfile = $authenticatedLand
     <meta name="description" content="N0des — objets physiques porteurs dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
     <title>N0des — <?= h(SITE_TITLE) ?></title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<?= render_pwa_head_tags('main') ?>
-    <link rel="stylesheet" href="/styles.css?v=<?= h($stylesVersion) ?>">
-    <script defer src="/main.js?v=<?= h($scriptVersion) ?>"></script>
+<?= render_o_page_head_assets('main') ?>
     <script defer src="/qr.js"></script>
 </head>
 <body class="experience n0de-view">

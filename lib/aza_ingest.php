@@ -240,7 +240,7 @@ function aza_ingest_import_file(array $file, array $form = []): array
     $safeBase   = aza_ingest_safe_filename($originalName);
     $storedName = $id . '_' . $safeBase;
     $storedPath = aza_ingest_files_dir() . DIRECTORY_SEPARATOR . $storedName;
-    $storedKey  = 'storage/aza/files/' . $storedName;
+    $storedKey  = aza_public_storage_path('files/' . $storedName);
 
     if (!move_uploaded_file((string) $file['tmp_name'], $storedPath)) {
         throw new RuntimeException('Impossible d\'enregistrer le fichier.');
@@ -251,7 +251,7 @@ function aza_ingest_import_file(array $file, array $form = []): array
         $thumbName = $id . '.jpg';
         $thumbPath = aza_ingest_thumbs_dir() . DIRECTORY_SEPARATOR . $thumbName;
         if (aza_ingest_try_image_thumbnail($storedPath, $ext, $thumbPath)) {
-            $thumbnailKey = 'storage/aza/files/thumbs/' . $thumbName;
+            $thumbnailKey = aza_public_storage_path('files/thumbs/' . $thumbName);
         }
     }
 

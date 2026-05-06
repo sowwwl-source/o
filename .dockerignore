@@ -5,6 +5,7 @@
 .vscode
 .DS_Store
 storage/lands/*.json
+storage/aza/
 storage/runtime/rate-limit/*.json
 /.env.production
 /.env.production.example

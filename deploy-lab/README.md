@@ -118,6 +118,20 @@ Expected island behavior:
 - `https://lab.sowwwl.cloud/island?u=<slug-lab-connu>` returns `200`
 - `https://lab.sowwwl.cloud/island.php?u=<slug-lab-connu>` redirects to the canonical `/island` route
 
+Reference QA slug for multimaterial reader checks:
+
+- `https://lab.sowwwl.cloud/island?u=qa-multimatiere`
+- expected seeded traces:
+  - `Journal de rive` (`txt` → texte)
+  - `Constellation des formats` (`json` → data)
+  - `Wireframe source` (`fig` → design)
+  - `Triangle témoin` (`gltf` → 3d)
+- expected diagnostics visible in the final HTML:
+  - `prévisualisation textuelle`
+  - `aperçu brut`
+  - `aperçu textuel`
+  - `viewer 3d natif`
+
 ## Simulate a sleeping land
 
 ```bash

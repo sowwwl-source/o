@@ -517,7 +517,7 @@ function aza_hydrate_archive_entry(array $entry): array
 
     $stored = (string) ($entry['stored_file'] ?? '');
     if ($stored !== '') {
-        $absolutePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . ltrim($stored, '/');
+        $absolutePath = aza_absolute_storage_path($stored);
         if (is_file($absolutePath)) {
             try {
                 $summary = aza_summarize_zip($absolutePath, (string) ($entry['source'] ?? 'auto'));
@@ -860,7 +860,7 @@ function aza_import_zip_archive(array $file, array $meta = []): array
         'notes' => $notes,
         'source' => $summary['source'],
         'original_name' => $originalName,
-        'stored_file' => 'storage/aza/imports/' . $storedFilename,
+        'stored_file' => aza_public_storage_path('imports/' . $storedFilename),
         'size' => $size,
         'entries' => $summary['entries'],
         'media_entries' => $summary['media_entries'],

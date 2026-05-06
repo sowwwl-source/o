@@ -131,7 +131,7 @@ curl -I https://pocket.lab.sowwwl.cloud
 curl -I https://api.lab.sowwwl.cloud/healthz
 
 echo "==> App internals"
-docker exec ${project_name}-app-1 sh -lc 'ls -la /var/www/html/0wlslw0.php /var/www/html/signal.php /var/www/html/aza.php /var/www/html/island.php /var/www/html/echo.php'
+docker exec "${project_name}-app-1" sh -lc 'ls -la /var/www/html/0wlslw0.php /var/www/html/signal.php /var/www/html/aza.php /var/www/html/island.php /var/www/html/echo.php'
 
 if [[ -n "$slug" ]]; then
 	echo "==> Island verification for slug: $slug"

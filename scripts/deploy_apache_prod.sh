@@ -58,7 +58,7 @@ profile_files() {
 			printf '%s\n' aza.php config.php manifest.php site-sw.js apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
 			;;
 		full-web)
-			printf '%s\n' index.php land.php aza.php config.php main.js styles.css manifest.php manifest.json site-sw.js favicon.svg apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
+			printf '%s\n' index.php land.php island.php aza.php config.php main.js styles.css manifest.php manifest.json site-sw.js favicon.svg apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
 			;;
 		*)
 			echo "Unknown profile: $1" >&2
@@ -138,6 +138,13 @@ run_live_checks() {
 		full-web)
 			run_live_checks homepage
 			run_live_checks aza
+			echo "Running live island verification..."
+			if curl -fsSI 'https://sowwwl.com/island?u=pablo-espallergues' >/dev/null; then
+				echo "✓ Island route responds over HTTPS"
+			else
+				echo "✗ Island route did not respond over HTTPS" >&2
+				return 1
+			fi
 			;;
 		*)
 			echo "No automated live verification profile for this selection."
