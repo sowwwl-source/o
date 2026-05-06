@@ -117,7 +117,7 @@ For Signal identity validation specifically, check the runtime from inside the l
 docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --require-schema-ready
 ```
 
-If production must actually send validation emails through SMTP, run the stricter gate:
+If production must actually send validation emails through SMTP, set `SOWWWL_SIGNAL_IDENTITY_DELIVERY=mail` in `.env.production`, then run the stricter gate:
 
 ```bash
 docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --require-schema-ready --require-delivery-ready
@@ -147,7 +147,7 @@ Do not run `wrangler deploy` for `sowwwl.xyz`; Cloudflare should proxy the VPS o
 
 ## SMTP cutover checklist for Signal
 
-Before claiming that production email validation is live, replace and verify these values in `.env.production`:
+Before claiming that production email validation is live, set `SOWWWL_SIGNAL_IDENTITY_DELIVERY=mail`, then replace and verify these values in `.env.production`:
 
 - `SOWWWL_SMTP_HOST`
 - `SOWWWL_SMTP_PORT`

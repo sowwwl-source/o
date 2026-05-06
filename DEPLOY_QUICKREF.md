@@ -55,7 +55,7 @@ For a known land slug, inspect the actual mailbox state too:
 docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --slug <slug-connu>
 ```
 
-When production Signal identity emails must really go out over SMTP, use the stricter check too:
+When production Signal identity emails must really go out over SMTP, first set `SOWWWL_SIGNAL_IDENTITY_DELIVERY=mail` in `deploy/.env.production`, then use the stricter check:
 
 ```bash
 docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --require-schema-ready --require-delivery-ready

@@ -56,12 +56,12 @@ services:
       SOWWWL_MAGIC_LINK_SECRET: ${SOWWWL_MAGIC_LINK_SECRET:-CHANGE_ME_MAGIC_LINK_SECRET}
       # log (default), mail, or display (dev only)
       SOWWWL_MAGIC_LINK_DELIVERY: ${SOWWWL_MAGIC_LINK_DELIVERY:-log}
-      # mail for real Signal identity validation, log/display for controlled lab/dev.
-      SOWWWL_SIGNAL_IDENTITY_DELIVERY: ${SOWWWL_SIGNAL_IDENTITY_DELIVERY:-mail}
+      # Keep Signal aligned with the deployed delivery mode unless production explicitly opts into SMTP mail.
+      SOWWWL_SIGNAL_IDENTITY_DELIVERY: ${SOWWWL_SIGNAL_IDENTITY_DELIVERY:-log}
       SOWWWL_MAGIC_LINK_FROM: ${SOWWWL_MAGIC_LINK_FROM:-}
       SOWWWL_MAGIC_LINK_FROM_NAME: ${SOWWWL_MAGIC_LINK_FROM_NAME:-}
 
-      # SMTP (recommended when SOWWWL_MAGIC_LINK_DELIVERY=mail)
+      # SMTP (required when Signal identity delivery is switched to mail)
       SOWWWL_SMTP_HOST: ${SOWWWL_SMTP_HOST:-}
       SOWWWL_SMTP_PORT: ${SOWWWL_SMTP_PORT:-587}
       SOWWWL_SMTP_USERNAME: ${SOWWWL_SMTP_USERNAME:-}
