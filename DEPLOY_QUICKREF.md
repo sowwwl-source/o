@@ -46,12 +46,19 @@ For a fuller schema-state checklist, see `DB_MIGRATION_PROTOCOL.md`.
 docker exec sowwwl-o-app-1 sh -lc 'ls -la /var/www/html/.htaccess /var/www/html/0wlslw0.php /var/www/html/0wlslw0_voice.php /var/www/html/str3m.php /var/www/html/map.php /var/www/html/map_points.php /var/www/html/land.php /var/www/html/aza.php /var/www/html/island.php'
 docker exec sowwwl-o-app-1 sh -lc 'printenv | grep -E "SOWWWL_0WLSLW0_(CHAT_URL|AGENT_ENDPOINT|AGENT_MODE|AGENT_INPUT_FIELD|AGENT_TIMEOUT_SECONDS)"'
 docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --json
+docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --require-schema-ready
 ```
 
 For a known land slug, inspect the actual mailbox state too:
 
 ```bash
 docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --slug <slug-connu>
+```
+
+When production Signal identity emails must really go out over SMTP, use the stricter check too:
+
+```bash
+docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --require-schema-ready --require-delivery-ready
 ```
 
 ## 5. Verify live domains

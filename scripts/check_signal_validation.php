@@ -10,9 +10,12 @@ if (PHP_SAPI !== 'cli') {
     exit(1);
 }
 
-$options = getopt('', ['slug:', 'json']);
+$options = getopt('', ['slug:', 'json', 'require-schema-ready', 'require-delivery-ready', 'require-land-found']);
 $slug = trim((string) ($options['slug'] ?? ''));
 $asJson = array_key_exists('json', $options);
+$requireSchemaReady = array_key_exists('require-schema-ready', $options);
+$requireDeliveryReady = array_key_exists('require-delivery-ready', $options);
+$requireLandFound = array_key_exists('require-land-found', $options);
 
 $payload = [
     'generated_at' => gmdate(DATE_ATOM),
@@ -57,49 +60,68 @@ if ($slug !== '') {
 
 if ($asJson) {
     echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
-    exit(0);
-}
+} else {
+    $schema = $payload['schema'];
+    $delivery = $payload['delivery'];
 
-$schema = $payload['schema'];
-$delivery = $payload['delivery'];
+    echo "Signal validation status\n";
+    echo "========================\n\n";
 
-echo "Signal validation status\n";
-echo "========================\n\n";
+    echo "Schema\n";
+    echo "------\n";
+    printf("database available : %s\n", ($schema['database_available'] ?? false) ? 'yes' : 'no');
+    printf("signal_mailboxes  : %s\n", ($schema['signal_mailboxes'] ?? false) ? 'yes' : 'no');
+    printf("signal_messages   : %s\n", ($schema['signal_messages'] ?? false) ? 'yes' : 'no');
+    printf("lands.email col   : %s\n", ($schema['lands_notification_email'] ?? false) ? 'yes' : 'no');
+    printf("schema ready      : %s\n", ($schema['ready'] ?? false) ? 'yes' : 'no');
+    if (!empty($schema['issues'])) {
+        echo 'issues            : ' . implode(', ', array_map('strval', (array) $schema['issues'])) . "\n";
+    }
 
-echo "Schema\n";
-echo "------\n";
-printf("database available : %s\n", ($schema['database_available'] ?? false) ? 'yes' : 'no');
-printf("signal_mailboxes  : %s\n", ($schema['signal_mailboxes'] ?? false) ? 'yes' : 'no');
-printf("signal_messages   : %s\n", ($schema['signal_messages'] ?? false) ? 'yes' : 'no');
-printf("lands.email col   : %s\n", ($schema['lands_notification_email'] ?? false) ? 'yes' : 'no');
-printf("schema ready      : %s\n", ($schema['ready'] ?? false) ? 'yes' : 'no');
-if (!empty($schema['issues'])) {
-    echo 'issues            : ' . implode(', ', array_map('strval', (array) $schema['issues'])) . "\n";
-}
+    echo "\nDelivery\n";
+    echo "--------\n";
+    printf("mode              : %s\n", (string) ($delivery['mode'] ?? 'mail'));
+    printf("delivery ready    : %s\n", ($delivery['ready'] ?? false) ? 'yes' : 'no');
+    echo 'hint              : ' . (string) ($payload['delivery_hint'] ?? '') . "\n";
+    if (!empty($delivery['issues'])) {
+        echo 'issues            : ' . implode(', ', array_map('strval', (array) $delivery['issues'])) . "\n";
+    }
 
-echo "\nDelivery\n";
-echo "--------\n";
-printf("mode              : %s\n", (string) ($delivery['mode'] ?? 'mail'));
-printf("delivery ready    : %s\n", ($delivery['ready'] ?? false) ? 'yes' : 'no');
-echo 'hint              : ' . (string) ($payload['delivery_hint'] ?? '') . "\n";
-if (!empty($delivery['issues'])) {
-    echo 'issues            : ' . implode(', ', array_map('strval', (array) $delivery['issues'])) . "\n";
-}
-
-if (isset($payload['land'])) {
-    echo "\nLand\n";
-    echo "----\n";
-    $land = $payload['land'];
-    printf("found             : %s\n", ($land['found'] ?? false) ? 'yes' : 'no');
-    printf("slug              : %s\n", (string) ($land['slug'] ?? ''));
-    if (($land['found'] ?? false) === true) {
-        printf("username          : %s\n", (string) ($land['username'] ?? ''));
-        printf("virtual address   : %s\n", (string) ($land['virtual_address'] ?? ''));
-        $mailbox = (array) ($land['mailbox'] ?? []);
-        printf("identity status   : %s\n", (string) ($mailbox['identity_status'] ?? ''));
-        printf("notif email       : %s\n", (string) ($mailbox['notification_email'] ?? ''));
-        printf("token sent at     : %s\n", (string) ($mailbox['verification_token_sent_at'] ?? ''));
-        printf("verified at       : %s\n", (string) ($mailbox['verified_at'] ?? ''));
-        echo 'identity hint     : ' . (string) ($land['identity_hint'] ?? '') . "\n";
+    if (isset($payload['land'])) {
+        echo "\nLand\n";
+        echo "----\n";
+        $land = $payload['land'];
+        printf("found             : %s\n", ($land['found'] ?? false) ? 'yes' : 'no');
+        printf("slug              : %s\n", (string) ($land['slug'] ?? ''));
+        if (($land['found'] ?? false) === true) {
+            printf("username          : %s\n", (string) ($land['username'] ?? ''));
+            printf("virtual address   : %s\n", (string) ($land['virtual_address'] ?? ''));
+            $mailbox = (array) ($land['mailbox'] ?? []);
+            printf("identity status   : %s\n", (string) ($mailbox['identity_status'] ?? ''));
+            printf("notif email       : %s\n", (string) ($mailbox['notification_email'] ?? ''));
+            printf("token sent at     : %s\n", (string) ($mailbox['verification_token_sent_at'] ?? ''));
+            printf("verified at       : %s\n", (string) ($mailbox['verified_at'] ?? ''));
+            echo 'identity hint     : ' . (string) ($land['identity_hint'] ?? '') . "\n";
+        }
     }
 }
+
+$failures = [];
+if ($requireSchemaReady && !(bool) ($payload['schema']['ready'] ?? false)) {
+    $failures[] = 'schema-not-ready';
+}
+
+if ($requireDeliveryReady && !(bool) ($payload['delivery']['ready'] ?? false)) {
+    $failures[] = 'delivery-not-ready';
+}
+
+if ($requireLandFound && (!isset($payload['land']) || !(bool) ($payload['land']['found'] ?? false))) {
+    $failures[] = 'land-not-found';
+}
+
+if ($failures !== []) {
+    fwrite(STDERR, 'Signal validation check failed: ' . implode(', ', $failures) . PHP_EOL);
+    exit(2);
+}
+
+exit(0);

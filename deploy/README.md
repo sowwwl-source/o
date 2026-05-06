@@ -111,6 +111,20 @@ After deploy, verify at least:
 - `https://sowwwl.com/str3m`
 - `https://sowwwl.com/echo.php`
 
+For Signal identity validation specifically, check the runtime from inside the live app container:
+
+```bash
+docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --require-schema-ready
+```
+
+If production must actually send validation emails through SMTP, run the stricter gate:
+
+```bash
+docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --require-schema-ready --require-delivery-ready
+```
+
+That stricter check must fail if SMTP still points to placeholders such as `smtp.example.com` or `CHANGE_ME_*` values.
+
 Expected behavior:
 
 - `0wlslw0` shows the voice guide block when the updated app image is live
@@ -130,6 +144,30 @@ If you want the live app to relay to the DigitalOcean voice agent, also set thes
 - `SOWWWL_0WLSLW0_AGENT_EXTRA_HEADERS_JSON`
 
 Do not run `wrangler deploy` for `sowwwl.xyz`; Cloudflare should proxy the VPS origin instead.
+
+## SMTP cutover checklist for Signal
+
+Before claiming that production email validation is live, replace and verify these values in `.env.production`:
+
+- `SOWWWL_SMTP_HOST`
+- `SOWWWL_SMTP_PORT`
+- `SOWWWL_SMTP_USERNAME`
+- `SOWWWL_SMTP_PASSWORD`
+- `SOWWWL_MAGIC_LINK_FROM`
+- `SOWWWL_MAGIC_LINK_FROM_NAME`
+
+Then rebuild the app and re-run:
+
+```bash
+docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --require-schema-ready --require-delivery-ready
+```
+
+Expected result:
+
+- exit code `0`
+- `schema ready : yes`
+- `delivery ready : yes`
+- no placeholder SMTP issues reported
 
 ## Cloudflare notes
 
