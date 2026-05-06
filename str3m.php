@@ -17,6 +17,45 @@ function str3m_signal_kind_label(string $kind): string
     };
 }
 
+function str3m_timestamp(?string $value): int
+{
+    $candidate = trim((string) $value);
+    if ($candidate === '') {
+        return 0;
+    }
+
+    $timestamp = strtotime($candidate);
+    return $timestamp !== false ? $timestamp : 0;
+}
+
+function str3m_visible_land_state(array $profile): array
+{
+    $signalCount = (int) ($profile['signal_count'] ?? 0);
+    $t0kCount = (int) ($profile['t0k_count'] ?? 0);
+    $b0t3Count = (int) ($profile['b0t3_count'] ?? 0);
+    $latestTs = (int) ($profile['latest_ts'] ?? 0);
+    $hoursSinceLatest = $latestTs > 0 ? max(0.0, (time() - $latestTs) / 3600) : 999.0;
+
+    if ($signalCount > 0) {
+        return [
+            'label' => 'signal public',
+            'summary' => 'Cette terre a déjà rendu une trace lisible publiquement.',
+        ];
+    }
+
+    if (($t0kCount + $b0t3Count) >= 3 || $hoursSinceLatest <= 24) {
+        return [
+            'label' => 'en circulation',
+            'summary' => 'Quelque chose passe déjà ici : gestes, lignes ou circulation récente.',
+        ];
+    }
+
+    return [
+        'label' => 'veille visible',
+        'summary' => 'La terre apparaît dans le courant, mais n’a pas encore laissé de signal public durable.',
+    ];
+}
+
 $host = request_host();
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
@@ -69,6 +108,121 @@ $publicSignalCount = count($publicSignals);
 $publicSignalPreview = array_slice($publicSignals, 0, 6);
 $recentT0kCount = count($recentT0ks);
 $recentB0t3Count = count($recentB0t3s);
+$visibleLands = [];
+
+foreach ($publicSignals as $signal) {
+    $slug = trim((string) ($signal['land_slug'] ?? ''));
+    if ($slug === '') {
+        continue;
+    }
+
+    if (!isset($visibleLands[$slug])) {
+        $visibleLands[$slug] = [
+            'slug' => $slug,
+            'username' => trim((string) ($signal['land_username'] ?? $slug)),
+            'signal_count' => 0,
+            't0k_count' => 0,
+            'b0t3_count' => 0,
+            'latest_at' => '',
+            'latest_ts' => 0,
+        ];
+    }
+
+    $visibleLands[$slug]['signal_count']++;
+    $publishedAt = trim((string) (($signal['published_at'] ?? '') ?: ($signal['created_at'] ?? '')));
+    $publishedTs = str3m_timestamp($publishedAt);
+    if ($publishedTs > ($visibleLands[$slug]['latest_ts'] ?? 0)) {
+        $visibleLands[$slug]['latest_ts'] = $publishedTs;
+        $visibleLands[$slug]['latest_at'] = $publishedAt;
+    }
+}
+
+foreach ($recentT0ks as $t0k) {
+    foreach (['from_land', 'to_land'] as $role) {
+        $slug = trim((string) ($t0k[$role] ?? ''));
+        if ($slug === '') {
+            continue;
+        }
+
+        if (!isset($visibleLands[$slug])) {
+            $visibleLands[$slug] = [
+                'slug' => $slug,
+                'username' => $slug,
+                'signal_count' => 0,
+                't0k_count' => 0,
+                'b0t3_count' => 0,
+                'latest_at' => '',
+                'latest_ts' => 0,
+            ];
+        }
+
+        $visibleLands[$slug]['t0k_count']++;
+        $t0kAt = trim((string) (($t0k['formed_at'] ?? '') ?: ($t0k['sent_at'] ?? '')));
+        $t0kTs = str3m_timestamp($t0kAt);
+        if ($t0kTs > ($visibleLands[$slug]['latest_ts'] ?? 0)) {
+            $visibleLands[$slug]['latest_ts'] = $t0kTs;
+            $visibleLands[$slug]['latest_at'] = $t0kAt;
+        }
+    }
+}
+
+foreach ($recentB0t3s as $b0t3) {
+    $slug = trim((string) ($b0t3['target_land'] ?? ''));
+    if ($slug === '') {
+        continue;
+    }
+
+    if (!isset($visibleLands[$slug])) {
+        $visibleLands[$slug] = [
+            'slug' => $slug,
+            'username' => $slug,
+            'signal_count' => 0,
+            't0k_count' => 0,
+            'b0t3_count' => 0,
+            'latest_at' => '',
+            'latest_ts' => 0,
+        ];
+    }
+
+    $visibleLands[$slug]['b0t3_count']++;
+    $b0t3At = trim((string) ($b0t3['created_at'] ?? ''));
+    $b0t3Ts = str3m_timestamp($b0t3At);
+    if ($b0t3Ts > ($visibleLands[$slug]['latest_ts'] ?? 0)) {
+        $visibleLands[$slug]['latest_ts'] = $b0t3Ts;
+        $visibleLands[$slug]['latest_at'] = $b0t3At;
+    }
+}
+
+foreach ($visibleLands as $slug => &$profile) {
+    try {
+        $land = find_land($slug);
+    } catch (Throwable $exception) {
+        $land = null;
+    }
+
+    if (is_array($land)) {
+        $profile['username'] = trim((string) ($land['username'] ?? $profile['username'])) ?: $profile['username'];
+    }
+
+    $profile['state'] = str3m_visible_land_state($profile);
+}
+unset($profile);
+
+usort(
+    $visibleLands,
+    static function (array $left, array $right): int {
+        $leftScore = ((int) ($left['signal_count'] ?? 0) * 10) + ((int) ($left['t0k_count'] ?? 0) * 3) + ((int) ($left['b0t3_count'] ?? 0) * 2);
+        $rightScore = ((int) ($right['signal_count'] ?? 0) * 10) + ((int) ($right['t0k_count'] ?? 0) * 3) + ((int) ($right['b0t3_count'] ?? 0) * 2);
+        $scoreComparison = $rightScore <=> $leftScore;
+        if ($scoreComparison !== 0) {
+            return $scoreComparison;
+        }
+
+        return ((int) ($right['latest_ts'] ?? 0)) <=> ((int) ($left['latest_ts'] ?? 0));
+    }
+);
+
+$visibleLandPreview = array_slice($visibleLands, 0, 6);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -318,6 +472,38 @@ $recentB0t3Count = count($recentB0t3s);
                 <a class="pill-link" href="/rejoindre">Poser une terre</a>
                 <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par Owl</a>
                 <a class="ghost-link" href="/signal">Voir Signal</a>
+            </div>
+        <?php endif; ?>
+    </section>
+
+    <section class="panel reveal" aria-labelledby="str3m-visible-lands-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="str3m-visible-lands-title">Terres visibles maintenant</h2>
+                <p class="panel-copy">A, B, C : des terres apparaissent, portent un état lisible, puis ouvrent une action claire.</p>
+            </div>
+            <span class="badge"><?= h((string) count($visibleLandPreview)) ?> visible<?= count($visibleLandPreview) > 1 ? 's' : '' ?></span>
+        </div>
+
+        <?php if ($visibleLandPreview !== []): ?>
+            <div class="public-entry-grid">
+                <?php foreach ($visibleLandPreview as $landProfile): ?>
+                    <?php $state = (array) ($landProfile['state'] ?? []); ?>
+                    <article class="public-entry-card">
+                        <strong><?= h((string) ($landProfile['username'] ?? $landProfile['slug'] ?? 'terre')) ?></strong>
+                        <span><?= h((string) ($state['summary'] ?? 'Trace visible dans le courant.')) ?></span>
+                        <span><?= h((string) ($state['label'] ?? 'visible')) ?> · <?= h((string) ($landProfile['signal_count'] ?? 0)) ?> signal<?= ((int) ($landProfile['signal_count'] ?? 0)) > 1 ? 'aux' : '' ?> · <?= h((string) $landProfile['t0k_count']) ?> t0k<?= ((int) ($landProfile['t0k_count'] ?? 0)) > 1 ? 's' : '' ?> · <?= h((string) $landProfile['b0t3_count']) ?> b0t3<?= ((int) ($landProfile['b0t3_count'] ?? 0)) > 1 ? 's' : '' ?><?= !empty($landProfile['latest_at']) ? ' · ' . h(human_created_label((string) $landProfile['latest_at']) ?? 'récemment') : '' ?></span>
+                        <span>
+                            <a class="pill-link" href="/land.php?u=<?= rawurlencode((string) ($landProfile['slug'] ?? '')) ?>">Explorer l'île</a>
+                        </span>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <p class="panel-copy">Aucune terre n’est encore assez visible pour composer cette couche. Owl peut t’expliquer la carte, et le parcours terre permet d’en faire apparaître une ici.</p>
+            <div class="action-row">
+                <a class="pill-link" href="<?= h($guideHref) ?>">Passer par Owl</a>
+                <a class="ghost-link" href="/rejoindre">Poser une terre</a>
             </div>
         <?php endif; ?>
     </section>
