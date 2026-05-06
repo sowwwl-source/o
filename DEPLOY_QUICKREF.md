@@ -45,6 +45,13 @@ For a fuller schema-state checklist, see `DB_MIGRATION_PROTOCOL.md`.
 ```bash
 docker exec sowwwl-o-app-1 sh -lc 'ls -la /var/www/html/.htaccess /var/www/html/0wlslw0.php /var/www/html/0wlslw0_voice.php /var/www/html/str3m.php /var/www/html/map.php /var/www/html/map_points.php /var/www/html/land.php /var/www/html/aza.php /var/www/html/island.php'
 docker exec sowwwl-o-app-1 sh -lc 'printenv | grep -E "SOWWWL_0WLSLW0_(CHAT_URL|AGENT_ENDPOINT|AGENT_MODE|AGENT_INPUT_FIELD|AGENT_TIMEOUT_SECONDS)"'
+docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --json
+```
+
+For a known land slug, inspect the actual mailbox state too:
+
+```bash
+docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --slug <slug-connu>
 ```
 
 ## 5. Verify live domains
@@ -85,6 +92,7 @@ Expected interpretation:
 - `0wlslw0.com` should redirect to `/0wlslw0` or serve the guide content
 - `/0wlslw0` should expose the voice-only guide block
 - `signal` should expose mailbox behavior
+- `scripts/check_signal_validation.php` should report both a ready Signal schema and an honest delivery state (`mail`, `log`, or `display`)
 - `str3m` should stay public
 - `map` should respond from the O. app
 - `island?u=<slug-connu>` should return `200` and expose the classic island reading

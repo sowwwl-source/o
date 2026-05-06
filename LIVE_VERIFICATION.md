@@ -46,6 +46,17 @@ Expected:
 - `map` responds from the O. app
 - `island` responds from the O. app for a known land slug
 
+### Signal validation readiness
+```bash
+docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php
+docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --slug <slug-connu>
+```
+
+Expected:
+- Signal schema reports `ready`
+- delivery mode is explicit (`mail`, `log`, or `display`)
+- if mode is `mail`, the helper must not report placeholder SMTP configuration
+
 ### island route and video check
 ```bash
 curl -sL 'https://sowwwl.com/island?u=<slug-connu>' | grep -E 'Station de lecture|Relief|Dernières traces'
