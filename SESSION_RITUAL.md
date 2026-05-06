@@ -92,6 +92,15 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml up -d
 ```
 
+If the change also touches `o/deploy/sites/` or any public static host like `sowwwl.org`, prefer:
+
+```bash
+cd /root/O_installation_FRESH/o
+bash scripts/deploy_prod_update.sh
+```
+
+That avoids the common drift where the app image is current but the static directory mounted by `sowwwl-o-caddy-1` still serves an older snapshot.
+
 ## 5. If Signal schema changed
 
 If the DB volume already existed before the migration:
@@ -114,6 +123,7 @@ curl -I https://0wlslw0.com
 curl -sL https://0wlslw0.com | grep -E 'Signal before story|concierge d entree|Entrer sans se perdre|0wlslw0'
 
 curl -I https://sowwwl.com
+curl -I https://sowwwl.org
 curl -I https://sowwwl.com/signal
 curl -I https://sowwwl.com/str3m
 curl -I https://sowwwl.com/map
@@ -122,6 +132,7 @@ curl -I https://sowwwl.com/map
 ### Expected outcomes
 - `0wlslw0.com` should no longer serve the old static placeholder
 - `0wlslw0.com` should redirect to `/0wlslw0` or serve the guide content
+- `sowwwl.org` should reflect the current validated explanatory layer, not a stale static copy
 - `signal` should expose the mailbox UX, not the old public trace wall
 - `str3m` should remain public
 - `map` should respond from the O. app

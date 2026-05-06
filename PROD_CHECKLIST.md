@@ -13,6 +13,7 @@ Use this as the shortest operational checklist before and after touching product
 
 ## Deploy
 
+- If the change touches `deploy/sites/` or `sowwwl.org`, prefer `bash scripts/deploy_prod_update.sh`
 - Sync VPS source to `origin/main`
 - Rebuild `sowwwl-o` app image
 - Restart the stack
@@ -22,6 +23,7 @@ Use this as the shortest operational checklist before and after touching product
 ## After prod
 
 - Check `https://0wlslw0.com`
+- Check `https://sowwwl.org`
 - Check `https://sowwwl.com/signal`
 - Check `https://sowwwl.com/str3m`
 - Check `https://sowwwl.com/map`
@@ -33,6 +35,7 @@ Use this as the shortest operational checklist before and after touching product
 
 - public `curl` matches expected behavior
 - app container contains expected files
+- static hosts like `sowwwl.org` match the current validated copy
 - feature route behaves as intended
 - island route renders the expected classic reading for at least one known land slug
 - if that land has both `.mov` and `.mp4`, the island reader prefers the `.mp4`

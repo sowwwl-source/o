@@ -2,7 +2,23 @@
 
 Use this when the change is already pushed to `origin/main` and production must be updated fast and clean.
 
-## 1. Sync VPS source
+## 1. Preferred one-shot deploy
+
+When the change touches the live app and/or the static sites served by Caddy (for example `sowwwl.org`), prefer the helper that updates both the git checkout and the live static mirror:
+
+```bash
+cd /root/O_installation_FRESH/o
+bash scripts/deploy_prod_update.sh
+```
+
+That helper:
+
+- updates `/root/O_installation_FRESH/o`
+- syncs `deploy/sites/` into the live static directory mounted by `sowwwl-o-caddy-1`
+- rebuilds `sowwwl-o-app-1`
+- verifies `sowwwl.com`, `sowwwl.org`, and Signal readiness
+
+## 2. Sync VPS source manually
 
 ```bash
 cd /root/O_installation_FRESH/o
@@ -10,7 +26,7 @@ git fetch origin
 git reset --hard origin/main
 ```
 
-## 2. Rebuild and restart live app
+## 3. Rebuild and restart live app
 
 ```bash
 cd /root/O_installation_FRESH/o/deploy
@@ -18,7 +34,7 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml up -d
 ```
 
-## 3. If Signal schema changed
+## 4. If Signal schema changed
 
 Only when the DB volume already existed before the migration:
 
@@ -28,7 +44,7 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml restart app
 ```
 
-## 3b. If p0rt schema changed or was never applied
+## 4b. If p0rt schema changed or was never applied
 
 Only when the DB volume already existed before the liaisons+p0rts migration:
 
@@ -40,7 +56,7 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 
 For a fuller schema-state checklist, see `DB_MIGRATION_PROTOCOL.md`.
 
-## 4. Verify the container contents
+## 5. Verify the container contents
 
 ```bash
 docker exec sowwwl-o-app-1 sh -lc 'ls -la /var/www/html/.htaccess /var/www/html/0wlslw0.php /var/www/html/0wlslw0_voice.php /var/www/html/str3m.php /var/www/html/map.php /var/www/html/map_points.php /var/www/html/land.php /var/www/html/aza.php /var/www/html/island.php'
@@ -61,7 +77,7 @@ When production Signal identity emails must really go out over SMTP, first set `
 docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --require-schema-ready --require-delivery-ready
 ```
 
-## 5. Verify live domains
+## 6. Verify live domains
 
 ```bash
 curl -I https://0wlslw0.com
@@ -100,6 +116,7 @@ Expected interpretation:
 - `/0wlslw0` should expose the voice-only guide block
 - `signal` should expose mailbox behavior
 - `scripts/check_signal_validation.php` should report both a ready Signal schema and an honest delivery state (`mail`, `log`, or `display`)
+- `sowwwl.org` should expose the current explanatory copy, not an older static snapshot
 - `str3m` should stay public
 - `map` should respond from the O. app
 - `island?u=<slug-connu>` should return `200` and expose the classic island reading
@@ -123,6 +140,8 @@ docker logs --tail=120 sowwwl-o-caddy-1
 docker logs --tail=120 sowwwl-o-app-1
 docker inspect sowwwl-o-caddy-1 --format '{{range .Mounts}}{{println .Source " -> " .Destination}}{{end}}'
 ```
+
+If `sowwwl.org` looks stale while `origin/main` is correct, compare the live static mount source printed above against the repo path you just updated.
 
 ## 8. Minimal rollback mindset
 

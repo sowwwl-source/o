@@ -34,6 +34,7 @@ Red flag:
 ### sowwwl.com entrypoints
 ```bash
 curl -I https://sowwwl.com/
+curl -I https://sowwwl.org/
 curl -I https://sowwwl.com/signal
 curl -I https://sowwwl.com/str3m
 curl -I https://sowwwl.com/map
@@ -41,10 +42,22 @@ curl -I 'https://sowwwl.com/island?u=<slug-connu>'
 ```
 
 Expected:
+- `sowwwl.org` responds from the current explanatory static site
 - `signal` responds from the mailbox app
 - `str3m` responds publicly
 - `map` responds from the O. app
 - `island` responds from the O. app for a known land slug
+
+For the current domain-role explanation specifically:
+
+```bash
+curl -sL https://sowwwl.com/ | grep -E 'Pourquoi \.org \?|Comprendre la carte|sowwwl\.org'
+curl -sL https://sowwwl.org/ | grep -E 'Comprendre les domaines sans se perdre|carte des rôles|Ouvrir sowwwl\.com'
+```
+
+Expected:
+- `sowwwl.com` points clearly toward the explanatory layer
+- `sowwwl.org` exposes the current role-map copy, not an older snapshot
 
 ### Signal validation readiness
 ```bash
@@ -94,6 +107,7 @@ Use this to confirm:
 - the expected Caddyfile is mounted
 - the expected `sites/` directory is mounted
 - the container is the right compose project (`sowwwl-o`)
+- the live static mount source matches the directory you actually updated on the VPS
 
 ## 5. App-level check
 
