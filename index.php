@@ -566,6 +566,7 @@ $homeHeroNote = $authenticatedLand
                 <a class="ghost-link" href="<?= h($guideHref) ?>">Owl</a>
                 <a class="ghost-link" href="/map">Map</a>
                 <a class="ghost-link" href="/aza.php">aZa</a>
+                <a class="ghost-link" href="https://sowwwl.org">Pourquoi .org ?</a>
             </div>
         </article>
 
@@ -616,9 +617,10 @@ $homeHeroNote = $authenticatedLand
                     <a class="ghost-link" href="#connexion">Retrouver ma terre</a>
                     <a class="ghost-link" href="/aza.php">Lire aZa</a>
                     <a class="ghost-link" href="/signal">Voir Signal</a>
+                    <a class="ghost-link" href="https://sowwwl.org">Comprendre la carte</a>
                 <?php endif; ?>
             </div>
-            <p class="panel-copy"><?= h($authenticatedLand ? 'Le noyau garde des passages latéraux, mais la priorité reste simple : terre, adresse, courant.' : 'La connexion reste en bas à gauche pour les retours rapides. Le noyau n’en fait plus le centre, mais ne l’oublie pas.') ?></p>
+            <p class="panel-copy"><?= h($authenticatedLand ? 'Le noyau garde des passages latéraux, mais la priorité reste simple : terre, adresse, courant.' : 'La connexion reste en bas à gauche pour les retours rapides. Le noyau n’en fait plus le centre, mais ne l’oublie pas. Pour comprendre le rôle des domaines sans quitter le public, sowwwl.org sert de couche d’explication.') ?></p>
         </aside>
     </section>
 
