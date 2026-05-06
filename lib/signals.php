@@ -7,6 +7,15 @@ const SIGNAL_STATUSES = ['draft', 'published'];
 
 function signals_dir(): string
 {
+    $override = trim((string) (getenv('SOWWWL_SIGNALS_DIR') ?: ''));
+    if ($override !== '') {
+        return rtrim($override, DIRECTORY_SEPARATOR);
+    }
+
+    if (is_dir('/var/www/runtime')) {
+        return '/var/www/runtime/signals';
+    }
+
     return __DIR__ . '/../storage/signals';
 }
 
