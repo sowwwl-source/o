@@ -85,6 +85,13 @@ function str3m_presence_class(array $state): string
     };
 }
 
+function str3m_fibonacci_value(int $index): int
+{
+    static $values = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+
+    return $values[$index % count($values)] ?? 1;
+}
+
 $host = request_host();
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
@@ -279,6 +286,17 @@ usort(
 );
 
 $visibleLandPreview = array_slice($visibleLands, 0, 6);
+$archipelagoLands = array_slice($visibleLands, 0, 13);
+$archipelagoHasPublishedSignal = false;
+
+foreach ($archipelagoLands as &$land) {
+    $land['has_public_signal'] = ((int) ($land['signal_count'] ?? 0)) > 0;
+    $land['last_active'] = (string) ($land['latest_at'] ?? '');
+    if ($land['has_public_signal']) {
+        $archipelagoHasPublishedSignal = true;
+    }
+}
+unset($land);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -573,35 +591,46 @@ $visibleLandPreview = array_slice($visibleLands, 0, 6);
         <div class="section-topline">
             <div>
                 <h2 id="islands-title">Archipel</h2>
-                <p class="panel-copy">Les terres avec des signaux publics récents.</p>
+                <p class="panel-copy">Les terres qui affleurent dans le courant — avec ou sans signal public — distribuées ici selon une poussée Fibonacci.</p>
             </div>
-            <span class="badge"><?= count($activeIslands) ?> île<?= count($activeIslands) > 1 ? 's' : '' ?></span>
+            <span class="badge"><?= count($archipelagoLands) ?> île<?= count($archipelagoLands) > 1 ? 's' : '' ?></span>
         </div>
 
-        <?php if (empty($activeIslands)): ?>
-            <p class="panel-copy">Aucune île n'a encore assez publié pour apparaître ici. Les t0ks et les b0t3s plus bas montrent déjà le courant ; l’archipel apparaîtra dès qu’une terre laissera un signal public.</p>
+        <?php if ($archipelagoLands === []): ?>
+            <p class="panel-copy">Aucune terre visible n’a encore assez laissé de traces pour faire apparaître l’archipel. Dès que le courant contient gestes, b0t3s ou signaux, il s’ouvrira ici.</p>
         <?php else: ?>
             <?php
-            // Calcule des positions 3D en spirale pour l'archipel
+            // Calcule des positions 3D en spirale Fibonacci pour l'archipel
             $islandNodes = [];
-            $radius = 120;
+            $radius = 108;
             
             // Trouver l'île la plus récente
             $newestIslandSlug = '';
-            $maxTimestamp = '';
-            foreach ($activeIslands as $island) {
-                if ($island['last_active'] > $maxTimestamp) {
-                    $maxTimestamp = $island['last_active'];
+            $maxTimestamp = 0;
+            foreach ($archipelagoLands as $island) {
+                $islandLatestTs = (int) ($island['latest_ts'] ?? 0);
+                if ($islandLatestTs > $maxTimestamp) {
+                    $maxTimestamp = $islandLatestTs;
                     $newestIslandSlug = $island['slug'];
                 }
             }
 
-            foreach (array_values($activeIslands) as $index => $island) {
-                $r = $radius + ($index * 140);
+            foreach (array_values($archipelagoLands) as $index => $island) {
+                $fib = str3m_fibonacci_value($index);
+                $ring = intdiv($index, 10);
+                $stateKey = (string) (($island['state']['key'] ?? ''));
+                $stateLift = match ($stateKey) {
+                    'present' => -18,
+                    'near' => 12,
+                    'roaming' => 38,
+                    'asleep' => -42,
+                    default => 0,
+                };
+                $r = $radius + min(320, $fib * 9) + ($ring * 96);
                 $a = $index * 2.39996; // Angle d'or pour distribution organique
                 $x = (int) (cos($a) * $r);
                 $z = (int) (sin($a) * $r);
-                $y = rand(-120, 120);
+                $y = (int) (((($index % 2) === 0) ? 1 : -1) * min(132, 14 + ($fib * 3)) + $stateLift);
                 $islandNodes[] = [
                     'island' => $island,
                     'x' => $x,
@@ -611,7 +640,7 @@ $visibleLandPreview = array_slice($visibleLands, 0, 6);
             }
             ?>
             <div id="archipelago-3d" class="archipelago-3d-container" data-str3m-archipelago>
-                <div class="archipelago-instructions" data-str3m-archipelago-hint>Appui long puis glisse · Molette pour avancer</div>
+                <div class="archipelago-instructions" data-str3m-archipelago-hint>Appui long puis glisse · Molette pour avancer · 1 1 2 3 5 8 13</div>
                 <div class="archipelago-scene">
                     <?php foreach ($islandNodes as $node): ?>
                         <?php $island = $node['island']; ?>
@@ -636,6 +665,12 @@ $visibleLandPreview = array_slice($visibleLands, 0, 6);
                                         </span>
                                     </p>
                                     <p class="island-presence-hint"><?= h((string) ($state['hint'] ?? 'indice public · present')) ?></p>
+                                    <p class="island-ledger">
+                                        <?= h((string) ($island['signal_count'] ?? 0)) ?> signal<?= ((int) ($island['signal_count'] ?? 0)) > 1 ? 'aux' : '' ?>
+                                        · <?= h((string) ($island['t0k_active_count'] ?? 0)) ?> t0k actif<?= ((int) ($island['t0k_active_count'] ?? 0)) > 1 ? 's' : '' ?>
+                                        · <?= h((string) ($island['t0k_pending_count'] ?? 0)) ?> en chemin
+                                        · <?= h((string) ($island['b0t3_count'] ?? 0)) ?> b0t3<?= ((int) ($island['b0t3_count'] ?? 0)) > 1 ? 's' : '' ?>
+                                    </p>
                                     <?php if ($island['last_active']): ?>
                                         <p class="island-meta">Dernière trace : <?= h(human_created_label($island['last_active']) ?? 'récemment') ?></p>
                                     <?php endif; ?>
@@ -646,6 +681,9 @@ $visibleLandPreview = array_slice($visibleLands, 0, 6);
                     <?php endforeach; ?>
                 </div>
             </div>
+            <?php if (!$archipelagoHasPublishedSignal): ?>
+                <p class="panel-copy">Aucune de ces terres n’a encore publié de signal public durable ; l’archipel montre donc le courant visible avant publication, sans mentir sur son état.</p>
+            <?php endif; ?>
         <?php endif; ?>
     </section>
 

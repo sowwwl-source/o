@@ -7034,6 +7034,15 @@ body:has(.connection-meter) {
 	line-height: 1.4;
 }
 
+.str3m-island-card .island-ledger {
+	margin: -0.2rem 0 0;
+	font-size: 0.74rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: rgba(var(--fg-rgb) / 0.62);
+	line-height: 1.5;
+}
+
 .str3m-island-card .island-presence {
 	margin: -0.2rem 0 0;
 	line-height: 1;
