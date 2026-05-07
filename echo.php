@@ -86,15 +86,15 @@ body {
   margin: 4rem auto;
   padding: 0 1.5rem;
 }
-h1 { font-size: 3rem; margin-bottom: 0.25rem; }
+h1 { font-size: 2.65rem; margin-bottom: 0.25rem; }
 h2 {
-  font-size: 0.85rem;
-  letter-spacing: 0.18em;
+  font-size: 0.78rem;
+  letter-spacing: 0.22em;
   opacity: 0.6;
   text-transform: uppercase;
   margin-bottom: 0.75rem;
 }
-.back { font-size: 0.85rem; opacity: 0.6; margin-bottom: 2rem; display: block; }
+.back { font-size: 0.78rem; opacity: 0.6; margin-bottom: 2rem; display: block; }
 .echo-grid {
   display: grid;
   grid-template-columns: 220px 1fr;
@@ -108,7 +108,7 @@ h2 {
   border-radius: 6px;
   text-decoration: none;
   color: inherit;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   margin-bottom: 0.35rem;
   border: 1px solid transparent;
 }
@@ -118,7 +118,7 @@ h2 {
   display: inline-block;
   background: var(--o-fg);
   color: var(--o-bg);
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   font-weight: 700;
   padding: 0.05rem 0.4rem;
   border-radius: 99px;
@@ -144,7 +144,7 @@ h2 {
 .echo-msg {
   padding: 0.6rem 0.85rem;
   border-radius: 8px;
-  font-size: 0.93rem;
+  font-size: 0.88rem;
   line-height: 1.55;
   max-width: 85%;
   border: 1px solid var(--o-line);
@@ -158,7 +158,7 @@ h2 {
 .echo-msg--received { align-self: flex-start; background: var(--o-bg); }
 .echo-msg-meta {
   display: block;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   opacity: 0.55;
   margin-bottom: 0.25rem;
 }
@@ -166,7 +166,7 @@ h2 {
   width: 100%;
   min-height: 80px;
   padding: 0.65rem;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-family: inherit;
   line-height: 1.5;
   border: 1px solid var(--o-line);
@@ -177,11 +177,11 @@ h2 {
 .echo-form button {
   margin-top: 0.5rem;
   padding: 0.55rem 1.2rem;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   cursor: pointer;
 }
-.empty-state { opacity: 0.5; font-size: 0.9rem; padding: 1rem 0; }
-.message { margin: 0.75rem 0; padding: 0.65rem 0.85rem; border: 1px solid var(--o-line); background: var(--o-fill); border-radius: 4px; font-size: 0.9rem; }
+.empty-state { opacity: 0.5; font-size: 0.84rem; padding: 1rem 0; }
+.message { margin: 0.75rem 0; padding: 0.65rem 0.85rem; border: 1px solid var(--o-line); background: var(--o-fill); border-radius: 4px; font-size: 0.84rem; }
 @media (max-width: 580px) {
   .echo-grid { grid-template-columns: 1fr; }
   .echo-contacts { border-right: none; border-bottom: 1px solid var(--o-line); padding-right: 0; padding-bottom: 1rem; }

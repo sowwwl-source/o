@@ -18,6 +18,17 @@
   const SOUND_MUTED_KEY = 'o:sound:muted';
 
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const APPARITION_MEMBER_PATHS = new Set(['/land', '/shore', '/bato', '/dashboard', '/silence']);
+  const APPARITION_ENTRYPOINTS = [
+    { id: 'land', label: 'LAND', href: '/land', rarity: 'common' },
+    { id: 'shore', label: 'SHORE', href: '/shore', rarity: 'common' },
+    { id: 'bato', label: 'BATO', href: '/bato', rarity: 'uncommon' },
+    { id: 'dashboard', label: 'DASHBOARD', href: '/dashboard', rarity: 'uncommon' },
+    { id: 'aza', label: 'AZA', href: '/aza', rarity: 'rare' },
+    { id: 'silence', label: 'SILENCE', href: '/silence', rarity: 'rare' },
+    // INSTALL is meant to stay uncanny on public/mixed paths, not once a land is clearly active.
+    { id: 'install', label: 'INSTALL', href: '/install', rarity: 'mythic', audiences: ['guest', 'mixed'] },
+  ];
 
   let baseParity = '0';
   let apparitionTimer = null;
@@ -118,6 +129,17 @@
     const url = urlLike instanceof URL ? urlLike : new URL(String(urlLike), window.location.href);
     const path = url.pathname.replace(/\/+$/, '') || '/';
     return path === '/' ? '/install' : path;
+  }
+
+  function apparitionAudienceForPath(normalized) {
+    if (normalized === '/install') return 'guest';
+    if (APPARITION_MEMBER_PATHS.has(normalized)) return 'member';
+    return 'mixed';
+  }
+
+  function apparitionAllowsAudience(entry, audience) {
+    if (!Array.isArray(entry?.audiences) || entry.audiences.length === 0) return true;
+    return entry.audiences.includes(audience);
   }
 
   function readNumber(key) {
@@ -290,21 +312,13 @@
   }
 
   function pickApparitionTargets() {
-    const entrypoints = [
-      { id: 'land', label: 'LAND', href: '/land', rarity: 'common' },
-      { id: 'shore', label: 'SHORE', href: '/shore', rarity: 'common' },
-      { id: 'bato', label: 'BATO', href: '/bato', rarity: 'uncommon' },
-      { id: 'dashboard', label: 'DASHBOARD', href: '/dashboard', rarity: 'uncommon' },
-      { id: 'aza', label: 'AZA', href: '/aza', rarity: 'rare' },
-      { id: 'silence', label: 'SILENCE', href: '/silence', rarity: 'rare' },
-      { id: 'install', label: 'INSTALL', href: '/install', rarity: 'mythic' },
-    ];
-
     const now = Date.now();
     const blockedCount = Math.max(0, Math.floor(readNumber(SCORE_BLOCKED_KEY)));
     const normalized = normalizedPathname();
+    const audience = apparitionAudienceForPath(normalized);
 
-    const filtered = entrypoints.filter((e) => {
+    const filtered = APPARITION_ENTRYPOINTS.filter((e) => {
+      if (!apparitionAllowsAudience(e, audience)) return false;
       if (normalized === e.href) return false;
       if (normalized.startsWith('/aza/') && e.href === '/aza') return false;
       return true;

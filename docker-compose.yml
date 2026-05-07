@@ -30,6 +30,8 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./migrations/004_liaisons_ports.sql:/docker-entrypoint-initdb.d/004_liaisons_ports.sql:ro
+      - ./migrations/2026_05_02_signal_mail.sql:/docker-entrypoint-initdb.d/2026_05_02_signal_mail.sql:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]

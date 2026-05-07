@@ -115,12 +115,12 @@ html, body { margin: 0; overflow: hidden; width: 100vw; height: 100vh; }
   position: fixed; top: 1.5rem; left: 1.5rem;
   pointer-events: none; user-select: none;
 }
-#str3m-hud h1 { font-size: 1.4rem; margin: 0 0 0.15rem; letter-spacing: 0.18em; text-shadow: 0 0 0.8rem rgba(var(--o-fg-rgb)/.28); }
-.str3m-meta { font-size: 0.72rem; letter-spacing: 0.18em; opacity: 0.45; text-transform: uppercase; }
+#str3m-hud h1 { font-size: 1.28rem; margin: 0 0 0.15rem; letter-spacing: 0.22em; text-shadow: 0 0 0.8rem rgba(var(--o-fg-rgb)/.28); }
+.str3m-meta { font-size: 0.68rem; letter-spacing: 0.2em; opacity: 0.45; text-transform: uppercase; }
 
 #str3m-back {
   position: fixed; top: 1.5rem; right: 1.5rem;
-  font-size: 0.78rem; letter-spacing: 0.14em; opacity: 0.55;
+  font-size: 0.74rem; letter-spacing: 0.18em; opacity: 0.55;
   padding: 0.4rem 0.75rem; border: 1px solid var(--o-line); border-radius: 3px;
   background: rgba(var(--o-bg-rgb)/.72); backdrop-filter: blur(4px);
   text-decoration: none; color: inherit; transition: opacity 140ms, background 140ms;
@@ -130,7 +130,7 @@ html, body { margin: 0; overflow: hidden; width: 100vw; height: 100vh; }
 /* ── fl0w mode button ── */
 #flow-mode-btn {
   position: fixed; bottom: 1.5rem; right: 1.5rem;
-  font-size: 0.78rem; letter-spacing: 0.2em; padding: 0.45rem 0.9rem;
+  font-size: 0.74rem; letter-spacing: 0.22em; padding: 0.42rem 0.84rem;
   border: 1px solid var(--o-line); border-radius: 3px;
   background: rgba(var(--o-bg-rgb)/.72); backdrop-filter: blur(4px);
   color: inherit; cursor: pointer; text-transform: uppercase;
@@ -151,15 +151,15 @@ html, body { margin: 0; overflow: hidden; width: 100vw; height: 100vh; }
 }
 #flow-build-panel.is-hidden { opacity: 0; pointer-events: none; }
 .fbp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
-.fbp-title { font-size: 0.82rem; letter-spacing: 0.2em; text-transform: uppercase; font-weight: bold; }
+.fbp-title { font-size: 0.78rem; letter-spacing: 0.24em; text-transform: uppercase; font-weight: bold; }
 #flow-build-close { background: none; border: none; cursor: pointer; opacity: 0.4; font-size: 1.05rem; padding: 0; color: inherit; }
 #flow-build-close:hover { opacity: 1; background: none; }
-.fbp-hint { font-size: 0.74rem; opacity: 0.5; margin: 0 0 0.75rem; letter-spacing: 0.05em; }
+.fbp-hint { font-size: 0.7rem; opacity: 0.5; margin: 0 0 0.75rem; letter-spacing: 0.08em; }
 #flow-steps-list { list-style: none; padding: 0; margin: 0 0 0.75rem; max-height: 180px; overflow-y: auto; }
 #flow-steps-list li {
   display: flex; align-items: center; justify-content: space-between;
   padding: 0.3rem 0; border-bottom: 1px solid var(--o-line);
-  font-size: 0.83rem; letter-spacing: 0.05em;
+  font-size: 0.79rem; letter-spacing: 0.08em;
 }
 #flow-steps-list li .step-num { opacity: 0.45; margin-right: 0.4rem; font-size: 0.72rem; }
 #flow-steps-list li button { background: none; border: none; cursor: pointer; opacity: 0.35; font-size: 0.9rem; padding: 0; color: inherit; }
@@ -201,9 +201,9 @@ html, body { margin: 0; overflow: hidden; width: 100vw; height: 100vh; }
 }
 #flow-prev-btn:disabled, #flow-next-btn:disabled { opacity: 0.25; cursor: default; }
 .flow-tour-center { flex: 1; min-width: 0; }
-#flow-tour-land { font-size: 0.9rem; font-weight: bold; letter-spacing: 0.08em; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#flow-tour-progress { font-size: 0.7rem; letter-spacing: 0.18em; opacity: 0.45; }
-#flow-tour-exit { padding: 0.3rem 0.6rem; font-size: 0.85rem; opacity: 0.5; flex-shrink: 0; }
+#flow-tour-land { font-size: 0.84rem; font-weight: bold; letter-spacing: 0.12em; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#flow-tour-progress { font-size: 0.66rem; letter-spacing: 0.22em; opacity: 0.45; }
+#flow-tour-exit { padding: 0.3rem 0.6rem; font-size: 0.78rem; opacity: 0.5; flex-shrink: 0; }
 #flow-tour-exit:hover { opacity: 1; }
 
 /* ── Land panel ── */
@@ -218,32 +218,32 @@ html, body { margin: 0; overflow: hidden; width: 100vw; height: 100vh; }
 }
 #str3m-panel.is-hidden { transform: translateY(110%); pointer-events: none; }
 .sp-header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.4rem; }
-.sp-username { font-size: 1.05rem; letter-spacing: 0.1em; font-weight: bold; }
+.sp-username { font-size: 0.98rem; letter-spacing: 0.12em; font-weight: bold; }
 #str3m-close { font-size: 1.1rem; opacity: 0.4; cursor: pointer; background: none; border: none; padding: 0; color: inherit; }
 #str3m-close:hover { opacity: 1; background: none; }
-.sp-shore { font-size: 0.86rem; opacity: 0.7; line-height: 1.55; max-height: 4rem; overflow: hidden; margin-bottom: 0.75rem; }
+.sp-shore { font-size: 0.82rem; opacity: 0.7; line-height: 1.55; max-height: 4rem; overflow: hidden; margin-bottom: 0.75rem; }
 
 /* ZIP list in panel */
 .sp-zips { margin: 0.5rem 0 0.75rem; }
-.sp-zips-title { font-size: 0.7rem; letter-spacing: 0.18em; opacity: 0.45; text-transform: uppercase; margin-bottom: 0.3rem; }
-.sp-zip-link { display: inline-block; font-size: 0.75rem; padding: 0.2rem 0.55rem; border: 1px solid var(--o-line); border-radius: 2px; margin: 0.15rem 0.2rem 0 0; text-decoration: none; color: inherit; }
+.sp-zips-title { font-size: 0.66rem; letter-spacing: 0.22em; opacity: 0.45; text-transform: uppercase; margin-bottom: 0.3rem; }
+.sp-zip-link { display: inline-block; font-size: 0.7rem; padding: 0.2rem 0.55rem; border: 1px solid var(--o-line); border-radius: 2px; margin: 0.15rem 0.2rem 0 0; text-decoration: none; color: inherit; }
 .sp-zip-link:hover { background: var(--o-fg); color: var(--o-bg); border-color: transparent; }
 
 .sp-actions { display: flex; gap: 0.55rem; flex-wrap: wrap; align-items: center; }
 .sp-actions a, .sp-actions button {
-  font-size: 0.76rem; letter-spacing: 0.12em;
+  font-size: 0.72rem; letter-spacing: 0.16em;
   padding: 0.35rem 0.7rem; border: 1px solid var(--o-line); border-radius: 3px;
   text-decoration: none; color: inherit; background: transparent;
   cursor: pointer; font-family: inherit;
   transition: background 140ms, color 140ms, border-color 140ms;
 }
 .sp-actions a:hover, .sp-actions button:hover { background: var(--o-fg); color: var(--o-bg); border-color: transparent; }
-.sp-status { font-size: 0.72rem; letter-spacing: 0.14em; opacity: 0.5; text-transform: uppercase; }
+.sp-status { font-size: 0.68rem; letter-spacing: 0.18em; opacity: 0.5; text-transform: uppercase; }
 
 /* ── Hint ── */
 #str3m-hint {
   position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
-  font-size: 0.7rem; letter-spacing: 0.18em; opacity: 0.32; text-transform: uppercase;
+  font-size: 0.66rem; letter-spacing: 0.22em; opacity: 0.32; text-transform: uppercase;
   pointer-events: none; transition: opacity 600ms; white-space: nowrap;
 }
 #str3m-hint.is-hidden { opacity: 0; }
@@ -252,7 +252,7 @@ html, body { margin: 0; overflow: hidden; width: 100vw; height: 100vh; }
 #str3m-empty {
   position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
   text-align: center; opacity: 0.38; pointer-events: none;
-  font-size: 0.82rem; letter-spacing: 0.18em; text-transform: uppercase;
+  font-size: 0.78rem; letter-spacing: 0.22em; text-transform: uppercase;
 }
 </style>
 </head>

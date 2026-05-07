@@ -21,8 +21,8 @@ body {
   text-align: center;
 }
 main { max-width: 480px; padding: 0 1.5rem; }
-h1 { font-size: 3rem; margin-bottom: 0.25rem; }
-.code { font-size: 0.85rem; letter-spacing: 0.18em; opacity: 0.5; text-transform: uppercase; margin-bottom: 1.5rem; }
+h1 { font-size: 2.65rem; margin-bottom: 0.25rem; }
+.code { font-size: 0.78rem; letter-spacing: 0.22em; opacity: 0.5; text-transform: uppercase; margin-bottom: 1.5rem; }
 p { opacity: 0.7; margin-bottom: 2rem; }
 .actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 .actions a {
@@ -31,7 +31,7 @@ p { opacity: 0.7; margin-bottom: 2rem; }
   border-radius: 4px;
   text-decoration: none;
   color: inherit;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
 }
 .actions a:hover { background: var(--o-fg); color: var(--o-bg); border-color: transparent; }
 </style>

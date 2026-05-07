@@ -33,7 +33,7 @@
   }
 
   // Show a persistent, dismissible message in the viewer.
-  function showViewerMessage({ html, actions = [] }) {
+  function showViewerMessage({ html, actions = [], timeout = 6000 }) {
     const viewer = document.querySelector('.viewer-inner');
     if (!viewer) return;
 
@@ -114,6 +114,23 @@
     msg.appendChild(box);
     msg.appendChild(close);
     viewer.prepend(msg);
+
+    // Auto-dismiss the message after the specified timeout
+    if (timeout > 0) {
+      // Optional: Add a subtle fade-out animation before removal
+      setTimeout(() => {
+        if (!msg.isConnected) return;
+        if (typeof msg.animate === 'function') {
+          const animation = msg.animate(
+            [{ opacity: 1 }, { opacity: 0 }],
+            { duration: 300, easing: 'ease-out' }
+          );
+          animation.onfinish = () => msg.remove();
+        } else {
+          msg.remove();
+        }
+      }, timeout);
+    }
   }
 
   const p = currentPortal();
@@ -150,8 +167,8 @@
   document.addEventListener(
     'click',
     (e) => {
-      const target = e.target instanceof Element ? e.target : e.target instanceof Node ? e.target.parentElement : null;
-      const a = target ? target.closest('a[data-aza-portal]') : null;
+      const target = e.target instanceof Element ? e.target : e.target.parentElement;
+      const a = target?.closest('a[data-aza-portal]');
       if (!a) return;
       if (a.dataset.locked !== '1') return;
 
@@ -201,8 +218,8 @@
   document.addEventListener(
     'click',
     (e) => {
-      const target = e.target instanceof Element ? e.target : e.target instanceof Node ? e.target.parentElement : null;
-      const a = target ? target.closest('a[data-aza-requires="complete"]') : null;
+      const target = e.target instanceof Element ? e.target : e.target.parentElement;
+      const a = target?.closest('a[data-aza-requires="complete"]');
       if (!a) return;
       if (a.dataset.locked !== '1') return;
       e.preventDefault();

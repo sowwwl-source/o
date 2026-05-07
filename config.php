@@ -102,6 +102,37 @@ try {
     throw new \PDOException($e->getMessage(), (int)$e->getCode());
 }
 
+function bootstrap_default_land_username(PDO $pdo): ?string
+{
+    $firstUser = $pdo->query("SELECT username FROM lands ORDER BY id ASC LIMIT 1")->fetchColumn();
+    if (is_string($firstUser) && trim($firstUser) !== '') {
+        return $firstUser;
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            "INSERT INTO lands (username, password_hash, email_virtual, timezone, zone_code, shore_text)
+             VALUES (:username, :password_hash, :email_virtual, :timezone, :zone_code, :shore_text)"
+        );
+        $stmt->execute([
+            ':username' => 'visiteur',
+            ':password_hash' => '',
+            ':email_virtual' => 'visiteur@o.local',
+            ':timezone' => 'Europe/Paris',
+            ':zone_code' => 'Europe/Paris',
+            ':shore_text' => 'Silence.',
+        ]);
+        return 'visiteur';
+    } catch (\PDOException $exception) {
+        if ((string) $exception->getCode() !== '23000') {
+            error_log('Unable to bootstrap default land: ' . $exception->getMessage());
+        }
+    }
+
+    $firstUser = $pdo->query("SELECT username FROM lands ORDER BY id ASC LIMIT 1")->fetchColumn();
+    return is_string($firstUser) && trim($firstUser) !== '' ? $firstUser : null;
+}
+
 function start_secure_session(): void
 {
     if (session_status() === PHP_SESSION_ACTIVE) {
@@ -125,23 +156,17 @@ function start_secure_session(): void
     session_start();
 
     // Auto-login to remove mandatory login
-    if (!isset($_SESSION['username'])) {
+    $sessionUsername = $_SESSION['username'] ?? null;
+    if (!is_string($sessionUsername) || trim($sessionUsername) === '') {
         global $pdo;
-        try {
-            if ($pdo instanceof PDO) {
-                $stmt = $pdo->query("SELECT username FROM lands ORDER BY id ASC LIMIT 1");
-                $first_user = $stmt->fetchColumn();
-                if (!$first_user) {
-                    // Création d'un premier utilisateur par défaut pour que l'app soit ouverte
-                    $pdo->exec("INSERT INTO lands (username, password_hash, email_virtual, timezone, zone_code, shore_text) VALUES ('visiteur', '', 'visiteur@o.local', 'Europe/Paris', 'Europe/Paris', 'Silence.')");
-                    $first_user = 'visiteur';
-                }
-                if ($first_user) {
-                    $_SESSION['username'] = $first_user;
+        if ($pdo instanceof PDO) {
+            $bootstrapUsername = bootstrap_default_land_username($pdo);
+            if ($bootstrapUsername !== null) {
+                $_SESSION['username'] = $bootstrapUsername;
+                if (!isset($_SESSION['csrf_token'])) {
+                    session_regenerate_id(true);
                 }
             }
-        } catch (\Throwable $e) {
-            // Session remains anonymous when DB is unavailable.
         }
     }
 }

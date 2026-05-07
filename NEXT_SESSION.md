@@ -3,14 +3,17 @@
 ## À reprendre
 
 ### Apparitions “rareté”
-- Objectif : décider quelles “entrées prévues par le programme” sont `common` / `uncommon` / `rare` / `mythic`.
-- À modifier : `main.js` → fonction `pickApparitionTargets()` (table `entrypoints` avec `id`, `label`, `href`, `rarity`).
-- Rareté = 3 paramètres (dans `main.js`) :
-  - `rarityChance()` : probabilité d’apparition
-  - `rarityCooldownMs()` : cooldown par entrée (évite les répétitions)
-  - `rarityWeight()` : poids dans le tirage quand plusieurs entrées sont éligibles
+- Déjà en place dans `main.js` :
+  - table `APPARITION_ENTRYPOINTS`
+  - `rarityChance()`
+  - `rarityCooldownMs()`
+  - `rarityWeight()`
+- Ajustement repris cette session :
+  - `INSTALL` n’apparaît plus quand on est déjà sur un chemin clairement membre (`/land`, `/shore`, `/bato`, `/dashboard`, `/silence`)
+- À affiner ensuite :
+  - décider si certains chemins auth-only doivent aussi être masqués sur `/install`
+  - retuner la fréquence réelle des entrées `rare` / `mythic` si elles paraissent trop discrètes en usage
 
 ### Rappel comportement
 - Les “apparitions” sont un bandeau fixe bas, avec reveal lettre par lettre, cliquable, visible ~11s.
 - Elles pointent vers les routes clean (`/install`, `/land`, `/shore`, `/bato`, `/dashboard`, `/aza`, `/silence`) gérées par `/.htaccess`.
-

@@ -31,7 +31,7 @@ body.o-signal {
   --o-scan-opacity: 0.08;
 }
 
-html { box-sizing: border-box; height: 100%; background: var(--o-bg); }
+html { box-sizing: border-box; height: 100%; background: var(--o-bg); font-size: calc(16px - 1pt); }
 *, *::before, *::after { box-sizing: inherit; }
 
 body {
@@ -40,7 +40,7 @@ body {
   background: var(--o-bg);
   color: var(--o-fg);
   font-family: var(--o-font);
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.6;
   letter-spacing: 0.015em;
   -webkit-font-smoothing: antialiased;
@@ -73,20 +73,20 @@ body.o-zooming {
 }
 
 h1 {
-  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  font-size: clamp(2.05rem, 3.8vw, 3rem);
   margin: 0 0 0.5rem;
   text-shadow: 0 0 0.8rem rgba(var(--o-fg-rgb) / 0.28);
 }
 h2 {
-  font-size: 0.85rem;
-  letter-spacing: 0.22em;
+  font-size: 0.8rem;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
   opacity: 0.78;
   margin: 2.2rem 0 0.75rem;
 }
 h3 {
-  font-size: 0.95rem;
-  letter-spacing: 0.12em;
+  font-size: 0.9rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   margin: 0 0 0.6rem;
 }

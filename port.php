@@ -157,9 +157,9 @@ function fmt_size(int $bytes): string
 body { max-width: 800px; margin: 3rem auto; padding: 0 1.5rem; }
 
 .port-header { margin-bottom: 2rem; }
-.port-header h1 { font-size: 2.2rem; margin-bottom: 0.15rem; }
-.port-header .port-name { font-size: 0.8rem; letter-spacing: 0.2em; opacity: 0.55; text-transform: uppercase; }
-.port-back { font-size: 0.82rem; opacity: 0.55; margin-bottom: 1.5rem; display: block; }
+.port-header h1 { font-size: 2.05rem; margin-bottom: 0.15rem; }
+.port-header .port-name { font-size: 0.75rem; letter-spacing: 0.24em; opacity: 0.55; text-transform: uppercase; }
+.port-back { font-size: 0.76rem; opacity: 0.55; margin-bottom: 1.5rem; display: block; }
 
 /* ── Tabs ── */
 .port-tabs {
@@ -168,7 +168,7 @@ body { max-width: 800px; margin: 3rem auto; padding: 0 1.5rem; }
 }
 .port-tabs button {
   background: none; border: none; border-bottom: 2px solid transparent;
-  padding: 0.55rem 1.1rem; font-size: 0.82rem; letter-spacing: 0.16em;
+  padding: 0.55rem 1.1rem; font-size: 0.76rem; letter-spacing: 0.2em;
   text-transform: uppercase; cursor: pointer; color: inherit; opacity: 0.5;
   margin-bottom: -1px;
   transition: opacity 140ms, border-color 140ms;
@@ -186,11 +186,11 @@ body { max-width: 800px; margin: 3rem auto; padding: 0 1.5rem; }
   background: var(--o-fill); border: 1px solid var(--o-line);
   padding: 1.1rem; border-radius: 6px;
 }
-.cou12-card h3 { margin: 0 0 0.5rem; font-size: 0.95rem; letter-spacing: 0.08em; }
-.cou12-card p { font-size: 0.88rem; opacity: 0.75; margin: 0 0 0.75rem; line-height: 1.6; }
+.cou12-card h3 { margin: 0 0 0.5rem; font-size: 0.9rem; letter-spacing: 0.12em; }
+.cou12-card p { font-size: 0.84rem; opacity: 0.75; margin: 0 0 0.75rem; line-height: 1.6; }
 .cou12-card textarea {
   width: 100%; min-height: 80px; resize: vertical;
-  font-size: 0.88rem; font-family: inherit; line-height: 1.5;
+  font-size: 0.84rem; font-family: inherit; line-height: 1.5;
   padding: 0.55rem; box-sizing: border-box;
 }
 .cou12-card button { margin-top: 0.5rem; padding: 0.4rem 1rem; font-size: 0.85rem; }
@@ -205,22 +205,21 @@ body { max-width: 800px; margin: 3rem auto; padding: 0 1.5rem; }
   max-height: 360px; overflow-y: auto;
   padding: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem;
 }
-.chat-msg { padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.88rem; line-height: 1.5; border: 1px solid var(--o-line); }
+.chat-msg { padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.84rem; line-height: 1.5; border: 1px solid var(--o-line); }
 .chat-msg--sent { align-self: flex-end; background: var(--o-fg); color: var(--o-bg); border-color: var(--o-fg); }
 .chat-msg--recv { align-self: flex-start; background: var(--o-bg); }
-.chat-msg--event { align-self: center; opacity: 0.4; font-size: 0.75rem; border: none; background: none; }
-.chat-meta { display: block; font-size: 0.7rem; opacity: 0.55; margin-bottom: 0.2rem; }
-.chat-form textarea { min-height: 70px; resize: vertical; font-size: 0.88rem; }
+.chat-msg--event { align-self: center; opacity: 0.4; font-size: 0.7rem; border: none; background: none; }
+.chat-meta { display: block; font-size: 0.66rem; opacity: 0.55; margin-bottom: 0.2rem; }
+.chat-form textarea { min-height: 70px; resize: vertical; font-size: 0.84rem; }
 .chat-form button { margin-top: 0.4rem; padding: 0.4rem 1rem; font-size: 0.85rem; }
 
-.coeur-container {}
-.coeur-container h3 { font-size: 0.8rem; letter-spacing: 0.18em; opacity: 0.6; text-transform: uppercase; margin-bottom: 0.5rem; }
+.coeur-container h3 { font-size: 0.74rem; letter-spacing: 0.22em; opacity: 0.6; text-transform: uppercase; margin-bottom: 0.5rem; }
 .container-iframe {
   width: 100%; height: 280px; border: 1px solid var(--o-line); border-radius: 6px;
   background: var(--o-fill); margin-bottom: 0.75rem;
 }
 .container-editor textarea {
-  min-height: 120px; resize: vertical; font-size: 0.82rem;
+  min-height: 120px; resize: vertical; font-size: 0.78rem;
   font-family: 'Share Tech Mono', monospace;
 }
 .container-editor button { margin-top: 0.4rem; padding: 0.4rem 1rem; font-size: 0.85rem; }
@@ -231,15 +230,15 @@ body { max-width: 800px; margin: 3rem auto; padding: 0 1.5rem; }
   display: flex; align-items: center; justify-content: space-between;
   padding: 0.65rem 0; border-bottom: 1px solid var(--o-line); gap: 1rem; flex-wrap: wrap;
 }
-.core-files .file-name { font-size: 0.9rem; }
-.core-files .file-meta { font-size: 0.75rem; opacity: 0.5; }
-.core-files a { font-size: 0.8rem; }
-.core-upload h3 { font-size: 0.8rem; letter-spacing: 0.18em; opacity: 0.6; text-transform: uppercase; margin-bottom: 0.5rem; }
+.core-files .file-name { font-size: 0.85rem; }
+.core-files .file-meta { font-size: 0.7rem; opacity: 0.5; }
+.core-files a { font-size: 0.75rem; }
+.core-upload h3 { font-size: 0.74rem; letter-spacing: 0.22em; opacity: 0.6; text-transform: uppercase; margin-bottom: 0.5rem; }
 .core-upload input[type=file] { border: 1px dashed var(--o-line); padding: 0.75rem; background: var(--o-fill); width: 100%; box-sizing: border-box; cursor: pointer; }
 .core-upload button { margin-top: 0.5rem; padding: 0.4rem 1rem; font-size: 0.85rem; }
-.core-upload .hint { font-size: 0.75rem; opacity: 0.5; margin: 0.35rem 0 0; }
+.core-upload .hint { font-size: 0.7rem; opacity: 0.5; margin: 0.35rem 0 0; }
 
-.empty-state { opacity: 0.45; font-size: 0.88rem; padding: 0.75rem 0; }
+.empty-state { opacity: 0.45; font-size: 0.82rem; padding: 0.75rem 0; }
 </style>
 </head>
 <body>
