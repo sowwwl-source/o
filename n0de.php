@@ -106,7 +106,7 @@ $ambientProfile = $authenticatedLand
         <div class="land-meta">
             <?php if ($authenticatedLand): ?>
                 <span class="meta-pill"><?= h((string) $authenticatedLand['username']) ?></span>
-                <a class="meta-pill meta-pill-link" href="/sh0re.php">Sh0re</a>
+                <a class="meta-pill meta-pill-link" href="/sh0re">Sh0re</a>
             <?php else: ?>
                 <a class="meta-pill meta-pill-link" href="/">Ouvrir une land</a>
             <?php endif; ?>

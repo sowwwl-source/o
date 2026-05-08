@@ -3,8 +3,6 @@ declare(strict_types=1);
 
 require __DIR__ . '/config.php';
 
-$host = request_host();
-
 $identifier = (string) ($_GET['u'] ?? '');
 $land = null;
 $notFound = false;
@@ -24,7 +22,6 @@ $created = isset($_GET['created']) && $_GET['created'] === '1';
 $sessionBound = isset($_GET['session']) && $_GET['session'] === '1';
 $sharePath = $land ? '/land?u=' . rawurlencode((string) $land['slug']) : '/';
 $shareUrl = site_origin() . $sharePath;
-$brandDomain = preg_replace('/^www\./', '', $host ?: 'sowwwl.com');
 $landRawArchives = $land ? get_archives_for_land((string) $land['slug']) : [];
 $landChronology = aza_prepare_chronology($landRawArchives);
 $landSorted = $landChronology['sorted'];
@@ -63,6 +60,21 @@ if ($land && $isAuthenticatedHere) {
         $signalUnread = 0;
         $signalIdentityLabel = '';
     }
+}
+$shareLabel = preg_replace('#^https?://#', '', $shareUrl);
+$publicShoreHref = $land
+    ? ($isAuthenticatedHere ? '/sh0re' : '/sh0re?u=' . rawurlencode((string) $land['slug']))
+    : '/sh0re';
+$publicEchoHref = $land ? '/echo?u=' . rawurlencode((string) $land['username']) : '/echo';
+$landViewLabel = $isAuthenticatedHere ? 'présence liée' : 'lecture publique';
+$landSignalStatusCopy = $signalTablesReady
+    ? ($signalIdentityLabel !== '' ? $signalIdentityLabel : 'Signal prêt')
+    : 'Signal en attente';
+$landIdentitySummary = $land
+    ? '@' . (string) $land['slug'] . ' · ' . (string) $land['timezone'] . ' · ' . (string) $land['email_virtual']
+    : '';
+if ($land && $visualProfile) {
+    $landIdentitySummary .= ' · ' . (string) ($visualProfile['label'] ?? 'collectif') . ' · λ ' . (string) ($visualProfile['lambda_nm'] ?? '548') . ' nm';
 }
 ?>
 <!DOCTYPE html>
@@ -115,11 +127,13 @@ if ($land && $isAuthenticatedHere) {
             <section class="panel reveal" aria-labelledby="clock-title">
                 <div class="section-topline">
                     <div>
-                        <h2 id="clock-title">Temps</h2>
-                        <p class="panel-copy">Local.</p>
+                        <h2 id="clock-title">Identité située</h2>
+                        <p class="panel-copy">Heure locale, fuseau, zone et état de présence pour cette terre.</p>
                     </div>
                     <?php if ($created): ?>
                         <span class="badge">terre posée</span>
+                    <?php else: ?>
+                        <span class="badge"><?= h($landViewLabel) ?></span>
                     <?php endif; ?>
                 </div>
 
@@ -146,7 +160,7 @@ if ($land && $isAuthenticatedHere) {
                     <p class="clock-date" data-clock-date>--</p>
                 </div>
 
-                <div class="summary-grid">
+                <div class="summary-grid land-summary-grid">
                     <article class="summary-card">
                         <span class="summary-label">Zone</span>
                         <strong class="summary-value summary-value-small"><?= h((string) $land['zone_code']) ?></strong>
@@ -155,37 +169,118 @@ if ($land && $isAuthenticatedHere) {
                         <span class="summary-label">Ouverture</span>
                         <strong class="summary-value summary-value-small"><?= h(human_created_label((string) ($land['created_at'] ?? '')) ?? 'maintenant') ?></strong>
                     </article>
+                    <article class="summary-card">
+                        <span class="summary-label">Vue</span>
+                        <strong class="summary-value summary-value-small"><?= h($landViewLabel) ?></strong>
+                    </article>
+                </div>
+            </section>
+
+            <section class="panel reveal" aria-labelledby="land-focus-title">
+                <div class="section-topline">
+                    <div>
+                        <h2 id="land-focus-title">Repères</h2>
+                        <p class="panel-copy">Cette page distingue ce qui décrit la terre, ce qui reste visible au public et ce qui demande une présence liée.</p>
+                    </div>
+                    <span class="badge"><?= h((string) $landMemorySummary['count']) ?> trace<?= $landMemorySummary['count'] > 1 ? 's' : '' ?></span>
+                </div>
+
+                <div class="land-focus-grid">
+                    <article class="land-focus-card">
+                        <p class="land-card-kicker">identité</p>
+                        <h3><?= h((string) $land['username']) ?></h3>
+                        <p class="land-card-copy"><?= h($landIdentitySummary) ?></p>
+                    </article>
+
+                    <article class="land-focus-card">
+                        <p class="land-card-kicker">ouvert</p>
+                        <h3>Lecture, île, partage</h3>
+                        <p class="land-card-copy">aZa en lecture, l’île, Sh0re et les coordonnées de cette terre peuvent circuler depuis l’extérieur.</p>
+                    </article>
+
+                    <article class="land-focus-card">
+                        <p class="land-card-kicker">réservé</p>
+                        <h3><?= $isAuthenticatedHere ? 'Boîte et édition ouvertes' : 'Boîte et édition protégées' ?></h3>
+                        <p class="land-card-copy">
+                            <?php if ($isAuthenticatedHere): ?>
+                                Signal, Écho complet et l’édition Terre sont actifs dans cette session. <?= h($landSignalStatusCopy) ?><?= $signalUnread > 0 ? ' · ' . $signalUnread . ' non lu' . ($signalUnread > 1 ? 's' : '') : '' ?>.
+                            <?php else: ?>
+                                Signal, Écho complet et l’édition Terre restent liés à la présence qui a ouvert cette terre.
+                            <?php endif; ?>
+                        </p>
+                    </article>
                 </div>
             </section>
 
             <aside class="panel reveal" aria-labelledby="ritual-title">
-                <h2 id="ritual-title">Liaisons</h2>
-                <p class="panel-copy">Réseau local.</p>
-                <p class="land-note">
-                    Emprunter un ferry ou copier les coordonnées de l'île.
-                </p>
-                <div class="action-row">
-                    <a class="pill-link" href="/">Retour au noyau</a>
-                    <?php if ($isAuthenticatedHere): ?>
-                        <a class="ghost-link" href="/signal">Ferry 01 : Signal<?= $signalUnread > 0 ? ' · ' . $signalUnread . ' non lu' . ($signalUnread > 1 ? 's' : '') : '' ?></a>
-                        <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
-                        <a class="ghost-link" href="<?= h($islandLandHref) ?>">Île classique</a>
-                        <a class="ghost-link" href="/echo.php">Ferry 04 : Écho</a>
-                        <a class="ghost-link" href="/sh0re">Sh0re · n0us</a>
-                        <a class="ghost-link" href="/0wlslw0">0wlslw0</a>
-                        <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
-                    <?php else: ?>
-                        <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
-                        <a class="ghost-link" href="<?= h($islandLandHref) ?>">Île classique</a>
-                        <a class="ghost-link" href="/echo.php?u=<?= rawurlencode((string) $land['username']) ?>">Ferry 04 : Envoyer un écho</a>
-                        <a class="ghost-link" href="/sh0re?u=<?= rawurlencode((string) $land['slug']) ?>">Sh0re de <?= h((string) $land['username']) ?></a>
-                        <a class="ghost-link" href="/0wlslw0">0wlslw0 : se repérer</a>
-                    <?php endif; ?>
-                    <button
-                        type="button"
-                        class="copy-button"
-                        data-copy-link="<?= h($shareUrl) ?>"
-                    >Copier les coordonnées</button>
+                <div class="section-topline">
+                    <div>
+                        <h2 id="ritual-title">Passages</h2>
+                        <p class="panel-copy">Entrer par le bon niveau: continuer ici, montrer cette terre, ou gérer la présence.</p>
+                    </div>
+                    <a class="ghost-link" href="/">Retour au noyau</a>
+                </div>
+
+                <div class="land-route-grid">
+                    <section class="land-route-card">
+                        <p class="land-card-kicker">continuer ici</p>
+                        <h3><?= $isAuthenticatedHere ? 'Outils liés à cette terre' : 'Portes ouvertes depuis l’extérieur' ?></h3>
+                        <p class="land-card-copy">
+                            <?php if ($isAuthenticatedHere): ?>
+                                Reprendre la boîte, la mémoire et la projection sans ressortir de cette session.
+                            <?php else: ?>
+                                Lire, visiter ou écrire à cette terre sans ouvrir ses passages privés.
+                            <?php endif; ?>
+                        </p>
+                        <div class="land-route-links">
+                            <?php if ($isAuthenticatedHere): ?>
+                                <a class="ghost-link" href="/signal">Signal · boîte<?= $signalUnread > 0 ? ' · ' . $signalUnread . ' non lu' . ($signalUnread > 1 ? 's' : '') : '' ?></a>
+                                <a class="ghost-link" href="<?= h($azaLandHref) ?>">aZa · édition Terre</a>
+                                <a class="ghost-link" href="/echo">Écho · direct</a>
+                                <a class="ghost-link" href="<?= h($islandLandHref) ?>">Île classique</a>
+                            <?php else: ?>
+                                <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
+                                <a class="ghost-link" href="<?= h($islandLandHref) ?>">Île classique</a>
+                                <a class="ghost-link" href="<?= h($publicEchoHref) ?>">Envoyer un écho</a>
+                            <?php endif; ?>
+                        </div>
+                    </section>
+
+                    <section class="land-route-card">
+                        <p class="land-card-kicker">montrer</p>
+                        <h3>Sortie publique de la terre</h3>
+                        <p class="land-card-copy">Surface, lien partageable et lecture publique restent les passages les plus simples à transmettre.</p>
+                        <div class="land-route-links">
+                            <a class="ghost-link" href="<?= h($publicShoreHref) ?>"><?= $isAuthenticatedHere ? 'Sh0re · n0us' : 'Sh0re de ' . h((string) $land['username']) ?></a>
+                            <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
+                            <button
+                                type="button"
+                                class="copy-button"
+                                data-copy-link="<?= h($shareUrl) ?>"
+                            >Copier les coordonnées</button>
+                        </div>
+                        <p class="land-share-note"><?= h($shareLabel) ?></p>
+                    </section>
+
+                    <section class="land-route-card">
+                        <p class="land-card-kicker">présence</p>
+                        <h3><?= $isAuthenticatedHere ? 'Tenir ou retirer la session' : 'Se repérer ou ouvrir sa propre terre' ?></h3>
+                        <p class="land-card-copy">
+                            <?php if ($isAuthenticatedHere): ?>
+                                Le guide reste là si tu veux te recadrer. Tu peux aussi fermer proprement cette présence.
+                            <?php else: ?>
+                                Depuis l’extérieur, tu peux encore te repérer ou ouvrir une autre terre pour retrouver les passages privés.
+                            <?php endif; ?>
+                        </p>
+                        <div class="land-route-links">
+                            <a class="ghost-link" href="/0wlslw0"><?= $isAuthenticatedHere ? '0wlslw0 · me guider' : '0wlslw0 · se repérer' ?></a>
+                            <?php if ($isAuthenticatedHere): ?>
+                                <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
+                            <?php else: ?>
+                                <a class="ghost-link" href="/rejoindre">Poser une terre</a>
+                            <?php endif; ?>
+                        </div>
+                    </section>
                 </div>
             </aside>
         </section>

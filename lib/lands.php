@@ -121,6 +121,54 @@ function normalize_land_record(array $land): ?array
     return $land;
 }
 
+function land_record_has_value(mixed $value): bool
+{
+    if ($value === null) {
+        return false;
+    }
+
+    if (is_string($value)) {
+        return trim($value) !== '';
+    }
+
+    if (is_array($value)) {
+        return $value !== [];
+    }
+
+    return true;
+}
+
+function merge_land_records(?array $primary, ?array $fallback = null): ?array
+{
+    $primaryRecord = is_array($primary) ? normalize_land_record($primary) : null;
+    $fallbackRecord = is_array($fallback) ? normalize_land_record($fallback) : null;
+
+    if (!is_array($primaryRecord) && !is_array($fallbackRecord)) {
+        return null;
+    }
+
+    $merged = is_array($fallbackRecord) ? $fallbackRecord : [];
+    if (is_array($primaryRecord)) {
+        foreach ($primaryRecord as $key => $value) {
+            if (land_record_has_value($value) || !array_key_exists($key, $merged)) {
+                $merged[$key] = $value;
+            }
+        }
+    }
+
+    $normalized = normalize_land_record($merged);
+    if (!is_array($normalized)) {
+        return null;
+    }
+
+    $normalized['_mtime'] = max(
+        (int) ($primaryRecord['_mtime'] ?? 0),
+        (int) ($fallbackRecord['_mtime'] ?? 0)
+    );
+
+    return $normalized;
+}
+
 function load_land_from_database(string $identifier): ?array
 {
     try {
@@ -186,6 +234,35 @@ function load_land_snapshot_from_database(): array
 
         $timestamp = strtotime((string) ($normalized['created_at'] ?? ''));
         $normalized['_mtime'] = $timestamp !== false ? $timestamp : 0;
+        $lands[] = $normalized;
+    }
+
+    return $lands;
+}
+
+function load_land_snapshot_from_files(): array
+{
+    ensure_lands_dir();
+    $files = glob(lands_dir() . DIRECTORY_SEPARATOR . '*.json') ?: [];
+    $lands = [];
+
+    foreach ($files as $file) {
+        $raw = file_get_contents($file);
+        if ($raw === false) {
+            continue;
+        }
+
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            continue;
+        }
+
+        $normalized = normalize_land_record($decoded);
+        if (!is_array($normalized)) {
+            continue;
+        }
+
+        $normalized['_mtime'] = filemtime($file) ?: 0;
         $lands[] = $normalized;
     }
 
@@ -500,24 +577,49 @@ function find_land(string $identifier): ?array
         return null;
     }
 
-    $slug = normalize_username($identifier);
-    $path = land_file_path($slug);
+    $databaseLand = load_land_from_database($identifier);
+    $fileCandidates = [];
 
-    if (!is_file($path)) {
-        return load_land_from_database($identifier);
+    try {
+        $fileCandidates[] = normalize_username($identifier);
+    } catch (InvalidArgumentException $exception) {
+        // Ignore: a database match may still exist for the raw identifier.
     }
 
-    $raw = file_get_contents($path);
-    if ($raw === false) {
-        return load_land_from_database($identifier);
+    if (is_array($databaseLand)) {
+        $databaseSlug = trim((string) ($databaseLand['slug'] ?? ''));
+        if ($databaseSlug !== '') {
+            $fileCandidates[] = $databaseSlug;
+        }
     }
 
-    $decoded = json_decode($raw, true);
-    if (!is_array($decoded)) {
-        return load_land_from_database($identifier);
+    $fileLand = null;
+    foreach (array_values(array_unique($fileCandidates)) as $candidateSlug) {
+        $path = land_file_path($candidateSlug);
+        if (!is_file($path)) {
+            continue;
+        }
+
+        $raw = file_get_contents($path);
+        if ($raw === false) {
+            continue;
+        }
+
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            continue;
+        }
+
+        $normalized = normalize_land_record($decoded);
+        if (!is_array($normalized)) {
+            continue;
+        }
+
+        $normalized['_mtime'] = filemtime($path) ?: 0;
+        $fileLand = merge_land_records($normalized, $fileLand);
     }
 
-    return normalize_land_record($decoded);
+    return merge_land_records($fileLand, $databaseLand);
 }
 
 function authenticate_land(string $identifier, string $password): ?array
@@ -542,33 +644,27 @@ function authenticate_land(string $identifier, string $password): ?array
 
 function land_snapshot(): array
 {
-    ensure_lands_dir();
-    $files = glob(lands_dir() . DIRECTORY_SEPARATOR . '*.json') ?: [];
-    $lands = [];
+    $landsBySlug = [];
 
-    foreach ($files as $file) {
-        $raw = file_get_contents($file);
-        if ($raw === false) {
+    foreach (load_land_snapshot_from_database() as $land) {
+        $slug = trim((string) ($land['slug'] ?? ''));
+        if ($slug === '') {
             continue;
         }
 
-        $decoded = json_decode($raw, true);
-        if (!is_array($decoded)) {
-            continue;
-        }
-
-        $normalized = normalize_land_record($decoded);
-        if (!is_array($normalized)) {
-            continue;
-        }
-
-        $normalized['_mtime'] = filemtime($file) ?: 0;
-        $lands[] = $normalized;
+        $landsBySlug[$slug] = $land;
     }
 
-    if ($lands === []) {
-        $lands = load_land_snapshot_from_database();
+    foreach (load_land_snapshot_from_files() as $land) {
+        $slug = trim((string) ($land['slug'] ?? ''));
+        if ($slug === '') {
+            continue;
+        }
+
+        $landsBySlug[$slug] = merge_land_records($land, $landsBySlug[$slug] ?? null) ?? $land;
     }
+
+    $lands = array_values($landsBySlug);
 
     usort(
         $lands,

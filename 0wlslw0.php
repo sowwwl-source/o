@@ -87,8 +87,8 @@ $siteTitle = defined('SITE_TITLE') ? (string) constant('SITE_TITLE') : 'O. le r�
 $canonicalOrigin = rtrim((string) (getenv('SOWWWL_PUBLIC_ORIGIN') ?: 'https://sowwwl.com'), '/');
 $guideHref = '/0wlslw0';
 $openLandHref = $authenticatedLand
-    ? '/land.php?u=' . rawurlencode((string) $authenticatedLand['slug'])
-    : '/rejoindre.php';
+    ? '/land?u=' . rawurlencode((string) $authenticatedLand['slug'])
+    : '/rejoindre';
 $openLandLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une terre';
 $promptSeeds = guide_prompt_seeds();
 $owlDoors = [
@@ -110,7 +110,7 @@ $owlDoors = [
         'label' => '03 · terre',
         'title' => 'Poser une terre',
         'copy' => 'Passer par le parcours complet : nom, lecture, configuration, scellement.',
-        'href' => '/rejoindre.php',
+        'href' => '/rejoindre',
         'cta' => 'Commencer',
     ],
 ];
@@ -209,6 +209,7 @@ $guideVoiceNotes = [
                     data-mapping-whisper="Le monde brut pulse avant toute lecture."
                     data-mapping-summary="Matière, présence, climat, gestes, voix, lumière. Tout ce qui existe avant d’être interprété."
                     aria-expanded="true"
+                    aria-controls="mapping-active-display"
                 >
                     <span class="mapping-genie-card__mist" aria-hidden="true"></span>
                     <span class="mapping-genie-card__sigil" aria-hidden="true">🌍</span>
@@ -235,6 +236,7 @@ $guideVoiceNotes = [
                     data-mapping-whisper="Le flux mémorise, filtre et transmet."
                     data-mapping-summary="Couche fluide de mémoire, de calcul et de transmission. Le plasma convertit le réel en intensités lisibles."
                     aria-expanded="false"
+                    aria-controls="mapping-active-display"
                 >
                     <span class="mapping-genie-card__mist" aria-hidden="true"></span>
                     <span class="mapping-genie-card__sigil" aria-hidden="true">💧</span>
@@ -261,6 +263,7 @@ $guideVoiceNotes = [
                     data-mapping-whisper="La surface devient orientation, seuil et dérive."
                     data-mapping-summary="Surface navigable de Sowwwl : une peau torique où les flux se déposent, se relient et deviennent orientation."
                     aria-expanded="false"
+                    aria-controls="mapping-active-display"
                 >
                     <span class="mapping-genie-card__mist" aria-hidden="true"></span>
                     <span class="mapping-genie-card__sigil" aria-hidden="true">🌀</span>
@@ -274,7 +277,7 @@ $guideVoiceNotes = [
                 </button>
             </div>
 
-            <aside class="mapping-chorus" aria-live="polite">
+            <aside id="mapping-active-display" class="mapping-chorus" aria-live="polite">
                 <span class="summary-label">écho actif</span>
                 <strong class="mapping-chorus__title" data-mapping-active-label>Réalité</strong>
                 <p class="mapping-chorus__whisper" data-mapping-active-whisper>Le monde brut pulse avant toute lecture.</p>
@@ -398,6 +401,7 @@ $guideVoiceNotes = [
                 <div class="guide-voice-orb" aria-hidden="true">
                     <span class="guide-voice-orb-core"></span>
                     <span class="guide-voice-orb-ring"></span>
+                    <span class="guide-voice-breather" data-guide-voice-breather hidden>0</span>
                 </div>
 
                 <p class="guide-voice-status" data-guide-voice-status role="status" aria-live="polite" aria-atomic="true">Prêt. Active la voix puis parle naturellement.</p>
@@ -467,5 +471,6 @@ $guideVoiceNotes = [
         </ul>
     </section>
 </main>
+
 </body>
 </html>

@@ -353,7 +353,7 @@ function pwa_app_catalog(): array
             'shortcuts' => [
                 ['name' => 'Retour au noyau', 'short_name' => 'Noyau', 'url' => '/'],
                 ['name' => 'Ouvrir Str3m', 'short_name' => 'Str3m', 'url' => '/str3m'],
-                ['name' => 'Poser une terre', 'short_name' => 'Terre', 'url' => '/rejoindre.php'],
+                ['name' => 'Poser une terre', 'short_name' => 'Terre', 'url' => '/rejoindre'],
             ],
         ],
         'xyz' => [
@@ -460,7 +460,8 @@ function render_o_page_head_assets(?string $preferred = null, ?string $host = nu
     $scriptHref = h(o_asset_href('main.js'));
 
     return <<<HTML
-    <script>window.__O_BRIDGE_PREFIX__ = '{$bridgePrefix}'; window.__O_DISABLE_SW__ = {$disableServiceWorker};</script>
+    <meta name="o-bridge-prefix" content="{$bridgePrefix}">
+    <meta name="o-disable-sw" content="{$disableServiceWorker}">
     <link rel="icon" href="{$faviconHref}" type="image/svg+xml">
 {$pwaHead}
     <link rel="stylesheet" href="{$stylesHref}">

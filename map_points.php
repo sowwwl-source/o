@@ -195,7 +195,7 @@ function map_heat_label(float $heat): string
 
 function map_land_url(string $slug): string
 {
-    return '/land.php?u=' . rawurlencode($slug);
+    return '/land?u=' . rawurlencode($slug);
 }
 
 function map_approx_coordinates(string $slug, string $timezone): array

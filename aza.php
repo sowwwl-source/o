@@ -201,17 +201,17 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
             <?php if ($ownerLand): ?>
                 <span class="meta-pill">terre liée : <?= h((string) $ownerLand['slug']) ?></span>
                 <?php if ($isAuthenticatedHere): ?>
-                    <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">édition Terre</a>
+                    <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">édition Terre</a>
                 <?php else: ?>
                     <span class="meta-pill">lecture publique seulement</span>
-                    <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">Terre</a>
+                    <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">Terre</a>
                 <?php endif; ?>
                 <?php if ($authenticatedLand && $ownerLand['slug'] !== $authenticatedLand['slug']): ?>
-                    <a class="meta-pill meta-pill-link" style="color: rgb(var(--land-secondary-rgb)); border-color: rgba(var(--land-secondary-rgb)/0.5);" href="/echo.php?u=<?= rawurlencode((string) $ownerLand['username']) ?>">écho direct</a>
+                    <a class="meta-pill meta-pill-link" style="color: rgb(var(--land-secondary-rgb)); border-color: rgba(var(--land-secondary-rgb)/0.5);" href="/echo?u=<?= rawurlencode((string) $ownerLand['username']) ?>">écho direct</a>
                 <?php endif; ?>
             <?php elseif ($authenticatedLand): ?>
                 <span class="meta-pill">session liée : <?= h((string) $authenticatedLand['slug']) ?></span>
-                <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">édition Terre</a>
+                <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">édition Terre</a>
             <?php else: ?>
                 <span class="meta-pill">lecture publique seulement</span>
             <?php endif; ?>
@@ -250,8 +250,8 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                 </div>
                 <a class="ghost-link" href="<?=
                     $editLand
-                        ? '/land.php?u=' . rawurlencode((string) $editLand['slug'])
-                        : ($form['owner_slug'] !== '' ? '/land.php?u=' . rawurlencode($form['owner_slug']) : '/')
+                        ? '/land?u=' . rawurlencode((string) $editLand['slug'])
+                        : ($form['owner_slug'] !== '' ? '/land?u=' . rawurlencode($form['owner_slug']) : '/')
                 ?>">
                     <?= $editLand ? 'Terre' : ($form['owner_slug'] !== '' ? 'Retour à la terre' : 'Retour au noyau') ?>
                 </a>
@@ -274,12 +274,12 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                     </p>
                     <div class="action-row">
                         <?php if ($ownerLand): ?>
-                            <a class="pill-link" href="/land.php?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">Terre</a>
+                            <a class="pill-link" href="/land?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">Terre</a>
                         <?php else: ?>
                             <a class="pill-link" href="/">Ouvrir une Terre</a>
                         <?php endif; ?>
                         <?php if ($authenticatedLand): ?>
-                            <a class="ghost-link" href="/land.php?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">Retour à mon édition</a>
+                            <a class="ghost-link" href="/land?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">Retour à mon édition</a>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -459,7 +459,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
             <div class="action-row aza-island-actions">
                 <?php if (($form['owner_slug'] !== '' || $ownerSlug !== '') && ($islandProjection['status'] ?? '') !== 'void'): ?>
                     <a class="pill-link" href="<?= h($islandHref) ?>">Ouvrir l’île</a>
-                    <a class="ghost-link" href="/land.php?u=<?= rawurlencode((string) ($form['owner_slug'] !== '' ? $form['owner_slug'] : $ownerSlug)) ?>">Relire la Terre</a>
+                    <a class="ghost-link" href="/land?u=<?= rawurlencode((string) ($form['owner_slug'] !== '' ? $form['owner_slug'] : $ownerSlug)) ?>">Relire la Terre</a>
                 <?php endif; ?>
                 <a class="ghost-link" href="<?= h(aza_memory_query_href($memoryBaseQuery, ['view' => 'visual'])) ?>">Voir le visible</a>
                 <a class="ghost-link" href="<?= h(aza_memory_query_href($memoryBaseQuery, ['view' => 'source'])) ?>">Voir les provenances</a>

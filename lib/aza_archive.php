@@ -106,7 +106,7 @@ function aza_direct_upload_url(?string $ownerSlug = null): ?string
         $query['u'] = $ownerSlug;
     }
 
-    $path = '/aza.php';
+    $path = '/aza';
     if ($query) {
         $path .= '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
     }

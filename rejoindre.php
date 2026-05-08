@@ -164,6 +164,27 @@ $ambientProfile = [
     'lambda_nm' => $selectedSignupLambda,
 ];
 $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($signupPortals[$currentStep - 1] ?? null) : null;
+$journeyVisibleStepTotal = $configStep + 1;
+$journeyVisibleStepCurrent = min($journeyVisibleStepTotal, $currentStep + 1);
+$journeyRemainingPortalCount = max(0, $totalPortalSteps - min($currentStep, $totalPortalSteps));
+$journeyFastForwardHref = signup_stage_link($configStep, $form);
+$journeyStatusTitle = match (true) {
+    $currentStep === 0 => 'Étape 1 sur ' . $journeyVisibleStepTotal . ' · nommer la terre',
+    $currentPortal !== null => 'Étape ' . $journeyVisibleStepCurrent . ' sur ' . $journeyVisibleStepTotal . ' · lecture située',
+    default => 'Étape ' . $journeyVisibleStepCurrent . ' sur ' . $journeyVisibleStepTotal . ' · scellement',
+};
+$journeyStatusCopy = match (true) {
+    $currentStep === 0 => 'Ensuite: ' . $totalPortalSteps . ' passage' . ($totalPortalSteps > 1 ? 's' : '') . ' AzA, puis le réglage final.',
+    $currentPortal !== null && $journeyRemainingPortalCount > 1 => $journeyRemainingPortalCount . ' passages restent disponibles avant la configuration. Tu peux tout lire ou aller plus vite si le cap est déjà clair.',
+    $currentPortal !== null && $journeyRemainingPortalCount === 1 => 'Dernier passage avant la configuration finale. Tu peux continuer ou passer directement au réglage.',
+    $currentPortal !== null => 'Lecture terminée: tout est prêt pour le réglage final.',
+    default => 'Dernier écran avant l’ouverture: signature, fuseau, secret, puis bascule immédiate vers la terre.',
+};
+$journeyStatusAside = match (true) {
+    $currentStep === 0 => 'Prévoir quelques minutes si tu veux tout lire tranquillement.',
+    $currentPortal !== null => 'La lecture reste libre: rien n’est verrouillé si tu veux avancer plus vite.',
+    default => 'Tu peux encore relire les passages avant de sceller.',
+};
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -204,6 +225,11 @@ $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($si
             <?php endforeach; ?>
             <li class="<?= $currentStep === $configStep ? 'is-current' : ($currentStep > $configStep ? 'is-done' : '') ?>">Configuration</li>
         </ol>
+        <div class="signup-journey-status" aria-live="polite">
+            <p><strong><?= h($journeyStatusTitle) ?></strong></p>
+            <p><?= h($journeyStatusCopy) ?></p>
+            <p><?= h($journeyStatusAside) ?></p>
+        </div>
     </header>
 
     <?php if ($message !== ''): ?>
@@ -274,6 +300,7 @@ $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($si
                         <p><span>Fuseau</span><strong data-preview-timezone><?= h($previewTimezone) ?></strong></p>
                     </div>
                     <p class="panel-copy">Une fois ce nom validé, le parcours s'ouvre en lecture pleine page pour qu'AzA soit vraiment lisible.</p>
+                    <p class="panel-copy signup-journey-preview-note"><?= h($journeyStatusCopy) ?></p>
                 </aside>
             </div>
         </section>
@@ -309,10 +336,14 @@ $currentPortal = ($currentStep >= 1 && $currentStep <= $totalPortalSteps) ? ($si
 
                     <div class="signup-journey-nav">
                         <p class="panel-copy">Étape <?= h((string) $currentStep) ?> sur <?= h((string) $configStep) ?>.</p>
+                        <p class="panel-copy signup-journey-nav-copy"><?= h($journeyStatusCopy) ?></p>
                         <div class="action-row">
                             <a class="ghost-link" href="<?= h(signup_stage_link(max(0, $currentStep - 1), $form)) ?>">Précédent</a>
                             <a class="pill-link" href="<?= h(signup_stage_link(min($configStep, $currentStep + 1), $form)) ?>"><?= $currentStep === $totalPortalSteps ? 'Aller à la configuration' : 'Continuer' ?></a>
                         </div>
+                        <?php if ($currentStep < $configStep): ?>
+                            <a class="ghost-link signup-journey-skip" href="<?= h($journeyFastForwardHref) ?>">Passer directement au réglage final</a>
+                        <?php endif; ?>
                     </div>
                 </aside>
             </div>

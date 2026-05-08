@@ -209,8 +209,6 @@ if (isset($pdo) && $pdo instanceof PDO) {
     }
 }
 
-$unreadEchoes = 0;
-
 $signalReady = false;
 $unreadSignal = 0;
 $signalIdentityLabel = '';
@@ -219,7 +217,6 @@ if ($authenticatedLand) {
         $signalReady = signal_mail_tables_ready();
         if ($signalReady) {
             $unreadSignal = signal_unread_total($authenticatedLand);
-            $unreadEchoes = $unreadSignal;
             $signalMailbox = signal_mailbox_for_land($authenticatedLand);
             $signalIdentityLabel = signal_identity_status_label((string) ($signalMailbox['identity_status'] ?? SIGNAL_IDENTITY_UNVERIFIED));
         }
@@ -246,6 +243,10 @@ $homeHeroTone = $authenticatedLand ? $activeLandTone : 'porte d’usage / trois 
 $homeHeroNote = $authenticatedLand
     ? 'Trois gestes reviennent vite : ouvrir, écrire, dériver.'
     : 'sowwwl.com sert à entrer et utiliser O. sowwwl.org sert à comprendre la carte avant d’aller plus loin.';
+$homeSignupPortalCount = count($signupPortals);
+$homeSignupRhythm = $homeSignupPortalCount > 0
+    ? 'nom + ' . $homeSignupPortalCount . ' passages + réglage'
+    : 'nom + réglage';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -540,11 +541,6 @@ $homeHeroNote = $authenticatedLand
                     <?= $unreadSignal ?> SIGNAL<?= $unreadSignal > 1 ? 'S' : '' ?> EN ATTENTE
                 </a>
             <?php endif; ?>
-            <?php if ($unreadEchoes > 0): ?>
-                <a href="/echo" class="badge badge-glass" style="border-color: rgba(var(--land-secondary-rgb) / 0.8); color: rgba(var(--land-secondary-rgb) / 0.9); text-decoration: none;">
-                    <?= $unreadEchoes ?> ÉCHO<?= $unreadEchoes > 1 ? 'S' : '' ?> EN ATTENTE
-                </a>
-            <?php endif; ?>
             <span class="badge badge-glass current-mood" data-spectral-mood-label><?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></span>
             <span class="badge badge-glass"><?= h($activeLandLabel) ?></span>
             <span class="badge badge-glass">λ <span data-spectral-lambda><?= h((string) $activeLambda) ?></span> nm</span>
@@ -564,8 +560,8 @@ $homeHeroNote = $authenticatedLand
             <p class="world-intro-note"><?= h($homeHeroNote) ?></p>
             <div class="secondary-links" aria-label="Passages secondaires du noyau">
                 <a class="ghost-link" href="<?= h($guideHref) ?>">Owl</a>
-                <a class="ghost-link" href="/map">Map</a>
-                <a class="ghost-link" href="/aza.php">aZa</a>
+                <a class="ghost-link" href="/map">Map · tore</a>
+                <a class="ghost-link" href="/aza">aZa · archives</a>
                 <a class="ghost-link" href="https://sowwwl.org">Pourquoi .org ?</a>
             </div>
         </article>
@@ -610,13 +606,13 @@ $homeHeroNote = $authenticatedLand
             <p class="summary-label"><?= $authenticatedLand ? 'Passages secondaires' : 'Si tu reviens' ?></p>
             <div class="entry-secondary-links">
                 <?php if ($authenticatedLand): ?>
-                    <a class="ghost-link" href="/echo">Écho<?= $unreadEchoes > 0 ? ' · ' . $unreadEchoes : '' ?></a>
-                    <a class="ghost-link" href="/signal">Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal : '' ?></a>
+                    <a class="ghost-link" href="/echo">Écho · direct</a>
+                    <a class="ghost-link" href="/signal">Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal : ' · boîte' ?></a>
                     <a class="ghost-link" href="<?= h($guideHref) ?>">Owl</a>
                 <?php else: ?>
                     <a class="ghost-link" href="#connexion">Retrouver ma terre</a>
-                    <a class="ghost-link" href="/aza.php">Lire aZa</a>
-                    <a class="ghost-link" href="/signal">Voir Signal</a>
+                    <a class="ghost-link" href="/aza">Lire aZa · archives</a>
+                    <a class="ghost-link" href="/signal">Voir Signal · boîte</a>
                     <a class="ghost-link" href="https://sowwwl.org">Comprendre la carte</a>
                 <?php endif; ?>
             </div>
@@ -683,53 +679,59 @@ $homeHeroNote = $authenticatedLand
             <?php endif; ?>
         </section>
 
-        <section class="minimal-auth home-secondary-panel home-start-panel" aria-labelledby="home-start-title">
+        <section class="minimal-auth home-secondary-panel home-paths-panel" aria-labelledby="home-paths-title">
             <div class="section-topline">
                 <div>
-                    <span class="summary-label">Départ net</span>
-                    <h2 id="home-start-title"><?= $authenticatedLand ? 'Reprendre sans détour' : 'Commencer sans se perdre' ?></h2>
-                    <p class="panel-copy"><?= h($authenticatedLand ? 'La terre est déjà liée. Reviens au noyau, écris, ou laisse Owl te recadrer.' : 'Ici, on choisit seulement la première action. Le parcours complet vit ensuite sur sa propre page, pour garder l’entrée nette.') ?></p>
+                    <span class="summary-label"><?= $authenticatedLand ? 'Cap rapide' : 'Avant d’entrer' ?></span>
+                    <h2 id="home-paths-title"><?= $authenticatedLand ? 'Trois gestes suffisent' : 'Choisir sans refaire la home' ?></h2>
+                    <p class="panel-copy"><?= h($authenticatedLand ? 'Tu n’as plus besoin de relire l’entrée entière. Garde seulement les gestes utiles: ouvrir, écrire, demander un cap.' : 'La home montre l’orientation. Le détail du parcours vit ensuite sur sa propre page, pour éviter de tout recommencer ici.') ?></p>
                 </div>
             </div>
 
-            <div class="public-entry-grid">
+            <div class="home-quicklist" aria-label="<?= h($authenticatedLand ? 'Gestes utiles' : 'Repères avant entrée') ?>">
                 <?php if ($authenticatedLand): ?>
-                    <a class="public-entry-card" href="/land?u=<?= rawurlencode($activeLandSlug) ?>">
-                        <strong>Retour à ma terre</strong>
-                        <span>Revenir tout de suite à ton espace situé.</span>
-                    </a>
-                    <a class="public-entry-card" href="/signal">
-                        <strong>Écrire maintenant</strong>
-                        <span>Aller droit à Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : '' ?>.</span>
-                    </a>
-                    <a class="public-entry-card" href="<?= h($guideHref) ?>">
-                        <strong>Passer par Owl</strong>
-                        <span>Recevoir un cap rapide avant de changer de ferry.</span>
-                    </a>
+                    <article class="home-quickitem">
+                        <strong>Ouvrir</strong>
+                        <p>Ta terre reste le centre. Reviens-y dès que tu veux relire, déposer ou repartir d’un noyau situé.</p>
+                        <a class="ghost-link" href="/land?u=<?= rawurlencode($activeLandSlug) ?>">Aller à ma terre</a>
+                    </article>
+                    <article class="home-quickitem">
+                        <strong>Écrire</strong>
+                        <p>Signal garde la boîte et l’adresse. Écho sert au direct. Si quelque chose attend, passe d’abord par là.</p>
+                        <a class="ghost-link" href="/signal">Ouvrir Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : '' ?></a>
+                    </article>
+                    <article class="home-quickitem">
+                        <strong>Se recadrer</strong>
+                        <p>Owl sert surtout quand tu hésites entre ferries ou quand tu veux repartir sans bruit.</p>
+                        <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par Owl</a>
+                    </article>
                 <?php else: ?>
-                    <a class="public-entry-card" href="/rejoindre">
-                        <strong>Poser une terre</strong>
-                        <span>Nom, lecture, configuration, scellement : tout le parcours existe, mais il ne surcharge plus l’accueil.</span>
-                    </a>
-                    <a class="public-entry-card" href="<?= h($guideHref) ?>">
-                        <strong>Demander à Owl</strong>
-                        <span>0wlslw0 t’oriente en quelques phrases si tu ne sais pas encore quelle porte prendre.</span>
-                    </a>
-                    <a class="public-entry-card" href="#connexion">
-                        <strong>Retrouver ma terre</strong>
-                        <span>Le compteur de connexion reste en bas à gauche pour les retours rapides.</span>
-                    </a>
+                    <article class="home-quickitem">
+                        <strong>Public d’abord</strong>
+                        <p>Str3m s’ouvre sans compte. C’est le bon choix si tu veux sentir le courant avant toute création.</p>
+                        <a class="ghost-link" href="/str3m">Entrer publiquement</a>
+                    </article>
+                    <article class="home-quickitem">
+                        <strong>Terre ensuite</strong>
+                        <p>Le parcours `rejoindre` suit maintenant un rythme clair: <?= h($homeSignupRhythm) ?>.</p>
+                        <a class="ghost-link" href="/rejoindre">Poser une terre</a>
+                    </article>
+                    <article class="home-quickitem">
+                        <strong>Retour rapide</strong>
+                        <p>Si ta terre existe déjà, le dock Connexion en bas à gauche suffit. Pas besoin de refaire tout le seuil.</p>
+                        <a class="ghost-link" href="#connexion">Retrouver ma terre</a>
+                    </article>
                 <?php endif; ?>
             </div>
 
             <div class="signup-preview" data-origin-base="<?= h($originBase) ?>" data-preview-shell>
-                <span class="summary-label">Aperçu du seuil</span>
+                <span class="summary-label"><?= $authenticatedLand ? 'Coordonnées publiques' : 'Aperçu du seuil' ?></span>
                 <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
                 <div class="preview-grid">
                     <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land?u=' . $previewSlug) ?></code></p>
                     <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
                 </div>
-                <p class="panel-copy"><?= h($authenticatedLand ? 'La signature publique reste visible ici, même quand la terre est déjà ouverte ailleurs.' : 'Le seuil reste visible depuis l’accueil, mais sa lecture complète et sa création vivent désormais hors de la home pour garder la porte simple.') ?></p>
+                <p class="panel-copy"><?= h($authenticatedLand ? 'La signature publique reste visible ici, même quand la terre est déjà ouverte ailleurs.' : 'Le seuil reste visible depuis l’accueil, mais son activation complète se fait ailleurs pour garder l’entrée légère.') ?></p>
             </div>
         </section>
     </section>
@@ -740,32 +742,26 @@ $homeHeroNote = $authenticatedLand
         <div class="section-topline">
             <div>
                 <h2 id="guide-home-title">Porte 00 · Owl</h2>
-                <p class="panel-copy">0wlslw0, prononcé Owl, sert de guide d’entrée : comprendre vite, choisir une porte, puis se retirer. Si tu sais déjà où aller, inutile d’y camper.</p>
+                <p class="panel-copy">Si tu bloques, donne une phrase simple. Owl répond brièvement, propose une porte, puis te laisse continuer.</p>
             </div>
             <a class="pill-link" href="<?= h($guideHref) ?>">Ouvrir Owl</a>
         </div>
 
-        <div class="guide-grid">
-            <article class="guide-panel">
-                <span class="summary-label">Rôle</span>
-                <strong>Éclaircir la première phrase.</strong>
-                <p class="panel-copy">Owl aide à choisir entre courant public, terre personnelle et lecture du projet, sans transformer l’entrée de sowwwl.com en manifeste ni en mode d’emploi complet.</p>
-                <div class="action-row">
-                    <a class="ghost-link" href="<?= h($guideHref) ?>">Voir Owl</a>
-                    <a class="ghost-link" href="/str3m">Entrer publiquement</a>
-                    <a class="ghost-link" href="/rejoindre">Poser une terre</a>
-                </div>
-            </article>
-
-            <article class="guide-panel">
+        <div class="guide-home-inline">
+            <div>
                 <span class="summary-label">Phrases de départ</span>
                 <ul class="guide-prompt-list">
                     <?php foreach (array_slice($promptSeeds, 0, 3) as $prompt): ?>
                         <li><code><?= h($prompt) ?></code></li>
                     <?php endforeach; ?>
                 </ul>
-                <p class="panel-copy guide-embed-note">Le centre du torus et le geste en O ouvrent aussi cette porte. L’idée est simple : demander, choisir, continuer.</p>
-            </article>
+            </div>
+            <p class="panel-copy guide-embed-note">Le centre du torus et le geste en O ouvrent aussi cette porte. L’idée reste simple: demander, choisir, continuer.</p>
+            <div class="action-row">
+                <a class="ghost-link" href="<?= h($guideHref) ?>">Voir Owl</a>
+                <a class="ghost-link" href="/str3m">Entrer publiquement</a>
+                <a class="ghost-link" href="/rejoindre">Poser une terre</a>
+            </div>
         </div>
     </section>
     <?php endif; ?>

@@ -417,7 +417,7 @@ function guide_voice_contextual_followup_reply(string $lastIntent, string $langu
                 'it' => 'Dopo la visita pubblica, il passo successivo è di solito creare una terra se vuoi restare e scrivere.',
                 default => 'Après la visite publique, l’étape suivante est souvent de poser une terre si tu veux rester et écrire.',
             },
-            '/rejoindre.php',
+            '/rejoindre',
             guide_voice_route_label('create', $language),
             ''
         ),
@@ -441,7 +441,7 @@ function guide_voice_contextual_followup_reply(string $lastIntent, string $langu
                 'it' => 'Il prossimo gesto è scegliere un nome di terra, leggere le pagine di AzA e poi sigillarla.',
                 default => 'Le prochain geste est de choisir un nom de terre, lire les pages d’AzA, puis la sceller.',
             },
-            '/rejoindre.php',
+            '/rejoindre',
             guide_voice_route_label('create', $language),
             ''
         ),
@@ -618,7 +618,7 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
         'authenticated_land_slug' => trim((string) ($authenticatedLand['slug'] ?? '')),
         'route_map' => [
             'home' => '/',
-            'create_land' => '/rejoindre.php',
+            'create_land' => '/rejoindre',
             'signal' => '/signal',
             'str3m' => '/str3m',
             'aza' => '/aza',
@@ -913,7 +913,7 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
     if ($intent === 'create') {
         $reply = guide_voice_build_route_reply(
             guide_voice_message('create_reply', $language),
-            '/rejoindre.php',
+            '/rejoindre',
             guide_voice_route_label('create', $language),
             $text
         );
@@ -926,7 +926,7 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
         if ($slug !== '') {
             $reply = guide_voice_build_route_reply(
                 guide_voice_message('reopen_reply_auth', $language),
-                '/land.php?u=' . rawurlencode($slug),
+                '/land?u=' . rawurlencode($slug),
                 guide_voice_route_label('reopen', $language),
                 $text
             );
@@ -1117,7 +1117,7 @@ function guide_voice_infer_route_from_text(string $reply, string $utterance = ''
         'str3m', 'public', 'confused', 'compare' => ['href' => '/str3m', 'label' => guide_voice_route_label('str3m', $language), 'auto_navigate' => false],
         'aza' => ['href' => '/aza', 'label' => guide_voice_route_label('aza', $language), 'auto_navigate' => false],
         'echo' => ['href' => '/echo', 'label' => guide_voice_route_label('echo', $language), 'auto_navigate' => false],
-        'create' => ['href' => '/rejoindre.php', 'label' => guide_voice_route_label('create', $language), 'auto_navigate' => false],
+        'create' => ['href' => '/rejoindre', 'label' => guide_voice_route_label('create', $language), 'auto_navigate' => false],
         default => null,
     };
 }

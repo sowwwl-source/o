@@ -81,7 +81,7 @@ $statusLabel = $t0k ? t0k_status_label((string) ($t0k['status'] ?? '')) : '';
             </h1>
             <div class="land-meta">
                 <?php if ($ownerLand): ?>
-                    <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">
+                    <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">
                         Terre de <?= h((string) $ownerLand['username']) ?>
                     </a>
                     <a class="meta-pill meta-pill-link" href="/sh0re?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">

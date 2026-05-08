@@ -16,6 +16,24 @@ const bootline = document.getElementById("bootline");
 const copyButtons = Array.from(document.querySelectorAll("[data-copy-link]"));
 const torusCanvases = Array.from(document.querySelectorAll("[data-torus-cloud]"));
 
+function readRuntimeMeta(name, fallback = "") {
+	const meta = document.querySelector(`meta[name="${name}"]`);
+	if (!(meta instanceof HTMLMetaElement)) {
+		return fallback;
+	}
+
+	const value = meta.content || "";
+	return value !== "" ? value : fallback;
+}
+
+if (typeof window.__O_BRIDGE_PREFIX__ !== "string") {
+	window.__O_BRIDGE_PREFIX__ = readRuntimeMeta("o-bridge-prefix", "");
+}
+
+if (typeof window.__O_DISABLE_SW__ !== "boolean") {
+	window.__O_DISABLE_SW__ = readRuntimeMeta("o-disable-sw", "false") === "true";
+}
+
 // === SIGNUP SPECTRUM LOGIC ===
 const signupProgramInputs = Array.from(document.querySelectorAll('[data-signup-program-input]'));
 const signupProgramCards = Array.from(document.querySelectorAll('[data-signup-program-card]'));
@@ -878,6 +896,7 @@ function initStr3mShellFutureBridge() {
 
 		card.addEventListener("pointerleave", () => {
 			card.classList.remove("is-shell-armed");
+				announce("o:str3m-shell-rest", card);
 		});
 
 		card.addEventListener("focusin", () => {
@@ -887,6 +906,7 @@ function initStr3mShellFutureBridge() {
 
 		card.addEventListener("focusout", () => {
 			card.classList.remove("is-shell-armed");
+				announce("o:str3m-shell-rest", card);
 		});
 
 		card.addEventListener("pointerdown", () => {
@@ -913,6 +933,135 @@ function initStr3mShellFutureBridge() {
 			card.classList.remove("is-shell-pressed");
 		});
 	});
+}
+
+function initStr3mGhostShellDock() {
+	const dock = document.querySelector("[data-str3m-shell-ghost]");
+	if (!(dock instanceof HTMLElement)) {
+		return;
+	}
+
+	const labelNode = dock.querySelector("[data-str3m-shell-ghost-label]");
+	const stateNode = dock.querySelector("[data-str3m-shell-ghost-state]");
+	const metaNode = dock.querySelector("[data-str3m-shell-ghost-meta]");
+	const modeNode = dock.querySelector("[data-str3m-shell-ghost-mode]");
+	   const birdNode = dock.querySelector("[data-str3m-shell-ghost-bird]");
+	   // Select each glyph for compass logic
+	   const glyphs = {
+		   direction: birdNode?.querySelector('[data-boussole="direction"]'),
+		   energyLeft: birdNode?.querySelector('[data-boussole="energy-left"]'),
+		   mood: birdNode?.querySelector('[data-boussole="mood"]'),
+		   energyRight: birdNode?.querySelector('[data-boussole="energy-right"]'),
+		   return: birdNode?.querySelector('[data-boussole="return"]'),
+	   };
+	const routeNode = dock.querySelector("[data-str3m-shell-ghost-route]");
+	const manifestNode = dock.querySelector("[data-str3m-shell-ghost-manifest]");
+
+	let previewTimer = 0;
+	let restTimer = 0;
+	let currentDetail = null;
+
+	const clearTimers = () => {
+		if (previewTimer) {
+			window.clearTimeout(previewTimer);
+			previewTimer = 0;
+		}
+		if (restTimer) {
+			window.clearTimeout(restTimer);
+			restTimer = 0;
+		}
+	};
+
+	const setBirdMood = (mood = "rest") => {
+		   dock.dataset.shellGhostMood = mood;
+		   if (birdNode instanceof HTMLElement) {
+			   birdNode.dataset.shellGhostMood = mood;
+		   }
+		   // Update each glyph's compass state
+		   // Mapping: present/near/roaming/asleep/intent/preview/rest
+		   // Example logic, can be refined for richer behavior
+		   if (glyphs.direction) glyphs.direction.dataset.state = (mood === "intent" ? "active" : "idle");
+		   if (glyphs.energyLeft) glyphs.energyLeft.dataset.state = (mood === "present" || mood === "preview" ? "high" : "low");
+		   if (glyphs.mood) glyphs.mood.dataset.state = mood;
+		   if (glyphs.energyRight) glyphs.energyRight.dataset.state = (mood === "present" || mood === "preview" ? "high" : "low");
+		   if (glyphs.return) glyphs.return.dataset.state = (mood === "rest" || mood === "sleep" ? "active" : "idle");
+	   }
+	};
+
+	const applyDetail = (detail, mode = "en veille") => {
+		currentDetail = detail;
+		dock.hidden = false;
+		dock.classList.add("is-visible");
+		dock.dataset.shellGhostState = detail?.state || "unknown";
+		setBirdMood(mode === "armé" ? "intent" : "preview");
+		if (modeNode instanceof HTMLElement) {
+			modeNode.textContent = mode;
+		}
+		if (labelNode instanceof HTMLElement) {
+			labelNode.textContent = detail?.landLabel || detail?.landSlug || "aucune terre armée";
+		}
+		if (stateNode instanceof HTMLElement) {
+			stateNode.textContent = detail
+				? `État ${detail.state || "unknown"} · source ${detail.source || "str3m"} · le shell pourra s’ouvrir ici après repos.`
+				: "Survole ou touche une terre visible pour préparer un futur shell porté.";
+		}
+		if (metaNode instanceof HTMLElement) {
+			metaNode.textContent = detail
+				? `${detail.landSlug || "terre"} · ${detail.route || "/land"} · ${detail.manifestRoute || "/n0de"}`
+				: "manifest n0de · route · état public";
+		}
+		if (routeNode instanceof HTMLAnchorElement) {
+			routeNode.href = detail?.route || "/str3m";
+			routeNode.textContent = detail?.route ? "Ouvrir la route" : "Rester dans le courant";
+		}
+		if (manifestNode instanceof HTMLAnchorElement) {
+			manifestNode.href = detail?.manifestRoute || "/n0de";
+		}
+	};
+
+	const setResting = () => {
+		clearTimers();
+		if (!(modeNode instanceof HTMLElement)) {
+			return;
+		}
+		modeNode.textContent = "après repos";
+		setBirdMood("rest");
+		restTimer = window.setTimeout(() => {
+			dock.classList.remove("is-visible", "is-intent");
+			dock.dataset.shellGhostState = "rest";
+			setBirdMood("sleep");
+			if (currentDetail && labelNode instanceof HTMLElement) {
+				labelNode.textContent = currentDetail.landLabel || currentDetail.landSlug || "aucune terre armée";
+			}
+			if (stateNode instanceof HTMLElement) {
+				stateNode.textContent = "Le shell fantôme reste là, mais se rend doucement tant qu’aucune nouvelle terre n’est appelée.";
+			}
+		}, 2200);
+	};
+
+	window.addEventListener("o:str3m-shell-preview", (event) => {
+		clearTimers();
+		const detail = event.detail || {};
+		setBirdMood("preview");
+		previewTimer = window.setTimeout(() => {
+			dock.classList.remove("is-intent");
+			applyDetail(detail, "après repos");
+		}, 420);
+	});
+
+	window.addEventListener("o:str3m-shell-intent", (event) => {
+		clearTimers();
+		dock.classList.add("is-intent", "is-visible");
+		setBirdMood("intent");
+		applyDetail(event.detail || {}, "armé");
+	});
+
+	window.addEventListener("o:str3m-shell-rest", () => {
+		setResting();
+	});
+
+	setBirdMood("sleep");
+	document.body.classList.add("has-str3m-shell-ghost");
 }
 
 function bindStr3mIntegratedPlayer(root) {
@@ -4277,6 +4426,46 @@ function mountGuideVoice(root) {
 	let activeSuggestions = persistedSuggestions.length ? persistedSuggestions : starterPrompts;
 	let history = persistedHistory;
 	let lastSource = normalizeGuideVoiceSource(persisted.lastSource, { upstreamConfigured });
+	
+	// --- Visuel & Audio (Breather) ---
+	const breatherEl = root.querySelector("[data-guide-voice-breather]");
+	const orbEl = root.querySelector(".guide-voice-orb");
+	const audioStart = root.dataset.guideVoiceSoundStart ? new Audio(root.dataset.guideVoiceSoundStart) : null;
+	const audioStop = root.dataset.guideVoiceSoundStop ? new Audio(root.dataset.guideVoiceSoundStop) : null;
+	const audioLoop = root.dataset.guideVoiceSoundLoop ? new Audio(root.dataset.guideVoiceSoundLoop) : null;
+	if (audioStart) audioStart.volume = 0.3;
+	if (audioStop) audioStop.volume = 0.3;
+	if (audioLoop) { audioLoop.volume = 0.15; audioLoop.loop = true; }
+	let breatherInterval = 0;
+	const breatherFrames = ['0', '.', 'O', '.'];
+
+	const startBreather = () => {
+		if (!breatherEl) return;
+		if (audioStart) { audioStart.currentTime = 0; audioStart.play().catch(()=>{}); }
+		if (audioLoop) audioLoop.play().catch(()=>{});
+		let frameIdx = 0;
+		breatherEl.hidden = false;
+		breatherEl.classList.add('is-breathing');
+		if (orbEl) orbEl.classList.add('has-breather');
+		window.clearInterval(breatherInterval);
+		breatherInterval = window.setInterval(() => {
+			frameIdx = (frameIdx + 1) % breatherFrames.length;
+			breatherEl.textContent = breatherFrames[frameIdx];
+		}, 600);
+	};
+
+	const stopBreather = () => {
+		if (!breatherEl) return;
+		if (audioStop && breatherEl.classList.contains('is-breathing')) {
+			audioStop.currentTime = 0;
+			audioStop.play().catch(()=>{});
+		}
+		if (audioLoop) audioLoop.pause();
+		breatherEl.hidden = true;
+		breatherEl.classList.remove('is-breathing');
+		if (orbEl) orbEl.classList.remove('has-breather');
+		window.clearInterval(breatherInterval);
+	};
 
 	function syncDockState() {
 		if (!isDock) {
@@ -4611,12 +4800,17 @@ function mountGuideVoice(root) {
 		utterance.rate = spectral.rate;
 		utterance.pitch = spectral.pitch;
 		utterance.volume = spectral.volume;
+		utterance.onstart = () => {
+			startBreather();
+		};
 		utterance.onend = () => {
 			isSpeaking = false;
+			stopBreather();
 			onDone?.();
 		};
 		utterance.onerror = () => {
 			isSpeaking = false;
+			stopBreather();
 			onDone?.();
 		};
 
@@ -4630,6 +4824,7 @@ function mountGuideVoice(root) {
 		stopListening();
 		if (synth) {
 			synth.cancel();
+			stopBreather();
 		}
 		if (startButton instanceof HTMLElement) {
 			startButton.hidden = false;
@@ -6543,6 +6738,7 @@ initSpectralTuner();
 initStr3mArchipelago();
 initStr3mParallax();
 initStr3mShellFutureBridge();
+initStr3mGhostShellDock();
 initStr3mIntegratedPlayer();
 initIslandReaderStation();
 initIslandReaderFullscreen();

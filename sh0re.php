@@ -159,7 +159,7 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
         </h1>
         <div class="land-meta">
             <?php if ($viewLand): ?>
-                <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $viewLand['slug']) ?>">Terre</a>
+                <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $viewLand['slug']) ?>">Terre</a>
             <?php endif; ?>
             <?php if ($isAuthenticated): ?>
                 <?php if (!$isOwnShore && $viewLand): ?>

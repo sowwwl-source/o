@@ -571,7 +571,7 @@ unset($land);
                         data-shell-source="str3m-visible"
                         data-land-slug="<?= h((string) ($landProfile['slug'] ?? '')) ?>"
                         data-land-label="<?= h((string) ($landProfile['username'] ?? $landProfile['slug'] ?? 'terre')) ?>"
-                        data-shell-route="/land.php?u=<?= rawurlencode((string) ($landProfile['slug'] ?? '')) ?>"
+                        data-shell-route="/land?u=<?= rawurlencode((string) ($landProfile['slug'] ?? '')) ?>"
                         data-shell-manifest-route="<?= h($futureShellRoute) ?>"
                         data-shell-state="<?= h((string) ($state['key'] ?? 'unknown')) ?>"
                     >
@@ -584,7 +584,7 @@ unset($land);
                         <span class="presence-hint"><?= h((string) ($state['hint'] ?? 'indice public')) ?></span>
                         <span class="presence-ledger"><?= h((string) ($landProfile['signal_count'] ?? 0)) ?> signal<?= ((int) ($landProfile['signal_count'] ?? 0)) > 1 ? 'aux' : '' ?> · <?= h((string) ($landProfile['t0k_active_count'] ?? 0)) ?> t0k actif<?= ((int) ($landProfile['t0k_active_count'] ?? 0)) > 1 ? 's' : '' ?> · <?= h((string) ($landProfile['t0k_pending_count'] ?? 0)) ?> en chemin · <?= h((string) ($landProfile['b0t3_count'] ?? 0)) ?> b0t3<?= ((int) ($landProfile['b0t3_count'] ?? 0)) > 1 ? 's' : '' ?><?= !empty($landProfile['latest_at']) ? ' · ' . h(human_created_label((string) $landProfile['latest_at']) ?? 'récemment') : '' ?></span>
                         <span>
-                            <a class="pill-link" href="/land.php?u=<?= rawurlencode((string) ($landProfile['slug'] ?? '')) ?>">Explorer l'île</a>
+                            <a class="pill-link" href="/land?u=<?= rawurlencode((string) ($landProfile['slug'] ?? '')) ?>">Explorer l'île</a>
                         </span>
                     </article>
                 <?php endforeach; ?>
@@ -672,7 +672,7 @@ unset($land);
                                     data-shell-source="archipelago"
                                     data-land-slug="<?= h((string) ($island['slug'] ?? '')) ?>"
                                     data-land-label="<?= h((string) ($island['username'] ?? $island['slug'] ?? 'terre')) ?>"
-                                    data-shell-route="/land.php?u=<?= rawurlencode((string) ($island['slug'] ?? '')) ?>"
+                                    data-shell-route="/land?u=<?= rawurlencode((string) ($island['slug'] ?? '')) ?>"
                                     data-shell-manifest-route="<?= h($futureShellRoute) ?>"
                                     data-shell-state="<?= h((string) ($state['key'] ?? 'unknown')) ?>"
                                 >
@@ -696,7 +696,7 @@ unset($land);
                                     <?php if ($island['last_active']): ?>
                                         <p class="island-meta">Dernière trace : <?= h(human_created_label($island['last_active']) ?? 'récemment') ?></p>
                                     <?php endif; ?>
-                                    <a class="pill-link" href="/land.php?u=<?= rawurlencode($island['slug']) ?>">Explorer l'île</a>
+                                    <a class="pill-link" href="/land?u=<?= rawurlencode($island['slug']) ?>">Explorer l'île</a>
                                 </article>
                             </div>
                         </div>
@@ -773,7 +773,7 @@ unset($land);
         <div class="b0t3-stream-field">
             <?php foreach ($recentB0t3s as $b0t3): ?>
                 <a class="b0t3-stream-line"
-                   href="/sh0re.php?u=<?= rawurlencode((string) $b0t3['target_land']) ?>"
+                   href="/sh0re?u=<?= rawurlencode((string) $b0t3['target_land']) ?>"
                    data-b0t3="<?= h((string) $b0t3['text']) ?>"
                    data-b0t3-instability="<?= h((string) $b0t3['instability']) ?>"
                    title="<?= h((string) $b0t3['target_land']) ?> · <?= h((string) $b0t3['kind']) ?>"
@@ -782,6 +782,32 @@ unset($land);
         </div>
     </section>
     <?php endif; ?>
+
+    <aside class="str3m-shell-ghost-dock" data-str3m-shell-ghost hidden aria-live="polite" aria-label="Shell fantôme en devenir">
+        <div class="str3m-shell-ghost-dock__head">
+            <div>
+                <p class="eyebrow">shell fantôme</p>
+                <p class="str3m-shell-ghost-dock__kicker">piloter l’oiseau du shell</p>
+            </div>
+            <span class="str3m-shell-ghost-dock__mode" data-str3m-shell-ghost-mode>au repos</span>
+        </div>
+        <div class="str3m-shell-ghost-bird" data-str3m-shell-ghost-bird aria-hidden="true">
+            <span class="str3m-shell-ghost-bird__glyph str3m-shell-ghost-bird__glyph--wing" data-boussole="direction">&gt;</span>
+            <span class="str3m-shell-ghost-bird__glyph str3m-shell-ghost-bird__glyph--eye" data-boussole="energy-left">°</span>
+            <span class="str3m-shell-ghost-bird__glyph str3m-shell-ghost-bird__glyph--beak" data-boussole="mood">v</span>
+            <span class="str3m-shell-ghost-bird__glyph str3m-shell-ghost-bird__glyph--eye" data-boussole="energy-right">°</span>
+            <span class="str3m-shell-ghost-bird__glyph str3m-shell-ghost-bird__glyph--wing" data-boussole="return">&lt;</span>
+        </div>
+        <div class="str3m-shell-ghost-dock__body">
+            <strong data-str3m-shell-ghost-label>aucune terre armée</strong>
+            <p class="str3m-shell-ghost-dock__state" data-str3m-shell-ghost-state>Survole ou touche une terre visible pour préparer un futur shell porté.</p>
+            <p class="str3m-shell-ghost-dock__meta" data-str3m-shell-ghost-meta>manifest n0de · route · état public</p>
+            <div class="str3m-shell-ghost-dock__actions">
+                <a class="pill-link" href="/n0de" data-str3m-shell-ghost-manifest>Voir n0de</a>
+                <a class="ghost-link" href="/str3m" data-str3m-shell-ghost-route>Rester dans le courant</a>
+            </div>
+        </div>
+    </aside>
 
 </main>
 </body>

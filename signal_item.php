@@ -63,11 +63,11 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
                 <?php if ($isOwner): ?>
                     <span class="meta-pill"><?= h((string) $signal['visibility']) ?></span>
                     <span class="meta-pill"><?= h((string) $signal['status']) ?></span>
-                    <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $signal['land_slug']) ?>">gérer ma terre</a>
+                    <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $signal['land_slug']) ?>">gérer ma terre</a>
                 <?php else: ?>
-                    <a class="meta-pill meta-pill-link" href="/land.php?u=<?= rawurlencode((string) $signal['land_slug']) ?>">explorer l'île</a>
+                    <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $signal['land_slug']) ?>">explorer l'île</a>
                     <?php if ($currentLand): ?>
-                        <a class="meta-pill meta-pill-link" style="color: rgb(var(--land-secondary-rgb)); border-color: rgba(var(--land-secondary-rgb)/0.5);" href="/echo.php?u=<?= rawurlencode((string) $signal['land_username']) ?>">écho direct</a>
+                        <a class="meta-pill meta-pill-link" style="color: rgb(var(--land-secondary-rgb)); border-color: rgba(var(--land-secondary-rgb)/0.5);" href="/echo?u=<?= rawurlencode((string) $signal['land_username']) ?>">écho direct</a>
                     <?php endif; ?>
                 <?php endif; ?>
             </div>
