@@ -92,6 +92,29 @@ function str3m_fibonacci_value(int $index): int
     return $values[$index % count($values)] ?? 1;
 }
 
+function str3m_compact_copy(string $text, int $limit = 160): string
+{
+    $normalized = preg_replace('/\s+/', ' ', trim($text));
+    $normalized = is_string($normalized) ? $normalized : '';
+    if ($normalized === '') {
+        return '';
+    }
+
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        if (mb_strlen($normalized) <= $limit) {
+            return $normalized;
+        }
+
+        return rtrim(mb_substr($normalized, 0, max(1, $limit - 1))) . '…';
+    }
+
+    if (strlen($normalized) <= $limit) {
+        return $normalized;
+    }
+
+    return rtrim(substr($normalized, 0, max(1, $limit - 1))) . '…';
+}
+
 $host = request_host();
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
@@ -298,6 +321,50 @@ foreach ($archipelagoLands as &$land) {
     }
 }
 unset($land);
+
+$visibleLandPreviewCount = count($visibleLandPreview);
+$archipelagoLandCount = count($archipelagoLands);
+$str3mModeLabel = $authenticatedLand ? 'présence liée' : 'lecture publique';
+$str3mTodayTitle = $dailyTextItem
+    ? (string) $dailyTextItem['title']
+    : ($dailyAudioHasSource ? $dailyAudioTitle : 'Courant en veille');
+$str3mTodayCopy = $dailyTextBody !== ''
+    ? str3m_compact_copy($dailyTextBody, 180)
+    : ($dailyTextExcerpt !== ''
+        ? str3m_compact_copy($dailyTextExcerpt, 180)
+        : str3m_compact_copy($dailyAudioCaption, 180));
+if ($str3mTodayCopy === '') {
+    $str3mTodayCopy = 'Le courant du jour reste disponible, même quand aucune matière publique n’a encore été choisie.';
+}
+
+$str3mVisibleTitle = 'Le courant attend une première preuve';
+$str3mVisibleCopy = 'Aucune terre n’a encore laissé assez de trace publique pour tenir la surface.';
+$str3mVisibleHref = $authenticatedLand ? '/signal' : '/rejoindre';
+$str3mVisibleLinkLabel = $authenticatedLand ? 'Ouvrir Signal' : 'Poser une terre';
+
+if ($publicSignalCount > 0) {
+    $str3mVisibleTitle = 'Des traces tiennent la surface';
+    $str3mVisibleCopy = $publicSignalCount . ' signal' . ($publicSignalCount > 1 ? 's' : '') . ' public' . ($publicSignalCount > 1 ? 's' : '') . ' donne' . ($publicSignalCount > 1 ? 'nt' : '') . ' déjà une lecture explicite du courant.';
+    $str3mVisibleHref = '#str3m-signals-title';
+    $str3mVisibleLinkLabel = 'Lire les signaux';
+} elseif ($visibleLandPreviewCount > 0) {
+    $str3mVisibleTitle = 'Des terres deviennent lisibles';
+    $str3mVisibleCopy = $visibleLandPreviewCount . ' terre' . ($visibleLandPreviewCount > 1 ? 's' : '') . ' affleurent déjà avec des indices publics, même avant un signal durable.';
+    $str3mVisibleHref = '#str3m-visible-lands-title';
+    $str3mVisibleLinkLabel = 'Voir les terres visibles';
+} elseif (($recentT0kCount + $recentB0t3Count) > 0) {
+    $str3mVisibleTitle = 'Le courant bouge sans signal durable';
+    $str3mVisibleCopy = 'Des gestes et dépôts publics circulent déjà, mais sans encore tenir une lecture stable de la surface.';
+    $str3mVisibleHref = '#str3m-proof-title';
+    $str3mVisibleLinkLabel = 'Relire les preuves';
+}
+
+$str3mLabTitle = $archipelagoLandCount > 0 ? 'Archipel et shell fantôme' : 'Lab encore discret';
+$str3mLabCopy = $archipelagoLandCount > 0
+    ? 'La couche exploratoire est déjà là : archipel en 3D, tactilité publique et pont vers n0de, sans devenir la porte principale.'
+    : 'Le lab restera calme jusqu’à ce que des traces publiques suffisent à ouvrir l’archipel et ses objets portés.';
+$str3mLabHref = $archipelagoLandCount > 0 ? '#islands-title' : $futureShellRoute;
+$str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir n0de';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -341,6 +408,51 @@ unset($land);
                 <p class="panel-copy"><?= h((string) ($str3mGuide['copy'] ?? 'Explorer le courant public sans forcer l’entrée.')) ?></p>
             </div>
             <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0 : me guider</a>
+        </div>
+    </section>
+
+    <section class="panel reveal str3m-mode-panel" aria-labelledby="str3m-mode-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="str3m-mode-title">Repères du courant</h2>
+                <p class="panel-copy">Str3m distingue ce qui est choisi pour aujourd’hui, ce qui devient publiquement lisible, et ce qui reste encore exploratoire.</p>
+            </div>
+            <span class="badge"><?= h($str3mModeLabel) ?></span>
+        </div>
+
+        <div class="land-focus-grid str3m-focus-grid">
+            <article class="land-focus-card str3m-focus-card">
+                <p class="land-card-kicker">du jour</p>
+                <h3><?= h($str3mTodayTitle) ?></h3>
+                <p class="land-card-copy"><?= h($str3mTodayCopy) ?></p>
+                <p class="str3m-focus-meta">template · <?= h((string) ($dailyStream['template'] ?? 'empty')) ?> · mood · <?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></p>
+                <div class="str3m-focus-actions">
+                    <a class="ghost-link" href="#str3m-title">Aller au str3m du jour</a>
+                </div>
+            </article>
+
+            <article class="land-focus-card str3m-focus-card">
+                <p class="land-card-kicker">visible</p>
+                <h3><?= h($str3mVisibleTitle) ?></h3>
+                <p class="land-card-copy"><?= h($str3mVisibleCopy) ?></p>
+                <p class="str3m-focus-meta"><?= h((string) $publicSignalCount) ?> signal<?= $publicSignalCount > 1 ? 's' : '' ?> · <?= h((string) $visibleLandPreviewCount) ?> terre<?= $visibleLandPreviewCount > 1 ? 's' : '' ?> visible<?= $visibleLandPreviewCount > 1 ? 's' : '' ?></p>
+                <div class="str3m-focus-actions">
+                    <a class="ghost-link" href="<?= h($str3mVisibleHref) ?>"><?= h($str3mVisibleLinkLabel) ?></a>
+                </div>
+            </article>
+
+            <article class="land-focus-card str3m-focus-card">
+                <p class="land-card-kicker">exploratoire</p>
+                <h3><?= h($str3mLabTitle) ?></h3>
+                <p class="land-card-copy"><?= h($str3mLabCopy) ?></p>
+                <p class="str3m-focus-meta"><?= h((string) $archipelagoLandCount) ?> île<?= $archipelagoLandCount > 1 ? 's' : '' ?> · shell fantôme · n0de</p>
+                <div class="str3m-focus-actions">
+                    <a class="ghost-link" href="<?= h($str3mLabHref) ?>"><?= h($str3mLabLinkLabel) ?></a>
+                    <?php if ($archipelagoLandCount > 0): ?>
+                        <a class="ghost-link" href="<?= h($futureShellRoute) ?>">Voir n0de</a>
+                    <?php endif; ?>
+                </div>
+            </article>
         </div>
     </section>
 
@@ -664,7 +776,6 @@ unset($land);
                             data-presence="<?= h((string) ($state['key'] ?? 'unknown')) ?>"
                         >
                             <div class="archipelago-card-wrapper">
-                                <article class="str3m-island-card <?= $island['slug'] === $newestIslandSlug ? 'is-glowing ' : '' ?><?= h(str3m_presence_class($state)) ?>" data-presence="<?= h((string) ($state['key'] ?? 'unknown')) ?>">
                                 <article
                                     class="str3m-island-card <?= $island['slug'] === $newestIslandSlug ? 'is-glowing ' : '' ?><?= h(str3m_presence_class($state)) ?>"
                                     data-presence="<?= h((string) ($state['key'] ?? 'unknown')) ?>"
@@ -712,8 +823,8 @@ unset($land);
     <section class="panel reveal" aria-labelledby="str3m-shell-future-title">
         <div class="section-topline">
             <div>
-                <h2 id="str3m-shell-future-title">Vers le shell porté</h2>
-                <p class="panel-copy">Ces cartes préparent un futur shell web3/3ternet : un espace où une terre visible pourra ouvrir son n0de, son manifest, sa possession portée et ses passages d’interface sans casser la lecture publique.</p>
+                <h2 id="str3m-shell-future-title">Lab · shell porté</h2>
+                <p class="panel-copy">Cette zone reste exploratoire. Elle prépare un shell porté, tactile et n0de-compatible, sans prendre la place des entrées publiques principales.</p>
             </div>
             <a class="ghost-link" href="<?= h($futureShellRoute) ?>">Voir n0de</a>
         </div>

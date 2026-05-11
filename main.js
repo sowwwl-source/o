@@ -973,19 +973,16 @@ function initStr3mGhostShellDock() {
 	};
 
 	const setBirdMood = (mood = "rest") => {
-		   dock.dataset.shellGhostMood = mood;
-		   if (birdNode instanceof HTMLElement) {
-			   birdNode.dataset.shellGhostMood = mood;
-		   }
-		   // Update each glyph's compass state
-		   // Mapping: present/near/roaming/asleep/intent/preview/rest
-		   // Example logic, can be refined for richer behavior
-		   if (glyphs.direction) glyphs.direction.dataset.state = (mood === "intent" ? "active" : "idle");
-		   if (glyphs.energyLeft) glyphs.energyLeft.dataset.state = (mood === "present" || mood === "preview" ? "high" : "low");
-		   if (glyphs.mood) glyphs.mood.dataset.state = mood;
-		   if (glyphs.energyRight) glyphs.energyRight.dataset.state = (mood === "present" || mood === "preview" ? "high" : "low");
-		   if (glyphs.return) glyphs.return.dataset.state = (mood === "rest" || mood === "sleep" ? "active" : "idle");
-	   }
+		dock.dataset.shellGhostMood = mood;
+		if (birdNode instanceof HTMLElement) {
+			birdNode.dataset.shellGhostMood = mood;
+		}
+		// Update each glyph's compass state.
+		if (glyphs.direction) glyphs.direction.dataset.state = (mood === "intent" ? "active" : "idle");
+		if (glyphs.energyLeft) glyphs.energyLeft.dataset.state = (mood === "present" || mood === "preview" ? "high" : "low");
+		if (glyphs.mood) glyphs.mood.dataset.state = mood;
+		if (glyphs.energyRight) glyphs.energyRight.dataset.state = (mood === "present" || mood === "preview" ? "high" : "low");
+		if (glyphs.return) glyphs.return.dataset.state = (mood === "rest" || mood === "sleep" ? "active" : "idle");
 	};
 
 	const applyDetail = (detail, mode = "en veille") => {

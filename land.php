@@ -35,11 +35,37 @@ $landRecentItems = array_slice($landMemoryItems, 0, 6);
 $landVisualItems = array_slice(aza_memory_filter_visual_items($landMemoryItems), 0, 4);
 $landSourceGroups = array_slice(aza_memory_group_items_by_source($landMemoryItems), 0, 4);
 $landIslandProjection = aza_memory_build_island_projection($landMemoryItems, $land ? (string) $land['slug'] : '');
+$c0r3LeadItem = $landRecentItems[0] ?? null;
+$c0r3LeadSource = $landSourceGroups[0] ?? null;
+$c0r3DensityLabel = match (true) {
+    ($landMemorySummary['count'] ?? 0) <= 0 => 'vierge',
+    ($landMemorySummary['count'] ?? 0) < 4 => 'germe',
+    ($landMemorySummary['count'] ?? 0) < 12 => 'prise',
+    default => 'dense',
+};
+$c0r3DensityCopy = match ($c0r3DensityLabel) {
+    'vierge' => 'Aucune mémoire déposée pour le moment.',
+    'germe' => 'Quelques traces suffisent déjà à orienter la lecture.',
+    'prise' => 'Le noyau mémoriel commence à offrir plusieurs chemins d’entrée.',
+    default => 'Le noyau mémoriel peut déjà soutenir une lecture dense, visuelle et située.',
+};
 $authenticatedLand = current_authenticated_land();
 $isAuthenticatedHere = $land && $authenticatedLand && auth_is_land_session_for((string) $land['slug']);
 $azaLandHref = $land ? '/aza?u=' . rawurlencode((string) $land['slug']) : '/aza';
 $islandLandHref = $land ? '/island?u=' . rawurlencode((string) $land['slug']) : '/island';
 $azaLandBaseQuery = $land ? ['u' => (string) $land['slug']] : [];
+$c0r3NextHref = aza_memory_query_href($azaLandBaseQuery, ['view' => 'finder']);
+$c0r3NextLabel = 'Explorer la matière';
+$c0r3NextCopy = 'Entrer par le finder pour sentir les liens avant de tout parcourir.';
+if (($landMemorySummary['visual_count'] ?? 0) > 0) {
+    $c0r3NextHref = aza_memory_query_href($azaLandBaseQuery, ['view' => 'visual']);
+    $c0r3NextLabel = 'Voir le visible';
+    $c0r3NextCopy = 'Commencer par les extraits visuels les plus lisibles de cette mémoire.';
+} elseif (($landMemorySummary['source_count'] ?? 0) > 1) {
+    $c0r3NextHref = aza_memory_query_href($azaLandBaseQuery, ['view' => 'source']);
+    $c0r3NextLabel = 'Comparer les sources';
+    $c0r3NextCopy = 'Lire les provenances avant de descendre dans chaque trace.';
+}
 $azaLandLinkLabel = $isAuthenticatedHere ? 'Ferry 03 : aZa' : 'Ferry 03 : aZa · lecture publique';
 $azaLandEditLabel = $isAuthenticatedHere ? 'Édition Terre via aZa' : 'aZa · lecture publique seulement';
 $visualProfile = $land ? land_visual_profile($land) : null;
@@ -306,23 +332,60 @@ if ($land && $visualProfile) {
             <?php if (!$landMemorySummary['count']): ?>
                 <p class="panel-copy">La mémoire du c0r3 est vierge. La première archive attend de sédimenter.</p>
             <?php else: ?>
-                <section class="str3m-island-card c0r3-island-card<?= ($landIslandProjection['status'] ?? '') === 'dense' ? ' is-glowing' : '' ?>" aria-label="Île possible depuis cette Terre">
-                    <span class="summary-label">Île possible</span>
-                    <strong class="summary-value summary-value-small"><?= h((string) ($landIslandProjection['status_label'] ?? 'Aucune île encore')) ?></strong>
-                    <p class="island-meta"><?= h((string) ($landIslandProjection['copy'] ?? '')) ?></p>
-                    <?php if (!empty($landIslandProjection['traits']) && is_array($landIslandProjection['traits'])): ?>
-                        <div class="aza-meta-list aza-island-traits">
-                            <?php foreach ($landIslandProjection['traits'] as $trait): ?>
-                                <span class="meta-pill"><?= h((string) $trait) ?></span>
-                            <?php endforeach; ?>
+                <div class="c0r3-overview-grid">
+                    <section class="c0r3-overview-card c0r3-overview-card--status<?= ($landIslandProjection['status'] ?? '') === 'dense' ? ' is-glowing' : '' ?>" aria-label="État actuel du noyau mémoriel">
+                        <span class="summary-label">état</span>
+                        <strong class="summary-value summary-value-small"><?= h((string) ($landIslandProjection['status_label'] ?? 'Aucune île encore')) ?></strong>
+                        <p class="c0r3-overview-copy"><?= h((string) ($landIslandProjection['copy'] ?? $c0r3DensityCopy)) ?></p>
+                        <?php if (!empty($landIslandProjection['traits']) && is_array($landIslandProjection['traits'])): ?>
+                            <div class="aza-meta-list aza-island-traits">
+                                <?php foreach ($landIslandProjection['traits'] as $trait): ?>
+                                    <span class="meta-pill"><?= h((string) $trait) ?></span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                        <div class="action-row aza-island-actions">
+                            <a class="pill-link" href="<?= h($c0r3NextHref) ?>"><?= h($c0r3NextLabel) ?></a>
+                            <a class="ghost-link" href="<?= h($islandLandHref) ?>">Ouvrir l’île</a>
                         </div>
-                    <?php endif; ?>
-                    <div class="action-row aza-island-actions">
-                        <a class="pill-link" href="<?= h(aza_memory_query_href($azaLandBaseQuery, ['view' => 'finder'])) ?>">Explorer la matière</a>
-                        <a class="ghost-link" href="<?= h($islandLandHref) ?>">Ouvrir l’île</a>
-                        <a class="ghost-link" href="<?= h(aza_memory_query_href($azaLandBaseQuery, ['view' => 'visual'])) ?>">Voir le visible</a>
-                    </div>
-                </section>
+                    </section>
+
+                    <section class="c0r3-overview-card" aria-label="Trace la plus proche">
+                        <span class="summary-label">trace la plus proche</span>
+                        <?php if ($c0r3LeadItem): ?>
+                            <strong class="summary-value summary-value-small"><?= h((string) $c0r3LeadItem['title']) ?></strong>
+                            <p class="c0r3-overview-copy"><?= h((string) ($c0r3LeadItem['summary'] ?? 'Cette trace est la meilleure porte d’entrée immédiate.')) ?></p>
+                            <p class="c0r3-overview-meta"><?= h((string) $c0r3LeadItem['source_label']) ?> · <?= h((string) ($c0r3LeadItem['date_label'] ?? 'Atemporel')) ?></p>
+                            <a href="<?= h((string) $c0r3LeadItem['href']) ?>" class="c0r3-download" download>[ extraire ]</a>
+                        <?php else: ?>
+                            <strong class="summary-value summary-value-small">Aucune trace encore</strong>
+                            <p class="c0r3-overview-copy">Le noyau mémoriel ne contient pas encore de preuve immédiatement relisible.</p>
+                        <?php endif; ?>
+                    </section>
+
+                    <section class="c0r3-overview-card" aria-label="Lecture recommandée">
+                        <span class="summary-label">prise</span>
+                        <strong class="summary-value summary-value-small"><?= h($c0r3DensityLabel) ?></strong>
+                        <p class="c0r3-overview-copy"><?= h($c0r3NextCopy) ?></p>
+                        <div class="c0r3-mini-stats" aria-label="Résumé mémoire">
+                            <article class="c0r3-mini-stat">
+                                <span>Total</span>
+                                <strong><?= h((string) $landMemorySummary['count']) ?></strong>
+                            </article>
+                            <article class="c0r3-mini-stat">
+                                <span>Visuel</span>
+                                <strong><?= h((string) $landMemorySummary['visual_count']) ?></strong>
+                            </article>
+                            <article class="c0r3-mini-stat">
+                                <span>Sources</span>
+                                <strong><?= h((string) $landMemorySummary['source_count']) ?></strong>
+                            </article>
+                        </div>
+                        <?php if ($c0r3LeadSource): ?>
+                            <p class="c0r3-overview-meta">Source dominante · <?= h((string) $c0r3LeadSource['label']) ?> · <?= count($c0r3LeadSource['items']) ?> trace<?= count($c0r3LeadSource['items']) > 1 ? 's' : '' ?></p>
+                        <?php endif; ?>
+                    </section>
+                </div>
 
                 <nav class="c0r3-nav" aria-label="Lectures mémoire liées à aZa">
                     <a class="meta-pill meta-pill-link" href="<?= h(aza_memory_query_href($azaLandBaseQuery, ['view' => 'chrono'])) ?>">chrono</a>
@@ -332,24 +395,10 @@ if ($land && $visualProfile) {
                     <a class="meta-pill meta-pill-link" href="<?= h($islandLandHref) ?>">île</a>
                 </nav>
 
-                <div class="summary-grid c0r3-summary-grid">
-                    <article class="summary-card">
-                        <span class="summary-label">Total</span>
-                        <strong class="summary-value summary-value-small"><?= h((string) $landMemorySummary['count']) ?></strong>
-                    </article>
-                    <article class="summary-card">
-                        <span class="summary-label">Visuel</span>
-                        <strong class="summary-value summary-value-small"><?= h((string) $landMemorySummary['visual_count']) ?></strong>
-                    </article>
-                    <article class="summary-card">
-                        <span class="summary-label">Sources</span>
-                        <strong class="summary-value summary-value-small"><?= h((string) $landMemorySummary['source_count']) ?></strong>
-                    </article>
-                </div>
-
-                <div class="c0r3-panels">
-                    <section class="c0r3-panel-block">
+                <div class="c0r3-memory-flow">
+                    <section class="c0r3-panel-block c0r3-panel-block--latest">
                         <h3 class="c0r3-panel-title">Dernières traces</h3>
+                        <p class="c0r3-panel-copy">Les preuves les plus proches, pour relire vite sans ouvrir toute l’archive.</p>
                         <div class="c0r3-cards-list">
                             <?php foreach ($landRecentItems as $item): ?>
                                 <article class="c0r3-card-light">
@@ -369,43 +418,47 @@ if ($land && $visualProfile) {
                         </div>
                     </section>
 
-                    <section class="c0r3-panel-block">
-                        <h3 class="c0r3-panel-title">Provenances</h3>
-                        <div class="c0r3-source-strip">
-                            <?php foreach ($landSourceGroups as $group): ?>
-                                <article class="c0r3-source-card">
-                                    <strong><?= h((string) $group['label']) ?></strong>
-                                    <span><?= count($group['items']) ?> trace<?= count($group['items']) > 1 ? 's' : '' ?></span>
-                                </article>
-                            <?php endforeach; ?>
-                        </div>
-                    </section>
-
-                    <?php if ($landVisualItems): ?>
+                    <div class="c0r3-side-column">
                         <section class="c0r3-panel-block">
-                            <h3 class="c0r3-panel-title">Extraits visuels</h3>
-                            <div class="aza-files-grid c0r3-visual-grid">
-                                <?php foreach ($landVisualItems as $item): ?>
-                                    <article class="aza-file-card">
-                                        <?php if (!empty($item['thumbnail_url'])): ?>
-                                            <div class="aza-file-thumb">
-                                                <img src="<?= h((string) $item['thumbnail_url']) ?>" alt="<?= h((string) $item['title']) ?>" loading="lazy">
-                                            </div>
-                                        <?php else: ?>
-                                            <div class="aza-file-thumb aza-file-thumb-blank">
-                                                <span><?= h((string) ($item['format_label'] ?: $item['kind_label'])) ?></span>
-                                            </div>
-                                        <?php endif; ?>
-                                        <div class="aza-file-meta">
-                                            <strong class="aza-file-name"><?= h((string) $item['title']) ?></strong>
-                                            <span class="aza-file-detail"><?= h((string) $item['source_label']) ?></span>
-                                            <span class="aza-file-detail"><?= h((string) $item['date_label']) ?></span>
-                                        </div>
+                            <h3 class="c0r3-panel-title">Provenances</h3>
+                            <p class="c0r3-panel-copy">Les sources dominantes de cette mémoire, avant d’entrer dans chaque fichier.</p>
+                            <div class="c0r3-source-strip">
+                                <?php foreach ($landSourceGroups as $group): ?>
+                                    <article class="c0r3-source-card">
+                                        <strong><?= h((string) $group['label']) ?></strong>
+                                        <span><?= count($group['items']) ?> trace<?= count($group['items']) > 1 ? 's' : '' ?></span>
                                     </article>
                                 <?php endforeach; ?>
                             </div>
                         </section>
-                    <?php endif; ?>
+
+                        <?php if ($landVisualItems): ?>
+                            <section class="c0r3-panel-block">
+                                <h3 class="c0r3-panel-title">Extraits visuels</h3>
+                                <p class="c0r3-panel-copy">Quelques prises visibles, pour éviter de fouiller tout le noyau d’un coup.</p>
+                                <div class="aza-files-grid c0r3-visual-grid">
+                                    <?php foreach ($landVisualItems as $item): ?>
+                                        <article class="aza-file-card">
+                                            <?php if (!empty($item['thumbnail_url'])): ?>
+                                                <div class="aza-file-thumb">
+                                                    <img src="<?= h((string) $item['thumbnail_url']) ?>" alt="<?= h((string) $item['title']) ?>" loading="lazy">
+                                                </div>
+                                            <?php else: ?>
+                                                <div class="aza-file-thumb aza-file-thumb-blank">
+                                                    <span><?= h((string) ($item['format_label'] ?: $item['kind_label'])) ?></span>
+                                                </div>
+                                            <?php endif; ?>
+                                            <div class="aza-file-meta">
+                                                <strong class="aza-file-name"><?= h((string) $item['title']) ?></strong>
+                                                <span class="aza-file-detail"><?= h((string) $item['source_label']) ?></span>
+                                                <span class="aza-file-detail"><?= h((string) $item['date_label']) ?></span>
+                                            </div>
+                                        </article>
+                                    <?php endforeach; ?>
+                                </div>
+                            </section>
+                        <?php endif; ?>
+                    </div>
                 </div>
             <?php endif; ?>
         </section>

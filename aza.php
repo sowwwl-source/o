@@ -157,6 +157,107 @@ $islandProjection = aza_memory_build_island_projection($memoryFinderItems, $form
 $islandHref = ($form['owner_slug'] !== '' || $ownerSlug !== '')
     ? '/island?u=' . rawurlencode((string) ($form['owner_slug'] !== '' ? $form['owner_slug'] : $ownerSlug))
     : '';
+$activeOwnerSlug = $form['owner_slug'] !== '' ? $form['owner_slug'] : $ownerSlug;
+$azaViewLabel = $publicReadOnly ? 'lecture publique' : 'édition liée';
+$azaModeDepositTitle = 'Déposer depuis cette terre';
+$azaModeDepositCopy = 'Le ZIP reste la meilleure porte pour une mémoire compacte; le dépôt libre sert quand un fichier isolé doit garder sa date et son contexte.';
+$azaModeDepositMeta = $directUploadUrl && !$isDirectRequest ? 'ZIP · fichiers libres · entrée directe prête' : 'ZIP · fichiers libres';
+$azaModeDepositHref = '#aza-import-title';
+$azaModeDepositLinkLabel = 'Aller au dépôt';
+if ($publicReadOnly) {
+    $azaModeDepositTitle = $ownerLand ? 'Lire sans déposer ici' : 'Une terre est requise pour déposer';
+    $azaModeDepositCopy = $ownerLand
+        ? 'La mémoire reste lisible ici, mais l’écriture passe par la terre liée qui tient cette archive.'
+        : 'La mémoire collective reste visible, mais toute sédimentation demande une terre active.';
+    $azaModeDepositMeta = 'lecture publique seulement';
+    $azaModeDepositHref = $ownerLand ? '/land?u=' . rawurlencode((string) $ownerLand['slug']) : '/rejoindre';
+    $azaModeDepositLinkLabel = $ownerLand ? 'Voir la terre liée' : 'Poser une terre';
+} elseif ($activeTab === 'file') {
+    $azaModeDepositTitle = 'Dépôt libre en premier plan';
+    $azaModeDepositCopy = 'Ce mode garde le fichier, son époque et son contexte sans l’écraser dans un ZIP complet.';
+}
+
+$azaModeReadTitle = match (true) {
+    (int) ($memoryTotals['all'] ?? 0) <= 0 => 'La mémoire reste vierge',
+    (int) ($memoryTotals['all'] ?? 0) < 5 => 'Quelques traces tiennent déjà',
+    (int) ($memoryTotals['all'] ?? 0) < 18 => 'La mémoire devient lisible',
+    default => 'La mémoire tient plusieurs entrées',
+};
+$azaModeReadCopy = match ($azaModeReadTitle) {
+    'La mémoire reste vierge' => 'Aucune trace n’a encore assez sédimenté pour offrir une première lecture.',
+    'Quelques traces tiennent déjà' => 'Une première relecture est possible sans ouvrir toute la matière.',
+    'La mémoire devient lisible' => 'Plusieurs provenances et repères permettent déjà d’entrer par le bon angle.',
+    default => 'Le lecteur peut déjà proposer plusieurs accès: chronologie, sources, visible et finder.',
+};
+$azaModeReadMeta = (string) ($memoryTotals['all'] ?? 0) . ' trace' . ((int) ($memoryTotals['all'] ?? 0) > 1 ? 's' : '')
+    . ' · ' . (string) ($memoryTotals['visual_count'] ?? 0) . ' visible' . ((int) ($memoryTotals['visual_count'] ?? 0) > 1 ? 's' : '')
+    . ' · ' . (string) ($memoryTotals['source_count'] ?? 0) . ' source' . ((int) ($memoryTotals['source_count'] ?? 0) > 1 ? 's' : '');
+
+$azaModeBridgeTitle = $activeOwnerSlug !== '' ? 'Terre, mémoire, île' : 'La mémoire garde un ancrage';
+$azaModeBridgeCopy = $activeOwnerSlug !== ''
+    ? 'La terre garde l’édition, aZa tient les traces, puis l’île et le c0r3 reprennent cette matière avec d’autres intensités.'
+    : 'Même en lecture simple, aZa reste le point où les traces se déposent avant de devenir terre, île ou lecture visible.';
+$azaModeBridgeMeta = ($islandProjection['status_label'] ?? 'Aucune île encore') . ' · ' . ($activeOwnerSlug !== '' ? $activeOwnerSlug : 'mémoire collective');
+$azaModeBridgeHref = $islandHref !== '' && ($islandProjection['status'] ?? '') !== 'void'
+    ? $islandHref
+    : ($activeOwnerSlug !== '' ? '/land?u=' . rawurlencode((string) $activeOwnerSlug) : '/');
+$azaModeBridgeLinkLabel = $islandHref !== '' && ($islandProjection['status'] ?? '') !== 'void'
+    ? 'Ouvrir l’île'
+    : ($activeOwnerSlug !== '' ? 'Relire la terre' : 'Retour au noyau');
+
+$azaLeadItem = $finderPreviewItem ?? ($memoryFinderItems[0] ?? null);
+$azaLeadTitle = $azaLeadItem ? (string) ($azaLeadItem['title'] ?? 'Trace proche') : 'Aucune trace encore';
+$azaLeadCopy = '';
+if ($azaLeadItem) {
+    $azaLeadCopy = trim((string) (($azaLeadItem['summary'] ?? '') ?: 'Cette trace est la meilleure porte d’entrée immédiate dans la mémoire.'));
+}
+if ($azaLeadCopy === '') {
+    $azaLeadCopy = 'La mémoire n’a pas encore de trace immédiatement relisible.';
+}
+$azaLeadMetaParts = [];
+if ($azaLeadItem) {
+    if (!empty($azaLeadItem['source_label'])) {
+        $azaLeadMetaParts[] = (string) $azaLeadItem['source_label'];
+    }
+    if (!empty($azaLeadItem['kind_label'])) {
+        $azaLeadMetaParts[] = (string) $azaLeadItem['kind_label'];
+    }
+    if (!empty($azaLeadItem['date_label'])) {
+        $azaLeadMetaParts[] = (string) $azaLeadItem['date_label'];
+    }
+}
+$azaLeadMeta = $azaLeadMetaParts ? implode(' · ', $azaLeadMetaParts) : 'Pas encore de repère proche';
+$azaLeadHref = $azaLeadItem && !empty($azaLeadItem['href']) ? (string) $azaLeadItem['href'] : '';
+
+$azaNextView = 'finder';
+$azaNextTitle = 'Entrer par le finder';
+$azaNextCopy = 'Lire à travers titres, notes, familles et provenances pour sentir la structure avant de tout ouvrir.';
+if ((int) ($memoryTotals['visual_count'] ?? 0) > 0) {
+    $azaNextView = 'visual';
+    $azaNextTitle = 'Commencer par le visible';
+    $azaNextCopy = 'Les traces visuelles donnent souvent l’entrée la plus douce quand la mémoire devient dense.';
+} elseif ((int) ($memoryTotals['source_count'] ?? 0) > 1) {
+    $azaNextView = 'source';
+    $azaNextTitle = 'Comparer les provenances';
+    $azaNextCopy = 'Quand plusieurs sources coexistent, les lire d’abord évite de se perdre dans les fichiers.';
+} elseif ((int) ($memoryTotals['archives'] ?? 0) > 0) {
+    $azaNextView = 'chrono';
+    $azaNextTitle = 'Relire par strates';
+    $azaNextCopy = 'La chronologie reste la meilleure entrée quand quelques archives tiennent déjà une date.';
+} elseif ((int) ($memoryTotals['files'] ?? 0) > 0) {
+    $azaNextView = 'family';
+    $azaNextTitle = 'Trier par familles';
+    $azaNextCopy = 'Quand il n’y a que des fichiers libres, commencer par les grandes familles rend la matière plus tangible.';
+}
+$azaNextHref = aza_memory_query_href($memoryBaseQuery, [
+    'view' => $azaNextView,
+    'q' => $azaNextView === 'finder' ? $finderQuery : null,
+    'kind' => $azaNextView === 'finder' ? $finderKind : null,
+    'family' => $azaNextView === 'finder' ? $finderFamily : null,
+    'source' => $azaNextView === 'finder' ? $finderSource : null,
+    'sort' => $azaNextView === 'finder' ? $finderSort : null,
+]);
+$azaCurrentViewLabel = $memoryViews[$memoryView] ?? 'Chronologie';
 
 $ambientLand    = $ownerLand ?: $authenticatedLand;
 $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collective_profile('nocturnal');
@@ -236,6 +337,48 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                 <p class="panel-copy"><?= h((string) ($azaGuide['copy'] ?? 'Déposer, lire et retrouver des archives sans transformer la mémoire en flux opaque.')) ?></p>
             </div>
             <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0 : me guider</a>
+        </div>
+    </section>
+
+    <section class="panel reveal aza-mode-panel" aria-labelledby="aza-mode-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="aza-mode-title">Repères de la mémoire</h2>
+                <p class="panel-copy">aZa sépare le geste de dépôt, la première lecture utile, puis le lien avec la terre et l’île qui reprendront cette matière.</p>
+            </div>
+            <span class="badge"><?= h($azaViewLabel) ?></span>
+        </div>
+
+        <div class="land-focus-grid aza-focus-grid">
+            <article class="land-focus-card aza-focus-card">
+                <p class="land-card-kicker">déposer</p>
+                <h3><?= h($azaModeDepositTitle) ?></h3>
+                <p class="land-card-copy"><?= h($azaModeDepositCopy) ?></p>
+                <p class="aza-focus-meta"><?= h($azaModeDepositMeta) ?></p>
+                <div class="aza-focus-actions">
+                    <a class="ghost-link" href="<?= h($azaModeDepositHref) ?>"><?= h($azaModeDepositLinkLabel) ?></a>
+                </div>
+            </article>
+
+            <article class="land-focus-card aza-focus-card">
+                <p class="land-card-kicker">relire</p>
+                <h3><?= h($azaModeReadTitle) ?></h3>
+                <p class="land-card-copy"><?= h($azaModeReadCopy) ?></p>
+                <p class="aza-focus-meta"><?= h($azaModeReadMeta) ?></p>
+                <div class="aza-focus-actions">
+                    <a class="ghost-link" href="#aza-memory-title">Ouvrir le lecteur</a>
+                </div>
+            </article>
+
+            <article class="land-focus-card aza-focus-card">
+                <p class="land-card-kicker">relier</p>
+                <h3><?= h($azaModeBridgeTitle) ?></h3>
+                <p class="land-card-copy"><?= h($azaModeBridgeCopy) ?></p>
+                <p class="aza-focus-meta"><?= h($azaModeBridgeMeta) ?></p>
+                <div class="aza-focus-actions">
+                    <a class="ghost-link" href="<?= h($azaModeBridgeHref) ?>"><?= h($azaModeBridgeLinkLabel) ?></a>
+                </div>
+            </article>
         </div>
     </section>
 
@@ -411,20 +554,23 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
         </section>
 
         <aside class="panel reveal" aria-labelledby="aza-principles-title">
-            <h2 id="aza-principles-title">Principe</h2>
-            <p class="panel-copy">Ni fil, ni score : une mémoire qu'on peut relire.</p>
+            <h2 id="aza-principles-title">Trois prises</h2>
+            <p class="panel-copy">Ni fil, ni score : une mémoire qu’on peut déposer, situer, puis relire.</p>
             <div class="summary-grid aza-principles-grid">
                 <article class="summary-card">
                     <span class="summary-label">01</span>
                     <strong class="summary-value summary-value-small">ZIP</strong>
+                    <p class="land-note">Pour garder un lot, son contexte et ses repères sans tout éclater.</p>
                 </article>
                 <article class="summary-card">
                     <span class="summary-label">02</span>
                     <strong class="summary-value summary-value-small">Fichiers</strong>
+                    <p class="land-note">Pour déposer une matière isolée avec sa date, sa taille et son intention.</p>
                 </article>
                 <article class="summary-card">
                     <span class="summary-label">03</span>
                     <strong class="summary-value summary-value-small">Trace</strong>
+                    <p class="land-note">Pour rouvrir ensuite la mémoire par le visible, la provenance ou la chronologie.</p>
                 </article>
             </div>
         </aside>
@@ -443,6 +589,33 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                 <span class="separator" aria-hidden="true">|</span>
                 <span>Total : <?= h((string) $memoryTotals['all']) ?></span>
             </div>
+        </div>
+
+        <div class="aza-memory-overview-grid">
+            <section class="aza-memory-overview-card aza-memory-overview-card--mode">
+                <span class="summary-label">lecture active</span>
+                <strong class="summary-value summary-value-small"><?= h($azaCurrentViewLabel) ?></strong>
+                <p class="aza-memory-overview-copy"><?= h($memoryViewCopy[$memoryView] ?? $memoryViewCopy['chrono']) ?></p>
+                <p class="aza-memory-overview-meta"><?= h($azaModeReadMeta) ?></p>
+            </section>
+
+            <section class="aza-memory-overview-card">
+                <span class="summary-label">trace proche</span>
+                <strong class="summary-value summary-value-small"><?= h($azaLeadTitle) ?></strong>
+                <p class="aza-memory-overview-copy"><?= h($azaLeadCopy) ?></p>
+                <p class="aza-memory-overview-meta"><?= h($azaLeadMeta) ?></p>
+                <?php if ($azaLeadHref !== ''): ?>
+                    <a class="ghost-link" href="<?= h($azaLeadHref) ?>" download>Extraire cette trace</a>
+                <?php endif; ?>
+            </section>
+
+            <section class="aza-memory-overview-card">
+                <span class="summary-label">prochaine lecture</span>
+                <strong class="summary-value summary-value-small"><?= h($azaNextTitle) ?></strong>
+                <p class="aza-memory-overview-copy"><?= h($azaNextCopy) ?></p>
+                <p class="aza-memory-overview-meta"><?= h((string) ($islandProjection['status_label'] ?? 'Aucune île encore')) ?></p>
+                <a class="ghost-link" href="<?= h($azaNextHref) ?>">Changer d’entrée</a>
+            </section>
         </div>
 
         <section class="str3m-island-card aza-island-projection<?= ($islandProjection['status'] ?? '') === 'dense' ? ' is-glowing' : '' ?>" aria-label="Préfiguration d'île">
@@ -783,7 +956,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                     <input type="search" name="q" value="<?= h($finderQuery) ?>" placeholder="titre, note, terre, format, repère…">
                 </label>
                 <label>
-                    Source
+                    Type
                     <select name="kind">
                         <option value="all" <?= $finderKind === 'all' ? 'selected' : '' ?>>Tout</option>
                         <option value="archive" <?= $finderKind === 'archive' ? 'selected' : '' ?>>Archives ZIP</option>

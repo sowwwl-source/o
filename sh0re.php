@@ -125,6 +125,39 @@ $outgoing        = $viewLand ? array_filter(
     static fn ($t) => ($t['from_land'] ?? '') === $viewLand['slug'] && ($t['status'] ?? '') === 'pending'
 ) : [];
 $shoreB0t3s      = $viewLand ? b0t3_list_for_shore((string) $viewLand['slug']) : [];
+$pendingIncomingCount = count($pendingIncoming);
+$activeNousCount = count($activeNous);
+$outgoingCount = count($outgoing);
+$shoreB0t3Count = count($shoreB0t3s);
+$sh0reViewLabel = $isOwnShore ? 'présence liée' : ($viewLand ? 'lecture publique' : 'lecture de principe');
+$sh0rePublicCopy = $viewLand
+    ? 'Ce rivage laisse voir les n0us actifs et reçoit des b0t3s, même sans présence liée.'
+    : 'Ouvre une terre ou vise le rivage d’une autre land pour voir ce qui circule ici.';
+$sh0rePrivateCopy = $isOwnShore
+    ? 'Les t0ks entrants, l’acceptation et la dissolution restent réservés à ta session.'
+    : ($isAuthenticated
+        ? 'Depuis ta présence liée, tu peux lancer un t0k. Les réponses restent ensuite sur le rivage concerné.'
+        : 'Pour lancer, accepter ou dissoudre un t0k, il faut une terre ouverte.');
+$sh0reNowTitle = 'Aucun rivage ciblé';
+$sh0reNowCopy = 'Passe par ta terre ou ouvre le rivage d’une autre land pour voir les échanges se déposer ici.';
+
+if ($viewLand) {
+    if ($isOwnShore) {
+        if ($pendingIncomingCount > 0) {
+            $sh0reNowTitle = 'Des réponses t’attendent';
+            $sh0reNowCopy = $pendingIncomingCount . ' t0k' . ($pendingIncomingCount > 1 ? 's' : '') . ' attend' . ($pendingIncomingCount > 1 ? 'ent' : '') . ' une réponse sur ton propre rivage.';
+        } else {
+            $sh0reNowTitle = 'Ton rivage est prêt';
+            $sh0reNowCopy = 'Tu peux lancer un t0k, accueillir un n0us ou déposer une ligne publique sans changer de page.';
+        }
+    } elseif ($activeNousCount > 0) {
+        $sh0reNowTitle = 'Le rivage montre déjà des liaisons';
+        $sh0reNowCopy = $activeNousCount . ' n0us actif' . ($activeNousCount > 1 ? 's' : '') . ' reste' . ($activeNousCount > 1 ? 'nt' : '') . ' visible' . ($activeNousCount > 1 ? 's' : '') . ' depuis ce bord public.';
+    } else {
+        $sh0reNowTitle = 'Le rivage reste calme';
+        $sh0reNowCopy = 'Ici, on voit surtout le bord public de la terre. Les gestes de formation restent ailleurs.';
+    }
+}
 
 $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_profile('nocturnal');
 ?>
@@ -157,9 +190,11 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
                 <span>où les t0ks arrivent</span>
             <?php endif; ?>
         </h1>
+        <p class="lead">Sh0re montre le bord public d’une terre. On peut y voir les n0us actifs et y déposer des b0t3s ; les gestes de formation restent liés à une présence ouverte.</p>
         <div class="land-meta">
             <?php if ($viewLand): ?>
                 <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $viewLand['slug']) ?>">Terre</a>
+                <span class="meta-pill"><?= h((string) $viewLand['slug']) ?></span>
             <?php endif; ?>
             <?php if ($isAuthenticated): ?>
                 <?php if (!$isOwnShore && $viewLand): ?>
@@ -168,6 +203,11 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
                 <span class="meta-pill"><?= h((string) $authenticatedLand['username']) ?></span>
             <?php else: ?>
                 <a class="meta-pill meta-pill-link" href="/">Ouvrir une land</a>
+            <?php endif; ?>
+            <span class="meta-pill"><?= h($sh0reViewLabel) ?></span>
+            <?php if ($viewLand): ?>
+                <span class="meta-pill"><?= $activeNousCount ?> n0us</span>
+                <span class="meta-pill"><?= $shoreB0t3Count ?> b0t3<?= $shoreB0t3Count > 1 ? 's' : '' ?></span>
             <?php endif; ?>
             <a class="meta-pill meta-pill-link" href="/str3m">str3m</a>
         </div>
@@ -192,12 +232,60 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
         </section>
     <?php endif; ?>
 
+    <section class="panel reveal sh0re-mode-panel" aria-labelledby="sh0re-mode-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="sh0re-mode-title">Repères du rivage</h2>
+                <p class="panel-copy">Sh0re sépare le bord public de la terre et les gestes qui demandent une présence liée. On peut regarder, déposer, puis seulement ensuite former ou répondre.</p>
+            </div>
+            <span class="badge"><?= h($sh0reViewLabel) ?></span>
+        </div>
+        <div class="land-focus-grid sh0re-focus-grid">
+            <article class="land-focus-card">
+                <p class="land-card-kicker">ouvert</p>
+                <h3>Voir le bord public</h3>
+                <p class="land-card-copy"><?= h($sh0rePublicCopy) ?></p>
+            </article>
+            <article class="land-focus-card">
+                <p class="land-card-kicker">réservé</p>
+                <h3>Former, répondre, dissoudre</h3>
+                <p class="land-card-copy"><?= h($sh0rePrivateCopy) ?></p>
+            </article>
+            <article class="land-focus-card">
+                <p class="land-card-kicker">ici maintenant</p>
+                <h3><?= h($sh0reNowTitle) ?></h3>
+                <p class="land-card-copy"><?= h($sh0reNowCopy) ?></p>
+            </article>
+        </div>
+    </section>
+
+    <?php if (!$viewLand): ?>
+        <section class="panel reveal" aria-labelledby="sh0re-empty-title">
+            <div class="section-topline">
+                <div>
+                    <h2 id="sh0re-empty-title">Choisir un rivage</h2>
+                    <p class="panel-copy">Sans terre ouverte ni rivage ciblé, Sh0re reste seulement un principe. Ouvre une terre ou vise une autre rive pour voir les n0us et les b0t3s se déposer.</p>
+                </div>
+                <span class="badge">orientation</span>
+            </div>
+            <div class="action-row">
+                <a class="pill-link" href="/">Ouvrir une land</a>
+                <a class="ghost-link" href="/str3m">Rester dans str3m</a>
+                <a class="ghost-link" href="/0wlslw0">Passer par 0wlslw0</a>
+            </div>
+        </section>
+    <?php else: ?>
     <section class="panel-shell sh0re-shell">
 
         <?php if ($isOwnShore && $pendingIncoming): ?>
         <section class="panel reveal" aria-labelledby="sh0re-incoming-title">
-            <h2 id="sh0re-incoming-title">T0ks à ta porte</h2>
-            <p class="panel-copy"><?= count($pendingIncoming) ?> t0k<?= count($pendingIncoming) > 1 ? 's' : '' ?> attend<?= count($pendingIncoming) === 1 ? '' : 'ent' ?> une réponse.</p>
+            <div class="section-topline">
+                <div>
+                    <h2 id="sh0re-incoming-title">Réservé · t0ks à ta porte</h2>
+                    <p class="panel-copy">Ces demandes n’apparaissent qu’à la présence liée à ce rivage.</p>
+                </div>
+                <span class="badge"><?= $pendingIncomingCount ?> en attente</span>
+            </div>
             <div class="t0k-list">
                 <?php foreach ($pendingIncoming as $t0k): ?>
                     <article class="t0k-card t0k-card-incoming">
@@ -228,9 +316,14 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
         <?php endif; ?>
 
         <section class="panel reveal" aria-labelledby="sh0re-nous-title">
-            <h2 id="sh0re-nous-title">N0us<?= $viewLand ? ' de ' . h((string) $viewLand['username']) : '' ?></h2>
+            <div class="section-topline">
+                <div>
+                    <h2 id="sh0re-nous-title">N0us visibles<?= $viewLand ? ' · ' . h((string) $viewLand['username']) : '' ?></h2>
+                    <p class="panel-copy"><?= $isOwnShore ? 'Depuis ici, on voit ce qui tient déjà entre les rives.' : 'La partie visible du rivage montre les liaisons déjà formées.' ?></p>
+                </div>
+                <span class="badge"><?= $activeNousCount ?> actif<?= $activeNousCount > 1 ? 's' : '' ?></span>
+            </div>
             <?php if ($activeNous): ?>
-                <p class="panel-copy"><?= count($activeNous) ?> n0us actif<?= count($activeNous) > 1 ? 's' : '' ?>.</p>
                 <div class="t0k-list t0k-list-nous">
                     <?php foreach ($activeNous as $t0k): ?>
                         <?php $partner = $viewLand ? t0k_partner_slug($t0k, (string) $viewLand['slug']) : ''; ?>
@@ -262,9 +355,12 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
         <section class="panel reveal" aria-labelledby="sh0re-send-title">
             <div class="section-topline">
                 <div>
-                    <h2 id="sh0re-send-title">Lancer un t0k</h2>
-                    <p class="panel-copy">Un geste. Une question. Voulez-vous grandir avec moi ?</p>
+                    <h2 id="sh0re-send-title"><?= $isOwnShore ? 'Présence liée · lancer un t0k' : 'Depuis ma présence · lancer un t0k' ?></h2>
+                    <p class="panel-copy"><?= $isOwnShore ? 'Un geste, une adresse, une question. Le départ se fait depuis ton propre rivage.' : 'Même en visitant un autre rivage, le geste part de ta terre et attend ensuite à leur porte.' ?></p>
                 </div>
+                <?php if ($viewLand && !$isOwnShore): ?>
+                    <span class="badge">vers <?= h((string) $viewLand['slug']) ?></span>
+                <?php endif; ?>
             </div>
             <form method="post" class="land-form sh0re-form">
                 <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
@@ -285,11 +381,17 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
             </form>
         </section>
         <?php elseif (!$isAuthenticated): ?>
-        <section class="panel reveal">
-            <h2>Pour lancer un t0k</h2>
-            <p class="panel-copy">Il faut une land. Le n0us commence là.</p>
+        <section class="panel reveal" aria-labelledby="sh0re-auth-title">
+            <div class="section-topline">
+                <div>
+                    <h2 id="sh0re-auth-title">Présence requise pour lancer un t0k</h2>
+                    <p class="panel-copy">Le rivage reste visible, mais l’envoi d’un t0k demande une terre ouverte.</p>
+                </div>
+                <span class="badge">présence liée</span>
+            </div>
             <div class="action-row">
                 <a class="pill-link" href="/">Ouvrir une land</a>
+                <a class="ghost-link" href="/str3m">Rester dans str3m</a>
             </div>
         </section>
         <?php endif; ?>
@@ -298,8 +400,13 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
 
     <?php if ($outgoing): ?>
     <section class="panel reveal" aria-labelledby="sh0re-outgoing-title">
-        <h2 id="sh0re-outgoing-title">T0ks en chemin</h2>
-        <p class="panel-copy">Partis de ce sh0re, pas encore répondus.</p>
+        <div class="section-topline">
+            <div>
+                <h2 id="sh0re-outgoing-title">T0ks en chemin</h2>
+                <p class="panel-copy">Partis de ce rivage, visibles tant qu’ils n’ont pas encore reçu de réponse.</p>
+            </div>
+            <span class="badge"><?= $outgoingCount ?> en transit</span>
+        </div>
         <div class="t0k-list">
             <?php foreach ($outgoing as $t0k): ?>
                 <article class="t0k-card t0k-card-pending">
@@ -318,8 +425,9 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
         <div class="section-topline">
             <div>
                 <h2 id="sh0re-b0t3-title">B0t3s</h2>
-                <p class="panel-copy">Lignes déposées. Touche long ou clic pour déformer.</p>
+                <p class="panel-copy">Dépôt public du rivage. Touche long ou clic pour déformer.</p>
             </div>
+            <span class="badge"><?= $shoreB0t3Count ?> ligne<?= $shoreB0t3Count > 1 ? 's' : '' ?></span>
         </div>
 
         <?php if ($shoreB0t3s): ?>
@@ -376,9 +484,19 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
                 </label>
                 <button type="submit" class="b0t3-submit">déposer</button>
             </div>
+            <p class="sh0re-visibility-note">
+                <?php if ($isOwnShore): ?>
+                    Toute personne qui atteint ce rivage peut déposer une ligne. Toi, tu peux aussi dissoudre celles qui te concernent.
+                <?php elseif ($isAuthenticated): ?>
+                    Le dépôt reste public, mais l’origine peut encore être liée à ta terre si tu es déjà présent ici.
+                <?php else: ?>
+                    Déposer une ligne ici ne demande pas de présence liée. Les t0ks, eux, restent réservés aux terres ouvertes.
+                <?php endif; ?>
+            </p>
         </form>
         <?php endif; ?>
     </section>
+    <?php endif; ?>
     <?php endif; ?>
 
 </main>
