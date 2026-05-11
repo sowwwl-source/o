@@ -1922,7 +1922,7 @@ function initTorusCloud(canvas) {
 		lastY: 0,
 		dragging: false,
 		yaw: 0,
-			pitch: 0.46,
+		pitch: 0.46,
 		roll: 0.1,
 		panX: 0,
 		panY: 0,
@@ -1956,7 +1956,7 @@ function initTorusCloud(canvas) {
 	const zoomMax = 17.5;
 
 	if (isPassiveCanvas) {
-			state.pitch = 0.38;
+		state.pitch = 0.38;
 		state.roll = 0.04;
 		state.zoom = 10.4;
 	}
@@ -2234,7 +2234,7 @@ function initTorusCloud(canvas) {
 		const centerX = width * 0.5 + state.panX * (width * 0.018);
 		const centerY = height * 0.5 + state.autoLiftY + state.panY * (height * 0.018);
 		const camera = 39 - state.zoom * 1.12;
-			const scale = Math.min(width, height) * (0.09 + state.zoom * 0.01) * state.autoScale;
+		const scale = Math.min(width, height) * (0.09 + state.zoom * 0.01) * state.autoScale;
 		const spinY = state.yaw + time * 0.00006;
 		const spinX = state.pitch + Math.sin(time * 0.00012) * 0.05;
 		const spinZ = state.roll + Math.cos(time * 0.00009) * 0.03;
