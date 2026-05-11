@@ -9995,6 +9995,37 @@ body:has(.connection-meter) {
 	gap: 1.15rem;
 }
 
+.sh0re-voice-panel {
+	display: grid;
+	gap: 1rem;
+}
+
+.sh0re-voice-copy {
+	max-width: 68ch;
+	padding: 1rem 1.1rem;
+	border: 1px solid rgba(var(--fg-rgb) / 0.1);
+	background:
+		radial-gradient(circle at top left, rgba(var(--land-secondary-rgb) / 0.09), transparent 56%),
+		rgba(var(--panel-rgb) / 0.2);
+	line-height: 1.8;
+	white-space: pre-wrap;
+}
+
+.sh0re-voice-form {
+	max-width: 68ch;
+}
+
+.sh0re-voice-form textarea {
+	min-height: 11rem;
+}
+
+.sh0re-voice-note {
+	margin: 0;
+	max-width: 62ch;
+	color: var(--muted);
+	line-height: 1.6;
+}
+
 .sh0re-shell {
 	display: grid;
 	gap: 1.5rem;

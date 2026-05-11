@@ -72,6 +72,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isAuthenticated) {
                     $message     = 'Ce n0us a été dissous.';
                     $messageType = 'info';
                     break;
+
+                case 'shore_update':
+                    if (!$isOwnShore) {
+                        throw new RuntimeException('Seule la terre liée à ce rivage peut réécrire sa voix.');
+                    }
+
+                    $shoreText = (string) ($_POST['shore_text'] ?? '');
+                    $updatedLand = update_land_shore_text($mySlug, $shoreText);
+                    $authenticatedLand = $updatedLand;
+                    $viewLand = $updatedLand;
+                    $targetLand = $updatedLand;
+                    $message = trim($shoreText) === ''
+                        ? 'La voix stable du rivage a été retirée.'
+                        : 'La voix du rivage a été mise à jour.';
+                    $messageType = 'success';
+                    break;
             }
         } catch (Throwable $e) {
             $message     = $e->getMessage();
@@ -129,6 +145,9 @@ $pendingIncomingCount = count($pendingIncoming);
 $activeNousCount = count($activeNous);
 $outgoingCount = count($outgoing);
 $shoreB0t3Count = count($shoreB0t3s);
+$shoreText = trim((string) ($viewLand['shore_text'] ?? ''));
+$hasShoreText = $shoreText !== '';
+$showShoreVoice = $viewLand && ($hasShoreText || $isOwnShore);
 $sh0reViewLabel = $isOwnShore ? 'présence liée' : ($viewLand ? 'lecture publique' : 'lecture de principe');
 $sh0rePublicCopy = $viewLand
     ? 'Ce rivage laisse voir les n0us actifs et reçoit des b0t3s, même sans présence liée.'
@@ -275,6 +294,46 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
             </div>
         </section>
     <?php else: ?>
+    <?php if ($showShoreVoice): ?>
+    <section class="panel reveal sh0re-voice-panel" aria-labelledby="sh0re-voice-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="sh0re-voice-title">Voix du rivage</h2>
+                <p class="panel-copy">Ligne plus stable que les b0t3s. Elle reste visible sur le bord public tant que la terre la tient.</p>
+            </div>
+            <span class="badge">public</span>
+        </div>
+
+        <?php if ($hasShoreText): ?>
+            <div class="sh0re-voice-copy">
+                <?= nl2br(h($shoreText)) ?>
+            </div>
+        <?php else: ?>
+            <p class="panel-copy"><?= $isOwnShore ? 'Ton rivage n’a pas encore de ligne stable. Tu peux en poser une ici.' : 'Ce rivage n’a pas encore laissé de ligne durable visible.' ?></p>
+        <?php endif; ?>
+
+        <?php if ($isOwnShore): ?>
+            <form method="post" class="land-form sh0re-voice-form">
+                <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                <input type="hidden" name="action" value="shore_update">
+                <label>
+                    Texte du rivage
+                    <textarea
+                        name="shore_text"
+                        rows="6"
+                        maxlength="<?= LAND_SHORE_TEXT_MAX_LENGTH ?>"
+                        placeholder="Une ligne durable. Une adresse lente. Ce que le rivage garde."
+                    ><?= h($shoreText) ?></textarea>
+                    <span class="input-hint">Visible publiquement sur ce sh0re. Les b0t3s restent plus passants ; cette voix tient un peu plus longtemps.</span>
+                </label>
+                <button type="submit">Mettre à jour la voix du rivage</button>
+            </form>
+        <?php else: ?>
+            <p class="sh0re-voice-note">Les b0t3s déposent des lignes passantes. Cette voix, elle, reste le texte tenu par la terre elle-même.</p>
+        <?php endif; ?>
+    </section>
+    <?php endif; ?>
+
     <section class="panel-shell sh0re-shell">
 
         <?php if ($isOwnShore && $pendingIncoming): ?>

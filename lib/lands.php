@@ -11,6 +11,10 @@ function string_length(string $value): int
     return function_exists('mb_strlen') ? mb_strlen($value) : strlen($value);
 }
 
+if (!defined('LAND_SHORE_TEXT_MAX_LENGTH')) {
+    define('LAND_SHORE_TEXT_MAX_LENGTH', 2400);
+}
+
 function normalize_username(string $username): string
 {
     $candidate = trim($username);
@@ -121,6 +125,21 @@ function normalize_land_record(array $land): ?array
     return $land;
 }
 
+function land_record_for_storage(array $land): array
+{
+    $persisted = [];
+
+    foreach ($land as $key => $value) {
+        if (is_string($key) && str_starts_with($key, '_')) {
+            continue;
+        }
+
+        $persisted[$key] = $value;
+    }
+
+    return $persisted;
+}
+
 function land_record_has_value(mixed $value): bool
 {
     if ($value === null) {
@@ -169,6 +188,75 @@ function merge_land_records(?array $primary, ?array $fallback = null): ?array
     return $normalized;
 }
 
+function land_database_columns(): array
+{
+    static $columns = null;
+
+    if (is_array($columns)) {
+        return $columns;
+    }
+
+    try {
+        $pdo = get_pdo();
+        $statement = $pdo->query('SHOW COLUMNS FROM lands');
+    } catch (Throwable $exception) {
+        $columns = [];
+        return $columns;
+    }
+
+    if (!$statement instanceof PDOStatement) {
+        $columns = [];
+        return $columns;
+    }
+
+    $columns = [];
+    foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $field = trim((string) ($row['Field'] ?? ''));
+        if ($field !== '') {
+            $columns[$field] = true;
+        }
+    }
+
+    return $columns;
+}
+
+function land_database_has_column(string $column): bool
+{
+    $candidate = trim($column);
+    if ($candidate === '') {
+        return false;
+    }
+
+    $columns = land_database_columns();
+    return isset($columns[$candidate]);
+}
+
+function land_database_select_columns(): array
+{
+    static $columns = null;
+
+    if (is_array($columns)) {
+        return $columns;
+    }
+
+    $columns = [
+        'username',
+        'password_hash',
+        'email_virtual',
+        'timezone',
+        'zone_code',
+        'created_at',
+    ];
+
+    foreach (['shore_text'] as $optionalColumn) {
+        if (land_database_has_column($optionalColumn)) {
+            $columns[] = $optionalColumn;
+        }
+    }
+
+    return $columns;
+}
+
 function load_land_from_database(string $identifier): ?array
 {
     try {
@@ -186,7 +274,7 @@ function load_land_from_database(string $identifier): ?array
     $emailVirtual = $slug . '@o.local';
 
     $statement = $pdo->prepare(
-        'SELECT username, password_hash, email_virtual, timezone, zone_code, created_at
+        'SELECT ' . implode(', ', land_database_select_columns()) . '
          FROM lands
          WHERE username = :username
             OR email_virtual = :email_virtual
@@ -212,7 +300,7 @@ function load_land_snapshot_from_database(): array
     }
 
     $statement = $pdo->query(
-        'SELECT username, password_hash, email_virtual, timezone, zone_code, created_at
+        'SELECT ' . implode(', ', land_database_select_columns()) . '
          FROM lands
          ORDER BY created_at DESC, id DESC'
     );
@@ -305,11 +393,91 @@ function write_land(array $land): void
     ensure_lands_dir();
 
     $path = land_file_path($slug);
-    $encoded = json_encode($land, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $encoded = json_encode(
+        land_record_for_storage($land),
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+    );
 
     if (!is_string($encoded) || file_put_contents($path, $encoded . PHP_EOL, LOCK_EX) === false) {
         throw new RuntimeException('Impossible de mettre à jour cette terre pour le moment.');
     }
+}
+
+function validate_land_shore_text(string $shoreText): string
+{
+    $normalized = str_replace(["\r\n", "\r"], "\n", trim($shoreText));
+
+    if (string_length($normalized) > LAND_SHORE_TEXT_MAX_LENGTH) {
+        throw new InvalidArgumentException('Le texte du rivage doit tenir en ' . LAND_SHORE_TEXT_MAX_LENGTH . ' caractères maximum.');
+    }
+
+    return $normalized;
+}
+
+function sync_land_fields_to_database(array $land, array $fields): void
+{
+    $assignments = [];
+    $params = [];
+
+    foreach ($fields as $field) {
+        $column = trim((string) $field);
+        if ($column === '' || !land_database_has_column($column)) {
+            continue;
+        }
+
+        $assignments[] = $column . ' = :' . $column;
+        $params[':' . $column] = $land[$column] ?? null;
+    }
+
+    if ($assignments === []) {
+        return;
+    }
+
+    $username = trim((string) ($land['username'] ?? ''));
+    $emailVirtual = trim((string) ($land['email_virtual'] ?? ''));
+    $conditions = [];
+
+    if ($username !== '') {
+        $conditions[] = 'username = :username';
+        $params[':username'] = $username;
+    }
+
+    if ($emailVirtual !== '') {
+        $conditions[] = 'email_virtual = :email_virtual';
+        $params[':email_virtual'] = $emailVirtual;
+    }
+
+    if ($conditions === []) {
+        return;
+    }
+
+    try {
+        $pdo = get_pdo();
+        $statement = $pdo->prepare(
+            'UPDATE lands
+             SET ' . implode(', ', $assignments) . '
+             WHERE ' . implode(' OR ', $conditions) . '
+             LIMIT 1'
+        );
+        $statement->execute($params);
+    } catch (Throwable) {
+        // Keep file storage authoritative when the SQL layer is unavailable.
+    }
+}
+
+function update_land_shore_text(string $slug, string $shoreText): array
+{
+    $land = find_land($slug);
+    if (!$land) {
+        throw new RuntimeException('Cette terre n’existe pas.');
+    }
+
+    $land['shore_text'] = validate_land_shore_text($shoreText);
+
+    write_land($land);
+    sync_land_fields_to_database($land, ['shore_text']);
+
+    return find_land($slug) ?? $land;
 }
 
 function validate_land_password(string $password): string
