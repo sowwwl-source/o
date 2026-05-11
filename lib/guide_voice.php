@@ -61,6 +61,17 @@ function guide_voice_normalize_endpoint(string $endpoint): string
     return $candidate;
 }
 
+function guide_voice_is_do_agent_endpoint(string $endpoint): bool
+{
+    $parts = parse_url(trim($endpoint));
+    if (!is_array($parts)) {
+        return false;
+    }
+
+    $host = strtolower(trim((string) ($parts['host'] ?? '')));
+    return $host !== '' && str_ends_with($host, '.agents.do-ai.run');
+}
+
 function guide_voice_value_looks_placeholder(string $value): bool
 {
     $normalized = strtolower(trim($value));
@@ -643,13 +654,15 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
         return null;
     }
 
+    $isDoAgentEndpoint = guide_voice_is_do_agent_endpoint($endpoint);
     $history = guide_voice_recent_history();
-    $messages = [
-        [
+    $messages = [];
+    if (!$isDoAgentEndpoint) {
+        $messages[] = [
             'role' => 'system',
             'content' => guide_voice_system_prompt(),
-        ],
-    ];
+        ];
+    }
 
     foreach ($history as $turn) {
         $user = trim((string) ($turn['user'] ?? ''));
