@@ -413,6 +413,199 @@ function aza_memory_filter_visual_items(array $items): array
     return array_values(array_filter($items, 'aza_memory_is_visual_item'));
 }
 
+function aza_memory_item_primary_family(array $item): string
+{
+    $families = is_array($item['families'] ?? null) ? $item['families'] : [];
+    foreach ($families as $family) {
+        $normalized = strtolower(trim((string) $family));
+        if ($normalized !== '') {
+            return $normalized;
+        }
+    }
+
+    return '';
+}
+
+function aza_memory_item_format_key(array $item): string
+{
+    return strtolower(trim((string) ($item['format_label'] ?? '')));
+}
+
+function aza_memory_text_previewable_formats(): array
+{
+    return ['txt', 'md', 'rtf', 'html', 'htm', 'json', 'csv', 'xml', 'yaml', 'yml', 'tsv'];
+}
+
+function aza_memory_extract_preview_text(?string $publicPath, int $maxBytes = 16000, int $maxChars = 1800): string
+{
+    $absolutePath = aza_absolute_storage_path($publicPath);
+    if (!is_string($absolutePath) || $absolutePath === '' || !is_file($absolutePath) || !is_readable($absolutePath)) {
+        return '';
+    }
+
+    $raw = @file_get_contents($absolutePath, false, null, 0, $maxBytes);
+    if (!is_string($raw) || $raw === '') {
+        return '';
+    }
+
+    $normalized = str_replace(["\r\n", "\r"], "\n", $raw);
+    $normalized = trim($normalized);
+    if ($normalized === '') {
+        return '';
+    }
+
+    if (function_exists('mb_substr')) {
+        $normalized = mb_substr($normalized, 0, $maxChars, 'UTF-8');
+    } else {
+        $normalized = substr($normalized, 0, $maxChars);
+    }
+
+    return $normalized;
+}
+
+function aza_memory_is_browser_playable_video_format(array $item): bool
+{
+    return in_array(aza_memory_item_format_key($item), ['mp4', 'webm', 'ogv', 'm4v'], true);
+}
+
+function aza_memory_item_preview_payload(array $item): array
+{
+    $kind = strtolower(trim((string) ($item['kind'] ?? '')));
+    $family = aza_memory_item_primary_family($item);
+    $format = aza_memory_item_format_key($item);
+    $href = trim((string) ($item['href'] ?? ''));
+    $thumbnailUrl = trim((string) ($item['thumbnail_url'] ?? ''));
+    $fallbackLabel = trim((string) (($item['format_label'] ?? '') ?: ($item['kind_label'] ?? 'Trace')));
+
+    $payload = [
+        'available' => false,
+        'mode' => 'none',
+        'family' => $family,
+        'format' => $format,
+        'href' => $href,
+        'thumbnail_url' => $thumbnailUrl,
+        'display_src' => '',
+        'poster' => $thumbnailUrl,
+        'text' => '',
+        'text_kind' => 'text',
+        'fallback_label' => strtoupper($fallbackLabel !== '' ? $fallbackLabel : 'TRACE'),
+    ];
+
+    if ($kind !== 'file' || $href === '') {
+        return $payload;
+    }
+
+    switch ($family) {
+        case 'image':
+            $payload['available'] = true;
+            $payload['mode'] = 'image';
+            $payload['display_src'] = $thumbnailUrl !== '' ? $thumbnailUrl : $href;
+            return $payload;
+
+        case 'video':
+            if (aza_memory_is_browser_playable_video_format($item)) {
+                $payload['available'] = true;
+                $payload['mode'] = 'video';
+                $payload['display_src'] = $href;
+                return $payload;
+            }
+
+            if ($thumbnailUrl !== '') {
+                $payload['available'] = true;
+                $payload['mode'] = 'image';
+                $payload['display_src'] = $thumbnailUrl;
+            }
+
+            return $payload;
+
+        case 'audio':
+            $payload['available'] = true;
+            $payload['mode'] = 'audio';
+            $payload['display_src'] = $href;
+            return $payload;
+
+        case 'document':
+            if ($format === 'pdf') {
+                $payload['available'] = true;
+                $payload['mode'] = 'pdf';
+                $payload['display_src'] = $href;
+                return $payload;
+            }
+
+            if (in_array($format, aza_memory_text_previewable_formats(), true)) {
+                $text = aza_memory_extract_preview_text($href, 16000, 1400);
+                if ($text !== '') {
+                    $payload['available'] = true;
+                    $payload['mode'] = 'text';
+                    $payload['display_src'] = $href;
+                    $payload['text'] = $text;
+                    return $payload;
+                }
+            }
+
+            return $payload;
+
+        case 'data':
+            $text = aza_memory_extract_preview_text($href, 16000, 1400);
+            if ($text !== '') {
+                $payload['available'] = true;
+                $payload['mode'] = 'text';
+                $payload['display_src'] = $href;
+                $payload['text'] = $text;
+                $payload['text_kind'] = 'code';
+            }
+
+            return $payload;
+
+        case 'design':
+            if ($thumbnailUrl !== '') {
+                $payload['available'] = true;
+                $payload['mode'] = 'image';
+                $payload['display_src'] = $thumbnailUrl;
+                return $payload;
+            }
+
+            $text = aza_memory_extract_preview_text($href, 8000, 640);
+            if ($text !== '') {
+                $payload['available'] = true;
+                $payload['mode'] = 'text';
+                $payload['display_src'] = $href;
+                $payload['text'] = $text;
+                $payload['text_kind'] = 'code';
+            }
+
+            return $payload;
+
+        case '3d':
+            if ($thumbnailUrl !== '') {
+                $payload['available'] = true;
+                $payload['mode'] = 'image';
+                $payload['display_src'] = $thumbnailUrl;
+            }
+
+            return $payload;
+
+        default:
+            return $payload;
+    }
+}
+
+function aza_memory_filter_previewable_file_items(array $items): array
+{
+    $previewable = [];
+
+    foreach ($items as $item) {
+        $payload = aza_memory_item_preview_payload($item);
+        if (!($payload['available'] ?? false)) {
+            continue;
+        }
+
+        $previewable[] = $item;
+    }
+
+    return $previewable;
+}
+
 function aza_memory_build_family_options(array $items): array
 {
     $options = [];

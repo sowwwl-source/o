@@ -32,6 +32,7 @@ $landFiles = $land ? aza_ingest_list_files((string) $land['slug']) : [];
 $landMemoryItems = $land ? aza_memory_build_items($landSorted, $landFiles, $archiveSources) : [];
 $landMemorySummary = aza_memory_summarize_items($landMemoryItems);
 $landRecentItems = array_slice($landMemoryItems, 0, 6);
+$landPreviewItems = array_slice(aza_memory_filter_previewable_file_items($landMemoryItems), 0, 3);
 $landVisualItems = array_slice(aza_memory_filter_visual_items($landMemoryItems), 0, 4);
 $landSourceGroups = array_slice(aza_memory_group_items_by_source($landMemoryItems), 0, 4);
 $landIslandProjection = aza_memory_build_island_projection($landMemoryItems, $land ? (string) $land['slug'] : '');
@@ -432,7 +433,54 @@ if ($land && $visualProfile) {
                             </div>
                         </section>
 
-                        <?php if ($landVisualItems): ?>
+                        <?php if ($landPreviewItems): ?>
+                            <section class="c0r3-panel-block">
+                                <h3 class="c0r3-panel-title">Préviews déposées</h3>
+                                <p class="c0r3-panel-copy">Les fichiers aZa qui peuvent maintenant se relire directement depuis la Terre, sans passer par l’île.</p>
+                                <div class="c0r3-preview-grid">
+                                    <?php foreach ($landPreviewItems as $item): ?>
+                                        <?php $preview = aza_memory_item_preview_payload($item); ?>
+                                        <article class="c0r3-preview-card">
+                                            <div class="c0r3-preview-frame c0r3-preview-frame--<?= h((string) $preview['mode']) ?>">
+                                                <?php if ($preview['mode'] === 'image'): ?>
+                                                    <img src="<?= h((string) $preview['display_src']) ?>" alt="<?= h((string) $item['title']) ?>" loading="lazy">
+                                                <?php elseif ($preview['mode'] === 'video'): ?>
+                                                    <video controls playsinline preload="metadata"<?= (string) ($preview['poster'] ?? '') !== '' ? ' poster="' . h((string) $preview['poster']) . '"' : '' ?>>
+                                                        <source src="<?= h((string) $preview['display_src']) ?>">
+                                                    </video>
+                                                <?php elseif ($preview['mode'] === 'audio'): ?>
+                                                    <div class="c0r3-preview-audio-shell">
+                                                        <span class="c0r3-preview-badge"><?= h((string) $preview['fallback_label']) ?></span>
+                                                        <audio controls preload="none">
+                                                            <source src="<?= h((string) $preview['display_src']) ?>">
+                                                        </audio>
+                                                    </div>
+                                                <?php elseif ($preview['mode'] === 'pdf'): ?>
+                                                    <iframe src="<?= h((string) $preview['display_src']) ?>#view=FitH" title="<?= h((string) $item['title']) ?>" loading="lazy"></iframe>
+                                                <?php elseif ($preview['mode'] === 'text'): ?>
+                                                    <pre class="c0r3-preview-text c0r3-preview-text--<?= h((string) ($preview['text_kind'] ?? 'text')) ?>"><?= h((string) ($preview['text'] ?? '')) ?></pre>
+                                                <?php else: ?>
+                                                    <div class="c0r3-preview-fallback">
+                                                        <span class="c0r3-preview-badge"><?= h((string) $preview['fallback_label']) ?></span>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="c0r3-preview-meta">
+                                                <strong><?= h((string) $item['title']) ?></strong>
+                                                <span class="aza-file-detail"><?= h((string) $item['meta_label']) ?> · <?= h((string) $item['date_label']) ?></span>
+                                                <?php if (!empty($item['summary'])): ?>
+                                                    <p class="c0r3-note"><?= h((string) $item['summary']) ?></p>
+                                                <?php endif; ?>
+                                                <div class="c0r3-preview-actions">
+                                                    <a class="ghost-link" href="<?= h((string) $item['href']) ?>" target="_blank" rel="noreferrer">ouvrir</a>
+                                                    <a href="<?= h((string) $item['href']) ?>" class="c0r3-download" download>[ extraire ]</a>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    <?php endforeach; ?>
+                                </div>
+                            </section>
+                        <?php elseif ($landVisualItems): ?>
                             <section class="c0r3-panel-block">
                                 <h3 class="c0r3-panel-title">Extraits visuels</h3>
                                 <p class="c0r3-panel-copy">Quelques prises visibles, pour éviter de fouiller tout le noyau d’un coup.</p>

@@ -8163,6 +8163,115 @@ body:has(.connection-meter) {
 	margin-top: 0;
 }
 
+.c0r3-preview-grid {
+	display: grid;
+	gap: 1rem;
+}
+
+.c0r3-preview-card {
+	display: grid;
+	gap: 0.8rem;
+	padding: 0.95rem 1rem 1rem;
+	border: 1px solid rgba(var(--fg-rgb) / 0.08);
+	background: rgba(var(--bg-rgb) / 0.14);
+}
+
+.c0r3-preview-frame {
+	border: 1px solid rgba(var(--fg-rgb) / 0.08);
+	border-radius: 0.8rem;
+	overflow: hidden;
+	background:
+		linear-gradient(180deg, rgba(var(--panel-rgb) / 0.42), rgba(var(--panel-rgb) / 0.68)),
+		radial-gradient(circle at top, rgba(var(--land-secondary-rgb) / 0.08), transparent 58%);
+}
+
+.c0r3-preview-frame--image,
+.c0r3-preview-frame--video {
+	aspect-ratio: 4 / 3;
+}
+
+.c0r3-preview-frame--pdf {
+	min-height: 18rem;
+}
+
+.c0r3-preview-frame--pdf iframe {
+	min-height: 18rem;
+	height: 18rem;
+}
+
+.c0r3-preview-frame img,
+.c0r3-preview-frame video,
+.c0r3-preview-frame iframe {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border: 0;
+}
+
+.c0r3-preview-frame img,
+.c0r3-preview-frame video {
+	object-fit: cover;
+}
+
+.c0r3-preview-frame--audio,
+.c0r3-preview-frame--text {
+	padding: 1rem;
+}
+
+.c0r3-preview-audio-shell,
+.c0r3-preview-fallback {
+	display: grid;
+	gap: 0.85rem;
+	align-content: center;
+	min-height: 10rem;
+	padding: 1rem;
+}
+
+.c0r3-preview-badge {
+	display: inline-flex;
+	width: fit-content;
+	padding: 0.3rem 0.55rem;
+	border: 1px solid rgba(var(--fg-rgb) / 0.12);
+	border-radius: 999px;
+	font-size: 0.72rem;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: color-mix(in srgb, var(--fg) 76%, var(--bg) 24%);
+	background: rgba(var(--fg-rgb) / 0.04);
+}
+
+.c0r3-preview-audio-shell audio {
+	width: 100%;
+}
+
+.c0r3-preview-text {
+	margin: 0;
+	max-height: 18rem;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
+	font-size: 0.78rem;
+	line-height: 1.6;
+	color: color-mix(in srgb, var(--fg) 82%, var(--bg) 18%);
+}
+
+.c0r3-preview-text--code {
+	font-family: Menlo, Consolas, monospace;
+	font-size: 0.75rem;
+}
+
+.c0r3-preview-meta {
+	display: grid;
+	gap: 0.3rem;
+}
+
+.c0r3-preview-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	align-items: center;
+}
+
 @media (max-width: 980px) {
 	.c0r3-overview-grid,
 	.c0r3-memory-flow {
