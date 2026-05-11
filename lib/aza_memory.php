@@ -436,6 +436,32 @@ function aza_memory_text_previewable_formats(): array
     return ['txt', 'md', 'rtf', 'html', 'htm', 'json', 'csv', 'xml', 'yaml', 'yml', 'tsv'];
 }
 
+function aza_memory_text_preview_is_safe(string $raw): bool
+{
+    if ($raw === '' || str_contains($raw, "\0")) {
+        return false;
+    }
+
+    if (function_exists('mb_check_encoding') && !mb_check_encoding($raw, 'UTF-8')) {
+        return false;
+    }
+
+    $length = strlen($raw);
+    if ($length <= 0) {
+        return false;
+    }
+
+    $controlCount = 0;
+    for ($index = 0; $index < $length; $index += 1) {
+        $ord = ord($raw[$index]);
+        if ($ord < 32 && !in_array($ord, [9, 10, 13], true)) {
+            $controlCount += 1;
+        }
+    }
+
+    return $controlCount <= max(2, (int) floor($length * 0.02));
+}
+
 function aza_memory_extract_preview_text(?string $publicPath, int $maxBytes = 16000, int $maxChars = 1800): string
 {
     $absolutePath = aza_absolute_storage_path($publicPath);
@@ -445,6 +471,10 @@ function aza_memory_extract_preview_text(?string $publicPath, int $maxBytes = 16
 
     $raw = @file_get_contents($absolutePath, false, null, 0, $maxBytes);
     if (!is_string($raw) || $raw === '') {
+        return '';
+    }
+
+    if (!aza_memory_text_preview_is_safe($raw)) {
         return '';
     }
 
@@ -604,6 +634,68 @@ function aza_memory_filter_previewable_file_items(array $items): array
     }
 
     return $previewable;
+}
+
+function aza_memory_preview_family_priority(): array
+{
+    return ['image', 'video', 'audio', 'document', 'data', 'design', '3d'];
+}
+
+function aza_memory_curate_previewable_file_items(array $items, int $limit = 3): array
+{
+    if ($limit <= 0) {
+        return [];
+    }
+
+    $candidates = aza_memory_filter_previewable_file_items($items);
+    if (!$candidates) {
+        return [];
+    }
+
+    $selected = [];
+    $selectedKeys = [];
+
+    $candidateKey = static function (array $item): string {
+        return trim((string) ($item['href'] ?? '')) . '|' . trim((string) ($item['title'] ?? ''));
+    };
+
+    foreach (aza_memory_preview_family_priority() as $family) {
+        foreach ($candidates as $item) {
+            if (aza_memory_item_primary_family($item) !== $family) {
+                continue;
+            }
+
+            $key = $candidateKey($item);
+            if (isset($selectedKeys[$key])) {
+                continue;
+            }
+
+            $selected[] = $item;
+            $selectedKeys[$key] = true;
+
+            if (count($selected) >= $limit) {
+                return $selected;
+            }
+
+            break;
+        }
+    }
+
+    foreach ($candidates as $item) {
+        $key = $candidateKey($item);
+        if (isset($selectedKeys[$key])) {
+            continue;
+        }
+
+        $selected[] = $item;
+        $selectedKeys[$key] = true;
+
+        if (count($selected) >= $limit) {
+            break;
+        }
+    }
+
+    return $selected;
 }
 
 function aza_memory_build_family_options(array $items): array
