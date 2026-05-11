@@ -5360,6 +5360,13 @@ body.xyz-surface-view .guide-prompt-list li code {
 	color: rgba(var(--land-secondary-rgb) / 0.82);
 }
 
+.guide-voice-origin-badge[data-guide-voice-origin-state="auth-missing"],
+.guide-voice-history-chip[data-guide-voice-origin-state="auth-missing"] {
+	border-color: rgba(214 158 46 / 0.32);
+	background: rgba(214 158 46 / 0.08);
+	color: rgba(231 184 74 / 0.96);
+}
+
 .guide-voice-origin-badge[data-guide-voice-origin-state="unavailable"],
 .guide-voice-history-chip[data-guide-voice-origin-state="unavailable"] {
 	border-color: rgba(var(--fg-rgb) / 0.16);

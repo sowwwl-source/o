@@ -82,6 +82,8 @@ $guideLandLambda = (int) ($ambientTokens['lambda'] ?? 548);
 $guideLandTone = (string) ($ambientProfile['tone'] ?? 'str3m public');
 $agentUrl = trim((string) ((getenv('SOWWWL_0WLSLW0_CHAT_URL') ?: getenv('SOWWWL_0WLSLW0_AGENT_URL')) ?: ''));
 $voiceState = guide_voice_browser_state($authenticatedLand);
+$voiceUpstreamState = trim((string) ($voiceState['upstream_state'] ?? guide_voice_upstream_state()));
+$voiceUpstreamLabel = trim((string) ($voiceState['upstream_label'] ?? guide_voice_upstream_label()));
 $guideMode = guide_voice_mode_label();
 $siteTitle = defined('SITE_TITLE') ? (string) constant('SITE_TITLE') : 'O. le réseau minimal';
 $canonicalOrigin = rtrim((string) (getenv('SOWWWL_PUBLIC_ORIGIN') ?: 'https://sowwwl.com'), '/');
@@ -118,12 +120,20 @@ $guideStateNotes = [
     ['role', 'ecouter / clarifier / orienter'],
     ['public', 'str3m / lecture / observation'],
     ['signup', 'rejoindre / terre / scellement'],
-    ['voice', guide_voice_upstream_configured() ? 'relais amont actif' : 'fallback local actif'],
+    ['voice', match ($voiceUpstreamState) {
+        'remote-ready' => 'relais amont actif',
+        'auth-missing' => 'amont repere / cle manquante',
+        default => 'fallback local actif',
+    }],
 ];
 $guideVoiceNotes = [
     ['input', 'micro navigateur'],
     ['output', 'synthese vocale locale'],
-    ['relay', guide_voice_upstream_configured() ? 'agent distant via backend' : 'guide local sans endpoint distant'],
+    ['relay', match ($voiceUpstreamState) {
+        'remote-ready' => 'agent distant via backend',
+        'auth-missing' => 'endpoint distant sans autorisation complete',
+        default => 'guide local sans endpoint distant',
+    }],
     ['voice', 'fr / en / es / pt / it'],
     ['privacy', 'cle gardee serveur'],
     ['fallback', 'orientation locale si l’amont refuse'],
@@ -346,9 +356,11 @@ $guideVoiceNotes = [
             </div>
 
             <p class="panel-copy guide-embed-note">
-                <?= guide_voice_upstream_configured()
-                    ? 'La voix peut déjà relayer un agent amont côté serveur. Owl garde la clé côté backend.'
-                    : 'La voix fonctionne déjà en guide local. Le relais amont pourra se brancher plus tard sans exposer la clé au navigateur.' ?>
+                <?= match ($voiceUpstreamState) {
+                    'remote-ready' => 'La voix peut déjà relayer un agent amont côté serveur. Owl garde la clé côté backend.',
+                    'auth-missing' => 'Le relais amont est repéré, mais son autorisation manque encore. Owl reste donc en guide local tant que la clé ne vit pas côté serveur.',
+                    default => 'La voix fonctionne déjà en guide local. Le relais amont pourra se brancher plus tard sans exposer la clé au navigateur.',
+                } ?>
             </p>
         </aside>
     </section>
@@ -381,6 +393,8 @@ $guideVoiceNotes = [
         data-guide-voice-csrf="<?= h((string) $voiceState['csrf_token']) ?>"
         data-guide-voice-greeting="<?= h((string) $voiceState['greeting']) ?>"
         data-guide-voice-upstream="<?= !empty($voiceState['upstream_configured']) ? '1' : '0' ?>"
+        data-guide-voice-upstream-state="<?= h($voiceUpstreamState) ?>"
+        data-guide-voice-upstream-label="<?= h($voiceUpstreamLabel) ?>"
         data-guide-voice-chat-url="<?= h((string) $voiceState['chat_url']) ?>"
         data-guide-voice-program="<?= h((string) ($voiceState['land_program'] ?? $guideLandProgram)) ?>"
         data-guide-voice-label="<?= h((string) ($voiceState['land_label'] ?? $guideLandLabel)) ?>"
@@ -408,7 +422,7 @@ $guideVoiceNotes = [
                 <p class="guide-voice-transcript" data-guide-voice-transcript>Exemples : « explique O. », « ouvre Signal », “take me to Str3m”.</p>
                 <p class="guide-voice-reply" data-guide-voice-reply aria-live="polite" aria-atomic="true">Owl répondra ici puis lira sa réponse à voix haute.</p>
                 <div class="guide-voice-meta" aria-live="polite">
-                    <span class="guide-voice-origin-badge" data-guide-voice-origin data-guide-voice-origin-state="<?= !empty($voiceState['upstream_configured']) ? 'remote-ready' : 'local' ?>"><?= !empty($voiceState['upstream_configured']) ? 'remote prêt' : 'local' ?></span>
+                    <span class="guide-voice-origin-badge" data-guide-voice-origin data-guide-voice-origin-state="<?= h($voiceUpstreamState) ?>"><?= h($voiceUpstreamLabel) ?></span>
                     <span class="guide-voice-meta-copy">texte disponible · historique court</span>
                 </div>
                 <ol class="guide-voice-history" data-guide-voice-history aria-label="Historique récent avec Owl" hidden></ol>

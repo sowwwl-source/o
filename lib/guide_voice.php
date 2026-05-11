@@ -9,7 +9,7 @@ function guide_voice_config(): array
         return $config;
     }
 
-    $endpoint = trim((string) (getenv('SOWWWL_0WLSLW0_AGENT_ENDPOINT') ?: ''));
+    $endpoint = guide_voice_normalize_endpoint((string) (getenv('SOWWWL_0WLSLW0_AGENT_ENDPOINT') ?: ''));
     $authHeader = trim((string) (getenv('SOWWWL_0WLSLW0_AGENT_AUTH_HEADER') ?: 'Authorization'));
     $authScheme = trim((string) (getenv('SOWWWL_0WLSLW0_AGENT_AUTH_SCHEME') ?: 'Bearer'));
     $agentKey = trim((string) (getenv('SOWWWL_0WLSLW0_AGENT_KEY') ?: ''));
@@ -39,6 +39,28 @@ function guide_voice_config(): array
     return $config;
 }
 
+function guide_voice_normalize_endpoint(string $endpoint): string
+{
+    $candidate = trim($endpoint);
+    if ($candidate === '') {
+        return '';
+    }
+
+    $parts = parse_url($candidate);
+    if (!is_array($parts)) {
+        return $candidate;
+    }
+
+    $host = strtolower(trim((string) ($parts['host'] ?? '')));
+    $path = trim((string) ($parts['path'] ?? ''));
+
+    if ($host !== '' && str_ends_with($host, '.agents.do-ai.run') && ($path === '' || $path === '/')) {
+        return rtrim($candidate, '/') . '/api/v1/chat/completions';
+    }
+
+    return $candidate;
+}
+
 function guide_voice_value_looks_placeholder(string $value): bool
 {
     $normalized = strtolower(trim($value));
@@ -65,8 +87,35 @@ function guide_voice_value_looks_placeholder(string $value): bool
 
 function guide_voice_upstream_configured(): bool
 {
+    return guide_voice_upstream_state() === 'remote-ready';
+}
+
+function guide_voice_upstream_state(): string
+{
     $config = guide_voice_config();
-    return $config['endpoint'] !== '' && !guide_voice_value_looks_placeholder((string) $config['endpoint']);
+    $endpoint = (string) ($config['endpoint'] ?? '');
+    if ($endpoint === '' || guide_voice_value_looks_placeholder($endpoint)) {
+        return 'local';
+    }
+
+    $parts = parse_url($endpoint);
+    $host = strtolower(trim((string) ($parts['host'] ?? '')));
+    $agentKey = trim((string) ($config['agent_key'] ?? ''));
+
+    if ($host !== '' && str_ends_with($host, '.agents.do-ai.run') && $agentKey === '') {
+        return 'auth-missing';
+    }
+
+    return 'remote-ready';
+}
+
+function guide_voice_upstream_label(): string
+{
+    return match (guide_voice_upstream_state()) {
+        'remote-ready' => 'remote prêt',
+        'auth-missing' => 'amont incomplet',
+        default => 'local',
+    };
 }
 
 function guide_voice_mode_label(): string
@@ -89,6 +138,8 @@ function guide_voice_browser_state(?array $authenticatedLand = null): array
         'csrf_token' => csrf_token(),
         'greeting' => guide_voice_default_greeting($authenticatedLand),
         'upstream_configured' => guide_voice_upstream_configured(),
+        'upstream_state' => guide_voice_upstream_state(),
+        'upstream_label' => guide_voice_upstream_label(),
         'chat_url' => guide_voice_value_looks_placeholder((string) $config['chat_url']) ? '' : (string) $config['chat_url'],
         'land_slug' => $landSlug,
         'land_program' => (string) ($profile['program'] ?? 'collective'),

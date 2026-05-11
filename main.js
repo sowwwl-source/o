@@ -3642,10 +3642,14 @@ function clearGuideVoiceSession() {
 	}
 }
 
-function normalizeGuideVoiceSource(value, { upstreamConfigured = false } = {}) {
+function normalizeGuideVoiceSource(value, { upstreamConfigured = false, upstreamState = "" } = {}) {
 	const source = typeof value === "string" ? value.trim().toLowerCase() : "";
-	if (["local", "remote", "remote-ready", "unavailable"].includes(source)) {
+	if (["local", "remote", "remote-ready", "auth-missing", "unavailable"].includes(source)) {
 		return source;
+	}
+
+	if (typeof upstreamState === "string" && upstreamState.trim()) {
+		return normalizeGuideVoiceSource(upstreamState.trim().toLowerCase(), { upstreamConfigured });
 	}
 
 	return upstreamConfigured ? "remote-ready" : "local";
@@ -3657,6 +3661,8 @@ function guideVoiceSourceLabel(source) {
 			return "remote";
 		case "remote-ready":
 			return "remote prêt";
+		case "auth-missing":
+			return "amont incomplet";
 		case "unavailable":
 			return "indispo";
 		default:
@@ -3978,6 +3984,8 @@ function createGuideVoiceDock(config = {}) {
 	shell.dataset.guideVoiceCsrf = config.csrf_token || "";
 	shell.dataset.guideVoiceGreeting = config.greeting || "Je suis Owl O et serai votre guide pour rejoindre le peuple de l'O.";
 	shell.dataset.guideVoiceUpstream = config.upstream_configured ? "1" : "0";
+	shell.dataset.guideVoiceUpstreamState = config.upstream_state || (config.upstream_configured ? "remote-ready" : "local");
+	shell.dataset.guideVoiceUpstreamLabel = config.upstream_label || guideVoiceSourceLabel(shell.dataset.guideVoiceUpstreamState);
 	shell.dataset.guideVoiceChatUrl = config.chat_url || "";
 	shell.dataset.guideVoiceProgram = config.land_program || document.body?.dataset?.landProgram || "collective";
 	shell.dataset.guideVoiceLabel = config.land_label || document.body?.dataset?.landLabel || "collectif";
@@ -4006,7 +4014,7 @@ function createGuideVoiceDock(config = {}) {
 			<p class="guide-voice-transcript" data-guide-voice-transcript>La continuité vocale se réamorce après navigation.</p>
 			<p class="guide-voice-reply" data-guide-voice-reply aria-live="polite" aria-atomic="true">Active la voix une fois, puis continue ta traversée.</p>
 			<div class="guide-voice-meta" aria-live="polite">
-				<span class="guide-voice-origin-badge" data-guide-voice-origin data-guide-voice-origin-state="${config.upstream_configured ? "remote-ready" : "local"}">${config.upstream_configured ? "remote prêt" : "local"}</span>
+				<span class="guide-voice-origin-badge" data-guide-voice-origin data-guide-voice-origin-state="${shell.dataset.guideVoiceUpstreamState}">${shell.dataset.guideVoiceUpstreamLabel}</span>
 				<span class="guide-voice-meta-copy">texte disponible · historique court</span>
 			</div>
 			<ol class="guide-voice-history" data-guide-voice-history aria-label="Historique récent avec 0wlslw0" hidden></ol>
@@ -4411,6 +4419,7 @@ function mountGuideVoice(root) {
 	const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 	const isDock = root.dataset.guideVoiceDock === "1";
 	const upstreamConfigured = root.dataset.guideVoiceUpstream === "1";
+	const upstreamState = root.dataset.guideVoiceUpstreamState || (upstreamConfigured ? "remote-ready" : "local");
 	const persisted = readGuideVoiceSession();
 	const persistedSuggestions = normalizeGuideVoiceSuggestions(persisted.suggestions);
 	const persistedHistory = normalizeGuideVoiceHistory(persisted.history);
@@ -4422,7 +4431,7 @@ function mountGuideVoice(root) {
 	let interactionsBound = false;
 	let activeSuggestions = persistedSuggestions.length ? persistedSuggestions : starterPrompts;
 	let history = persistedHistory;
-	let lastSource = normalizeGuideVoiceSource(persisted.lastSource, { upstreamConfigured });
+	let lastSource = normalizeGuideVoiceSource(persisted.lastSource, { upstreamConfigured, upstreamState });
 	
 	// --- Visuel & Audio (Breather) ---
 	const breatherEl = root.querySelector("[data-guide-voice-breather]");
@@ -4564,7 +4573,7 @@ function mountGuideVoice(root) {
 	}
 
 	function updateOriginBadge(nextSource = lastSource) {
-		lastSource = normalizeGuideVoiceSource(nextSource, { upstreamConfigured });
+		lastSource = normalizeGuideVoiceSource(nextSource, { upstreamConfigured, upstreamState });
 		if (originNode instanceof HTMLElement) {
 			originNode.dataset.guideVoiceOriginState = lastSource;
 			originNode.textContent = guideVoiceSourceLabel(lastSource);
