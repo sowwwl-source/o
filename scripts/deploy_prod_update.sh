@@ -114,6 +114,18 @@ compose_prod() {
 	docker compose -p "$project_name" --env-file "$env_path" -f "$compose_path" "$@"
 }
 
+assert_single_header() {
+	local url=${1:?Missing URL}
+	local header_name=${2:?Missing header name}
+	local count
+
+	count=$(curl -fsSI "$url" | awk -v header_name="${header_name}:" 'tolower($1) == tolower(header_name) { count++ } END { print count + 0 }')
+	if [[ "$count" -ne 1 ]]; then
+		echo "Expected a single ${header_name} header on ${url}, got ${count}" >&2
+		exit 1
+	fi
+}
+
 echo "==> Updating production checkout"
 cd "$prod_root"
 git fetch origin
@@ -157,6 +169,12 @@ curl -fsSI https://sowwwl.com/str3m
 curl -fsSI https://sowwwl.org/
 curl -fsS https://sowwwl.com/ | grep -qE 'Trois portes suffisent|Passer par 0wlslw0|commande noyau'
 curl -fsS https://sowwwl.org/ | grep -qE 'Comprendre les domaines sans se perdre|carte des rôles|Ouvrir sowwwl\.com'
+assert_single_header https://sowwwl.com/ cross-origin-opener-policy
+assert_single_header https://sowwwl.com/ cross-origin-resource-policy
+assert_single_header https://sowwwl.com/ x-permitted-cross-domain-policies
+assert_single_header https://0wlslw0.com cross-origin-opener-policy
+assert_single_header https://0wlslw0.com cross-origin-resource-policy
+assert_single_header https://0wlslw0.com x-permitted-cross-domain-policies
 docker exec "${project_name}-app-1" php /var/www/html/scripts/check_signal_validation.php --require-schema-ready --require-delivery-ready >/dev/null
 docker inspect "${project_name}-caddy-1" --format '{{range .Mounts}}{{println .Source " -> " .Destination}}{{end}}' | grep '/srv/sites'
 

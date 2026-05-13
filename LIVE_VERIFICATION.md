@@ -59,6 +59,17 @@ Expected:
 - `sowwwl.com` exposes the current three-door entry, not stale secondary copy
 - `sowwwl.org` exposes the current role-map copy, not an older snapshot
 
+For proxy/app header sanity specifically:
+
+```bash
+curl -sSI https://sowwwl.com/ | grep -Ei 'cross-origin-opener-policy|cross-origin-resource-policy|x-permitted-cross-domain-policies'
+curl -sSI https://0wlslw0.com | grep -Ei 'cross-origin-opener-policy|cross-origin-resource-policy|x-permitted-cross-domain-policies'
+```
+
+Expected:
+- each of those headers appears exactly once per response
+- if any of them appears twice, the app and Caddy are both emitting the same protection and the proxy refresh likely did not happen
+
 ### Signal validation readiness
 ```bash
 docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php
@@ -171,6 +182,7 @@ You can consider production verified only when:
 - key files exist in the live app container
 - the domain no longer returns old placeholder content
 - target feature route responds correctly
+- app protection headers are not duplicated on proxied hosts
 
 ## 8. Golden rule
 
