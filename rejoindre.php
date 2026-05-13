@@ -179,16 +179,16 @@ $journeyStatusTitle = match (true) {
     default => 'Étape ' . $journeyVisibleStepCurrent . ' sur ' . $journeyVisibleStepTotal . ' · scellement',
 };
 $journeyStatusCopy = match (true) {
-    $currentStep === 0 => 'Ensuite: ' . $totalPortalSteps . ' passage' . ($totalPortalSteps > 1 ? 's' : '') . ' AzA, puis le réglage final.',
-    $currentPortal !== null && $journeyRemainingPortalCount > 1 => $journeyRemainingPortalCount . ' passages restent disponibles avant la configuration. Tu peux tout lire ou aller plus vite si le cap est déjà clair.',
-    $currentPortal !== null && $journeyRemainingPortalCount === 1 => 'Dernier passage avant la configuration finale. Tu peux continuer ou passer directement au réglage.',
-    $currentPortal !== null => 'Lecture terminée: tout est prêt pour le réglage final.',
-    default => 'Dernier écran avant l’ouverture: signature, fuseau, secret, puis bascule immédiate vers la terre.',
+    $currentStep === 0 => 'Ensuite : ' . $totalPortalSteps . ' passage' . ($totalPortalSteps > 1 ? 's' : '') . ', puis le réglage final.',
+    $currentPortal !== null && $journeyRemainingPortalCount > 1 => $journeyRemainingPortalCount . ' passages avant la configuration. Tu peux tout lire ou aller plus vite.',
+    $currentPortal !== null && $journeyRemainingPortalCount === 1 => 'Dernier passage avant la configuration. Tu peux continuer ou aller au réglage.',
+    $currentPortal !== null => 'Lecture terminée. Tout est prêt pour le réglage final.',
+    default => 'Dernier écran avant l’ouverture : signature, fuseau, secret.',
 };
 $journeyStatusAside = match (true) {
-    $currentStep === 0 => 'Prévoir quelques minutes si tu veux tout lire tranquillement.',
-    $currentPortal !== null => 'La lecture reste libre: rien n’est verrouillé si tu veux avancer plus vite.',
-    default => 'Tu peux encore relire les passages avant de sceller.',
+    $currentStep === 0 => 'Prévoir quelques minutes si tu veux tout lire.',
+    $currentPortal !== null => 'La lecture reste libre.',
+    default => 'Tu peux encore relire avant de sceller.',
 };
 ?>
 <!DOCTYPE html>
@@ -221,7 +221,7 @@ $journeyStatusAside = match (true) {
             <strong>Rejoindre le peuple de l'O.</strong>
             <span>Nommer, lire, régler, sceller.</span>
         </h1>
-        <p class="lead signup-journey-lead">Le nom de la terre ouvre maintenant un vrai passage : lecture d'AzA d'abord, configuration ensuite, création enfin.</p>
+        <p class="lead signup-journey-lead">Nommer, lire, régler, puis ouvrir la terre.</p>
 
         <ol class="signup-journey-progress" aria-label="Progression du parcours d'entrée">
             <li class="<?= $currentStep === 0 ? 'is-current' : ($currentStep > 0 ? 'is-done' : '') ?>">Nom</li>
@@ -250,7 +250,7 @@ $journeyStatusAside = match (true) {
                 <div>
                     <span class="summary-label">Seuil 00</span>
                     <h2 id="signup-name-title">Choisir le nom de la terre</h2>
-                    <p class="panel-copy">On valide d'abord le nom, puis on traverse les pages complètes d'AzA avant de sceller la terre.</p>
+                    <p class="panel-copy">Valider le nom, puis traverser AzA avant de sceller la terre.</p>
                 </div>
                 <span class="badge">nom + lecture + scellement</span>
             </div>
@@ -271,7 +271,7 @@ $journeyStatusAside = match (true) {
                             value="<?= h($form['username']) ?>"
                             data-username-input
                         >
-                        <span class="input-hint">Le nom devient le seuil. Ensuite, lecture et réglage prennent toute la page.</span>
+                        <span class="input-hint">Le nom devient le seuil.</span>
                     </label>
 
                     <label>
@@ -292,7 +292,7 @@ $journeyStatusAside = match (true) {
                         <button type="button" class="ghost-link inline-action" data-use-local-timezone>utiliser le fuseau local</button>
                     </div>
 
-                    <p class="field-status" data-timezone-status>Le fuseau sera repris dans la configuration finale.</p>
+                    <p class="field-status" data-timezone-status>Le fuseau sera repris plus loin.</p>
 
                     <button type="submit">Valider le nom et entrer dans AzA</button>
                 </form>
@@ -305,7 +305,7 @@ $journeyStatusAside = match (true) {
                         <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
                         <p><span>Fuseau</span><strong data-preview-timezone><?= h($previewTimezone) ?></strong></p>
                     </div>
-                    <p class="panel-copy">Une fois ce nom validé, le parcours s'ouvre en lecture pleine page pour qu'AzA soit vraiment lisible.</p>
+                    <p class="panel-copy">Une fois le nom validé, la lecture s’ouvre en pleine page.</p>
                     <p class="panel-copy signup-journey-preview-note"><?= h($journeyStatusCopy) ?></p>
                 </aside>
             </div>
@@ -317,7 +317,7 @@ $journeyStatusAside = match (true) {
                 <div>
                     <span class="summary-label">Passage AzA <?= h((string) $currentPortal['slug']) ?></span>
                     <h2 id="signup-reading-title"><?= h((string) $currentPortal['label']) ?></h2>
-                    <p class="panel-copy">Lecture complète avant création : on laisse à ce passage la place d'être lu, pas juste survolé.</p>
+                    <p class="panel-copy">Lecture avant création.</p>
                 </div>
                 <a class="ghost-link" href="<?= h($azaHref) ?>">Lire aZa au complet</a>
             </div>
@@ -361,7 +361,7 @@ $journeyStatusAside = match (true) {
                 <div>
                     <span class="summary-label">Scellement</span>
                     <h2 id="signup-config-title">Configurer la terre avant de la sceller</h2>
-                    <p class="panel-copy">La lecture est faite. Ici, on règle la signature native, le secret et le fuseau dans une page entière, sans compresser la lecture d'AzA.</p>
+                    <p class="panel-copy">La lecture est faite. Ici, on règle signature, secret, fuseau.</p>
                 </div>
                 <a class="ghost-link" href="<?= h(signup_stage_link(max(1, $totalPortalSteps), $form)) ?>">Relire le pacte</a>
             </div>
@@ -391,7 +391,7 @@ $journeyStatusAside = match (true) {
                             value="<?= h($form['username']) ?>"
                             data-username-input
                         >
-                        <span class="input-hint">Tu peux encore ajuster le nom avant le scellement.</span>
+                        <span class="input-hint">Tu peux encore ajuster le nom.</span>
                     </label>
 
                     <section class="signup-portal-ritual" aria-labelledby="signup-portal-recap-title">
@@ -399,7 +399,7 @@ $journeyStatusAside = match (true) {
                             <div>
                                 <span class="summary-label">Lecture AzA</span>
                                 <h3 id="signup-portal-recap-title">Les passages relus avant l’ouverture</h3>
-                                <p class="panel-copy">Tu peux revenir à chaque page si besoin ; rien n'est caché derrière un seul pli de formulaire.</p>
+                                <p class="panel-copy">Tu peux revenir à chaque page si besoin.</p>
                             </div>
                         </div>
 
@@ -421,7 +421,7 @@ $journeyStatusAside = match (true) {
                             <div>
                                 <span class="summary-label">Signature native</span>
                                 <h3 id="signup-spectrum-title">Programme et longueur d’onde</h3>
-                                <p class="panel-copy">Le réglage ici devient l'identité durable de la terre.</p>
+                                <p class="panel-copy">Ce réglage devient l’identité durable de la terre.</p>
                             </div>
                         </div>
 
@@ -484,7 +484,7 @@ $journeyStatusAside = match (true) {
                         <?php endforeach; ?>
                         <button type="button" class="ghost-link inline-action" data-use-local-timezone>utiliser le fuseau local</button>
                     </div>
-                    <p class="field-status" data-timezone-status>Le fuseau règle l'heure située de ta terre.</p>
+                    <p class="field-status" data-timezone-status>Le fuseau règle l’heure située de ta terre.</p>
 
                     <label>
                         Secret
@@ -497,7 +497,7 @@ $journeyStatusAside = match (true) {
                             value="<?= h($form['password']) ?>"
                             autocomplete="new-password"
                         >
-                        <span class="input-hint">Il protège la terre et scelle l'entrée.</span>
+                        <span class="input-hint">Il protège la terre et scelle l’entrée.</span>
                     </label>
 
                     <div class="action-row">
@@ -517,7 +517,7 @@ $journeyStatusAside = match (true) {
                         <p><span>Tonalité</span><strong data-preview-program-tone><?= h($selectedSignupTone) ?></strong></p>
                         <p><span>Signature</span><strong>λ <span data-signup-lambda-value><?= h((string) $selectedSignupLambda) ?></span> nm</strong></p>
                     </div>
-                    <p class="panel-copy">Une fois créée, la terre sera immédiatement liée à ta session et t'emmènera vers son espace situé.</p>
+                    <p class="panel-copy">Une fois créée, la terre sera immédiatement liée à ta session.</p>
                     <?php if ($authenticatedLand): ?>
                         <div class="action-row">
                             <a class="ghost-link" href="<?= h($landRoute) ?>?u=<?= rawurlencode((string) ($authenticatedLand['slug'] ?? '')) ?>">Retour à ma terre actuelle</a>

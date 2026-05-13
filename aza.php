@@ -144,14 +144,14 @@ $filteredFinderItems = aza_memory_sort_items(
 $finderPreviewItem = $filteredFinderItems[0] ?? null;
 $memoryViewCopy = [
     'chrono' => $form['owner_slug'] !== ''
-        ? 'Filtre : ' . $form['owner_slug'] . ' · la mémoire se relit par strates temporelles.'
+        ? 'Filtre : ' . $form['owner_slug'] . ' · lecture par strates temporelles.'
         : 'La mémoire prend date, puis distance.',
-    'family' => 'Lecture par grandes familles de fichiers : image, audio, vidéo, document, design, 3D, données.',
-    'format' => 'Lecture par extension réelle : ce que la mémoire contient, format par format.',
-    'size' => 'Lecture pondérale : du léger au massif, comme un chercheur de fichiers.',
-    'source' => 'Lecture par provenance : plateformes d’archive et dépôts libres deviennent des familles de mémoire.',
-    'visual' => 'Lecture image-first : ce qui porte le visible, le spatial et les traces exposables.',
-    'finder' => 'Lecture transversale : archives ZIP + fichiers libres, avec recherche locale, tri, filtres et aperçu.',
+    'family' => 'Lecture par grandes familles : image, audio, vidéo, document, design, 3D, données.',
+    'format' => 'Lecture format par format.',
+    'size' => 'Lecture du léger au massif.',
+    'source' => 'Lecture par provenance.',
+    'visual' => 'Lecture par le visible.',
+    'finder' => 'Lecture transversale avec recherche, tri et aperçu.',
 ];
 $memoryTotals = array_merge([
     'archives' => count($sortedArchives),
@@ -165,21 +165,21 @@ $islandHref = ($form['owner_slug'] !== '' || $ownerSlug !== '')
 $activeOwnerSlug = $form['owner_slug'] !== '' ? $form['owner_slug'] : $ownerSlug;
 $azaViewLabel = $publicReadOnly ? 'lecture publique' : 'édition liée';
 $azaModeDepositTitle = 'Déposer depuis cette terre';
-$azaModeDepositCopy = 'Le ZIP reste la meilleure porte pour une mémoire compacte; le dépôt libre sert quand un fichier isolé doit garder sa date et son contexte.';
+$azaModeDepositCopy = 'Le ZIP reste la meilleure porte pour une mémoire compacte. Le dépôt libre sert au fichier isolé.';
 $azaModeDepositMeta = $directUploadUrl && !$isDirectRequest ? 'ZIP · fichiers libres · entrée directe prête' : 'ZIP · fichiers libres';
 $azaModeDepositHref = '#aza-import-title';
 $azaModeDepositLinkLabel = 'Aller au dépôt';
 if ($publicReadOnly) {
     $azaModeDepositTitle = $ownerLand ? 'Lire sans déposer ici' : 'Une terre est requise pour déposer';
     $azaModeDepositCopy = $ownerLand
-        ? 'La mémoire reste lisible ici, mais l’écriture passe par la terre liée qui tient cette archive.'
-        : 'La mémoire collective reste visible, mais toute sédimentation demande une terre active.';
+        ? 'La mémoire reste lisible ici, mais l’écriture passe par la terre liée.'
+        : 'La mémoire collective reste visible, mais le dépôt demande une terre active.';
     $azaModeDepositMeta = 'lecture publique seulement';
     $azaModeDepositHref = $ownerLand ? $landHref . '?u=' . rawurlencode((string) $ownerLand['slug']) : $joinHref;
     $azaModeDepositLinkLabel = $ownerLand ? 'Voir la terre liée' : 'Poser une terre';
 } elseif ($activeTab === 'file') {
     $azaModeDepositTitle = 'Dépôt libre en premier plan';
-    $azaModeDepositCopy = 'Ce mode garde le fichier, son époque et son contexte sans l’écraser dans un ZIP complet.';
+    $azaModeDepositCopy = 'Ce mode garde le fichier, son époque et son contexte sans l’écraser dans un ZIP.';
 }
 
 $azaModeReadTitle = match (true) {
@@ -189,10 +189,10 @@ $azaModeReadTitle = match (true) {
     default => 'La mémoire tient plusieurs entrées',
 };
 $azaModeReadCopy = match ($azaModeReadTitle) {
-    'La mémoire reste vierge' => 'Aucune trace n’a encore assez sédimenté pour offrir une première lecture.',
-    'Quelques traces tiennent déjà' => 'Une première relecture est possible sans ouvrir toute la matière.',
-    'La mémoire devient lisible' => 'Plusieurs provenances et repères permettent déjà d’entrer par le bon angle.',
-    default => 'Le lecteur peut déjà proposer plusieurs accès: chronologie, sources, visible et finder.',
+    'La mémoire reste vierge' => 'Aucune trace n’offre encore de première lecture.',
+    'Quelques traces tiennent déjà' => 'Une première relecture est déjà possible.',
+    'La mémoire devient lisible' => 'Plusieurs provenances permettent déjà d’entrer par le bon angle.',
+    default => 'Le lecteur peut déjà proposer plusieurs accès : chrono, sources, visible, finder.',
 };
 $azaModeReadMeta = (string) ($memoryTotals['all'] ?? 0) . ' trace' . ((int) ($memoryTotals['all'] ?? 0) > 1 ? 's' : '')
     . ' · ' . (string) ($memoryTotals['visual_count'] ?? 0) . ' visible' . ((int) ($memoryTotals['visual_count'] ?? 0) > 1 ? 's' : '')
@@ -200,7 +200,7 @@ $azaModeReadMeta = (string) ($memoryTotals['all'] ?? 0) . ' trace' . ((int) ($me
 
 $azaModeBridgeTitle = $activeOwnerSlug !== '' ? 'Terre, mémoire, île' : 'La mémoire garde un ancrage';
 $azaModeBridgeCopy = $activeOwnerSlug !== ''
-    ? 'La terre garde l’édition, aZa tient les traces, puis l’île et le c0r3 reprennent cette matière avec d’autres intensités.'
+    ? 'La terre garde l’édition, aZa tient les traces, puis l’île et le c0r3 reprennent la matière.'
     : 'Même en lecture simple, aZa reste le point où les traces se déposent avant de devenir terre, île ou lecture visible.';
 $azaModeBridgeMeta = ($islandProjection['status_label'] ?? 'Aucune île encore') . ' · ' . ($activeOwnerSlug !== '' ? $activeOwnerSlug : 'mémoire collective');
 $azaModeBridgeHref = $islandHref !== '' && ($islandProjection['status'] ?? '') !== 'void'
@@ -340,7 +340,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
         <div class="section-topline">
             <div>
                 <h2 id="aza-mode-title">Déposer, situer, relire</h2>
-                <p class="panel-copy">aZa garde la mémoire sans la dissoudre dans le flux.</p>
+                <p class="panel-copy">aZa garde la mémoire hors du flux.</p>
             </div>
             <span class="badge"><?= h($azaViewLabel) ?></span>
         </div>
@@ -384,7 +384,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                 <div>
                     <h2 id="aza-import-title">Sédimentation</h2>
                     <p class="panel-copy">
-                        <?= $publicReadOnly ? 'La mémoire reste lisible ici. Le dépôt passe par la Terre liée.' : 'Un ZIP entre, une mémoire se forme.' ?>
+                        <?= $publicReadOnly ? 'La mémoire reste lisible ici. Le dépôt passe par la Terre liée.' : 'Un ZIP entre. Une mémoire se forme.' ?>
                     </p>
                 </div>
                 <a class="ghost-link" href="<?=

@@ -167,7 +167,7 @@ curl -fsSI https://sowwwl.com/
 curl -fsSI https://sowwwl.com/signal
 curl -fsSI https://sowwwl.com/str3m
 curl -fsSI https://sowwwl.org/
-curl -fsS https://sowwwl.com/ | grep -qE 'Trois portes suffisent|Passer par 0wlslw0|commande noyau'
+curl -fsS https://sowwwl.com/ | grep -qE 'Trois portes : public, terre, 0wlslw0|Passer par 0wlslw0|commande noyau'
 curl -fsS https://sowwwl.org/ | grep -qE 'Comprendre les domaines sans se perdre|carte des rôles|Ouvrir sowwwl\.com'
 assert_single_header https://sowwwl.com/ cross-origin-opener-policy
 assert_single_header https://sowwwl.com/ cross-origin-resource-policy

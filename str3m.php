@@ -174,6 +174,7 @@ $publicSignalCount = count($publicSignals);
 $publicSignalPreview = array_slice($publicSignals, 0, 6);
 $recentT0kCount = count($recentT0ks);
 $recentB0t3Count = count($recentB0t3s);
+$str3mPublicGestureCount = $recentT0kCount + $recentB0t3Count;
 $visibleLands = [];
 
 foreach ($publicSignals as $signal) {
@@ -407,58 +408,28 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         </div>
     </header>
 
-    <section class="panel reveal str3m-mode-panel" aria-labelledby="str3m-mode-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="str3m-mode-title">Repères rapides</h2>
-                <p class="panel-copy">Trois couches suffisent : le jour, le visible, l’exploratoire.</p>
-            </div>
-            <span class="badge"><?= h($str3mModeLabel) ?></span>
-        </div>
-
-        <div class="land-focus-grid str3m-focus-grid">
-            <article class="land-focus-card str3m-focus-card">
-                <p class="land-card-kicker">du jour</p>
-                <h3><?= h($str3mTodayTitle) ?></h3>
-                <p class="land-card-copy"><?= h($str3mTodayCopy) ?></p>
-                <p class="str3m-focus-meta">template · <?= h((string) ($dailyStream['template'] ?? 'empty')) ?> · mood · <?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></p>
-                <div class="str3m-focus-actions">
-                    <a class="ghost-link" href="#str3m-title">Aller au str3m du jour</a>
-                </div>
-            </article>
-
-            <article class="land-focus-card str3m-focus-card">
-                <p class="land-card-kicker">visible</p>
-                <h3><?= h($str3mVisibleTitle) ?></h3>
-                <p class="land-card-copy"><?= h($str3mVisibleCopy) ?></p>
-                <p class="str3m-focus-meta"><?= h((string) $publicSignalCount) ?> signal<?= $publicSignalCount > 1 ? 's' : '' ?> · <?= h((string) $visibleLandPreviewCount) ?> terre<?= $visibleLandPreviewCount > 1 ? 's' : '' ?> visible<?= $visibleLandPreviewCount > 1 ? 's' : '' ?></p>
-                <div class="str3m-focus-actions">
-                    <a class="ghost-link" href="<?= h($str3mVisibleHref) ?>"><?= h($str3mVisibleLinkLabel) ?></a>
-                </div>
-            </article>
-
-            <article class="land-focus-card str3m-focus-card">
-                <p class="land-card-kicker">exploratoire</p>
-                <h3><?= h($str3mLabTitle) ?></h3>
-                <p class="land-card-copy"><?= h($str3mLabCopy) ?></p>
-                <p class="str3m-focus-meta"><?= h((string) $archipelagoLandCount) ?> île<?= $archipelagoLandCount > 1 ? 's' : '' ?> · shell fantôme · n0de</p>
-                <div class="str3m-focus-actions">
-                    <a class="ghost-link" href="<?= h($str3mLabHref) ?>"><?= h($str3mLabLinkLabel) ?></a>
-                    <?php if ($archipelagoLandCount > 0): ?>
-                        <a class="ghost-link" href="<?= h($futureShellRoute) ?>">Voir n0de</a>
-                    <?php endif; ?>
-                </div>
-            </article>
-        </div>
-    </section>
-
     <section class="panel reveal str3m-panel" aria-labelledby="str3m-title">
         <div class="section-topline">
             <div>
                 <h2 id="str3m-title">Str3m quotidien</h2>
-                <p class="panel-copy">Une présence choisie pour aujourd’hui.</p>
+                <p class="panel-copy">Une présence pour aujourd’hui.</p>
             </div>
             <span class="badge"><?= h((string) ($dailyStream['template'] ?? 'empty')) ?></span>
+        </div>
+
+        <div class="public-entry-grid public-entry-grid--dense str3m-surface-grid" aria-label="Surface en ce moment">
+            <article class="public-entry-card">
+                <strong><?= h((string) $publicSignalCount) ?> signal<?= $publicSignalCount > 1 ? 's' : '' ?> public<?= $publicSignalCount > 1 ? 's' : '' ?></strong>
+                <span><?= $publicSignalCount > 0 ? 'Des traces lisibles tiennent déjà le courant.' : 'Le courant attend encore sa première preuve publique.' ?></span>
+            </article>
+            <article class="public-entry-card">
+                <strong><?= h((string) $visibleLandPreviewCount) ?> terre<?= $visibleLandPreviewCount > 1 ? 's' : '' ?> visible<?= $visibleLandPreviewCount > 1 ? 's' : '' ?></strong>
+                <span><?= $visibleLandPreviewCount > 0 ? 'Des présences deviennent déjà relisibles sans porte privée.' : 'Aucune terre n’affleure encore assez pour tenir la surface.' ?></span>
+            </article>
+            <article class="public-entry-card">
+                <strong><?= h((string) $str3mPublicGestureCount) ?> geste<?= $str3mPublicGestureCount > 1 ? 's' : '' ?> en circulation</strong>
+                <span><?= $str3mPublicGestureCount > 0 ? 't0ks et b0t3s bougent déjà dans le champ public.' : 'Le bord public reste calme pour le moment.' ?></span>
+            </article>
         </div>
 
         <div class="str3m-daily-grid">
@@ -606,35 +577,11 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         </div>
     </section>
 
-    <section class="panel reveal" aria-labelledby="str3m-proof-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="str3m-proof-title">Ce qui circule déjà</h2>
-                <p class="panel-copy">Même quand le str3m du jour reste léger, le courant public laisse déjà des preuves.</p>
-            </div>
-        </div>
-
-        <div class="public-entry-grid">
-            <article class="public-entry-card">
-                <strong><?= h((string) $publicSignalCount) ?> signal<?= $publicSignalCount > 1 ? 's' : '' ?> public<?= $publicSignalCount > 1 ? 's' : '' ?></strong>
-                <span><?= $publicSignalCount > 0 ? 'Des traces lisibles existent déjà dans le courant.' : 'Aucun signal public pour le moment.' ?></span>
-            </article>
-            <article class="public-entry-card">
-                <strong><?= h((string) $recentT0kCount) ?> t0k<?= $recentT0kCount > 1 ? 's' : '' ?> en vue</strong>
-                <span><?= $recentT0kCount > 0 ? 'Des gestes publics circulent déjà entre terres.' : 'Aucun geste public n’est remonté pour l’instant.' ?></span>
-            </article>
-            <article class="public-entry-card">
-                <strong><?= h((string) $recentB0t3Count) ?> b0t3<?= $recentB0t3Count > 1 ? 's' : '' ?> lisible<?= $recentB0t3Count > 1 ? 's' : '' ?></strong>
-                <span><?= $recentB0t3Count > 0 ? 'Des lignes déposées restent consultables sans compte.' : 'Le champ reste ouvert, mais aucune ligne publique n’a encore été déposée.' ?></span>
-            </article>
-        </div>
-    </section>
-
     <section class="panel reveal" aria-labelledby="str3m-signals-title">
         <div class="section-topline">
             <div>
                 <h2 id="str3m-signals-title">Signaux publics récents</h2>
-                <p class="panel-copy">Les traces explicitement rendues visibles par des terres. C’est ici que le public voit qu’une présence devient lecture.</p>
+                <p class="panel-copy">Les traces qu’une terre rend visibles.</p>
             </div>
             <span class="badge"><?= h((string) $publicSignalCount) ?> visible<?= $publicSignalCount > 1 ? 's' : '' ?></span>
         </div>
@@ -650,7 +597,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                 <?php endforeach; ?>
             </div>
         <?php else: ?>
-            <p class="panel-copy">Aucun signal public n’est encore publié. Pour faire apparaître une terre ici, il faut publier au moins un signal public depuis une terre existante.</p>
+            <p class="panel-copy">Aucun signal public n’est encore publié. Il suffit d’un premier signal pour faire apparaître une terre ici.</p>
             <div class="action-row">
                 <a class="pill-link" href="<?= h($joinHref) ?>">Poser une terre</a>
                 <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
@@ -663,7 +610,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         <div class="section-topline">
             <div>
                 <h2 id="str3m-visible-lands-title">Terres visibles maintenant</h2>
-                <p class="panel-copy">A, B+++++++ : des terres apparaissent avec un indice public de présence — inspiré de 3ternet, sans faire semblant qu’un accès direct existe déjà.</p>
+                <p class="panel-copy">Les terres qui affleurent déjà dans le public.</p>
             </div>
             <span class="badge"><?= h((string) count($visibleLandPreview)) ?> visible<?= count($visibleLandPreview) > 1 ? 's' : '' ?></span>
         </div>
@@ -698,7 +645,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                 <?php endforeach; ?>
             </div>
         <?php else: ?>
-            <p class="panel-copy">Aucune terre n’est encore assez visible pour composer cette couche. 0wlslw0 peut t’expliquer la carte, et le parcours terre permet d’en faire apparaître une ici.</p>
+            <p class="panel-copy">Aucune terre n’affleure encore assez pour cette couche.</p>
             <div class="action-row">
                 <a class="pill-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
                 <a class="ghost-link" href="<?= h($joinHref) ?>">Poser une terre</a>
@@ -706,17 +653,49 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         <?php endif; ?>
     </section>
 
+    <details class="panel reveal str3m-exploratory-panel" aria-labelledby="str3m-exploratory-title">
+        <summary class="str3m-layer-summary">
+            <span class="summary-label">exploratoire</span>
+            <strong id="str3m-exploratory-title">Autres couches du courant</strong>
+            <span class="str3m-layer-summary__meta"><?= h((string) $archipelagoLandCount) ?> île<?= $archipelagoLandCount > 1 ? 's' : '' ?> · shell · <?= h((string) $recentT0kCount) ?> t0k<?= $recentT0kCount > 1 ? 's' : '' ?> · <?= h((string) $recentB0t3Count) ?> b0t3<?= $recentB0t3Count > 1 ? 's' : '' ?></span>
+        </summary>
+
+    <section class="panel reveal" aria-labelledby="str3m-shell-future-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="str3m-shell-future-title">Lab · shell porté</h2>
+                <p class="panel-copy">Couche exploratoire : tactilité publique et pont vers n0de.</p>
+            </div>
+            <a class="ghost-link" href="<?= h($futureShellRoute) ?>">Voir n0de</a>
+        </div>
+
+        <div class="public-entry-grid">
+            <article class="public-entry-card public-entry-card--future-shell">
+                <strong>tactilité</strong>
+                <span>Hover, focus et appui distinguent déjà les états publics.</span>
+            </article>
+            <article class="public-entry-card public-entry-card--future-shell">
+                <strong>hooks</strong>
+                <span>Chaque terre visible expose des métadonnées pour un shell futur.</span>
+            </article>
+            <article class="public-entry-card public-entry-card--future-shell">
+                <strong>n0de</strong>
+                <span>Le pont naturel reste l’objet porté : manifest, sync, shell de relation.</span>
+            </article>
+        </div>
+    </section>
+
     <section class="panel reveal" aria-labelledby="islands-title">
         <div class="section-topline">
             <div>
                 <h2 id="islands-title">Archipel</h2>
-                <p class="panel-copy">Les terres qui affleurent dans le courant — avec ou sans signal public — distribuées ici selon une poussée Fibonacci.</p>
+                <p class="panel-copy">Les terres qui affleurent dans le courant.</p>
             </div>
             <span class="badge"><?= count($archipelagoLands) ?> île<?= count($archipelagoLands) > 1 ? 's' : '' ?></span>
         </div>
 
         <?php if ($archipelagoLands === []): ?>
-            <p class="panel-copy">Aucune terre visible n’a encore assez laissé de traces pour faire apparaître l’archipel. Dès que le courant contient gestes, b0t3s ou signaux, il s’ouvrira ici.</p>
+            <p class="panel-copy">Aucune terre n’a encore assez laissé de traces pour faire apparaître l’archipel.</p>
         <?php else: ?>
             <?php
             // Calcule des positions 3D en spirale Fibonacci pour l'archipel
@@ -811,34 +790,9 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                 </div>
             </div>
             <?php if (!$archipelagoHasPublishedSignal): ?>
-                <p class="panel-copy">Aucune de ces terres n’a encore publié de signal public durable ; l’archipel montre donc le courant visible avant publication, sans mentir sur son état.</p>
+                <p class="panel-copy">Aucune de ces terres n’a encore publié de signal durable. L’archipel montre donc le visible avant publication.</p>
             <?php endif; ?>
         <?php endif; ?>
-    </section>
-
-    <section class="panel reveal" aria-labelledby="str3m-shell-future-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="str3m-shell-future-title">Lab · shell porté</h2>
-                <p class="panel-copy">Cette zone reste exploratoire. Elle prépare un shell porté, tactile et n0de-compatible, sans prendre la place des entrées publiques principales.</p>
-            </div>
-            <a class="ghost-link" href="<?= h($futureShellRoute) ?>">Voir n0de</a>
-        </div>
-
-        <div class="public-entry-grid">
-            <article class="public-entry-card public-entry-card--future-shell">
-                <strong>4 · tactilité</strong>
-                <span>Le hover, le focus et l’appui commencent déjà à différencier les états publics.</span>
-            </article>
-            <article class="public-entry-card public-entry-card--future-shell">
-                <strong>5 · hooks</strong>
-                <span>Chaque terre visible expose maintenant des métadonnées et des événements pour un shell futur.</span>
-            </article>
-            <article class="public-entry-card public-entry-card--future-shell">
-                <strong>6 · possession portée</strong>
-                <span>Le pont naturel est `n0de` : manifest, sync, objet physique, et plus tard ouverture d’un shell de relation.</span>
-            </article>
-        </div>
     </section>
 
     <?php if ($recentT0ks): ?>
@@ -846,7 +800,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         <div class="section-topline">
             <div>
                 <h2 id="str3m-t0ks-title">T0ks dans le courant</h2>
-                <p class="panel-copy">Les gestes publics. Voulez-vous grandir avec moi ?</p>
+                <p class="panel-copy">Les gestes publics.</p>
             </div>
             <a class="ghost-link" href="<?= h($shoreHref) ?>">Mon sh0re</a>
         </div>
@@ -874,7 +828,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         <div class="section-topline">
             <div>
                 <h2 id="str3m-b0t3-title">B0t3s dans le courant</h2>
-                <p class="panel-copy">Lignes déposées. Touche long ou clic pour déformer.</p>
+                <p class="panel-copy">Lignes déposées.</p>
             </div>
         </div>
         <div class="b0t3-stream-field">
@@ -889,6 +843,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         </div>
     </section>
     <?php endif; ?>
+    </details>
 
     <aside class="str3m-shell-ghost-dock" data-str3m-shell-ghost hidden aria-live="polite" aria-label="Shell fantôme en devenir">
         <div class="str3m-shell-ghost-dock__head">

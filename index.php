@@ -158,12 +158,11 @@ try {
         ? validate_land_visual_lambda((int) $form['lambda_nm'], $selectedSignupProgram)
         : $defaultSignupLambda;
 } catch (InvalidArgumentException $exception) {
-    $selectedSignupLambda = $defaultSignupLambda;
+$selectedSignupLambda = $defaultSignupLambda;
 }
 
 $selectedSignupLabel = (string) ($selectedSignupDefinition['label'] ?? $selectedSignupProgram);
 $selectedSignupTone = (string) ($selectedSignupDefinition['tone'] ?? '');
-$brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $homeVisualOnly = $isSowwwlXyz;
 $dailyStream = str3m_build_daily_stream(null);
 $dailyTextItem = is_array($dailyStream['items']['text'] ?? null) ? $dailyStream['items']['text'] : null;
@@ -229,11 +228,10 @@ if ($authenticatedLand) {
 $homeStatusLabel = $authenticatedLand ? 'terre liée' : 'surface collective';
 $homeLead = $authenticatedLand
     ? 'Le tore suit la fréquence de ta terre. Ouvrir, écrire, dériver.'
-    : 'Trois portes suffisent : entrer publiquement, poser une terre, ou passer par 0wlslw0.';
+    : 'Trois portes : public, terre, 0wlslw0.';
 $homePrimaryActionHref = $authenticatedLand
     ? o_route_path('/land') . '?u=' . rawurlencode($activeLandSlug)
     : o_route_path('/rejoindre');
-$homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Rejoindre le peuple de l\'O';
 $guideHref = o_route_path('/0wlslw0');
 $homeHref = o_route_path('/');
 $landHref = o_route_path('/land');
@@ -245,19 +243,18 @@ $echoHref = o_route_path('/echo');
 $joinHref = o_route_path('/rejoindre');
 $logoutHref = o_route_path('/logout.php');
 $promptSeeds = guide_prompt_seeds();
-$homeHeroLineOne = $authenticatedLand ? 'La terre' : 'O.';
-$homeHeroLineTwo = $authenticatedLand ? 'colore le torus.' : 'le réseau minimal';
-$homeHeroTone = $authenticatedLand ? $activeLandTone : 'porte d’usage / trois gestes / aucune précipitation';
-$homeHeroNote = $authenticatedLand
+$homeHeroLineOne = $authenticatedLand ? 'Ta terre' : 'Le tore';
+$homeHeroLineTwo = $authenticatedLand ? 'module le tore.' : 'écoute le monde réel.';
+$homeThresholdHint = $authenticatedLand
     ? 'Le noyau reste simple : terre, adresse, courant.'
-    : 'Entre par une porte, puis laisse le reste apparaître plus loin.';
+    : 'Comprendre sans quitter l’entrée.';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="<?= h(SITE_TITLE) ?> — entre publiquement, pose une terre, ou passe par 0wlslw0 pour trouver la bonne porte.">
+    <meta name="description" content="<?= h(SITE_TITLE) ?> — entrer publiquement, poser une terre, ou passer par 0wlslw0.">
     <meta name="theme-color" content="#09090b">
     <title><?= h(SITE_TITLE) ?></title>
 <?= render_o_page_head_assets($isSowwwlXyz ? 'xyz' : 'main') ?>
@@ -510,13 +507,13 @@ $homeHeroNote = $authenticatedLand
                 <article class="xyz-surface-note xyz-surface-note--camera" data-xyz-camera-panel>
                     <span class="summary-label">Ocam / peau comestible</span>
                     <strong data-xyz-camera-title>Ocam peut nourrir la surface.</strong>
-                    <p class="panel-copy" data-xyz-camera-status>Active Ocam pour laisser le tore mordre doucement dans le réel : lumière, grain, souffle, texture. Rien n’est envoyé côté serveur depuis cette couche.</p>
+                    <p class="panel-copy" data-xyz-camera-status>Active Ocam pour laisser entrer lumière, grain, souffle, texture. Rien n’est envoyé au serveur.</p>
                 </article>
 
                 <article class="xyz-surface-note">
                     <span class="summary-label">gestes</span>
                     <strong>Traverse la surface.</strong>
-                    <p class="panel-copy">Glisse sur le tore pour pivoter. Sur mobile, appui long puis dérive pour viser un passage. Le centre et le geste en O ouvrent aussi 0wlslw0.</p>
+                    <p class="panel-copy">Glisse pour pivoter. Sur mobile, appui long puis dérive. Le centre et le geste en O ouvrent aussi 0wlslw0.</p>
                 </article>
 
                 <article class="xyz-surface-note">
@@ -531,43 +528,30 @@ $homeHeroNote = $authenticatedLand
                 <article class="xyz-surface-note">
                     <span class="summary-label">situation</span>
                     <strong><?= h($authenticatedLand ? 'ta terre module le champ' : 'surface publique en écoute') ?></strong>
-                    <p class="panel-copy"><?= h($authenticatedLand ? 'La fréquence de ta terre colore déjà la membrane. Tu peux entrer, écrire, ou laisser le tore simplement respirer.' : 'Aucune terre liée pour l’instant : la membrane reste collective, disponible, poreuse.') ?></p>
+                    <p class="panel-copy"><?= h($authenticatedLand ? 'Ta fréquence colore déjà la membrane.' : 'Aucune terre liée pour l’instant. La membrane reste collective.') ?></p>
                 </article>
             </aside>
         </div>
     </section>
     <?php endif; ?>
     <?php if (!$homeVisualOnly): ?>
-    <header class="top-bar reveal">
-        <span class="eyebrow eyebrow-pill"><?= h($brandDomain) ?></span>
-        <div class="top-bar-cluster">
-            <?php if ($unreadSignal > 0): ?>
-                <a href="<?= h($signalHref) ?>" class="badge badge-glass" style="border-color: rgba(var(--land-secondary-rgb) / 0.8); color: rgba(var(--land-secondary-rgb) / 0.9); text-decoration: none;">
-                    <?= $unreadSignal ?> SIGNAL<?= $unreadSignal > 1 ? 'S' : '' ?> EN ATTENTE
-                </a>
-            <?php endif; ?>
-            <span class="badge badge-glass current-mood" data-spectral-mood-label><?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></span>
-            <span class="badge badge-glass"><?= h($activeLandLabel) ?></span>
-            <span class="badge badge-glass">λ <span data-spectral-lambda><?= h((string) $activeLambda) ?></span> nm</span>
-        </div>
-    </header>
-
     <section class="hero-archipelago reveal">
-        <article class="world-intro world-intro--entry world-intro--vu-<?= h($homeHeroVuState) ?>" data-vu-state="<?= h($homeHeroVuState) ?>">
+        <article class="world-intro world-intro--entry world-intro--threshold world-intro--vu-<?= h($homeHeroVuState) ?>" data-vu-state="<?= h($homeHeroVuState) ?>">
             <span class="summary-label"><?= h($homeStatusLabel) ?></span>
             <h1 class="world-intro-title <?= $authenticatedLand ? 'world-intro-title--linked' : 'world-intro-title--public' ?>">
                 <span class="world-intro-title__line world-intro-title__line--primary"><?= h($homeHeroLineOne) ?></span>
                 <span class="world-intro-title__line world-intro-title__line--secondary"><?= h($homeHeroLineTwo) ?></span>
             </h1>
-            <p class="world-intro-signal"><?= h($homeHeroTone) ?></p>
-            <p class="vortex" aria-hidden="true">(.λ.)</p>
             <p class="lead"><?= h($homeLead) ?></p>
-            <p class="world-intro-note"><?= h($homeHeroNote) ?></p>
-            <div class="secondary-links" aria-label="Passages secondaires du noyau">
-                <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0</a>
-                <a class="ghost-link" href="<?= h($mapHref) ?>">Map · tore</a>
-                <a class="ghost-link" href="<?= h($azaHref) ?>">aZa · archives</a>
+            <div class="home-threshold-links" aria-label="Repères du seuil">
+                <a class="ghost-link" href="<?= h($guideHref) ?>">Comprendre avec 0wlslw0</a>
+                <?php if ($authenticatedLand): ?>
+                    <a class="ghost-link" href="<?= h($signalHref) ?>">Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : ' · boîte' ?></a>
+                <?php else: ?>
+                    <a class="ghost-link" href="<?= h($mapHref) ?>">Voir le tore</a>
+                <?php endif; ?>
             </div>
+            <p class="world-intro-note world-intro-note--threshold"><?= h($homeThresholdHint) ?></p>
         </article>
 
         <nav class="entry-grid editorial-nav" aria-label="Entrées principales du noyau">
@@ -591,42 +575,25 @@ $homeHeroNote = $authenticatedLand
                 <a href="<?= h($str3mHref) ?>" class="entry-card entry-card--primary">
                     <span class="summary-label">01 · public</span>
                     <strong>Entrer publiquement</strong>
-                    <span>Lire Str3m, regarder les îles et sentir le courant avant de créer quoi que ce soit.</span>
+                    <span>Lire Str3m et sentir le courant.</span>
                 </a>
                 <a href="<?= h($joinHref) ?>" class="entry-card">
                     <span class="summary-label">02 · terre</span>
                     <strong>Poser une terre</strong>
-                    <span>Créer un lieu à toi, discret, situé, avec sa fréquence et sa propre adresse.</span>
+                    <span>Ouvrir un lieu à toi, situé, avec sa fréquence.</span>
                 </a>
                 <a href="<?= h($guideHref) ?>" class="entry-card">
                     <span class="summary-label">03 · 0wlslw0</span>
                     <strong>Passer par 0wlslw0</strong>
-                    <span>Clarifier vite, choisir une porte, continuer sans détour.</span>
+                    <span>Clarifier vite, puis continuer.</span>
                 </a>
             <?php endif; ?>
         </nav>
-
-        <aside class="entry-secondary" aria-label="Passages secondaires">
-            <p class="summary-label"><?= $authenticatedLand ? 'Passages secondaires' : 'Retour rapide' ?></p>
-            <div class="entry-secondary-links">
-                <?php if ($authenticatedLand): ?>
-                    <a class="ghost-link" href="<?= h($echoHref) ?>">Écho · direct</a>
-                    <a class="ghost-link" href="<?= h($signalHref) ?>">Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal : ' · boîte' ?></a>
-                    <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0</a>
-                <?php else: ?>
-                    <a class="ghost-link" href="#connexion">Retrouver ma terre</a>
-                    <a class="ghost-link" href="<?= h($azaHref) ?>">Lire aZa · archives</a>
-                    <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0</a>
-                    <a class="ghost-link" href="<?= h($mapHref) ?>">Voir le tore</a>
-                <?php endif; ?>
-            </div>
-            <p class="panel-copy"><?= h($authenticatedLand ? 'Le bandeau garde toujours le noyau à portée. Ici, le reste sert seulement à bifurquer.' : 'La connexion reste disponible sans repasser par toute l’entrée. Le reste peut attendre le bon moment.') ?></p>
-        </aside>
     </section>
     <?php endif; ?>
 
     <?php if (!$homeVisualOnly && $authenticatedLand): ?>
-    <section class="home-secondary-grid reveal" id="poser">
+    <section class="home-secondary-grid home-secondary-grid--single reveal" id="poser">
         <section class="land-signature home-secondary-panel" aria-label="Signature de la terre">
             <span class="summary-label">Signature</span>
             <strong class="preview-title"><?= h($authenticatedLand ? $activeLandUsername : 'Str3m public') ?></strong>
@@ -683,34 +650,6 @@ $homeHeroNote = $authenticatedLand
                     <a class="ghost-link" href="<?= h($logoutHref) ?>">Retirer sa présence</a>
                 </div>
             <?php endif; ?>
-        </section>
-
-        <section class="minimal-auth home-secondary-panel home-paths-panel" aria-labelledby="home-paths-title">
-            <div class="section-topline">
-                <div>
-                    <span class="summary-label">Cap rapide</span>
-                    <h2 id="home-paths-title">Trois gestes suffisent</h2>
-                    <p class="panel-copy">Tu n’as plus besoin de relire l’entrée entière. Garde seulement les gestes utiles.</p>
-                </div>
-            </div>
-
-            <div class="home-quicklist" aria-label="Gestes utiles">
-                <article class="home-quickitem">
-                    <strong>Ouvrir</strong>
-                    <p>Ta terre reste le centre pour relire, déposer ou repartir.</p>
-                    <a class="ghost-link" href="<?= h($landHref) ?>?u=<?= rawurlencode($activeLandSlug) ?>">Aller à ma terre</a>
-                </article>
-                <article class="home-quickitem">
-                    <strong>Écrire</strong>
-                    <p>Signal garde la boîte. Écho sert au direct.</p>
-                    <a class="ghost-link" href="<?= h($signalHref) ?>">Ouvrir Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : '' ?></a>
-                </article>
-                <article class="home-quickitem">
-                    <strong>Se recadrer</strong>
-                    <p>0wlslw0 sert quand tu hésites ou quand tu veux repartir sans bruit.</p>
-                    <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
-                </article>
-            </div>
         </section>
     </section>
     <?php endif; ?>

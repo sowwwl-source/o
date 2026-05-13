@@ -113,6 +113,7 @@ $landIdentitySummary = $land
 if ($land && $visualProfile) {
     $landIdentitySummary .= ' · ' . (string) ($visualProfile['label'] ?? 'collectif') . ' · λ ' . (string) ($visualProfile['lambda_nm'] ?? '548') . ' nm';
 }
+$landContextOpen = $created || ($sessionBound && $isAuthenticatedHere);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -161,100 +162,12 @@ if ($land && $visualProfile) {
             </div>
         </header>
 
-        <section class="panel-shell">
-            <section class="panel reveal" aria-labelledby="clock-title">
-                <div class="section-topline">
-                    <div>
-                        <h2 id="clock-title">Identité située</h2>
-                        <p class="panel-copy">Heure locale, fuseau, zone et état de présence pour cette terre.</p>
-                    </div>
-                    <?php if ($created): ?>
-                        <span class="badge">terre posée</span>
-                    <?php else: ?>
-                        <span class="badge"><?= h($landViewLabel) ?></span>
-                    <?php endif; ?>
-                </div>
-
-                <?php if ($created): ?>
-                    <div class="flash flash-success" aria-live="polite">
-                        <p>Votre terre est posée.</p>
-                    </div>
-                <?php endif; ?>
-
-                <?php if ($sessionBound && $isAuthenticatedHere): ?>
-                    <div class="flash flash-success" aria-live="polite">
-                        <p>Session ouverte sur cette terre.</p>
-                    </div>
-                <?php endif; ?>
-
-                <div
-                    class="clock"
-                    aria-live="polite"
-                    data-live-clock
-                    data-timezone="<?= h((string) $land['timezone']) ?>"
-                >
-                    <p class="clock-label" data-clock-label>Fuseau : —</p>
-                    <p class="clock-time" data-clock-time>--:--:--</p>
-                    <p class="clock-date" data-clock-date>--</p>
-                </div>
-
-                <div class="summary-grid land-summary-grid">
-                    <article class="summary-card">
-                        <span class="summary-label">Zone</span>
-                        <strong class="summary-value summary-value-small"><?= h((string) $land['zone_code']) ?></strong>
-                    </article>
-                    <article class="summary-card">
-                        <span class="summary-label">Ouverture</span>
-                        <strong class="summary-value summary-value-small"><?= h(human_created_label((string) ($land['created_at'] ?? '')) ?? 'maintenant') ?></strong>
-                    </article>
-                    <article class="summary-card">
-                        <span class="summary-label">Vue</span>
-                        <strong class="summary-value summary-value-small"><?= h($landViewLabel) ?></strong>
-                    </article>
-                </div>
-            </section>
-
-            <section class="panel reveal" aria-labelledby="land-focus-title">
-                <div class="section-topline">
-                    <div>
-                        <h2 id="land-focus-title">Repères</h2>
-                        <p class="panel-copy">Cette page distingue ce qui décrit la terre, ce qui reste visible au public et ce qui demande une présence liée.</p>
-                    </div>
-                    <span class="badge"><?= h((string) $landMemorySummary['count']) ?> trace<?= $landMemorySummary['count'] > 1 ? 's' : '' ?></span>
-                </div>
-
-                <div class="land-focus-grid">
-                    <article class="land-focus-card">
-                        <p class="land-card-kicker">identité</p>
-                        <h3><?= h((string) $land['username']) ?></h3>
-                        <p class="land-card-copy"><?= h($landIdentitySummary) ?></p>
-                    </article>
-
-                    <article class="land-focus-card">
-                        <p class="land-card-kicker">ouvert</p>
-                        <h3>Lecture, île, partage</h3>
-                        <p class="land-card-copy">aZa en lecture, l’île, Sh0re et les coordonnées de cette terre peuvent circuler depuis l’extérieur.</p>
-                    </article>
-
-                    <article class="land-focus-card">
-                        <p class="land-card-kicker">réservé</p>
-                        <h3><?= $isAuthenticatedHere ? 'Boîte et édition ouvertes' : 'Boîte et édition protégées' ?></h3>
-                        <p class="land-card-copy">
-                            <?php if ($isAuthenticatedHere): ?>
-                                Signal, Écho complet et l’édition Terre sont actifs dans cette session. <?= h($landSignalStatusCopy) ?><?= $signalUnread > 0 ? ' · ' . $signalUnread . ' non lu' . ($signalUnread > 1 ? 's' : '') : '' ?>.
-                            <?php else: ?>
-                                Signal, Écho complet et l’édition Terre restent liés à la présence qui a ouvert cette terre.
-                            <?php endif; ?>
-                        </p>
-                    </article>
-                </div>
-            </section>
-
-            <aside class="panel reveal" aria-labelledby="ritual-title">
+        <section class="panel-shell panel-shell--land">
+            <aside class="panel reveal land-ritual-shell" aria-labelledby="ritual-title">
                 <div class="section-topline">
                     <div>
                         <h2 id="ritual-title">Passages</h2>
-                        <p class="panel-copy">Entrer par le bon niveau: continuer ici, montrer cette terre, ou gérer la présence.</p>
+                        <p class="panel-copy">Continuer ici, montrer la terre, ou gérer la présence.</p>
                     </div>
                     <span class="badge"><?= h($landViewLabel) ?></span>
                 </div>
@@ -265,9 +178,9 @@ if ($land && $visualProfile) {
                         <h3><?= $isAuthenticatedHere ? 'Outils liés à cette terre' : 'Portes ouvertes depuis l’extérieur' ?></h3>
                         <p class="land-card-copy">
                             <?php if ($isAuthenticatedHere): ?>
-                                Reprendre la boîte, la mémoire et la projection sans ressortir de cette session.
+                                Reprendre boîte, mémoire et projection depuis cette session.
                             <?php else: ?>
-                                Lire, visiter ou écrire à cette terre sans ouvrir ses passages privés.
+                                Lire, visiter ou écrire sans ouvrir les passages privés.
                             <?php endif; ?>
                         </p>
                         <div class="land-route-links">
@@ -287,7 +200,7 @@ if ($land && $visualProfile) {
                     <section class="land-route-card">
                         <p class="land-card-kicker">montrer</p>
                         <h3>Sortie publique de la terre</h3>
-                        <p class="land-card-copy">Surface, lien partageable et lecture publique restent les passages les plus simples à transmettre.</p>
+                        <p class="land-card-copy">La sortie publique la plus simple à transmettre.</p>
                         <div class="land-route-links">
                             <a class="ghost-link" href="<?= h($publicShoreHref) ?>"><?= $isAuthenticatedHere ? 'Sh0re · n0us' : 'Sh0re de ' . h((string) $land['username']) ?></a>
                             <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
@@ -305,9 +218,9 @@ if ($land && $visualProfile) {
                         <h3><?= $isAuthenticatedHere ? 'Tenir ou retirer la session' : 'Se repérer ou ouvrir sa propre terre' ?></h3>
                         <p class="land-card-copy">
                             <?php if ($isAuthenticatedHere): ?>
-                                Le guide reste là si tu veux te recadrer. Tu peux aussi fermer proprement cette présence.
+                                0wlslw0 reste là pour te recadrer. Tu peux aussi fermer cette présence.
                             <?php else: ?>
-                                Depuis l’extérieur, tu peux encore te repérer ou ouvrir une autre terre pour retrouver les passages privés.
+                                Depuis l’extérieur, tu peux te repérer ici ou ouvrir une autre terre.
                             <?php endif; ?>
                         </p>
                         <div class="land-route-links">
@@ -321,6 +234,112 @@ if ($land && $visualProfile) {
                     </section>
                 </div>
             </aside>
+
+            <details class="panel reveal land-context-panel" aria-labelledby="land-context-title"<?= $landContextOpen ? ' open' : '' ?>>
+                <summary class="land-context-summary">
+                    <span class="summary-label">identité</span>
+                    <strong id="land-context-title">Identité et repères</strong>
+                    <span class="land-context-summary__meta">
+                        <?= h((string) $land['timezone']) ?>
+                        · <?= h((string) $landMemorySummary['count']) ?> trace<?= $landMemorySummary['count'] > 1 ? 's' : '' ?>
+                        · <?= h($landViewLabel) ?>
+                    </span>
+                </summary>
+
+                <?php if ($created || ($sessionBound && $isAuthenticatedHere)): ?>
+                    <div class="land-context-flashes">
+                        <?php if ($created): ?>
+                            <div class="flash flash-success" aria-live="polite">
+                                <p>Votre terre est posée.</p>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if ($sessionBound && $isAuthenticatedHere): ?>
+                            <div class="flash flash-success" aria-live="polite">
+                                <p>Session ouverte sur cette terre.</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <div class="land-context-grid">
+                    <section class="land-context-block" aria-labelledby="clock-title">
+                        <div class="section-topline">
+                            <div>
+                                <h2 id="clock-title">Identité située</h2>
+                                <p class="panel-copy">Heure locale, fuseau, zone, ouverture.</p>
+                            </div>
+                            <?php if ($created): ?>
+                                <span class="badge">terre posée</span>
+                            <?php else: ?>
+                                <span class="badge"><?= h($landViewLabel) ?></span>
+                            <?php endif; ?>
+                        </div>
+
+                        <div
+                            class="clock"
+                            aria-live="polite"
+                            data-live-clock
+                            data-timezone="<?= h((string) $land['timezone']) ?>"
+                        >
+                            <p class="clock-label" data-clock-label>Fuseau : —</p>
+                            <p class="clock-time" data-clock-time>--:--:--</p>
+                            <p class="clock-date" data-clock-date>--</p>
+                        </div>
+
+                        <div class="summary-grid land-summary-grid">
+                            <article class="summary-card">
+                                <span class="summary-label">Zone</span>
+                                <strong class="summary-value summary-value-small"><?= h((string) $land['zone_code']) ?></strong>
+                            </article>
+                            <article class="summary-card">
+                                <span class="summary-label">Ouverture</span>
+                                <strong class="summary-value summary-value-small"><?= h(human_created_label((string) ($land['created_at'] ?? '')) ?? 'maintenant') ?></strong>
+                            </article>
+                            <article class="summary-card">
+                                <span class="summary-label">Vue</span>
+                                <strong class="summary-value summary-value-small"><?= h($landViewLabel) ?></strong>
+                            </article>
+                        </div>
+                    </section>
+
+                    <section class="land-context-block" aria-labelledby="land-focus-title">
+                        <div class="section-topline">
+                            <div>
+                                <h2 id="land-focus-title">Repères</h2>
+                                <p class="panel-copy">Ce qui décrit la terre, ce qui circule dehors, ce qui demande une présence liée.</p>
+                            </div>
+                            <span class="badge"><?= h((string) $landMemorySummary['count']) ?> trace<?= $landMemorySummary['count'] > 1 ? 's' : '' ?></span>
+                        </div>
+
+                        <div class="land-focus-grid">
+                            <article class="land-focus-card">
+                                <p class="land-card-kicker">identité</p>
+                                <h3><?= h((string) $land['username']) ?></h3>
+                                <p class="land-card-copy"><?= h($landIdentitySummary) ?></p>
+                            </article>
+
+                            <article class="land-focus-card">
+                                <p class="land-card-kicker">ouvert</p>
+                                <h3>Lecture, île, partage</h3>
+                                <p class="land-card-copy">aZa en lecture, l’île, Sh0re et les coordonnées peuvent circuler dehors.</p>
+                            </article>
+
+                            <article class="land-focus-card">
+                                <p class="land-card-kicker">réservé</p>
+                                <h3><?= $isAuthenticatedHere ? 'Boîte et édition ouvertes' : 'Boîte et édition protégées' ?></h3>
+                                <p class="land-card-copy">
+                                    <?php if ($isAuthenticatedHere): ?>
+                                        Signal, Écho complet et l’édition Terre sont actifs ici. <?= h($landSignalStatusCopy) ?><?= $signalUnread > 0 ? ' · ' . $signalUnread . ' non lu' . ($signalUnread > 1 ? 's' : '') : '' ?>.
+                                    <?php else: ?>
+                                        Signal, Écho complet et l’édition Terre restent liés à la présence qui a ouvert cette terre.
+                                    <?php endif; ?>
+                                </p>
+                            </article>
+                        </div>
+                    </section>
+                </div>
+            </details>
         </section>
 
         <section id="c0r3" class="panel reveal c0r3-shell land-c0r3-section" aria-labelledby="c0r3-title">

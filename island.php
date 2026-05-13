@@ -287,9 +287,13 @@ $islandModelStatus = $buildIslandReaderStatus(
     $islandNeedsModelViewer
         ? 'Le fichier peut être tourné, cadré et relu directement dans la station.'
         : (($islandModelItem['thumbnail_url'] ?? '') !== ''
-            ? 'Cette île dispose d’un aperçu statique, mais l’exploration complète de l’objet demande une ouverture dédiée.'
-            : 'L’objet reste consultable via ouverture ou extraction, mais ne peut pas être prévisualisé ici dans un viewer fiable.')
+        ? 'Cette île dispose d’un aperçu statique, mais l’exploration complète de l’objet demande une ouverture dédiée.'
+        : 'L’objet reste consultable via ouverture ou extraction, mais ne peut pas être prévisualisé ici dans un viewer fiable.')
 );
+$islandTraitCount = is_array(($islandProjection['traits'] ?? null)) ? count((array) $islandProjection['traits']) : 0;
+$islandContextOpen = $islandReaderCount === 0;
+$islandAtlasOpen = false;
+$islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $group): string => (string) $group['label'], $islandSourceGroups), 0, 3));
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -339,52 +343,11 @@ $islandModelStatus = $buildIslandReaderStatus(
             </div>
         </header>
 
-        <section class="panel-shell island-shell reveal">
-            <section class="panel island-main-panel" aria-labelledby="island-relief-title">
-                <div class="section-topline">
-                    <div>
-                        <h2 id="island-relief-title">Relief</h2>
-                        <p class="panel-copy">Une lecture classique du relief mémoriel : matières, sources, visible, temps.</p>
-                    </div>
-                    <a class="ghost-link" href="<?= h(aza_memory_query_href($islandBaseQuery, ['view' => 'source'])) ?>">Voir les sources</a>
-                </div>
-
-                <div class="island-grid island-grid--memory" aria-label="Relief de l’île">
-                    <article class="summary-card island-card">
-                        <span class="summary-label">Densité</span>
-                        <strong><?= h((string) $islandSummary['count']) ?> traces</strong>
-                        <span><?= h((string) ($islandSummary['first_trace'] ?? 'Aucune date')) ?> → <?= h((string) ($islandSummary['last_trace'] ?? ($islandSummary['first_trace'] ?? '—'))) ?></span>
-                    </article>
-                    <article class="summary-card island-card">
-                        <span class="summary-label">Visible</span>
-                        <strong><?= h((string) $islandSummary['visual_count']) ?> éléments</strong>
-                        <span>Images, vidéos, objets 3D ou archives à dominante visuelle déjà lisibles sans spatialisation.</span>
-                    </article>
-                    <article class="summary-card island-card">
-                        <span class="summary-label">Provenances</span>
-                        <strong><?= h((string) $islandSummary['source_count']) ?> origines</strong>
-                        <span><?= h(implode(' · ', array_slice(array_map(static fn (array $group): string => (string) $group['label'], $islandSourceGroups), 0, 3))) ?></span>
-                    </article>
-                </div>
-            </section>
-
-            <aside class="panel reveal" aria-labelledby="island-notes-title">
-                <h2 id="island-notes-title">Notes</h2>
-                <p class="panel-copy">Ici, l’île reste entièrement classique : pas de shell WEB3, pas de Raspberry Pi, pas de conteneur actif.</p>
-                <div class="aza-meta-list aza-island-traits">
-                    <?php foreach (($islandProjection['traits'] ?? []) as $trait): ?>
-                        <span class="meta-pill"><?= h((string) $trait) ?></span>
-                    <?php endforeach; ?>
-                </div>
-                <p class="land-note">Cette page sert de préfiguration lisible et déployable vite. Le spatial viendra plus tard, si la matière tient vraiment.</p>
-            </aside>
-        </section>
-
         <section class="panel reveal island-reader-station" aria-labelledby="island-reader-title">
             <div class="section-topline aza-timeline-header">
                 <div>
                     <h2 id="island-reader-title">Station de lecture</h2>
-                    <p class="panel-copy">Même logique que `sowwwl.digital`, mais distribuée par familles de matière : audio, image, vidéo, PDF, SVG, data, design et 3D, directement depuis l’île — avec maintenant un parcours curatoriel continu.</p>
+                    <p class="panel-copy">La lecture active d’abord, puis le reste de l’île.</p>
                 </div>
                 <div class="aza-meta-list">
                     <span class="meta-pill"><?= h((string) $islandReaderCount) ?> lecteur<?= $islandReaderCount > 1 ? 's' : '' ?> actif<?= $islandReaderCount > 1 ? 's' : '' ?></span>
@@ -396,13 +359,13 @@ $islandModelStatus = $buildIslandReaderStatus(
             <div class="island-reader-shell" data-island-reader-shell>
                 <div class="island-reader-curator" aria-label="Parcours curatoriel de l’île">
                     <div class="island-reader-curator__summary">
-                        <p class="summary-label">V5 · parcours</p>
+                        <p class="summary-label">lecture en cours</p>
                         <div class="island-reader-curator__headline">
                             <strong data-island-reader-current-label><?= h((string) ($activeIslandReaderData['label'] ?? 'Veille')) ?></strong>
                             <span data-island-reader-counter><?= h($islandCuratorProgressLabel) ?></span>
                         </div>
                         <p class="island-reader-curator__meta" data-island-reader-current-meta><?= h((string) (($activeIslandReaderData['format'] ?? 'veille') . ' · ' . ($activeIslandReaderData['source_label'] ?? 'Veille'))) ?></p>
-                        <p class="island-reader-curator__copy">Le parcours avance sur les lecteurs disponibles, garde une continuité de lecture, et peut tourner en mode autonome.</p>
+                        <p class="island-reader-curator__copy">La station garde le fil et peut dériver vers la matière suivante.</p>
                     </div>
 
                     <div class="island-reader-curator__controls action-row">
@@ -412,7 +375,7 @@ $islandModelStatus = $buildIslandReaderStatus(
                     </div>
 
                     <aside class="island-reader-curator__recommendation">
-                        <p class="summary-label">Recommandation</p>
+                        <p class="summary-label">ensuite</p>
                         <strong data-island-reader-recommendation-label><?= h((string) ($nextIslandReaderData['label'] ?? 'Aucune suite')) ?></strong>
                         <p data-island-reader-recommendation-copy><?= h($islandCuratorRecommendation) ?></p>
                         <?php if (is_array($previousIslandReaderData)): ?>
@@ -420,49 +383,6 @@ $islandModelStatus = $buildIslandReaderStatus(
                         <?php endif; ?>
                     </aside>
                 </div>
-
-                <div class="island-reader-layout">
-                    <aside class="island-reader-playlist" aria-labelledby="island-reader-playlist-title">
-                        <div class="island-reader-playlist__head">
-                            <div>
-                                <p class="summary-label">Curation</p>
-                                <h3 id="island-reader-playlist-title">Playlist matière</h3>
-                            </div>
-                            <p class="island-reader-playlist__copy">Une lecture rapide de toutes les surfaces disponibles, avec statut, format et provenance.</p>
-                        </div>
-
-                        <div class="island-reader-playlist__stats">
-                            <p><span>actifs</span><strong><?= h((string) $islandReaderCount) ?></strong></p>
-                            <p><span>veille</span><strong><?= h((string) $islandDormantReaderCount) ?></strong></p>
-                            <p><span>matières</span><strong><?= h((string) count($islandReaders)) ?></strong></p>
-                        </div>
-
-                        <nav class="island-reader-playlist__nav" aria-label="Naviguer dans les lecteurs de l’île">
-                            <?php foreach ($islandReaders as $reader): ?>
-                                <?php
-                                $readerId = 'island-reader-' . $reader['key'];
-                                $isActivePlaylistItem = $reader['key'] === $activeIslandReader;
-                                ?>
-                                <button
-                                    type="button"
-                                    class="island-reader-playlist__item<?= $isActivePlaylistItem ? ' is-active' : '' ?>"
-                                    data-island-reader-nav="<?= h((string) $reader['key']) ?>"
-                                    aria-controls="<?= h($readerId) ?>"
-                                    aria-current="<?= $isActivePlaylistItem ? 'true' : 'false' ?>"
-                                    <?= $reader['available'] ? '' : 'data-island-reader-empty="1"' ?>
-                                >
-                                    <span class="island-reader-playlist__line">
-                                        <strong><?= h((string) $reader['label']) ?></strong>
-                                        <em><?= $reader['available'] ? 'actif' : 'veille' ?></em>
-                                    </span>
-                                    <span class="island-reader-playlist__line island-reader-playlist__line--meta">
-                                        <small><?= h((string) $reader['format']) ?></small>
-                                        <small><?= h((string) $reader['source_label']) ?></small>
-                                    </span>
-                                </button>
-                            <?php endforeach; ?>
-                        </nav>
-                    </aside>
 
                     <div class="island-reader-content">
                         <div class="island-reader-tabs" role="tablist" aria-label="Choisir un lecteur">
@@ -889,71 +809,65 @@ $islandModelStatus = $buildIslandReaderStatus(
                                 </div>
                             </section>
                         <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
-        </section>
 
-        <section class="panel reveal" aria-labelledby="island-sources-title">
-            <div class="section-topline aza-timeline-header">
-                <div>
-                    <h2 id="island-sources-title">Provenances</h2>
-                    <p class="panel-copy">Les origines principales de l’île, relues comme un petit archipel de mémoire.</p>
-                </div>
-                <a class="ghost-link" href="<?= h(aza_memory_query_href($islandBaseQuery, ['view' => 'source'])) ?>">aZa · vue source</a>
-            </div>
-            <div class="c0r3-source-strip">
-                <?php foreach ($islandSourceGroups as $group): ?>
-                    <article class="c0r3-source-card">
-                        <strong><?= h((string) $group['label']) ?></strong>
-                        <span><?= count($group['items']) ?> trace<?= count($group['items']) > 1 ? 's' : '' ?></span>
-                    </article>
-                <?php endforeach; ?>
-            </div>
-        </section>
+                        <details class="island-reader-index" aria-labelledby="island-reader-playlist-title"<?= $islandReaderCount <= 1 ? ' open' : '' ?>>
+                            <summary class="island-reader-index__summary">
+                                <span class="summary-label">matières</span>
+                                <strong id="island-reader-playlist-title">Autres matières de l’île</strong>
+                                <span class="island-reader-index__meta"><?= h((string) $islandReaderCount) ?> active<?= $islandReaderCount > 1 ? 's' : '' ?> · <?= h((string) $islandDormantReaderCount) ?> veille<?= $islandDormantReaderCount > 1 ? 's' : '' ?> · <?= h((string) count($islandReaders)) ?> familles</span>
+                            </summary>
 
-        <?php if ($islandVisualItems): ?>
-            <section class="panel reveal" aria-labelledby="island-visual-title">
-                <div class="section-topline aza-timeline-header">
-                    <div>
-                        <h2 id="island-visual-title">Visible</h2>
-                        <p class="panel-copy">Ce que l’île donne déjà à voir avant toute mise en espace expérimentale.</p>
-                    </div>
-                    <a class="ghost-link" href="<?= h(aza_memory_query_href($islandBaseQuery, ['view' => 'visual'])) ?>">aZa · vue visuelle</a>
-                </div>
-                <div class="aza-visual-shell">
-                    <?php foreach ($islandVisualItems as $item): ?>
-                        <article class="aza-visual-card">
-                            <?php if (($item['thumbnail_url'] ?? '') !== ''): ?>
-                                <div class="aza-visual-thumb">
-                                    <img src="<?= h((string) $item['thumbnail_url']) ?>" alt="<?= h((string) $item['title']) ?>" loading="lazy">
+                            <div class="island-reader-playlist">
+                                <div class="island-reader-playlist__head">
+                                    <div>
+                                        <p class="summary-label">index</p>
+                                        <h3>Playlist matière</h3>
+                                    </div>
+                                    <p class="island-reader-playlist__copy">Les autres surfaces disponibles, avec format et provenance.</p>
                                 </div>
-                            <?php else: ?>
-                                <div class="aza-visual-thumb aza-file-thumb-blank">
-                                    <span><?= h((string) (($item['format_label'] ?? '') !== '' ? $item['format_label'] : ($item['kind_label'] ?? 'Trace'))) ?></span>
+
+                                <div class="island-reader-playlist__stats">
+                                    <p><span>actifs</span><strong><?= h((string) $islandReaderCount) ?></strong></p>
+                                    <p><span>veille</span><strong><?= h((string) $islandDormantReaderCount) ?></strong></p>
+                                    <p><span>matières</span><strong><?= h((string) count($islandReaders)) ?></strong></p>
                                 </div>
-                            <?php endif; ?>
-                            <div class="aza-visual-meta">
-                                <div class="aza-meta-list">
-                                    <span class="meta-pill"><?= h((string) ($item['source_label'] ?? 'Mémoire')) ?></span>
-                                    <span class="meta-pill"><?= h((string) ($item['date_label'] ?? 'Atemporel')) ?></span>
-                                </div>
-                                <strong class="aza-finder-title"><?= h((string) ($item['title'] ?? 'Trace')) ?></strong>
-                                <?php if (!empty($item['summary'])): ?>
-                                    <p class="aza-finder-summary"><?= h((string) $item['summary']) ?></p>
-                                <?php endif; ?>
+
+                                <nav class="island-reader-playlist__nav" aria-label="Naviguer dans les lecteurs de l’île">
+                                    <?php foreach ($islandReaders as $reader): ?>
+                                        <?php
+                                        $readerId = 'island-reader-' . $reader['key'];
+                                        $isActivePlaylistItem = $reader['key'] === $activeIslandReader;
+                                        ?>
+                                        <button
+                                            type="button"
+                                            class="island-reader-playlist__item<?= $isActivePlaylistItem ? ' is-active' : '' ?>"
+                                            data-island-reader-nav="<?= h((string) $reader['key']) ?>"
+                                            aria-controls="<?= h($readerId) ?>"
+                                            aria-current="<?= $isActivePlaylistItem ? 'true' : 'false' ?>"
+                                            <?= $reader['available'] ? '' : 'data-island-reader-empty="1"' ?>
+                                        >
+                                            <span class="island-reader-playlist__line">
+                                                <strong><?= h((string) $reader['label']) ?></strong>
+                                                <em><?= $reader['available'] ? 'actif' : 'veille' ?></em>
+                                            </span>
+                                            <span class="island-reader-playlist__line island-reader-playlist__line--meta">
+                                                <small><?= h((string) $reader['format']) ?></small>
+                                                <small><?= h((string) $reader['source_label']) ?></small>
+                                            </span>
+                                        </button>
+                                    <?php endforeach; ?>
+                                </nav>
                             </div>
-                        </article>
-                    <?php endforeach; ?>
-                </div>
-            </section>
-        <?php endif; ?>
+                        </details>
+                    </div>
+            </div>
+        </section>
 
         <section class="panel reveal" aria-labelledby="island-recent-title">
             <div class="section-topline aza-timeline-header">
                 <div>
                     <h2 id="island-recent-title">Dernières traces</h2>
-                    <p class="panel-copy">Les éléments les plus récents de l’île, encore proches de leur dépôt.</p>
+                    <p class="panel-copy">Les traces les plus proches du dépôt.</p>
                 </div>
                 <a class="ghost-link" href="<?= h(aza_memory_query_href($islandBaseQuery, ['view' => 'finder'])) ?>">aZa · finder</a>
             </div>
@@ -979,6 +893,122 @@ $islandModelStatus = $buildIslandReaderStatus(
                 </div>
             <?php endif; ?>
         </section>
+
+        <details class="panel reveal island-context-panel" aria-labelledby="island-context-title"<?= $islandContextOpen ? ' open' : '' ?>>
+            <summary class="island-context-summary">
+                <span class="summary-label">relief</span>
+                <strong id="island-context-title">Contexte de l’île</strong>
+                <span class="island-context-summary__meta"><?= h((string) $islandSummary['count']) ?> traces · <?= h((string) $islandSummary['visual_count']) ?> visibles · <?= h((string) $islandTraitCount) ?> traits</span>
+            </summary>
+
+            <section class="panel-shell island-shell">
+                <section class="panel island-main-panel" aria-labelledby="island-relief-title">
+                    <div class="section-topline">
+                        <div>
+                            <h2 id="island-relief-title">Relief</h2>
+                            <p class="panel-copy">Densité, visible, provenances.</p>
+                        </div>
+                        <a class="ghost-link" href="<?= h(aza_memory_query_href($islandBaseQuery, ['view' => 'source'])) ?>">Voir les sources</a>
+                    </div>
+
+                    <div class="island-grid island-grid--memory" aria-label="Relief de l’île">
+                        <article class="summary-card island-card">
+                            <span class="summary-label">Densité</span>
+                            <strong><?= h((string) $islandSummary['count']) ?> traces</strong>
+                            <span><?= h((string) ($islandSummary['first_trace'] ?? 'Aucune date')) ?> → <?= h((string) ($islandSummary['last_trace'] ?? ($islandSummary['first_trace'] ?? '—'))) ?></span>
+                        </article>
+                        <article class="summary-card island-card">
+                            <span class="summary-label">Visible</span>
+                            <strong><?= h((string) $islandSummary['visual_count']) ?> éléments</strong>
+                            <span>Images, vidéos, objets 3D ou archives déjà lisibles sans spatialisation.</span>
+                        </article>
+                        <article class="summary-card island-card">
+                            <span class="summary-label">Provenances</span>
+                            <strong><?= h((string) $islandSummary['source_count']) ?> origines</strong>
+                            <span><?= h($islandSourcePreview !== '' ? $islandSourcePreview : 'Aucune provenance lisible pour le moment.') ?></span>
+                        </article>
+                    </div>
+                </section>
+
+                <aside class="panel island-notes-panel" aria-labelledby="island-notes-title">
+                    <h2 id="island-notes-title">Notes</h2>
+                    <p class="panel-copy">Cette île reste classique et lisible.</p>
+                    <?php if (!empty($islandProjection['traits']) && is_array($islandProjection['traits'])): ?>
+                        <div class="aza-meta-list aza-island-traits">
+                            <?php foreach ($islandProjection['traits'] as $trait): ?>
+                                <span class="meta-pill"><?= h((string) $trait) ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <p class="land-note">Le spatial peut venir plus tard. Ici, on garde la lecture stable tant que la matière se forme.</p>
+                </aside>
+            </section>
+        </details>
+
+        <details class="panel reveal island-atlas-panel" aria-labelledby="island-atlas-title"<?= $islandAtlasOpen ? ' open' : '' ?>>
+            <summary class="island-context-summary island-atlas-summary">
+                <span class="summary-label">vues</span>
+                <strong id="island-atlas-title">Visible et provenances</strong>
+                <span class="island-context-summary__meta"><?= h((string) $islandSummary['source_count']) ?> origines · <?= h((string) count($islandVisualItems)) ?> éléments visuels</span>
+            </summary>
+
+            <div class="island-atlas-flow">
+                <section class="panel island-atlas-block" aria-labelledby="island-sources-title">
+                    <div class="section-topline aza-timeline-header">
+                        <div>
+                            <h2 id="island-sources-title">Provenances</h2>
+                            <p class="panel-copy">Les origines principales.</p>
+                        </div>
+                        <a class="ghost-link" href="<?= h(aza_memory_query_href($islandBaseQuery, ['view' => 'source'])) ?>">aZa · vue source</a>
+                    </div>
+                    <div class="c0r3-source-strip">
+                        <?php foreach ($islandSourceGroups as $group): ?>
+                            <article class="c0r3-source-card">
+                                <strong><?= h((string) $group['label']) ?></strong>
+                                <span><?= count($group['items']) ?> trace<?= count($group['items']) > 1 ? 's' : '' ?></span>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+
+                <?php if ($islandVisualItems): ?>
+                    <section class="panel island-atlas-block" aria-labelledby="island-visual-title">
+                        <div class="section-topline aza-timeline-header">
+                            <div>
+                                <h2 id="island-visual-title">Visible</h2>
+                                <p class="panel-copy">Ce que l’île donne déjà à voir.</p>
+                            </div>
+                            <a class="ghost-link" href="<?= h(aza_memory_query_href($islandBaseQuery, ['view' => 'visual'])) ?>">aZa · vue visuelle</a>
+                        </div>
+                        <div class="aza-visual-shell">
+                            <?php foreach ($islandVisualItems as $item): ?>
+                                <article class="aza-visual-card">
+                                    <?php if (($item['thumbnail_url'] ?? '') !== ''): ?>
+                                        <div class="aza-visual-thumb">
+                                            <img src="<?= h((string) $item['thumbnail_url']) ?>" alt="<?= h((string) $item['title']) ?>" loading="lazy">
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="aza-visual-thumb aza-file-thumb-blank">
+                                            <span><?= h((string) (($item['format_label'] ?? '') !== '' ? $item['format_label'] : ($item['kind_label'] ?? 'Trace'))) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <div class="aza-visual-meta">
+                                        <div class="aza-meta-list">
+                                            <span class="meta-pill"><?= h((string) ($item['source_label'] ?? 'Mémoire')) ?></span>
+                                            <span class="meta-pill"><?= h((string) ($item['date_label'] ?? 'Atemporel')) ?></span>
+                                        </div>
+                                        <strong class="aza-finder-title"><?= h((string) ($item['title'] ?? 'Trace')) ?></strong>
+                                        <?php if (!empty($item['summary'])): ?>
+                                            <p class="aza-finder-summary"><?= h((string) $item['summary']) ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+                <?php endif; ?>
+            </div>
+        </details>
     <?php else: ?>
         <section class="hero page-header reveal">
             <p class="eyebrow">île introuvable</p>

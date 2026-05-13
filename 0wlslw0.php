@@ -91,27 +91,39 @@ $openLandHref = $authenticatedLand
     ? o_route_path('/land') . '?u=' . rawurlencode((string) $authenticatedLand['slug'])
     : o_route_path('/rejoindre');
 $openLandLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une terre';
+$guidePassageStateShort = match ($voiceUpstreamState) {
+    'remote-ready' => 'relais vocal amont actif',
+    'auth-missing' => 'relais repere, autorisation incomplète',
+    default => 'guidage local actif',
+};
+$guidePassageStateLong = match ($voiceUpstreamState) {
+    'remote-ready' => 'Le relais vocal répond. 0wlslw0 peut clarifier ici puis ouvrir la bonne porte.',
+    'auth-missing' => 'Le relais est repéré, mais l’autorisation reste incomplète. 0wlslw0 reste utilisable ici.',
+    default => 'Le guidage local reste actif. Si l’amont manque, 0wlslw0 garde le seuil ouvert ici.',
+};
 $owlDoors = [
     [
-        'label' => '01 · comprendre',
-        'title' => 'Comprendre O. vite',
-        'copy' => 'En deux ou trois phrases, 0wlslw0 clarifie le projet et donne un premier cap.',
-        'href' => $guideHref,
-        'cta' => 'Rester avec 0wlslw0',
+        'label' => '01 · ici',
+        'title' => 'Parler encore',
+        'copy' => 'Préciser la demande avant de bifurquer.',
+        'href' => '#guide-voice-title',
+        'cta' => 'Continuer ici',
     ],
     [
         'label' => '02 · public',
-        'title' => 'Entrer publiquement',
-        'copy' => 'Aller vers Str3m pour voir le courant avant de choisir une terre.',
+        'title' => 'Voir le courant',
+        'copy' => 'Lire le public avant de choisir une terre.',
         'href' => o_route_path('/str3m'),
         'cta' => 'Ouvrir Str3m',
     ],
     [
         'label' => '03 · terre',
-        'title' => 'Poser une terre',
-        'copy' => 'Passer par le parcours complet : nom, lecture, configuration, scellement.',
-        'href' => o_route_path('/rejoindre'),
-        'cta' => 'Commencer',
+        'title' => $openLandLabel,
+        'copy' => $authenticatedLand
+            ? 'Revenir vers la terre déjà liée.'
+            : 'Nommer, situer et ouvrir une terre.',
+        'href' => $openLandHref,
+        'cta' => $authenticatedLand ? 'Ouvrir la terre' : 'Commencer',
     ],
 ];
 $guideVoiceNotes = [
@@ -157,7 +169,7 @@ $guideVoiceNotes = [
             <strong>Entrer sans se perdre.</strong>
             <span>0wlslw0 / guide des passages</span>
         </h1>
-        <p class="lead">0wlslw0 clarifie en quelques phrases, puis ouvre la bonne porte. Pas de détour : juste le bon seuil.</p>
+        <p class="lead">Parle, écris, puis prends la bonne porte.</p>
 
         <div class="land-meta">
             <a class="meta-pill meta-pill-link" href="<?= h($openLandHref) ?>"><?= h($openLandLabel) ?></a>
@@ -171,7 +183,121 @@ $guideVoiceNotes = [
                 <a class="meta-pill meta-pill-link" href="<?= h($agentUrl) ?>" target="_blank" rel="noopener">ouvrir l agent</a>
             <?php endif; ?>
         </div>
+        <p class="panel-copy guide-hero-note"><?= h($guidePassageStateLong) ?></p>
     </header>
+
+    <section
+        class="panel reveal guide-panel guide-voice-shell"
+        aria-labelledby="guide-voice-title"
+        data-guide-voice
+        data-guide-voice-api="<?= h((string) $voiceState['api_path']) ?>"
+        data-guide-voice-csrf="<?= h((string) $voiceState['csrf_token']) ?>"
+        data-guide-voice-greeting="<?= h((string) $voiceState['greeting']) ?>"
+        data-guide-voice-upstream="<?= !empty($voiceState['upstream_configured']) ? '1' : '0' ?>"
+        data-guide-voice-upstream-state="<?= h($voiceUpstreamState) ?>"
+        data-guide-voice-upstream-label="<?= h($voiceUpstreamLabel) ?>"
+        data-guide-voice-chat-url="<?= h((string) $voiceState['chat_url']) ?>"
+        data-guide-voice-program="<?= h((string) ($voiceState['land_program'] ?? $guideLandProgram)) ?>"
+        data-guide-voice-label="<?= h((string) ($voiceState['land_label'] ?? $guideLandLabel)) ?>"
+        data-guide-voice-lambda="<?= h((string) ($voiceState['land_lambda'] ?? $guideLandLambda)) ?>"
+        data-guide-voice-tone="<?= h((string) ($voiceState['land_tone'] ?? $guideLandTone)) ?>"
+        data-guide-voice-starter-prompts="<?= h((string) json_encode($voiceState['starter_prompts'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+    >
+        <div class="section-topline">
+            <div>
+                <h2 id="guide-voice-title">Parler à 0wlslw0</h2>
+                <p class="panel-copy">Parle naturellement. Sinon, écris une phrase courte.</p>
+            </div>
+            <span class="badge">voix + texte</span>
+        </div>
+        <p class="guide-voice-bridge"><?= h($guidePassageStateShort) ?></p>
+
+        <div class="guide-grid guide-voice-grid">
+            <div class="guide-voice-stage">
+                <div class="guide-voice-orb" aria-hidden="true">
+                    <span class="guide-voice-orb-core"></span>
+                    <span class="guide-voice-orb-ring"></span>
+                    <span class="guide-voice-breather" data-guide-voice-breather hidden>0</span>
+                </div>
+
+                <p class="guide-voice-status" data-guide-voice-status role="status" aria-live="polite" aria-atomic="true">Prêt. Active la voix puis parle naturellement.</p>
+                <p class="guide-voice-transcript" data-guide-voice-transcript>Exemples : « ouvre Signal » · « take me to Str3m ».</p>
+                <p class="guide-voice-reply" data-guide-voice-reply aria-live="polite" aria-atomic="true">0wlslw0 répondra ici puis lira sa réponse.</p>
+                <div class="guide-voice-meta" aria-live="polite">
+                    <span class="guide-voice-origin-badge" data-guide-voice-origin data-guide-voice-origin-state="<?= h($voiceUpstreamState) ?>"><?= h($voiceUpstreamLabel) ?></span>
+                    <span class="guide-voice-meta-copy">texte de secours · historique court</span>
+                </div>
+                <ol class="guide-voice-history" data-guide-voice-history aria-label="Historique récent avec 0wlslw0" hidden></ol>
+                <form class="guide-voice-form" data-guide-voice-form>
+                    <label class="sr-only" for="guide-voice-text-input">Écrire à 0wlslw0</label>
+                    <input id="guide-voice-text-input" type="text" name="guide_voice_text" maxlength="280" autocomplete="off" placeholder="Écris ici si tu préfères le silence." data-guide-voice-input>
+                    <button type="submit" class="pill-link guide-voice-submit" data-guide-voice-submit>Envoyer</button>
+                </form>
+                <p class="guide-voice-input-hint" data-guide-voice-input-hint>Le texte reste disponible même si la reconnaissance vocale Web manque ici.</p>
+                <div class="guide-voice-suggestions" data-guide-voice-suggestions aria-label="Impulsions proposées par 0wlslw0">
+                    <?php foreach (($voiceState['starter_prompts'] ?? []) as $prompt): ?>
+                        <?php
+                        $promptUtterance = trim((string) ($prompt['utterance'] ?? ''));
+                        $promptLabel = trim((string) ($prompt['label'] ?? $promptUtterance));
+                        if ($promptUtterance === '' || $promptLabel === '') {
+                            continue;
+                        }
+                        ?>
+                        <button type="button" class="guide-voice-suggestion" data-guide-voice-suggestion data-utterance="<?= h($promptUtterance) ?>"><?= h($promptLabel) ?></button>
+                    <?php endforeach; ?>
+                </div>
+                <div class="guide-voice-signature" aria-live="polite">
+                    <span class="summary-label">Signature vocale</span>
+                    <strong data-guide-voice-signature>Voix spectrale · λ <?= h((string) $guideLandLambda) ?> nm</strong>
+                    <span class="guide-voice-profile" data-guide-voice-profile>tempo ajusté · <?= h($guideLandLabel) ?></span>
+                    <span class="guide-voice-mute-indicator" data-guide-voice-mute-indicator>voix active · I inverse + voix</span>
+                </div>
+
+                <div class="action-row guide-voice-actions">
+                    <button type="button" class="pill-link" data-guide-voice-start>Activer la voix</button>
+                    <button type="button" class="ghost-link" data-guide-voice-stop hidden>Couper</button>
+                    <?php if ($agentUrl !== ''): ?>
+                        <a class="ghost-link" href="<?= h($agentUrl) ?>" target="_blank" rel="noopener">Ouvrir le relais externe</a>
+                    <?php endif; ?>
+                </div>
+
+                <a class="ghost-link guide-voice-route-link" href="#" data-guide-voice-route hidden>Continuer</a>
+            </div>
+
+            <details class="guide-voice-notes" aria-label="État du passage">
+                <summary class="guide-voice-notes__summary">
+                    <span class="summary-label">État du passage</span>
+                    <strong><?= h($guidePassageStateShort) ?></strong>
+                </summary>
+                <p class="panel-copy guide-voice-notes__copy"><?= h($guidePassageStateLong) ?></p>
+                <div class="guide-console guide-console--encoded guide-voice-console">
+                    <?php foreach ($guideVoiceNotes as [$label, $value]): ?>
+                        <?= guide_ascii_note((string) $label, (string) $value) ?>
+                    <?php endforeach; ?>
+                </div>
+            </details>
+        </div>
+    </section>
+
+    <section class="panel reveal guide-paths-panel" aria-labelledby="guide-paths-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="guide-paths-title">Puis choisir une porte</h2>
+                <p class="panel-copy">Quand c’est clair, prends la suite la plus simple.</p>
+            </div>
+        </div>
+
+        <div class="guide-cards guide-cards--triple guide-cards--compact">
+            <?php foreach ($owlDoors as $door): ?>
+                <a class="guide-card" href="<?= h((string) $door['href']) ?>">
+                    <span class="summary-label"><?= h((string) $door['label']) ?></span>
+                    <strong><?= h((string) $door['title']) ?></strong>
+                    <p><?= h((string) $door['copy']) ?></p>
+                    <span class="ghost-link"><?= h((string) $door['cta']) ?></span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    </section>
 
     <details class="panel reveal mapping-panel mapping-panel--genie guide-knowledge-panel" id="mapping" aria-labelledby="mapping-title" data-mapping-genie data-mapping-theme="real">
         <summary class="guide-knowledge-summary">Comprendre le schéma</summary>
@@ -190,8 +316,8 @@ $guideVoiceNotes = [
                 <h2 id="mapping-title">Le projet en un schéma</h2>
                 <p class="panel-copy mapping-panel__copy">
                     <?= $isSpatialMappingHost
-                        ? 'Le tore lit le monde réel. Le plasma traduit, puis la surface devient navigable.'
-                        : 'Réalité, plasma, tore : trois couches pour comprendre comment O. lit, filtre et rend navigable.' ?>
+                        ? 'Le tore lit le monde réel. Le plasma traduit. La surface devient navigable.'
+                        : 'Réalité, plasma, tore : trois couches pour lire, filtrer, rendre navigable.' ?>
                 </p>
             </div>
             <span class="badge mapping-panel__badge"><?= $isSpatialMappingHost ? 'real-world map' : 'genie view' ?></span>
@@ -296,129 +422,6 @@ $guideVoiceNotes = [
             <span class="mapping-panel__accent mapping-panel__accent--torus">tore</span>.
         </p>
     </details>
-
-    <section class="panel reveal guide-panel" aria-labelledby="guide-role-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="guide-role-title">0wlslw0</h2>
-                <p class="panel-copy">Écouter, clarifier, orienter. Une porte brève pour ne pas tout lire avant d’agir.</p>
-            </div>
-            <span class="badge"><?= h($guideMode) ?></span>
-        </div>
-
-        <p class="panel-copy guide-embed-note">
-            <?= match ($voiceUpstreamState) {
-                'remote-ready' => 'État du passage : relais vocal amont actif.',
-                'auth-missing' => 'État du passage : relais vocal repéré, autorisation encore absente.',
-                default => 'État du passage : guidage local actif, relais vocal branchable plus tard.',
-            } ?>
-        </p>
-    </section>
-
-    <section class="panel reveal" aria-labelledby="guide-paths-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="guide-paths-title">Trois portes</h2>
-                <p class="panel-copy">Si l’orientation manque encore, commence ici.</p>
-            </div>
-        </div>
-
-        <div class="guide-cards guide-cards--triple guide-cards--compact">
-            <?php foreach ($owlDoors as $door): ?>
-                <a class="guide-card" href="<?= h((string) $door['href']) ?>">
-                    <span class="summary-label"><?= h((string) $door['label']) ?></span>
-                    <strong><?= h((string) $door['title']) ?></strong>
-                    <p><?= h((string) $door['copy']) ?></p>
-                    <span class="ghost-link"><?= h((string) $door['cta']) ?></span>
-                </a>
-            <?php endforeach; ?>
-        </div>
-    </section>
-
-    <section
-        class="panel reveal guide-panel guide-voice-shell"
-        aria-labelledby="guide-voice-title"
-        data-guide-voice
-        data-guide-voice-api="<?= h((string) $voiceState['api_path']) ?>"
-        data-guide-voice-csrf="<?= h((string) $voiceState['csrf_token']) ?>"
-        data-guide-voice-greeting="<?= h((string) $voiceState['greeting']) ?>"
-        data-guide-voice-upstream="<?= !empty($voiceState['upstream_configured']) ? '1' : '0' ?>"
-        data-guide-voice-upstream-state="<?= h($voiceUpstreamState) ?>"
-        data-guide-voice-upstream-label="<?= h($voiceUpstreamLabel) ?>"
-        data-guide-voice-chat-url="<?= h((string) $voiceState['chat_url']) ?>"
-        data-guide-voice-program="<?= h((string) ($voiceState['land_program'] ?? $guideLandProgram)) ?>"
-        data-guide-voice-label="<?= h((string) ($voiceState['land_label'] ?? $guideLandLabel)) ?>"
-        data-guide-voice-lambda="<?= h((string) ($voiceState['land_lambda'] ?? $guideLandLambda)) ?>"
-        data-guide-voice-tone="<?= h((string) ($voiceState['land_tone'] ?? $guideLandTone)) ?>"
-        data-guide-voice-starter-prompts="<?= h((string) json_encode($voiceState['starter_prompts'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
-    >
-        <div class="section-topline">
-            <div>
-                <h2 id="guide-voice-title">Accompagnement vocal</h2>
-                <p class="panel-copy">0wlslw0 écoute, répond à voix haute, ou prend un texte court si tu préfères le silence.</p>
-            </div>
-            <span class="badge">voix + texte</span>
-        </div>
-
-        <div class="guide-grid guide-voice-grid">
-            <div class="guide-voice-stage">
-                <div class="guide-voice-orb" aria-hidden="true">
-                    <span class="guide-voice-orb-core"></span>
-                    <span class="guide-voice-orb-ring"></span>
-                    <span class="guide-voice-breather" data-guide-voice-breather hidden>0</span>
-                </div>
-
-                <p class="guide-voice-status" data-guide-voice-status role="status" aria-live="polite" aria-atomic="true">Prêt. Active la voix puis parle naturellement.</p>
-                <p class="guide-voice-transcript" data-guide-voice-transcript>Exemples : « explique O. », « ouvre Signal », “take me to Str3m”.</p>
-                <p class="guide-voice-reply" data-guide-voice-reply aria-live="polite" aria-atomic="true">0wlslw0 répondra ici puis lira sa réponse à voix haute.</p>
-                <div class="guide-voice-meta" aria-live="polite">
-                    <span class="guide-voice-origin-badge" data-guide-voice-origin data-guide-voice-origin-state="<?= h($voiceUpstreamState) ?>"><?= h($voiceUpstreamLabel) ?></span>
-                    <span class="guide-voice-meta-copy">texte disponible · historique court</span>
-                </div>
-                <ol class="guide-voice-history" data-guide-voice-history aria-label="Historique récent avec 0wlslw0" hidden></ol>
-                <form class="guide-voice-form" data-guide-voice-form>
-                    <label class="sr-only" for="guide-voice-text-input">Écrire à 0wlslw0</label>
-                    <input id="guide-voice-text-input" type="text" name="guide_voice_text" maxlength="280" autocomplete="off" placeholder="Écris à 0wlslw0 si tu préfères le silence." data-guide-voice-input>
-                    <button type="submit" class="pill-link guide-voice-submit" data-guide-voice-submit>Envoyer</button>
-                </form>
-                <p class="guide-voice-input-hint" data-guide-voice-input-hint>Le texte reste disponible même si la reconnaissance vocale Web manque ici.</p>
-                <div class="guide-voice-suggestions" data-guide-voice-suggestions aria-label="Impulsions proposées par 0wlslw0">
-                    <?php foreach (($voiceState['starter_prompts'] ?? []) as $prompt): ?>
-                        <?php
-                        $promptUtterance = trim((string) ($prompt['utterance'] ?? ''));
-                        $promptLabel = trim((string) ($prompt['label'] ?? $promptUtterance));
-                        if ($promptUtterance === '' || $promptLabel === '') {
-                            continue;
-                        }
-                        ?>
-                        <button type="button" class="guide-voice-suggestion" data-guide-voice-suggestion data-utterance="<?= h($promptUtterance) ?>"><?= h($promptLabel) ?></button>
-                    <?php endforeach; ?>
-                </div>
-                <div class="guide-voice-signature" aria-live="polite">
-                    <span class="summary-label">Signature vocale</span>
-                    <strong data-guide-voice-signature>Voix spectrale · λ <?= h((string) $guideLandLambda) ?> nm</strong>
-                    <span class="guide-voice-profile" data-guide-voice-profile>tempo ajusté · <?= h($guideLandLabel) ?></span>
-                    <span class="guide-voice-mute-indicator" data-guide-voice-mute-indicator>voix active · I inverse + voix</span>
-                </div>
-
-                <div class="action-row guide-voice-actions">
-                    <button type="button" class="pill-link" data-guide-voice-start>Activer la voix</button>
-                    <button type="button" class="ghost-link" data-guide-voice-stop hidden>Couper</button>
-                    <?php if ($agentUrl !== ''): ?>
-                        <a class="ghost-link" href="<?= h($agentUrl) ?>" target="_blank" rel="noopener">Ouvrir le relais externe</a>
-                    <?php endif; ?>
-                </div>
-
-                <a class="ghost-link guide-voice-route-link" href="#" data-guide-voice-route hidden>Continuer</a>
-            </div>
-
-            <aside class="guide-console guide-console--encoded guide-voice-console" aria-label="Etat du guide vocal">
-                <?php foreach ($guideVoiceNotes as [$label, $value]): ?>
-                    <?= guide_ascii_note((string) $label, (string) $value) ?>
-                <?php endforeach; ?>
-            </aside>
-        </div>
-    </section>
 
 </main>
 

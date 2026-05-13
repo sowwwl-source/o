@@ -5300,8 +5300,8 @@ function mountGuideVoice(root) {
 
 	if (inputHintNode instanceof HTMLElement) {
 		inputHintNode.textContent = RecognitionCtor
-			? "Tu peux écrire à tout moment ; la voix reste optionnelle."
-			: "Ce navigateur n’expose pas le micro Web ici ; le texte prend le relais.";
+			? "Tu peux écrire à tout moment."
+			: "Le texte prend le relais ici.";
 	}
 
 	const bindSuggestionClicks = () => {
@@ -5349,9 +5349,9 @@ function mountGuideVoice(root) {
 			startButton.textContent = "Micro indisponible";
 		}
 		setReply(chatUrl
-			? "Ce navigateur ne propose pas la reconnaissance vocale Web. Tu peux ouvrir le relais externe en attendant."
-			: "Ce navigateur ne propose pas la reconnaissance vocale Web. Utilise les impulsions ci-dessous ou essaie Safari ou Chrome récents.");
-		setState("idle", "Reconnaissance vocale indisponible. 0wlslw0 reste guidable en texte et par impulsions.");
+			? "Ce navigateur ne propose pas la reconnaissance vocale Web. Le relais externe reste disponible."
+			: "Ce navigateur ne propose pas la reconnaissance vocale Web. Utilise le texte ou les impulsions.");
+		setState("idle", "Reconnaissance vocale indisponible. 0wlslw0 reste guidable en texte.");
 		return;
 	}
 
@@ -5396,7 +5396,7 @@ function mountGuideVoice(root) {
 
 		const errorCode = event?.error || "unknown";
 		if (errorCode === "not-allowed" || errorCode === "service-not-allowed") {
-			stopGuide("Le micro doit être réautorisé sur cette page. Réactive la voix pour reprendre.");
+			stopGuide("Le micro doit être réautorisé sur cette page.");
 			return;
 		}
 
@@ -5431,8 +5431,8 @@ function mountGuideVoice(root) {
 		startButton.hidden = true;
 		stopButton.hidden = false;
 		setReply(firstActivation
-			? "0wlslw0 répondra ici puis lira sa réponse à voix haute."
-			: "0wlslw0 reste avec toi et reprend l’écoute sur cette page.");
+			? "0wlslw0 répondra ici puis lira sa réponse."
+			: "0wlslw0 reprend l’écoute ici.");
 		renderSuggestions(starterPrompts);
 		persistSession({ active: true, autoResume: true, everActivated: true, pendingNavigation: "" });
 
@@ -5524,7 +5524,7 @@ function mountGuideVoice(root) {
 	if (!(replyNode instanceof HTMLElement) || !replyNode.textContent) {
 		setReply(isDock
 			? "Active la voix depuis 0wlslw0, puis elle te suivra pendant la navigation."
-			: "0wlslw0 répondra ici puis lira sa réponse à voix haute.");
+			: "0wlslw0 répondra ici puis lira sa réponse.");
 	}
 	if (startButton instanceof HTMLElement) {
 		startButton.textContent = isDock ? "Réactiver la voix" : "Activer la voix";

@@ -108,7 +108,7 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
             <strong>Résonance ciblée.</strong>
             <span>Point à point</span>
         </h1>
-        <p class="lead">Même trame que Signal, mais sans passer par la boîte. Ici, la liaison va droit d’une terre à l’autre.</p>
+        <p class="lead">Même trame que Signal, mais en direct.</p>
 
         <div class="land-meta">
             <span class="meta-pill">terre liée : <?= h((string) $land['slug']) ?></span>
@@ -117,21 +117,11 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
         </div>
     </header>
 
-    <section class="panel reveal meaning-panel" aria-labelledby="echo-meaning-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="echo-meaning-title">Pourquoi cette porte existe</h2>
-                <p class="panel-copy"><?= h((string) ($echoGuide['copy'] ?? 'Relier deux terres sans passer par le bruit public.')) ?></p>
-            </div>
-            <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0 : me guider</a>
-        </div>
-    </section>
-
     <section class="panel reveal signal-mode-panel" aria-labelledby="echo-mode-title">
         <div class="section-topline">
             <div>
                 <h2 id="echo-mode-title">Direct, mais pas séparé</h2>
-                <p class="panel-copy">Écho et Signal partagent la même trame. Signal sert de boîte et de carnet ; Écho sert à reprendre cette liaison sans détour.</p>
+                <p class="panel-copy"><?= h((string) ($echoGuide['copy'] ?? 'Relier deux terres sans passer par le bruit public.')) ?></p>
             </div>
             <a class="ghost-link" href="<?= h($signalHref) ?>">Revenir à Signal</a>
         </div>
@@ -157,7 +147,7 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
                 <p class="panel-copy"><?= h($signalSchemaHint) ?></p>
             <?php elseif ($targetSlug === '' || !$targetLand): ?>
                 <div class="echo-empty-state">
-                    <p class="panel-copy">Choisis une terre à gauche pour ouvrir la liaison directe. Si tu préfères commencer par l’adresse, le carnet ou un fil plus lisible, passe d’abord par Signal.</p>
+                    <p class="panel-copy">Choisis une terre à gauche pour ouvrir la liaison directe. Si tu préfères l’adresse et le carnet, passe par Signal.</p>
                     <div class="action-row">
                         <a class="pill-link" href="<?= h($signalHref) ?>">Ouvrir Signal</a>
                         <a class="ghost-link" href="<?= h($str3mHref) ?>">Retour au public</a>
@@ -167,7 +157,7 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
                 <div class="section-topline">
                     <div>
                         <h2>Liaison avec <?= h($targetUsername) ?></h2>
-                        <p class="panel-copy">Direct, sans détour, sur la même trame que Signal. Reviens à la boîte si tu veux davantage de contexte.</p>
+                        <p class="panel-copy">Direct, sur la même trame que Signal. Reviens à la boîte si tu veux plus de contexte.</p>
                     </div>
                     <span class="badge"><?= h(signal_virtual_address($targetLand)) ?></span>
                     <span class="meta-pill" data-message-live-indicator role="status" aria-live="polite" aria-atomic="true">direct · veille</span>

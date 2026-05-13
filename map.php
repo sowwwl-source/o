@@ -18,7 +18,7 @@ $str3mHref = o_route_path('/str3m');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Map — surface torique vivante de <?= h(SITE_TITLE) ?>, terres et courants d’activité.">
+    <meta name="description" content="Map — tore vivant de <?= h(SITE_TITLE) ?>, terres et courants actifs.">
     <meta name="theme-color" content="#09090b">
     <title>Map — <?= h(SITE_TITLE) ?></title>
 <?= render_o_page_head_assets('main') ?>
@@ -33,7 +33,7 @@ $str3mHref = o_route_path('/str3m');
     <header class="map-head">
         <div>
             <p class="eyebrow"><strong>map</strong> <span>tore vivant / activité</span></p>
-            <h1 class="land-title"><strong>Le tore des terres actives</strong> <span>nœuds et courants chauds</span></h1>
+            <h1 class="land-title"><strong>Le tore des terres actives</strong> <span>nœuds et courants</span></h1>
         </div>
         <div class="meta">
             <a class="meta-pill meta-pill-link" href="<?= h($str3mHref) ?>">str3m</a>
@@ -58,7 +58,7 @@ $str3mHref = o_route_path('/str3m');
         </div>
         <div class="map-lexical-console__output" data-map-lexical-output aria-live="polite"></div>
     </section>
-    <p class="map-note" id="map-note">Chargement du tore vivant et de ses courants…</p>
+    <p class="map-note" id="map-note">Chargement du tore et de ses courants…</p>
 </main>
 
 </body>
