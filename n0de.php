@@ -7,6 +7,13 @@ $host              = request_host();
 $csrfToken         = csrf_token();
 $brandDomain       = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $authenticatedLand = current_authenticated_land();
+$homeHref = o_route_path('/');
+$joinHref = o_route_path('/rejoindre');
+$str3mHref = o_route_path('/str3m');
+$landBaseHref = o_route_path('/land');
+$shoreBaseHref = o_route_path('/sh0re');
+$n0deFileHref = o_route_path('/n0de.php');
+$qrScriptHref = o_asset_href('qr.js');
 
 // ─── Manifest download (SD card export) ──────────────────────────────────────
 
@@ -99,12 +106,12 @@ $n0deRecommendedLabel = n0de_kind_label($n0deRecommendedKind);
 $n0deAnchorTitle = 'Une terre doit tenir l’objet';
 $n0deAnchorCopy = 'Le registre n0de reste lié à une terre ouverte. C’est elle qui porte le token, le manifest et la relation.';
 $n0deAnchorMeta = 'aucune présence liée';
-$n0deAnchorHref = '/rejoindre';
+$n0deAnchorHref = $joinHref;
 $n0deAnchorLinkLabel = 'Poser une terre';
 $n0deGestureTitle = 'Commencer par un objet simple';
 $n0deGestureCopy = 'QR pour pointer vite, NFC pour le geste, SD pour embarquer un fragment hors connexion.';
 $n0deGestureMeta = 'type conseillé · NFC + QR + SD';
-$n0deGestureHref = '/str3m';
+$n0deGestureHref = $str3mHref;
 $n0deGestureLinkLabel = 'Voir le courant public';
 $n0deBridgeTitle = 'La relation vient ensuite';
 $n0deBridgeCopy = 'Sh0re tient les n0us, Str3m montre le courant, et n0de donne un support matériel à cette circulation.';
@@ -120,7 +127,7 @@ if ($authenticatedLand) {
         . $myLinkedN0deCount . ' n0de' . ($myLinkedN0deCount > 1 ? 's' : '') . ' lié' . ($myLinkedN0deCount > 1 ? 's' : '')
         . ' · '
         . $myT0kCount . ' n0us actif' . ($myT0kCount > 1 ? 's' : '');
-    $n0deAnchorHref = '/land?u=' . rawurlencode((string) $authenticatedLand['slug']);
+    $n0deAnchorHref = $landBaseHref . '?u=' . rawurlencode((string) $authenticatedLand['slug']);
     $n0deAnchorLinkLabel = 'Voir ma terre';
 
     if ($myN0deCount <= 0 && $myT0kCount > 0) {
@@ -160,10 +167,11 @@ $ambientProfile = $authenticatedLand
     <meta name="theme-color" content="#09090b">
     <title>N0des — <?= h(SITE_TITLE) ?></title>
 <?= render_o_page_head_assets('main') ?>
-    <script defer src="/qr.js"></script>
+    <script defer src="<?= h($qrScriptHref) ?>"></script>
 </head>
 <body class="experience n0de-view">
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('n0de') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'nocturnal', 'n0de') ?>
@@ -180,11 +188,11 @@ $ambientProfile = $authenticatedLand
         <div class="land-meta">
             <?php if ($authenticatedLand): ?>
                 <span class="meta-pill"><?= h((string) $authenticatedLand['username']) ?></span>
-                <a class="meta-pill meta-pill-link" href="/sh0re">Sh0re</a>
+                <a class="meta-pill meta-pill-link" href="<?= h($shoreBaseHref) ?>">Sh0re</a>
             <?php else: ?>
-                <a class="meta-pill meta-pill-link" href="/">Ouvrir une land</a>
+                <a class="meta-pill meta-pill-link" href="<?= h($homeHref) ?>">Ouvrir une land</a>
             <?php endif; ?>
-            <a class="meta-pill meta-pill-link" href="/str3m">Str3m</a>
+            <a class="meta-pill meta-pill-link" href="<?= h($str3mHref) ?>">Str3m</a>
         </div>
     </header>
 
@@ -232,7 +240,7 @@ $ambientProfile = $authenticatedLand
                     <p class="n0de-physical-title">Carte SD · Manifest</p>
                     <p class="n0de-physical-url">n0de-<?= h(n0de_normalize_token((string) $registered['token'])) ?>.json</p>
                     <a class="pill-link"
-                       href="/n0de.php?sync=<?= h((string) $registered['token']) ?>"
+                       href="<?= h($n0deFileHref) ?>?sync=<?= h((string) $registered['token']) ?>"
                        download="n0de-<?= h(n0de_normalize_token((string) $registered['token'])) ?>.json">
                         Télécharger le manifest SD
                     </a>
@@ -280,8 +288,8 @@ $ambientProfile = $authenticatedLand
                 <p class="land-card-copy"><?= h($n0deBridgeCopy) ?></p>
                 <p class="n0de-focus-meta"><?= h($n0deBridgeMeta) ?></p>
                 <div class="n0de-focus-actions">
-                    <a class="ghost-link" href="/sh0re">Sh0re</a>
-                    <a class="ghost-link" href="/str3m">Str3m</a>
+                    <a class="ghost-link" href="<?= h($shoreBaseHref) ?>">Sh0re</a>
+                    <a class="ghost-link" href="<?= h($str3mHref) ?>">Str3m</a>
                 </div>
             </article>
         </div>
@@ -292,8 +300,8 @@ $ambientProfile = $authenticatedLand
         <h2>Une land est requise</h2>
         <p class="panel-copy">Les objets physiques sont ancrés à une land. Commence par en ouvrir une.</p>
         <div class="action-row">
-            <a class="pill-link" href="/">Ouvrir une land</a>
-            <a class="ghost-link" href="/rejoindre">Poser une terre</a>
+            <a class="pill-link" href="<?= h($homeHref) ?>">Ouvrir une land</a>
+            <a class="ghost-link" href="<?= h($joinHref) ?>">Poser une terre</a>
         </div>
     </section>
 
@@ -355,7 +363,7 @@ $ambientProfile = $authenticatedLand
                     <h2 id="n0de-explain-title">Premières prises</h2>
                     <p class="panel-copy">Choisir le bon support selon ce que l’objet doit faire tout de suite.</p>
                 </div>
-                <a class="ghost-link" href="/sh0re">Voir Sh0re</a>
+                <a class="ghost-link" href="<?= h($shoreBaseHref) ?>">Voir Sh0re</a>
             </div>
             <div class="summary-grid">
                 <article class="summary-card">
@@ -377,8 +385,8 @@ $ambientProfile = $authenticatedLand
             <div class="n0de-side-notes">
                 <p class="n0de-panel-note">Le registre reste privé ici; la relation se lit ensuite sur Sh0re, et la surface publique peut remonter dans Str3m.</p>
                 <div class="action-row n0de-side-actions">
-                    <a class="ghost-link" href="/str3m">Aller vers Str3m</a>
-                    <a class="ghost-link" href="/land?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">Retour à ma terre</a>
+                    <a class="ghost-link" href="<?= h($str3mHref) ?>">Aller vers Str3m</a>
+                    <a class="ghost-link" href="<?= h($landBaseHref) ?>?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">Retour à ma terre</a>
                 </div>
             </div>
         </aside>
@@ -422,7 +430,7 @@ $ambientProfile = $authenticatedLand
                         <button class="ghost-link" data-copy-link="<?= h($nfcUrl) ?>">Copier URL NFC/QR</button>
                         <?php if (in_array($n0de['kind'], ['sd', 'mixed'], true)): ?>
                             <a class="ghost-link"
-                               href="/n0de.php?sync=<?= h((string) $n0de['token']) ?>"
+                               href="<?= h($n0deFileHref) ?>?sync=<?= h((string) $n0de['token']) ?>"
                                download="n0de-<?= h(n0de_normalize_token((string) $n0de['token'])) ?>.json">
                                 Manifest SD
                             </a>

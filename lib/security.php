@@ -62,9 +62,11 @@ function send_security_headers(): void
 
 function content_security_policy(): string
 {
-    $requestPath = (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/');
+    $requestPath = function_exists('o_request_path')
+        ? o_request_path((string) ($_SERVER['REQUEST_URI'] ?? '/'))
+        : (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/');
 
-    if ($requestPath === '/map') {
+    if ($requestPath === '/map' || $requestPath === '/island') {
         return implode('; ', [
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' https://unpkg.com",

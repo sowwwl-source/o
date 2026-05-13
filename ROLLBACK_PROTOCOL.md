@@ -27,7 +27,7 @@ Also capture the live symptom:
 
 ```bash
 curl -I https://0wlslw0.com
-curl -sL https://0wlslw0.com | grep -E 'Signal before story|concierge d entree|Entrer sans se perdre|0wlslw0'
+curl -sL https://0wlslw0.com | grep -E 'Entrer sans se perdre|Accompagnement vocal|0wlslw0'
 ```
 
 ## 3. Choose the rollback target
@@ -66,7 +66,7 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 ```bash
 docker exec sowwwl-o-app-1 sh -lc 'git --version >/dev/null 2>&1 || true; ls -la /var/www/html/.htaccess /var/www/html/0wlslw0.php'
 curl -I https://0wlslw0.com
-curl -sL https://0wlslw0.com | grep -E 'Signal before story|concierge d entree|Entrer sans se perdre|0wlslw0'
+curl -sL https://0wlslw0.com | grep -E 'Entrer sans se perdre|Accompagnement vocal|0wlslw0'
 ```
 
 Expected:

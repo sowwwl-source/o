@@ -43,9 +43,9 @@ $isSowwwlXyz = ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz');
 //     exit;
 // }
 
-$requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/';
+$requestPath = o_request_path('/');
 if (($host === '0wlslw0.com' || $host === 'www.0wlslw0.com') && ($requestPath === '/' || $requestPath === '/index.php')) {
-    header('Location: /0wlslw0', true, 302);
+    header('Location: ' . o_route_path('/0wlslw0'), true, 302);
     exit;
 }
 
@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 login_land($land);
-                header('Location: /land?u=' . urlencode((string) $land['slug']) . '&session=1', true, 303);
+                header('Location: ' . o_route_path('/land') . '?u=' . urlencode((string) $land['slug']) . '&session=1', true, 303);
                 exit;
             } catch (InvalidArgumentException | RuntimeException $exception) {
                 $message = $exception->getMessage();
@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $form['lambda_nm'] !== '' ? (int) $form['lambda_nm'] : null
                 );
                 login_land($land);
-                header('Location: /land?u=' . urlencode((string) $land['slug']) . '&created=1&session=1', true, 303);
+                header('Location: ' . o_route_path('/land') . '?u=' . urlencode((string) $land['slug']) . '&created=1&session=1', true, 303);
                 exit;
             } catch (InvalidArgumentException $exception) {
                 $message = $exception->getMessage();
@@ -163,7 +163,6 @@ try {
 
 $selectedSignupLabel = (string) ($selectedSignupDefinition['label'] ?? $selectedSignupProgram);
 $selectedSignupTone = (string) ($selectedSignupDefinition['tone'] ?? '');
-$originBase = site_origin();
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $homeVisualOnly = $isSowwwlXyz;
 $dailyStream = str3m_build_daily_stream(null);
@@ -229,31 +228,36 @@ if ($authenticatedLand) {
 
 $homeStatusLabel = $authenticatedLand ? 'terre liée' : 'surface collective';
 $homeLead = $authenticatedLand
-    ? 'Le torus suit la fréquence de ta terre. Signal adresse, aZa retient, Str3m affleure.'
-    : 'Commence ici. Trois portes suffisent : entrer publiquement, poser une terre, ou demander à Owl quelle porte choisir.';
+    ? 'Le tore suit la fréquence de ta terre. Ouvrir, écrire, dériver.'
+    : 'Trois portes suffisent : entrer publiquement, poser une terre, ou passer par 0wlslw0.';
 $homePrimaryActionHref = $authenticatedLand
-    ? '/land?u=' . rawurlencode($activeLandSlug)
-    : '/rejoindre';
+    ? o_route_path('/land') . '?u=' . rawurlencode($activeLandSlug)
+    : o_route_path('/rejoindre');
 $homePrimaryActionLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Rejoindre le peuple de l\'O';
-$guideHref = '/0wlslw0';
+$guideHref = o_route_path('/0wlslw0');
+$homeHref = o_route_path('/');
+$landHref = o_route_path('/land');
+$signalHref = o_route_path('/signal');
+$str3mHref = o_route_path('/str3m');
+$mapHref = o_route_path('/map');
+$azaHref = o_route_path('/aza');
+$echoHref = o_route_path('/echo');
+$joinHref = o_route_path('/rejoindre');
+$logoutHref = o_route_path('/logout.php');
 $promptSeeds = guide_prompt_seeds();
 $homeHeroLineOne = $authenticatedLand ? 'La terre' : 'O.';
 $homeHeroLineTwo = $authenticatedLand ? 'colore le torus.' : 'le réseau minimal';
 $homeHeroTone = $authenticatedLand ? $activeLandTone : 'porte d’usage / trois gestes / aucune précipitation';
 $homeHeroNote = $authenticatedLand
-    ? 'Trois gestes reviennent vite : ouvrir, écrire, dériver.'
-    : 'sowwwl.com sert à entrer et utiliser O. sowwwl.org sert à comprendre la carte avant d’aller plus loin.';
-$homeSignupPortalCount = count($signupPortals);
-$homeSignupRhythm = $homeSignupPortalCount > 0
-    ? 'nom + ' . $homeSignupPortalCount . ' passages + réglage'
-    : 'nom + réglage';
+    ? 'Le noyau reste simple : terre, adresse, courant.'
+    : 'Entre par une porte, puis laisse le reste apparaître plus loin.';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="<?= h(SITE_TITLE) ?> — entre publiquement, pose une terre, ou laisse Owl te guider vers la bonne porte.">
+    <meta name="description" content="<?= h(SITE_TITLE) ?> — entre publiquement, pose une terre, ou passe par 0wlslw0 pour trouver la bonne porte.">
     <meta name="theme-color" content="#09090b">
     <title><?= h(SITE_TITLE) ?></title>
 <?= render_o_page_head_assets($isSowwwlXyz ? 'xyz' : 'main') ?>
@@ -266,6 +270,7 @@ $homeSignupRhythm = $homeSignupPortalCount > 0
     data-land-tone="<?= h($activeLandTone) ?>"
 >
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('noyau') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 
@@ -302,11 +307,11 @@ $homeSignupRhythm = $homeSignupPortalCount > 0
         <?php if ($authenticatedLand): ?>
             <p class="connection-meter__copy">λ <?= h((string) $activeLambda) ?> nm · <?= h($activeLandUsername) ?></p>
             <div class="connection-meter__actions">
-                <a class="pill-link" href="/land?u=<?= rawurlencode($activeLandSlug) ?>">ouvrir</a>
-                <a class="ghost-link" href="/logout.php">retirer</a>
+                <a class="pill-link" href="<?= h($landHref) ?>?u=<?= rawurlencode($activeLandSlug) ?>">ouvrir</a>
+                <a class="ghost-link" href="<?= h($logoutHref) ?>">retirer</a>
             </div>
         <?php else: ?>
-            <form method="post" action="/#connexion" class="connection-meter__form" autocomplete="on">
+            <form method="post" action="<?= h($homeHref) ?>#connexion" class="connection-meter__form" autocomplete="on">
                 <input type="hidden" name="action" value="login">
                 <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
                 <label>
@@ -332,7 +337,7 @@ $homeSignupRhythm = $homeSignupPortalCount > 0
                 </label>
                 <button type="submit">entrer</button>
             </form>
-            <a class="connection-meter__create" href="/rejoindre">poser une terre</a>
+            <a class="connection-meter__create" href="<?= h($joinHref) ?>">poser une terre</a>
         <?php endif; ?>
     </div>
 </details>
@@ -383,9 +388,9 @@ $homeSignupRhythm = $homeSignupPortalCount > 0
                 <button type="button" class="pill-link xyz-camera-toggle" data-xyz-camera-start>Ouvrir Ocam</button>
                 <button type="button" class="ghost-link xyz-camera-toggle hidden" data-xyz-camera-stop>Refermer Ocam</button>
                 <a class="pill-link" href="<?= h($guideHref) ?>">Entrer par 0wlslw0</a>
-                <a class="ghost-link" href="/signal">Laisser une enveloppe</a>
-                <a class="ghost-link" href="/str3m">Dériver dans Str3m</a>
-                <a class="ghost-link" href="/map">Voir la carte</a>
+                <a class="ghost-link" href="<?= h($signalHref) ?>">Laisser une enveloppe</a>
+                <a class="ghost-link" href="<?= h($str3mHref) ?>">Dériver dans Str3m</a>
+                <a class="ghost-link" href="<?= h($mapHref) ?>">Voir la carte</a>
             </div>
 
             <div class="xyz-surface-meta" aria-label="Signature de la surface">
@@ -537,7 +542,7 @@ $homeSignupRhythm = $homeSignupPortalCount > 0
         <span class="eyebrow eyebrow-pill"><?= h($brandDomain) ?></span>
         <div class="top-bar-cluster">
             <?php if ($unreadSignal > 0): ?>
-                <a href="/signal" class="badge badge-glass" style="border-color: rgba(var(--land-secondary-rgb) / 0.8); color: rgba(var(--land-secondary-rgb) / 0.9); text-decoration: none;">
+                <a href="<?= h($signalHref) ?>" class="badge badge-glass" style="border-color: rgba(var(--land-secondary-rgb) / 0.8); color: rgba(var(--land-secondary-rgb) / 0.9); text-decoration: none;">
                     <?= $unreadSignal ?> SIGNAL<?= $unreadSignal > 1 ? 'S' : '' ?> EN ATTENTE
                 </a>
             <?php endif; ?>
@@ -559,10 +564,9 @@ $homeSignupRhythm = $homeSignupPortalCount > 0
             <p class="lead"><?= h($homeLead) ?></p>
             <p class="world-intro-note"><?= h($homeHeroNote) ?></p>
             <div class="secondary-links" aria-label="Passages secondaires du noyau">
-                <a class="ghost-link" href="<?= h($guideHref) ?>">Owl</a>
-                <a class="ghost-link" href="/map">Map · tore</a>
-                <a class="ghost-link" href="/aza">aZa · archives</a>
-                <a class="ghost-link" href="https://sowwwl.org">Pourquoi .org ?</a>
+                <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0</a>
+                <a class="ghost-link" href="<?= h($mapHref) ?>">Map · tore</a>
+                <a class="ghost-link" href="<?= h($azaHref) ?>">aZa · archives</a>
             </div>
         </article>
 
@@ -573,53 +577,55 @@ $homeSignupRhythm = $homeSignupPortalCount > 0
                     <strong>Ouvrir ma terre</strong>
                     <span>Revenir immédiatement à ton noyau situé.</span>
                 </a>
-                <a href="/signal" class="entry-card">
+                <a href="<?= h($signalHref) ?>" class="entry-card">
                     <span class="summary-label">02 · adresse</span>
                     <strong>Écrire</strong>
                     <span>Aller droit vers Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : '' ?>.</span>
                 </a>
-                <a href="/str3m" class="entry-card">
+                <a href="<?= h($str3mHref) ?>" class="entry-card">
                     <span class="summary-label">03 · public</span>
                     <strong>Entrer publiquement</strong>
                     <span>Voir le courant avant de replonger dans ta terre.</span>
                 </a>
             <?php else: ?>
-                <a href="/str3m" class="entry-card entry-card--primary">
+                <a href="<?= h($str3mHref) ?>" class="entry-card entry-card--primary">
                     <span class="summary-label">01 · public</span>
                     <strong>Entrer publiquement</strong>
                     <span>Lire Str3m, regarder les îles et sentir le courant avant de créer quoi que ce soit.</span>
                 </a>
-                <a href="/rejoindre" class="entry-card">
+                <a href="<?= h($joinHref) ?>" class="entry-card">
                     <span class="summary-label">02 · terre</span>
                     <strong>Poser une terre</strong>
                     <span>Créer un lieu à toi, discret, situé, avec sa fréquence et sa propre adresse.</span>
                 </a>
                 <a href="<?= h($guideHref) ?>" class="entry-card">
-                    <span class="summary-label">03 · owl</span>
-                    <strong>Demander à Owl</strong>
-                    <span>Passer par 0wlslw0 pour être orienté rapidement si tu hésites entre public, terre ou projet.</span>
+                    <span class="summary-label">03 · 0wlslw0</span>
+                    <strong>Passer par 0wlslw0</strong>
+                    <span>Clarifier vite, choisir une porte, continuer sans détour.</span>
                 </a>
             <?php endif; ?>
         </nav>
 
         <aside class="entry-secondary" aria-label="Passages secondaires">
-            <p class="summary-label"><?= $authenticatedLand ? 'Passages secondaires' : 'Si tu reviens' ?></p>
+            <p class="summary-label"><?= $authenticatedLand ? 'Passages secondaires' : 'Retour rapide' ?></p>
             <div class="entry-secondary-links">
                 <?php if ($authenticatedLand): ?>
-                    <a class="ghost-link" href="/echo">Écho · direct</a>
-                    <a class="ghost-link" href="/signal">Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal : ' · boîte' ?></a>
-                    <a class="ghost-link" href="<?= h($guideHref) ?>">Owl</a>
+                    <a class="ghost-link" href="<?= h($echoHref) ?>">Écho · direct</a>
+                    <a class="ghost-link" href="<?= h($signalHref) ?>">Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal : ' · boîte' ?></a>
+                    <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0</a>
                 <?php else: ?>
                     <a class="ghost-link" href="#connexion">Retrouver ma terre</a>
-                    <a class="ghost-link" href="/aza">Lire aZa · archives</a>
-                    <a class="ghost-link" href="/signal">Voir Signal · boîte</a>
-                    <a class="ghost-link" href="https://sowwwl.org">Comprendre la carte</a>
+                    <a class="ghost-link" href="<?= h($azaHref) ?>">Lire aZa · archives</a>
+                    <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0</a>
+                    <a class="ghost-link" href="<?= h($mapHref) ?>">Voir le tore</a>
                 <?php endif; ?>
             </div>
-            <p class="panel-copy"><?= h($authenticatedLand ? 'Le noyau garde des passages latéraux, mais la priorité reste simple : terre, adresse, courant.' : 'La connexion reste en bas à gauche pour les retours rapides. Le noyau n’en fait plus le centre, mais ne l’oublie pas. Si tu veux comprendre les rôles de domaines avant d’agir, sowwwl.org sert de couche d’explication.') ?></p>
+            <p class="panel-copy"><?= h($authenticatedLand ? 'Le bandeau garde toujours le noyau à portée. Ici, le reste sert seulement à bifurquer.' : 'La connexion reste disponible sans repasser par toute l’entrée. Le reste peut attendre le bon moment.') ?></p>
         </aside>
     </section>
+    <?php endif; ?>
 
+    <?php if (!$homeVisualOnly && $authenticatedLand): ?>
     <section class="home-secondary-grid reveal" id="poser">
         <section class="land-signature home-secondary-panel" aria-label="Signature de la terre">
             <span class="summary-label">Signature</span>
@@ -673,8 +679,8 @@ $homeSignupRhythm = $homeSignupPortalCount > 0
             </section>
             <?php if ($authenticatedLand): ?>
                 <div class="action-row auth-action-row">
-                    <a class="pill-link" href="/land?u=<?= rawurlencode($activeLandSlug) ?>">Ouvrir la terre</a>
-                    <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
+                    <a class="pill-link" href="<?= h($landHref) ?>?u=<?= rawurlencode($activeLandSlug) ?>">Ouvrir la terre</a>
+                    <a class="ghost-link" href="<?= h($logoutHref) ?>">Retirer sa présence</a>
                 </div>
             <?php endif; ?>
         </section>
@@ -682,129 +688,30 @@ $homeSignupRhythm = $homeSignupPortalCount > 0
         <section class="minimal-auth home-secondary-panel home-paths-panel" aria-labelledby="home-paths-title">
             <div class="section-topline">
                 <div>
-                    <span class="summary-label"><?= $authenticatedLand ? 'Cap rapide' : 'Avant d’entrer' ?></span>
-                    <h2 id="home-paths-title"><?= $authenticatedLand ? 'Trois gestes suffisent' : 'Choisir sans refaire la home' ?></h2>
-                    <p class="panel-copy"><?= h($authenticatedLand ? 'Tu n’as plus besoin de relire l’entrée entière. Garde seulement les gestes utiles: ouvrir, écrire, demander un cap.' : 'La home montre l’orientation. Le détail du parcours vit ensuite sur sa propre page, pour éviter de tout recommencer ici.') ?></p>
+                    <span class="summary-label">Cap rapide</span>
+                    <h2 id="home-paths-title">Trois gestes suffisent</h2>
+                    <p class="panel-copy">Tu n’as plus besoin de relire l’entrée entière. Garde seulement les gestes utiles.</p>
                 </div>
             </div>
 
-            <div class="home-quicklist" aria-label="<?= h($authenticatedLand ? 'Gestes utiles' : 'Repères avant entrée') ?>">
-                <?php if ($authenticatedLand): ?>
-                    <article class="home-quickitem">
-                        <strong>Ouvrir</strong>
-                        <p>Ta terre reste le centre. Reviens-y dès que tu veux relire, déposer ou repartir d’un noyau situé.</p>
-                        <a class="ghost-link" href="/land?u=<?= rawurlencode($activeLandSlug) ?>">Aller à ma terre</a>
-                    </article>
-                    <article class="home-quickitem">
-                        <strong>Écrire</strong>
-                        <p>Signal garde la boîte et l’adresse. Écho sert au direct. Si quelque chose attend, passe d’abord par là.</p>
-                        <a class="ghost-link" href="/signal">Ouvrir Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : '' ?></a>
-                    </article>
-                    <article class="home-quickitem">
-                        <strong>Se recadrer</strong>
-                        <p>Owl sert surtout quand tu hésites entre ferries ou quand tu veux repartir sans bruit.</p>
-                        <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par Owl</a>
-                    </article>
-                <?php else: ?>
-                    <article class="home-quickitem">
-                        <strong>Public d’abord</strong>
-                        <p>Str3m s’ouvre sans compte. C’est le bon choix si tu veux sentir le courant avant toute création.</p>
-                        <a class="ghost-link" href="/str3m">Entrer publiquement</a>
-                    </article>
-                    <article class="home-quickitem">
-                        <strong>Terre ensuite</strong>
-                        <p>Le parcours `rejoindre` suit maintenant un rythme clair: <?= h($homeSignupRhythm) ?>.</p>
-                        <a class="ghost-link" href="/rejoindre">Poser une terre</a>
-                    </article>
-                    <article class="home-quickitem">
-                        <strong>Retour rapide</strong>
-                        <p>Si ta terre existe déjà, le dock Connexion en bas à gauche suffit. Pas besoin de refaire tout le seuil.</p>
-                        <a class="ghost-link" href="#connexion">Retrouver ma terre</a>
-                    </article>
-                <?php endif; ?>
-            </div>
-
-            <div class="signup-preview" data-origin-base="<?= h($originBase) ?>" data-preview-shell>
-                <span class="summary-label"><?= $authenticatedLand ? 'Coordonnées publiques' : 'Aperçu du seuil' ?></span>
-                <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
-                <div class="preview-grid">
-                    <p><span>Lien</span><code data-land-link-output><?= h($originBase . '/land?u=' . $previewSlug) ?></code></p>
-                    <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
-                </div>
-                <p class="panel-copy"><?= h($authenticatedLand ? 'La signature publique reste visible ici, même quand la terre est déjà ouverte ailleurs.' : 'Le seuil reste visible depuis l’accueil, mais son activation complète se fait ailleurs pour garder l’entrée légère.') ?></p>
+            <div class="home-quicklist" aria-label="Gestes utiles">
+                <article class="home-quickitem">
+                    <strong>Ouvrir</strong>
+                    <p>Ta terre reste le centre pour relire, déposer ou repartir.</p>
+                    <a class="ghost-link" href="<?= h($landHref) ?>?u=<?= rawurlencode($activeLandSlug) ?>">Aller à ma terre</a>
+                </article>
+                <article class="home-quickitem">
+                    <strong>Écrire</strong>
+                    <p>Signal garde la boîte. Écho sert au direct.</p>
+                    <a class="ghost-link" href="<?= h($signalHref) ?>">Ouvrir Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : '' ?></a>
+                </article>
+                <article class="home-quickitem">
+                    <strong>Se recadrer</strong>
+                    <p>0wlslw0 sert quand tu hésites ou quand tu veux repartir sans bruit.</p>
+                    <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
+                </article>
             </div>
         </section>
-    </section>
-    <?php endif; ?>
-
-    <?php if (!$homeVisualOnly): ?>
-    <section class="panel reveal guide-panel guide-home-callout" aria-labelledby="guide-home-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="guide-home-title">Porte 00 · Owl</h2>
-                <p class="panel-copy">Si tu bloques, donne une phrase simple. Owl répond brièvement, propose une porte, puis te laisse continuer.</p>
-            </div>
-            <a class="pill-link" href="<?= h($guideHref) ?>">Ouvrir Owl</a>
-        </div>
-
-        <div class="guide-home-inline">
-            <div>
-                <span class="summary-label">Phrases de départ</span>
-                <ul class="guide-prompt-list">
-                    <?php foreach (array_slice($promptSeeds, 0, 3) as $prompt): ?>
-                        <li><code><?= h($prompt) ?></code></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-            <p class="panel-copy guide-embed-note">Le centre du torus et le geste en O ouvrent aussi cette porte. L’idée reste simple: demander, choisir, continuer.</p>
-            <div class="action-row">
-                <a class="ghost-link" href="<?= h($guideHref) ?>">Voir Owl</a>
-                <a class="ghost-link" href="/str3m">Entrer publiquement</a>
-                <a class="ghost-link" href="/rejoindre">Poser une terre</a>
-            </div>
-        </div>
-    </section>
-    <?php endif; ?>
-
-    <?php if (!$homeVisualOnly): ?>
-    <section class="panel reveal surface-panel" id="surface" aria-labelledby="surface-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="surface-title">Temps situé</h2>
-                <p class="panel-copy">Ici, l’heure prend terre.</p>
-            </div>
-            <span class="badge"><?= h($brandDomain) ?></span>
-        </div>
-
-        <div class="surface-grid">
-            <section class="telemetry-block" aria-labelledby="telemetry-title">
-                <h3 id="telemetry-title">Signal</h3>
-                <div class="data-grid telemetry-grid">
-                    <p>&gt; DOMAINE : <span class="highlight"><?= h($brandDomain) ?></span></p>
-                    <p>&gt; MODE : <span class="highlight">terre</span></p>
-                    <p>&gt; TEMPS : <span class="highlight">local</span></p>
-                    <p class="bootline" id="bootline">[ L'aspiration est en cours... ]</p>
-                </div>
-            </section>
-
-            <section class="clock-shell" aria-labelledby="signals-title">
-                <div>
-                    <h3 id="signals-title">Fuseau</h3>
-                    <p class="panel-copy">Le temps n’est pas neutre.</p>
-                </div>
-                <div
-                    class="clock"
-                    aria-live="polite"
-                    data-live-clock
-                    data-preview-clock
-                    data-timezone="<?= h($previewTimezone) ?>"
-                >
-                    <p class="clock-label" data-clock-label>Fuseau : —</p>
-                    <p class="clock-time" data-clock-time>--:--:--</p>
-                    <p class="clock-date" data-clock-date>--</p>
-                </div>
-            </section>
-        </div>
     </section>
     <?php endif; ?>
 

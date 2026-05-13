@@ -47,7 +47,8 @@ function signup_stage_link(int $step, array $form): string
         }
     }
 
-    return SIGNUP_ROUTE . '?' . http_build_query($params);
+    $route = function_exists('o_route_path') ? o_route_path(SIGNUP_ROUTE) : SIGNUP_ROUTE;
+    return $route . '?' . http_build_query($params);
 }
 
 $host = request_host();
@@ -56,7 +57,11 @@ $csrfToken = csrf_token();
 $authenticatedLand = current_authenticated_land();
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $originBase = site_origin();
-$guideHref = '/0wlslw0';
+$guideHref = o_route_path('/0wlslw0');
+$homeHref = o_route_path('/');
+$azaHref = o_route_path('/aza');
+$signupRoute = o_route_path(SIGNUP_ROUTE);
+$landRoute = o_route_path(LAND_ROUTE);
 $signupPortals = signup_portal_steps();
 $totalPortalSteps = count($signupPortals);
 $configStep = $totalPortalSteps + 1;
@@ -99,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $form['lambda_nm'] !== '' ? (int) $form['lambda_nm'] : null
                 );
                 login_land($land);
-                header('Location: ' . LAND_ROUTE . '?u=' . urlencode((string) $land['slug']) . '&created=1&session=1', true, 303);
+                header('Location: ' . $landRoute . '?u=' . urlencode((string) $land['slug']) . '&created=1&session=1', true, 303);
                 exit;
             } catch (InvalidArgumentException | RuntimeException $exception) {
                 $message = $exception->getMessage();
@@ -204,6 +209,7 @@ $journeyStatusAside = match (true) {
     data-land-tone="<?= h($selectedSignupTone) ?>"
 >
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('rejoindre') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'calm', 'land') ?>
@@ -246,11 +252,11 @@ $journeyStatusAside = match (true) {
                     <h2 id="signup-name-title">Choisir le nom de la terre</h2>
                     <p class="panel-copy">On valide d'abord le nom, puis on traverse les pages complètes d'AzA avant de sceller la terre.</p>
                 </div>
-                <a class="ghost-link" href="/">Retour au noyau</a>
+                <span class="badge">nom + lecture + scellement</span>
             </div>
 
             <div class="signup-journey-grid signup-journey-grid--name">
-                <form method="get" action="<?= h(SIGNUP_ROUTE) ?>" class="land-form signup-journey-form" autocomplete="off">
+                <form method="get" action="<?= h($signupRoute) ?>" class="land-form signup-journey-form" autocomplete="off">
                     <input type="hidden" name="step" value="1">
 
                     <label>
@@ -291,11 +297,11 @@ $journeyStatusAside = match (true) {
                     <button type="submit">Valider le nom et entrer dans AzA</button>
                 </form>
 
-                <aside class="signup-preview signup-journey-preview" data-origin-base="<?= h($originBase) ?>" data-preview-shell>
+                <aside class="signup-preview signup-journey-preview" data-origin-base="<?= h($originBase) ?>" data-land-route-base="<?= h($landRoute) ?>" data-preview-shell>
                     <span class="summary-label">Aperçu immédiat</span>
                     <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
                     <div class="preview-grid">
-                        <p><span>Lien</span><code data-land-link-output><?= h($originBase . LAND_ROUTE . '?u=' . $previewSlug) ?></code></p>
+                        <p><span>Lien</span><code data-land-link-output><?= h($originBase . $landRoute . '?u=' . $previewSlug) ?></code></p>
                         <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
                         <p><span>Fuseau</span><strong data-preview-timezone><?= h($previewTimezone) ?></strong></p>
                     </div>
@@ -313,7 +319,7 @@ $journeyStatusAside = match (true) {
                     <h2 id="signup-reading-title"><?= h((string) $currentPortal['label']) ?></h2>
                     <p class="panel-copy">Lecture complète avant création : on laisse à ce passage la place d'être lu, pas juste survolé.</p>
                 </div>
-                <a class="ghost-link" href="/aza">Lire aZa au complet</a>
+                <a class="ghost-link" href="<?= h($azaHref) ?>">Lire aZa au complet</a>
             </div>
 
             <div class="signup-journey-grid signup-journey-grid--reading">
@@ -324,11 +330,11 @@ $journeyStatusAside = match (true) {
                 </article>
 
                 <aside class="signup-journey-aside">
-                    <div class="signup-preview signup-journey-preview" data-origin-base="<?= h($originBase) ?>" data-preview-shell>
+                    <div class="signup-preview signup-journey-preview" data-origin-base="<?= h($originBase) ?>" data-land-route-base="<?= h($landRoute) ?>" data-preview-shell>
                         <span class="summary-label">Terre en préparation</span>
                         <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
                         <div class="preview-grid">
-                            <p><span>Lien</span><code data-land-link-output><?= h($originBase . LAND_ROUTE . '?u=' . $previewSlug) ?></code></p>
+                            <p><span>Lien</span><code data-land-link-output><?= h($originBase . $landRoute . '?u=' . $previewSlug) ?></code></p>
                             <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
                             <p><span>Fuseau</span><strong data-preview-timezone><?= h($previewTimezone) ?></strong></p>
                         </div>
@@ -500,11 +506,11 @@ $journeyStatusAside = match (true) {
                     </div>
                 </form>
 
-                <aside class="signup-preview signup-journey-preview" data-origin-base="<?= h($originBase) ?>" data-preview-shell>
+                <aside class="signup-preview signup-journey-preview" data-origin-base="<?= h($originBase) ?>" data-land-route-base="<?= h($landRoute) ?>" data-preview-shell>
                     <span class="summary-label">Terre scellée à venir</span>
                     <strong class="preview-title" data-slug-output><?= h($previewSlug) ?></strong>
                     <div class="preview-grid">
-                        <p><span>Lien</span><code data-land-link-output><?= h($originBase . LAND_ROUTE . '?u=' . $previewSlug) ?></code></p>
+                        <p><span>Lien</span><code data-land-link-output><?= h($originBase . $landRoute . '?u=' . $previewSlug) ?></code></p>
                         <p><span>Email virtuel</span><code data-email-output><?= h($previewSlug . '@o.local') ?></code></p>
                         <p><span>Fuseau</span><strong data-preview-timezone><?= h($previewTimezone) ?></strong></p>
                         <p><span>Programme</span><strong data-preview-program-label><?= h($selectedSignupLabel) ?></strong></p>
@@ -514,7 +520,7 @@ $journeyStatusAside = match (true) {
                     <p class="panel-copy">Une fois créée, la terre sera immédiatement liée à ta session et t'emmènera vers son espace situé.</p>
                     <?php if ($authenticatedLand): ?>
                         <div class="action-row">
-                            <a class="ghost-link" href="<?= h(LAND_ROUTE) ?>?u=<?= rawurlencode((string) ($authenticatedLand['slug'] ?? '')) ?>">Retour à ma terre actuelle</a>
+                            <a class="ghost-link" href="<?= h($landRoute) ?>?u=<?= rawurlencode((string) ($authenticatedLand['slug'] ?? '')) ?>">Retour à ma terre actuelle</a>
                         </div>
                     <?php endif; ?>
                 </aside>

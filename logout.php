@@ -5,5 +5,5 @@ require __DIR__ . '/config.php';
 
 logout_land();
 
-header('Location: /?logged_out=1', true, 303);
+header('Location: ' . o_route_path('/') . '?logged_out=1', true, 303);
 exit;

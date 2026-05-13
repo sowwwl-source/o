@@ -11,6 +11,7 @@ if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
 }
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
+$str3mHref = o_route_path('/str3m');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -24,6 +25,7 @@ $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 </head>
 <body class="experience map-view">
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('map') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 
@@ -34,8 +36,7 @@ $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
             <h1 class="land-title"><strong>Le tore des terres actives</strong> <span>nœuds et courants chauds</span></h1>
         </div>
         <div class="meta">
-            <a class="meta-pill meta-pill-link" href="/">retour au noyau</a>
-            <a class="meta-pill meta-pill-link" href="/str3m">str3m</a>
+            <a class="meta-pill meta-pill-link" href="<?= h($str3mHref) ?>">str3m</a>
             <span class="meta-pill">surface vivante</span>
         </div>
     </header>
@@ -57,7 +58,7 @@ $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
         </div>
         <div class="map-lexical-console__output" data-map-lexical-output aria-live="polite"></div>
     </section>
-    <p class="map-note" id="map-note">Chargement du tore vivant…</p>
+    <p class="map-note" id="map-note">Chargement du tore vivant et de ses courants…</p>
 </main>
 
 </body>

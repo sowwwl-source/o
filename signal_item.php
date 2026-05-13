@@ -17,6 +17,9 @@ if (!$signal || !signal_can_view($signal, $currentLand)) {
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $created = isset($_GET['created']) && $_GET['created'] === '1';
 $isOwner = $signal ? signal_is_owner($signal, $currentLand) : false;
+$signalHref = o_route_path('/signal');
+$landBaseHref = o_route_path('/land');
+$echoHref = o_route_path('/echo');
 $signalDate = $signal ? human_created_label((string) (($signal['published_at'] ?? '') ?: ($signal['created_at'] ?? ''))) : null;
 $signalLand = null;
 
@@ -42,6 +45,7 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
 </head>
 <body class="experience signal-view">
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('signal') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'dense', 'signal') ?>
@@ -57,17 +61,17 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
             <p class="lead">Trace isolée dans l'océan public.</p>
 
             <div class="land-meta">
-                <a class="meta-pill meta-pill-link" href="/signal">retour au flux</a>
+                <a class="meta-pill meta-pill-link" href="<?= h($signalHref) ?>">retour au flux</a>
                 <span class="meta-pill"><?= h($signalDate ?? 'maintenant') ?></span>
                 <span class="meta-pill"><?= h((string) $signal['kind']) ?></span>
                 <?php if ($isOwner): ?>
                     <span class="meta-pill"><?= h((string) $signal['visibility']) ?></span>
                     <span class="meta-pill"><?= h((string) $signal['status']) ?></span>
-                    <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $signal['land_slug']) ?>">gérer ma terre</a>
+                    <a class="meta-pill meta-pill-link" href="<?= h($landBaseHref) ?>?u=<?= rawurlencode((string) $signal['land_slug']) ?>">gérer ma terre</a>
                 <?php else: ?>
-                    <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $signal['land_slug']) ?>">explorer l'île</a>
+                    <a class="meta-pill meta-pill-link" href="<?= h($landBaseHref) ?>?u=<?= rawurlencode((string) $signal['land_slug']) ?>">explorer l'île</a>
                     <?php if ($currentLand): ?>
-                        <a class="meta-pill meta-pill-link" style="color: rgb(var(--land-secondary-rgb)); border-color: rgba(var(--land-secondary-rgb)/0.5);" href="/echo?u=<?= rawurlencode((string) $signal['land_username']) ?>">écho direct</a>
+                        <a class="meta-pill meta-pill-link" style="color: rgb(var(--land-secondary-rgb)); border-color: rgba(var(--land-secondary-rgb)/0.5);" href="<?= h($echoHref) ?>?u=<?= rawurlencode((string) $signal['land_username']) ?>">écho direct</a>
                     <?php endif; ?>
                 <?php endif; ?>
             </div>
@@ -110,7 +114,7 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
             <h1>Cette transmission n’est pas lisible ici.</h1>
             <p class="lead">Elle est peut-être privée, brouillon, ou simplement absente.</p>
             <div class="hero-actions">
-                <a class="pill-link" href="/signal">Retour au flux</a>
+                <a class="pill-link" href="<?= h($signalHref) ?>">Retour au flux</a>
             </div>
         </section>
     <?php endif; ?>

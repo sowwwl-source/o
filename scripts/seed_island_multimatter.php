@@ -205,7 +205,7 @@ try {
 
     fwrite(STDOUT, PHP_EOL . 'Done.' . PHP_EOL);
     fwrite(STDOUT, 'Slug: ' . $slug . PHP_EOL);
-    fwrite(STDOUT, 'Island URL: ' . site_origin() . '/island?u=' . rawurlencode($slug) . PHP_EOL);
+    fwrite(STDOUT, 'Island URL: ' . site_origin() . o_route_path('/island') . '?u=' . rawurlencode($slug) . PHP_EOL);
 } catch (Throwable $exception) {
     fwrite(STDERR, 'Seed failed: ' . $exception->getMessage() . PHP_EOL);
     exit(1);

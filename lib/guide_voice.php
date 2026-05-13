@@ -24,7 +24,7 @@ function guide_voice_config(): array
     }
 
     $config = [
-        'api_path' => '/0wlslw0/voice',
+        'api_path' => function_exists('o_route_path') ? o_route_path('/0wlslw0/voice') : '/0wlslw0/voice',
         'chat_url' => trim((string) ((getenv('SOWWWL_0WLSLW0_CHAT_URL') ?: getenv('SOWWWL_0WLSLW0_AGENT_URL')) ?: '')),
         'endpoint' => $endpoint,
         'agent_key' => $agentKey,
@@ -196,7 +196,7 @@ function guide_voice_format_suggestions(array $prompts): array
 
 function guide_voice_default_greeting(?array $authenticatedLand = null): string
 {
-    return "Je suis Owl O et serai votre guide pour rejoindre le peuple de l'O.";
+    return "Je suis 0wlslw0 et j'ouvre la bonne porte vers le peuple de l'O.";
 }
 
 function guide_voice_detect_language(string $text): string
@@ -455,7 +455,7 @@ function guide_voice_contextual_followup_reply(string $lastIntent, string $langu
                     'it' => 'Se vuoi scrivere adesso, resta su Signal. È lì che la tua terra apre una conversazione e conserva il suo indirizzo.',
                     default => 'Si tu veux écrire maintenant, reste sur Signal. C’est là que ta terre ouvre un fil et garde son adresse.',
                 },
-                '/signal',
+                guide_voice_route_href('signal', $authenticatedLand),
                 guide_voice_route_label('signal', $language),
                 ''
             )
@@ -479,7 +479,7 @@ function guide_voice_contextual_followup_reply(string $lastIntent, string $langu
                 'it' => 'Dopo la visita pubblica, il passo successivo è di solito creare una terra se vuoi restare e scrivere.',
                 default => 'Après la visite publique, l’étape suivante est souvent de poser une terre si tu veux rester et écrire.',
             },
-            '/rejoindre',
+            guide_voice_route_href('create', $authenticatedLand),
             guide_voice_route_label('create', $language),
             ''
         ),
@@ -491,7 +491,7 @@ function guide_voice_contextual_followup_reply(string $lastIntent, string $langu
                 'it' => 'Puoi leggere aZa pubblicamente subito. Depositare tracce viene dopo, con una terra collegata.',
                 default => 'Tu peux lire aZa publiquement tout de suite. Déposer des traces vient ensuite, avec une terre liée.',
             },
-            '/aza',
+            guide_voice_route_href('aza', $authenticatedLand),
             guide_voice_route_label('aza', $language),
             ''
         ),
@@ -503,7 +503,7 @@ function guide_voice_contextual_followup_reply(string $lastIntent, string $langu
                 'it' => 'Il prossimo gesto è scegliere un nome di terra, leggere le pagine di AzA e poi sigillarla.',
                 default => 'Le prochain geste est de choisir un nom de terre, lire les pages d’AzA, puis la sceller.',
             },
-            '/rejoindre',
+            guide_voice_route_href('create', $authenticatedLand),
             guide_voice_route_label('create', $language),
             ''
         ),
@@ -681,13 +681,13 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
         'origin' => site_origin(),
         'authenticated_land_slug' => trim((string) ($authenticatedLand['slug'] ?? '')),
         'route_map' => [
-            'home' => '/',
-            'create_land' => '/rejoindre',
-            'signal' => '/signal',
-            'str3m' => '/str3m',
-            'aza' => '/aza',
-            'echo' => '/echo',
-            'guide' => '/0wlslw0',
+            'home' => guide_voice_route_href('home', $authenticatedLand),
+            'create_land' => guide_voice_route_href('create', $authenticatedLand),
+            'signal' => guide_voice_route_href('signal', $authenticatedLand),
+            'str3m' => guide_voice_route_href('str3m', $authenticatedLand),
+            'aza' => guide_voice_route_href('aza', $authenticatedLand),
+            'echo' => guide_voice_route_href('echo', $authenticatedLand),
+            'guide' => function_exists('o_route_path') ? o_route_path('/0wlslw0') : '/0wlslw0',
         ],
         'voice_only' => true,
     ];
@@ -929,7 +929,7 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
     if ($intent === 'signal') {
         $reply = guide_voice_build_route_reply(
             guide_voice_message('signal_reply', $language),
-            '/signal',
+            guide_voice_route_href('signal', $authenticatedLand),
             guide_voice_route_label('signal', $language),
             $text
         );
@@ -941,7 +941,7 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
     if ($intent === 'str3m' || $intent === 'public') {
         $reply = guide_voice_build_route_reply(
             guide_voice_message('str3m_reply', $language),
-            '/str3m',
+            guide_voice_route_href('str3m', $authenticatedLand),
             guide_voice_route_label('str3m', $language),
             $text
         );
@@ -953,7 +953,7 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
     if ($intent === 'aza') {
         $reply = guide_voice_build_route_reply(
             guide_voice_message('aza_reply', $language),
-            '/aza',
+            guide_voice_route_href('aza', $authenticatedLand),
             guide_voice_route_label('aza', $language),
             $text
         );
@@ -965,7 +965,7 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
     if ($intent === 'echo') {
         $reply = guide_voice_build_route_reply(
             guide_voice_message('echo_reply', $language),
-            '/echo',
+            guide_voice_route_href('echo', $authenticatedLand),
             guide_voice_route_label('echo', $language),
             $text
         );
@@ -977,7 +977,7 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
     if ($intent === 'create') {
         $reply = guide_voice_build_route_reply(
             guide_voice_message('create_reply', $language),
-            '/rejoindre',
+            guide_voice_route_href('create', $authenticatedLand),
             guide_voice_route_label('create', $language),
             $text
         );
@@ -990,7 +990,7 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
         if ($slug !== '') {
             $reply = guide_voice_build_route_reply(
                 guide_voice_message('reopen_reply_auth', $language),
-                '/land?u=' . rawurlencode($slug),
+                guide_voice_route_href('reopen', $authenticatedLand),
                 guide_voice_route_label('reopen', $language),
                 $text
             );
@@ -1001,7 +1001,7 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
 
         $reply = guide_voice_build_route_reply(
             guide_voice_message('reopen_reply_guest', $language),
-            '/',
+            guide_voice_route_href('home', $authenticatedLand),
             guide_voice_route_label('home', $language),
             $text
         );
@@ -1096,6 +1096,22 @@ function guide_voice_build_route_reply(string $reply, string $href, string $labe
     ];
 }
 
+function guide_voice_route_href(string $route, ?array $authenticatedLand = null): string
+{
+    $slug = trim((string) ($authenticatedLand['slug'] ?? ''));
+    $href = match ($route) {
+        'signal' => '/signal',
+        'str3m' => '/str3m',
+        'aza' => '/aza',
+        'echo' => '/echo',
+        'create' => '/rejoindre',
+        'reopen' => $slug !== '' ? '/land?u=' . rawurlencode($slug) : '/',
+        default => '/',
+    };
+
+    return function_exists('o_route_path') ? o_route_path($href) : $href;
+}
+
 function guide_voice_should_auto_navigate(string $utterance): bool
 {
     return preg_match('/\b(go|take me|guide me|vas-y|ouvre|ouvrir|emmene|emmène|amene|amène|mene|mène|allons|conduis|direction|direct|llevame|llévame|guia me|guíame|leva me|leva-me|portami)\b/u', $utterance) === 1;
@@ -1163,6 +1179,10 @@ function guide_voice_normalize_route(mixed $route): ?array
         $href = '/' . ltrim($href, '/');
     }
 
+    if (!preg_match('~^https?://~i', $href) && function_exists('o_route_path')) {
+        $href = o_route_path($href);
+    }
+
     return [
         'href' => $href,
         'label' => trim((string) ($route['label'] ?? 'Continuer')) ?: 'Continuer',
@@ -1177,11 +1197,11 @@ function guide_voice_infer_route_from_text(string $reply, string $utterance = ''
     $language = guide_voice_detect_language($combined);
 
     return match ($intent) {
-        'signal' => ['href' => '/signal', 'label' => guide_voice_route_label('signal', $language), 'auto_navigate' => false],
-        'str3m', 'public', 'confused', 'compare' => ['href' => '/str3m', 'label' => guide_voice_route_label('str3m', $language), 'auto_navigate' => false],
-        'aza' => ['href' => '/aza', 'label' => guide_voice_route_label('aza', $language), 'auto_navigate' => false],
-        'echo' => ['href' => '/echo', 'label' => guide_voice_route_label('echo', $language), 'auto_navigate' => false],
-        'create' => ['href' => '/rejoindre', 'label' => guide_voice_route_label('create', $language), 'auto_navigate' => false],
+        'signal' => ['href' => guide_voice_route_href('signal'), 'label' => guide_voice_route_label('signal', $language), 'auto_navigate' => false],
+        'str3m', 'public', 'confused', 'compare' => ['href' => guide_voice_route_href('str3m'), 'label' => guide_voice_route_label('str3m', $language), 'auto_navigate' => false],
+        'aza' => ['href' => guide_voice_route_href('aza'), 'label' => guide_voice_route_label('aza', $language), 'auto_navigate' => false],
+        'echo' => ['href' => guide_voice_route_href('echo'), 'label' => guide_voice_route_label('echo', $language), 'auto_navigate' => false],
+        'create' => ['href' => guide_voice_route_href('create'), 'label' => guide_voice_route_label('create', $language), 'auto_navigate' => false],
         default => null,
     };
 }

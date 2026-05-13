@@ -7,6 +7,12 @@ $host              = request_host();
 $csrfToken         = csrf_token();
 $brandDomain       = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $authenticatedLand = current_authenticated_land();
+$homeHref = o_route_path('/');
+$landBaseHref = o_route_path('/land');
+$shoreBaseHref = o_route_path('/sh0re');
+$str3mHref = o_route_path('/str3m');
+$guideHref = o_route_path('/0wlslw0');
+$nHref = o_route_path('/n');
 
 // Which land's shore are we visiting?
 $targetSlug = trim((string) ($_GET['u'] ?? ''));
@@ -159,6 +165,7 @@ $sh0rePrivateCopy = $isOwnShore
         : 'Pour lancer, accepter ou dissoudre un t0k, il faut une terre ouverte.');
 $sh0reNowTitle = 'Aucun rivage ciblé';
 $sh0reNowCopy = 'Passe par ta terre ou ouvre le rivage d’une autre land pour voir les échanges se déposer ici.';
+$t0kPublicLabel = static fn (string $token): string => $nHref . '?t=' . rawurlencode($token);
 
 if ($viewLand) {
     if ($isOwnShore) {
@@ -192,6 +199,7 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
 </head>
 <body class="experience sh0re-view">
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('sh0re') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'nocturnal', 'sh0re') ?>
@@ -212,23 +220,23 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
         <p class="lead">Sh0re montre le bord public d’une terre. On peut y voir les n0us actifs et y déposer des b0t3s ; les gestes de formation restent liés à une présence ouverte.</p>
         <div class="land-meta">
             <?php if ($viewLand): ?>
-                <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $viewLand['slug']) ?>">Terre</a>
+                <a class="meta-pill meta-pill-link" href="<?= h($landBaseHref) ?>?u=<?= rawurlencode((string) $viewLand['slug']) ?>">Terre</a>
                 <span class="meta-pill"><?= h((string) $viewLand['slug']) ?></span>
             <?php endif; ?>
             <?php if ($isAuthenticated): ?>
                 <?php if (!$isOwnShore && $viewLand): ?>
-                    <a class="meta-pill meta-pill-link" href="/sh0re">Mon sh0re</a>
+                    <a class="meta-pill meta-pill-link" href="<?= h($shoreBaseHref) ?>">Mon sh0re</a>
                 <?php endif; ?>
                 <span class="meta-pill"><?= h((string) $authenticatedLand['username']) ?></span>
             <?php else: ?>
-                <a class="meta-pill meta-pill-link" href="/">Ouvrir une land</a>
+                <a class="meta-pill meta-pill-link" href="<?= h($homeHref) ?>">Ouvrir une land</a>
             <?php endif; ?>
             <span class="meta-pill"><?= h($sh0reViewLabel) ?></span>
             <?php if ($viewLand): ?>
                 <span class="meta-pill"><?= $activeNousCount ?> n0us</span>
                 <span class="meta-pill"><?= $shoreB0t3Count ?> b0t3<?= $shoreB0t3Count > 1 ? 's' : '' ?></span>
             <?php endif; ?>
-            <a class="meta-pill meta-pill-link" href="/str3m">str3m</a>
+            <a class="meta-pill meta-pill-link" href="<?= h($str3mHref) ?>">str3m</a>
         </div>
     </header>
 
@@ -242,7 +250,7 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
             <div class="t0k-card t0k-card-pending">
                 <div class="t0k-token"><?= h(t0k_format_token((string) $sent['token'])) ?></div>
                 <p class="t0k-route"><?= h((string) $sent['from_land']) ?> <span>→</span> <?= h((string) $sent['to_land']) ?></p>
-                <p class="t0k-url">/n?t=<?= h((string) $sent['token']) ?></p>
+                <p class="t0k-url"><?= h($t0kPublicLabel((string) $sent['token'])) ?></p>
                 <?php if (!empty($sent['notes'])): ?>
                     <p class="t0k-notes"><?= h((string) $sent['notes']) ?></p>
                 <?php endif; ?>
@@ -288,9 +296,9 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
                 <span class="badge">orientation</span>
             </div>
             <div class="action-row">
-                <a class="pill-link" href="/">Ouvrir une land</a>
-                <a class="ghost-link" href="/str3m">Rester dans str3m</a>
-                <a class="ghost-link" href="/0wlslw0">Passer par 0wlslw0</a>
+                <a class="pill-link" href="<?= h($homeHref) ?>">Ouvrir une land</a>
+                <a class="ghost-link" href="<?= h($str3mHref) ?>">Rester dans str3m</a>
+                <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
             </div>
         </section>
     <?php else: ?>
@@ -389,7 +397,7 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
                         <article class="t0k-card t0k-card-active">
                             <div class="t0k-token"><?= h(t0k_format_token((string) $t0k['token'])) ?></div>
                             <p class="t0k-route">
-                                <a class="ghost-link" href="/sh0re?u=<?= rawurlencode($partner) ?>"><?= h($partner) ?></a>
+                                <a class="ghost-link" href="<?= h($shoreBaseHref) ?>?u=<?= rawurlencode($partner) ?>"><?= h($partner) ?></a>
                             </p>
                             <?php if (!empty($t0k['formed_at'])): ?>
                                 <p class="t0k-date">depuis le <?= h(substr((string) $t0k['formed_at'], 0, 10)) ?></p>
@@ -449,8 +457,8 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
                 <span class="badge">présence liée</span>
             </div>
             <div class="action-row">
-                <a class="pill-link" href="/">Ouvrir une land</a>
-                <a class="ghost-link" href="/str3m">Rester dans str3m</a>
+                <a class="pill-link" href="<?= h($homeHref) ?>">Ouvrir une land</a>
+                <a class="ghost-link" href="<?= h($str3mHref) ?>">Rester dans str3m</a>
             </div>
         </section>
         <?php endif; ?>
@@ -470,8 +478,8 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
             <?php foreach ($outgoing as $t0k): ?>
                 <article class="t0k-card t0k-card-pending">
                     <div class="t0k-token"><?= h(t0k_format_token((string) $t0k['token'])) ?></div>
-                    <p class="t0k-route">→ <a class="ghost-link" href="/sh0re?u=<?= rawurlencode((string) $t0k['to_land']) ?>"><?= h((string) $t0k['to_land']) ?></a></p>
-                    <p class="t0k-url">/n?t=<?= h((string) $t0k['token']) ?></p>
+                    <p class="t0k-route">→ <a class="ghost-link" href="<?= h($shoreBaseHref) ?>?u=<?= rawurlencode((string) $t0k['to_land']) ?>"><?= h((string) $t0k['to_land']) ?></a></p>
+                    <p class="t0k-url"><?= h($t0kPublicLabel((string) $t0k['token'])) ?></p>
                     <p class="t0k-date"><?= h(substr((string) $t0k['sent_at'], 0, 10)) ?></p>
                 </article>
             <?php endforeach; ?>

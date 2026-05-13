@@ -19,13 +19,13 @@ If `/var/www/html` was updated but the `app` container was not rebuilt, public o
 ### 0wlslw0
 ```bash
 curl -I https://0wlslw0.com
-curl -sL https://0wlslw0.com | grep -E 'Signal before story|concierge d entree|Entrer sans se perdre|0wlslw0'
+curl -sL https://0wlslw0.com | grep -E 'Entrer sans se perdre|Accompagnement vocal|0wlslw0'
 ```
 
 Expected:
 - no old static placeholder
 - redirect to `/0wlslw0` or direct guide content
-- guide markers like `concierge d entree` or `Entrer sans se perdre`
+- guide markers like `Entrer sans se perdre` or `Accompagnement vocal`
 
 Red flag:
 - `Signal before story.`
@@ -48,15 +48,15 @@ Expected:
 - `map` responds from the O. app
 - `island` responds from the O. app for a known land slug
 
-For the current domain-role explanation specifically:
+For the current entry-copy and role-map check specifically:
 
 ```bash
-curl -sL https://sowwwl.com/ | grep -E 'Pourquoi \.org \?|Comprendre la carte|sowwwl\.org'
+curl -sL https://sowwwl.com/ | grep -E 'Trois portes suffisent|Passer par 0wlslw0|commande noyau'
 curl -sL https://sowwwl.org/ | grep -E 'Comprendre les domaines sans se perdre|carte des rôles|Ouvrir sowwwl\.com'
 ```
 
 Expected:
-- `sowwwl.com` points clearly toward the explanatory layer
+- `sowwwl.com` exposes the current three-door entry, not stale secondary copy
 - `sowwwl.org` exposes the current role-map copy, not an older snapshot
 
 ### Signal validation readiness
@@ -88,7 +88,7 @@ If public behavior looks wrong, verify what the app image actually contains.
 ```bash
 docker exec sowwwl-o-app-1 sh -lc 'ls -la /var/www/html/.htaccess /var/www/html/0wlslw0.php /var/www/html/str3m.php /var/www/html/map.php /var/www/html/map_points.php /var/www/html/island.php'
 docker exec sowwwl-o-app-1 sh -lc 'grep -n "0wlslw0.com\|/0wlslw0" /var/www/html/index.php | head -20'
-docker exec sowwwl-o-app-1 sh -lc 'grep -n "concierge d entree\|Entrer sans se perdre" /var/www/html/0wlslw0.php'
+docker exec sowwwl-o-app-1 sh -lc 'grep -n "Entrer sans se perdre\|Accompagnement vocal\|0wlslw0" /var/www/html/0wlslw0.php'
 docker exec sowwwl-o-app-1 sh -lc 'grep -n "Station de lecture\|Vidéo disponible, mais pas lisible directement ici" /var/www/html/island.php'
 ```
 

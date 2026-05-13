@@ -169,6 +169,10 @@ function n0de_delete(string $id, string $landSlug): void
 
 function n0de_build_manifest(array $n0de, array $land): array
 {
+    $n0deSyncHref = function_exists('o_route_path') ? o_route_path('/n0de.php') : '/n0de.php';
+    $landHref = function_exists('o_route_path') ? o_route_path('/land') : '/land';
+    $shoreHref = function_exists('o_route_path') ? o_route_path('/sh0re') : '/sh0re';
+
     return [
         'n0de'       => n0de_format_token((string) $n0de['token']),
         'token_raw'  => (string) $n0de['token'],
@@ -176,9 +180,9 @@ function n0de_build_manifest(array $n0de, array $land): array
         'label'      => (string) $n0de['label'],
         'land'       => (string) $n0de['land_slug'],
         'username'   => (string) ($land['username'] ?? $n0de['land_slug']),
-        'sync_url'   => site_origin() . '/n0de.php?sync=' . rawurlencode((string) $n0de['token']),
-        'land_url'   => site_origin() . '/land?u=' . rawurlencode((string) $n0de['land_slug']),
-        'shore_url'  => site_origin() . '/sh0re?u=' . rawurlencode((string) $n0de['land_slug']),
+        'sync_url'   => site_origin() . $n0deSyncHref . '?sync=' . rawurlencode((string) $n0de['token']),
+        'land_url'   => site_origin() . $landHref . '?u=' . rawurlencode((string) $n0de['land_slug']),
+        'shore_url'  => site_origin() . $shoreHref . '?u=' . rawurlencode((string) $n0de['land_slug']),
         'created_at' => (string) $n0de['created_at'],
         'exported_at' => gmdate(DATE_ATOM),
         'version'    => '1.0',
@@ -190,7 +194,8 @@ function n0de_build_manifest(array $n0de, array $land): array
 
 function n0de_nfc_url(array $n0de): string
 {
-    return site_origin() . '/n?t=' . rawurlencode((string) $n0de['token']);
+    $nHref = function_exists('o_route_path') ? o_route_path('/n') : '/n';
+    return site_origin() . $nHref . '?t=' . rawurlencode((string) $n0de['token']);
 }
 
 function n0de_qr_data(array $n0de): string

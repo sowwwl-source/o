@@ -65,9 +65,9 @@ function guide_ascii_note(string $label, string $value): string
 $host = request_host();
 // sowwwl.xyz is now allowed to render the mapping UI directly—no redirect!
 
-$requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/0wlslw0'), PHP_URL_PATH) ?: '/0wlslw0';
+$requestPath = o_request_path('/0wlslw0');
 if ($requestPath === '/0wlslw0.php') {
-    header('Location: /0wlslw0', true, 302);
+    header('Location: ' . o_route_path('/0wlslw0'), true, 302);
     exit;
 }
 
@@ -86,45 +86,33 @@ $voiceUpstreamState = trim((string) ($voiceState['upstream_state'] ?? guide_voic
 $voiceUpstreamLabel = trim((string) ($voiceState['upstream_label'] ?? guide_voice_upstream_label()));
 $guideMode = guide_voice_mode_label();
 $siteTitle = defined('SITE_TITLE') ? (string) constant('SITE_TITLE') : 'O. le réseau minimal';
-$canonicalOrigin = rtrim((string) (getenv('SOWWWL_PUBLIC_ORIGIN') ?: 'https://sowwwl.com'), '/');
-$guideHref = '/0wlslw0';
+$guideHref = o_route_path('/0wlslw0');
 $openLandHref = $authenticatedLand
-    ? '/land?u=' . rawurlencode((string) $authenticatedLand['slug'])
-    : '/rejoindre';
+    ? o_route_path('/land') . '?u=' . rawurlencode((string) $authenticatedLand['slug'])
+    : o_route_path('/rejoindre');
 $openLandLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une terre';
-$promptSeeds = guide_prompt_seeds();
 $owlDoors = [
     [
         'label' => '01 · comprendre',
         'title' => 'Comprendre O. vite',
-        'copy' => 'En deux ou trois phrases, Owl clarifie le projet et te donne une première orientation.',
+        'copy' => 'En deux ou trois phrases, 0wlslw0 clarifie le projet et donne un premier cap.',
         'href' => $guideHref,
-        'cta' => 'Rester avec Owl',
+        'cta' => 'Rester avec 0wlslw0',
     ],
     [
         'label' => '02 · public',
         'title' => 'Entrer publiquement',
         'copy' => 'Aller vers Str3m pour voir le courant avant de choisir une terre.',
-        'href' => '/str3m',
+        'href' => o_route_path('/str3m'),
         'cta' => 'Ouvrir Str3m',
     ],
     [
         'label' => '03 · terre',
         'title' => 'Poser une terre',
         'copy' => 'Passer par le parcours complet : nom, lecture, configuration, scellement.',
-        'href' => '/rejoindre',
+        'href' => o_route_path('/rejoindre'),
         'cta' => 'Commencer',
     ],
-];
-$guideStateNotes = [
-    ['role', 'ecouter / clarifier / orienter'],
-    ['public', 'str3m / lecture / observation'],
-    ['signup', 'rejoindre / terre / scellement'],
-    ['voice', match ($voiceUpstreamState) {
-        'remote-ready' => 'relais amont actif',
-        'auth-missing' => 'amont repere / cle manquante',
-        default => 'fallback local actif',
-    }],
 ];
 $guideVoiceNotes = [
     ['input', 'micro navigateur'],
@@ -144,7 +132,7 @@ $guideVoiceNotes = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="0wlslw0 — Owl, guide d entree pour comprendre <?= h($siteTitle) ?> et trouver la bonne porte sans se perdre.">
+    <meta name="description" content="0wlslw0 — guide d entree pour comprendre <?= h($siteTitle) ?> et trouver la bonne porte sans se perdre.">
     <meta name="theme-color" content="#09090b">
     <title>0wlslw0 — <?= h($siteTitle) ?></title>
 <?= render_o_page_head_assets('owl') ?>
@@ -157,21 +145,21 @@ $guideVoiceNotes = [
     data-land-tone="<?= h($guideLandTone) ?>"
 >
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('0wlslw0') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'calm', '0wlslw0') ?>
 
 <main <?= main_landmark_attrs() ?> class="layout page-shell">
     <header class="hero page-header reveal">
-        <p class="eyebrow"><strong>0wlslw0 (Owl)</strong> <span>guide d entree</span></p>
+        <p class="eyebrow"><strong>0wlslw0</strong> <span>guide d entree</span></p>
         <h1 class="land-title">
             <strong>Entrer sans se perdre.</strong>
-            <span>Owl / guide des passages</span>
+            <span>0wlslw0 / guide des passages</span>
         </h1>
-        <p class="lead">Owl accueille, clarifie en quelques phrases, puis envoie vers la bonne porte. Pas de détour : juste le bon seuil.</p>
+        <p class="lead">0wlslw0 clarifie en quelques phrases, puis ouvre la bonne porte. Pas de détour : juste le bon seuil.</p>
 
         <div class="land-meta">
-            <a class="meta-pill meta-pill-link" href="<?= h($canonicalOrigin . '/') ?>">retour au noyau</a>
             <a class="meta-pill meta-pill-link" href="<?= h($openLandHref) ?>"><?= h($openLandLabel) ?></a>
             <?php if ($authenticatedLand): ?>
                 <span class="meta-pill">terre liee : <?= h((string) $authenticatedLand['slug']) ?></span>
@@ -185,7 +173,8 @@ $guideVoiceNotes = [
         </div>
     </header>
 
-    <section class="panel reveal mapping-panel mapping-panel--genie" id="mapping" aria-labelledby="mapping-title" data-mapping-genie data-mapping-theme="real">
+    <details class="panel reveal mapping-panel mapping-panel--genie guide-knowledge-panel" id="mapping" aria-labelledby="mapping-title" data-mapping-genie data-mapping-theme="real">
+        <summary class="guide-knowledge-summary">Comprendre le schéma</summary>
         <div class="mapping-panel__veil" aria-hidden="true">
             <span class="mapping-panel__veil-orbit mapping-panel__veil-orbit--outer"></span>
             <span class="mapping-panel__veil-orbit mapping-panel__veil-orbit--inner"></span>
@@ -302,74 +291,35 @@ $guideVoiceNotes = [
 
         <p class="mapping-panel__reading">
             <strong>Lecture&nbsp;:</strong>
-            le <span class="mapping-panel__accent mapping-panel__accent--plasma">plasma</span> fait le lien entre
-            <span class="mapping-panel__accent mapping-panel__accent--real">la réalité</span> et
-            <span class="mapping-panel__accent mapping-panel__accent--torus">la surface torique</span>.
-            Sur tactile ou pointeur, chaque carte s’ouvre comme une petite apparition.
+            la <span class="mapping-panel__accent mapping-panel__accent--real">réalité</span> traverse le
+            <span class="mapping-panel__accent mapping-panel__accent--plasma">plasma</span> et se boucle en
+            <span class="mapping-panel__accent mapping-panel__accent--torus">tore</span>.
         </p>
-    </section>
+    </details>
 
-    <section class="guide-grid">
-        <section class="panel reveal guide-panel" aria-labelledby="guide-role-title">
-            <div class="section-topline">
-                <div>
-                    <h2 id="guide-role-title">Ce que fait Owl</h2>
-                    <p class="panel-copy">Un accueil bref, orientant, assez clair pour qu’on n’ait pas à avaler tout le projet d’un coup.</p>
-                </div>
-                <span class="badge"><?= h($guideMode) ?></span>
+    <section class="panel reveal guide-panel" aria-labelledby="guide-role-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="guide-role-title">0wlslw0</h2>
+                <p class="panel-copy">Écouter, clarifier, orienter. Une porte brève pour ne pas tout lire avant d’agir.</p>
             </div>
+            <span class="badge"><?= h($guideMode) ?></span>
+        </div>
 
-            <div class="summary-grid guide-summary-grid">
-                <article class="summary-card">
-                    <span class="summary-label">Projet</span>
-                    <strong class="summary-value summary-value-small">O.</strong>
-                </article>
-                <article class="summary-card">
-                    <span class="summary-label">Mission</span>
-                    <strong class="summary-value summary-value-small">écouter / orienter</strong>
-                </article>
-                <article class="summary-card">
-                    <span class="summary-label">Ouverture</span>
-                    <strong class="summary-value summary-value-small">fr / en / es / pt / it</strong>
-                </article>
-            </div>
-
-            <ul class="guide-list" aria-label="Roles de 0wlslw0">
-                <li>Dire simplement ce qu’est O., sans supposer une connaissance préalable du vocabulaire.</li>
-                <li>Recevoir des intentions floues : comprendre, visiter, poser une terre, retrouver une terre.</li>
-                <li>Pointer vite vers la bonne porte, puis disparaître du chemin.</li>
-            </ul>
-        </section>
-
-        <aside class="panel reveal guide-panel" aria-labelledby="guide-state-title">
-            <div class="section-topline">
-                <div>
-                    <h2 id="guide-state-title">État du passage</h2>
-                    <p class="panel-copy">Une porte pour les hésitations ordinaires, sans transformer l’entrée en encyclopédie.</p>
-                </div>
-            </div>
-
-            <div class="guide-console guide-console--encoded" aria-label="Console de guidage">
-                <?php foreach ($guideStateNotes as [$label, $value]): ?>
-                    <?= guide_ascii_note((string) $label, (string) $value) ?>
-                <?php endforeach; ?>
-            </div>
-
-            <p class="panel-copy guide-embed-note">
-                <?= match ($voiceUpstreamState) {
-                    'remote-ready' => 'La voix peut déjà relayer un agent amont côté serveur. Owl garde la clé côté backend.',
-                    'auth-missing' => 'Le relais amont est repéré, mais son autorisation manque encore. Owl reste donc en guide local tant que la clé ne vit pas côté serveur.',
-                    default => 'La voix fonctionne déjà en guide local. Le relais amont pourra se brancher plus tard sans exposer la clé au navigateur.',
-                } ?>
-            </p>
-        </aside>
+        <p class="panel-copy guide-embed-note">
+            <?= match ($voiceUpstreamState) {
+                'remote-ready' => 'État du passage : relais vocal amont actif.',
+                'auth-missing' => 'État du passage : relais vocal repéré, autorisation encore absente.',
+                default => 'État du passage : guidage local actif, relais vocal branchable plus tard.',
+            } ?>
+        </p>
     </section>
 
     <section class="panel reveal" aria-labelledby="guide-paths-title">
         <div class="section-topline">
             <div>
                 <h2 id="guide-paths-title">Trois portes</h2>
-                <p class="panel-copy">Si tu ne sais pas encore quoi faire, commence ici. Owl s’occupe surtout de ce premier embranchement.</p>
+                <p class="panel-copy">Si l’orientation manque encore, commence ici.</p>
             </div>
         </div>
 
@@ -405,7 +355,7 @@ $guideVoiceNotes = [
         <div class="section-topline">
             <div>
                 <h2 id="guide-voice-title">Accompagnement vocal</h2>
-                <p class="panel-copy">Ici, Owl écoute, répond à voix haute, ou prend un texte court si tu préfères le silence. <strong>I</strong> inverse et coupe aussi la voix ; sur tactile, un appui long reprend le même geste.</p>
+                <p class="panel-copy">0wlslw0 écoute, répond à voix haute, ou prend un texte court si tu préfères le silence.</p>
             </div>
             <span class="badge">voix + texte</span>
         </div>
@@ -420,19 +370,19 @@ $guideVoiceNotes = [
 
                 <p class="guide-voice-status" data-guide-voice-status role="status" aria-live="polite" aria-atomic="true">Prêt. Active la voix puis parle naturellement.</p>
                 <p class="guide-voice-transcript" data-guide-voice-transcript>Exemples : « explique O. », « ouvre Signal », “take me to Str3m”.</p>
-                <p class="guide-voice-reply" data-guide-voice-reply aria-live="polite" aria-atomic="true">Owl répondra ici puis lira sa réponse à voix haute.</p>
+                <p class="guide-voice-reply" data-guide-voice-reply aria-live="polite" aria-atomic="true">0wlslw0 répondra ici puis lira sa réponse à voix haute.</p>
                 <div class="guide-voice-meta" aria-live="polite">
                     <span class="guide-voice-origin-badge" data-guide-voice-origin data-guide-voice-origin-state="<?= h($voiceUpstreamState) ?>"><?= h($voiceUpstreamLabel) ?></span>
                     <span class="guide-voice-meta-copy">texte disponible · historique court</span>
                 </div>
-                <ol class="guide-voice-history" data-guide-voice-history aria-label="Historique récent avec Owl" hidden></ol>
+                <ol class="guide-voice-history" data-guide-voice-history aria-label="Historique récent avec 0wlslw0" hidden></ol>
                 <form class="guide-voice-form" data-guide-voice-form>
-                    <label class="sr-only" for="guide-voice-text-input">Écrire à Owl</label>
-                    <input id="guide-voice-text-input" type="text" name="guide_voice_text" maxlength="280" autocomplete="off" placeholder="Écris à Owl si tu préfères le silence." data-guide-voice-input>
+                    <label class="sr-only" for="guide-voice-text-input">Écrire à 0wlslw0</label>
+                    <input id="guide-voice-text-input" type="text" name="guide_voice_text" maxlength="280" autocomplete="off" placeholder="Écris à 0wlslw0 si tu préfères le silence." data-guide-voice-input>
                     <button type="submit" class="pill-link guide-voice-submit" data-guide-voice-submit>Envoyer</button>
                 </form>
                 <p class="guide-voice-input-hint" data-guide-voice-input-hint>Le texte reste disponible même si la reconnaissance vocale Web manque ici.</p>
-                <div class="guide-voice-suggestions" data-guide-voice-suggestions aria-label="Impulsions proposées par Owl">
+                <div class="guide-voice-suggestions" data-guide-voice-suggestions aria-label="Impulsions proposées par 0wlslw0">
                     <?php foreach (($voiceState['starter_prompts'] ?? []) as $prompt): ?>
                         <?php
                         $promptUtterance = trim((string) ($prompt['utterance'] ?? ''));
@@ -448,7 +398,7 @@ $guideVoiceNotes = [
                     <span class="summary-label">Signature vocale</span>
                     <strong data-guide-voice-signature>Voix spectrale · λ <?= h((string) $guideLandLambda) ?> nm</strong>
                     <span class="guide-voice-profile" data-guide-voice-profile>tempo ajusté · <?= h($guideLandLabel) ?></span>
-                    <span class="guide-voice-mute-indicator" data-guide-voice-mute-indicator>voix active · I inverse + voix · appui long tactile</span>
+                    <span class="guide-voice-mute-indicator" data-guide-voice-mute-indicator>voix active · I inverse + voix</span>
                 </div>
 
                 <div class="action-row guide-voice-actions">
@@ -470,20 +420,6 @@ $guideVoiceNotes = [
         </div>
     </section>
 
-    <section class="panel reveal guide-panel" aria-labelledby="guide-prompts-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="guide-prompts-title">Phrases de départ</h2>
-                <p class="panel-copy">Quelques souffles de départ si tu veux demander à Owl sans tourner autour du seuil.</p>
-            </div>
-        </div>
-
-        <ul class="guide-prompt-list">
-            <?php foreach (array_slice($promptSeeds, 0, 4) as $prompt): ?>
-                <li><code><?= h($prompt) ?></code></li>
-            <?php endforeach; ?>
-        </ul>
-    </section>
 </main>
 
 </body>

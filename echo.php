@@ -8,12 +8,17 @@ $host = request_host();
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 $csrfToken = csrf_token();
-$guideHref = '/0wlslw0';
+$guideHref = o_route_path('/0wlslw0');
+$homeHref = o_route_path('/');
+$signalHref = o_route_path('/signal');
+$str3mHref = o_route_path('/str3m');
+$echoHref = o_route_path('/echo');
+$signalLiveHref = o_route_path('/signal_live.php');
 $echoGuide = guide_path('echo');
 
 $land = current_authenticated_land();
 if (!$land) {
-    header('Location: /?error=auth');
+    header('Location: ' . $homeHref . '?error=auth');
     exit;
 }
 
@@ -47,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 signal_send_message($land, $receiver, '', $body);
                 $receiverLand = signal_find_land_by_identifier($receiver);
                 $receiverUsername = trim((string) ($receiverLand['username'] ?? $receiver));
-                header("Location: /echo?u=" . urlencode($receiverUsername));
+                header('Location: ' . $echoHref . '?u=' . urlencode($receiverUsername));
                 exit;
             }
         } catch (InvalidArgumentException|RuntimeException $exception) {
@@ -91,6 +96,7 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
 </head>
 <body class="experience signal-view">
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('echo') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'dense', 'echo') ?>
@@ -105,9 +111,8 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
         <p class="lead">Même trame que Signal, mais sans passer par la boîte. Ici, la liaison va droit d’une terre à l’autre.</p>
 
         <div class="land-meta">
-            <a class="meta-pill meta-pill-link" href="/">retour au noyau</a>
             <span class="meta-pill">terre liée : <?= h((string) $land['slug']) ?></span>
-            <a class="meta-pill meta-pill-link" href="/signal">signal / boîte</a>
+            <a class="meta-pill meta-pill-link" href="<?= h($signalHref) ?>">signal / boîte</a>
             <a class="meta-pill meta-pill-link" href="<?= h($guideHref) ?>">0wlslw0</a>
         </div>
     </header>
@@ -128,7 +133,7 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
                 <h2 id="echo-mode-title">Direct, mais pas séparé</h2>
                 <p class="panel-copy">Écho et Signal partagent la même trame. Signal sert de boîte et de carnet ; Écho sert à reprendre cette liaison sans détour.</p>
             </div>
-            <a class="ghost-link" href="/signal">Revenir à Signal</a>
+            <a class="ghost-link" href="<?= h($signalHref) ?>">Revenir à Signal</a>
         </div>
     </section>
 
@@ -136,7 +141,7 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
         class="echo-grid reveal"
         data-message-live
         data-live-view="echo"
-        data-live-api="/signal_live.php"
+        data-live-api="<?= h($signalLiveHref) ?>"
         data-live-target="<?= h($targetSlug) ?>"
         data-live-interval="2500"
         data-live-hash="<?= h($echoHistoryHash) ?>"
@@ -154,8 +159,8 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
                 <div class="echo-empty-state">
                     <p class="panel-copy">Choisis une terre à gauche pour ouvrir la liaison directe. Si tu préfères commencer par l’adresse, le carnet ou un fil plus lisible, passe d’abord par Signal.</p>
                     <div class="action-row">
-                        <a class="pill-link" href="/signal">Ouvrir Signal</a>
-                        <a class="ghost-link" href="/str3m">Retour au public</a>
+                        <a class="pill-link" href="<?= h($signalHref) ?>">Ouvrir Signal</a>
+                        <a class="ghost-link" href="<?= h($str3mHref) ?>">Retour au public</a>
                     </div>
                 </div>
             <?php else: ?>
@@ -172,7 +177,7 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
                     <?= $echoHistoryHtml ?>
                 </div>
 
-                <form action="/echo?u=<?= rawurlencode($targetUsername) ?>" method="post" class="land-form echo-form">
+                <form action="<?= h($echoHref) ?>?u=<?= rawurlencode($targetUsername) ?>" method="post" class="land-form echo-form">
                     <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
                     <input type="hidden" name="receiver_username" value="<?= h($targetUsername) ?>">
                     <input type="hidden" name="receiver_slug" value="<?= h($targetSlug) ?>">
@@ -184,7 +189,7 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
                     
                     <div class="action-row">
                         <button type="submit">Transmettre</button>
-                        <a class="ghost-link" href="/signal?u=<?= rawurlencode($targetSlug) ?>">Ouvrir la même liaison dans Signal</a>
+                        <a class="ghost-link" href="<?= h($signalHref) ?>?u=<?= rawurlencode($targetSlug) ?>">Ouvrir la même liaison dans Signal</a>
                     </div>
                 </form>
             <?php endif; ?>

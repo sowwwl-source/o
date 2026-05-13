@@ -8,7 +8,13 @@ require_once __DIR__ . '/lib/signals.php';
 $host = request_host();
 
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
-$guideHref = '/0wlslw0';
+$guideHref = o_route_path('/0wlslw0');
+$signalHref = o_route_path('/signal');
+$str3mHref = o_route_path('/str3m');
+$echoHref = o_route_path('/echo');
+$joinHref = o_route_path('/rejoindre');
+$homeHref = o_route_path('/');
+$signalLiveHref = o_route_path('/signal_live.php');
 $signalGuide = guide_path('signal');
 $csrfToken = csrf_token();
 $land = current_authenticated_land();
@@ -18,7 +24,7 @@ $verifyToken = trim((string) ($_GET['verify'] ?? ''));
 $verifyLand = trim((string) ($_GET['land'] ?? ''));
 if ($verifyToken !== '' && $verifyLand !== '') {
     $verified = signal_mail_tables_ready() && signal_verify_identity_token($verifyLand, $verifyToken);
-    header('Location: /signal?' . ($verified ? 'status=identity-verified' : 'error=identity-invalid'), true, 303);
+    header('Location: ' . $signalHref . '?' . ($verified ? 'status=identity-verified' : 'error=identity-invalid'), true, 303);
     exit;
 }
 
@@ -30,17 +36,17 @@ $signalSchemaHint = signal_mail_schema_status_hint($signalSchemaStatus);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$land) {
-        header('Location: /signal?error=auth', true, 303);
+        header('Location: ' . $signalHref . '?error=auth', true, 303);
         exit;
     }
 
     if (!verify_csrf_token((string) ($_POST['csrf_token'] ?? ''))) {
-        header('Location: /signal?error=csrf', true, 303);
+        header('Location: ' . $signalHref . '?error=csrf', true, 303);
         exit;
     }
 
     if (!$tablesReady) {
-        header('Location: /signal?error=messaging', true, 303);
+        header('Location: ' . $signalHref . '?error=messaging', true, 303);
         exit;
     }
 
@@ -49,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if ($action === 'request_identity') {
             signal_request_identity_verification($land, (string) ($_POST['notification_email'] ?? ''));
-            header('Location: /signal?status=identity-sent', true, 303);
+            header('Location: ' . $signalHref . '?status=identity-sent', true, 303);
             exit;
         }
 
@@ -61,17 +67,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 (string) ($_POST['subject'] ?? ''),
                 (string) ($_POST['body'] ?? '')
             );
-            header('Location: /signal?u=' . rawurlencode(normalize_username($receiverSlug)) . '&status=message-sent', true, 303);
+            header('Location: ' . $signalHref . '?u=' . rawurlencode(normalize_username($receiverSlug)) . '&status=message-sent', true, 303);
             exit;
         }
 
-        header('Location: /signal?error=validation', true, 303);
+        header('Location: ' . $signalHref . '?error=validation', true, 303);
         exit;
     } catch (InvalidArgumentException $exception) {
-        header('Location: /signal?error=validation&note=' . rawurlencode($exception->getMessage()), true, 303);
+        header('Location: ' . $signalHref . '?error=validation&note=' . rawurlencode($exception->getMessage()), true, 303);
         exit;
     } catch (RuntimeException $exception) {
-        header('Location: /signal?error=delivery&note=' . rawurlencode($exception->getMessage()), true, 303);
+        header('Location: ' . $signalHref . '?error=delivery&note=' . rawurlencode($exception->getMessage()), true, 303);
         exit;
     }
 }
@@ -158,6 +164,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
 </head>
 <body class="experience signal-view">
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('signal') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'dense', 'signal') ?>
@@ -169,11 +176,10 @@ $signalHistoryHash = sha1($signalHistoryHtml);
             <strong>Boîte aux lettres de terre.</strong>
             <span><?= $land ? h($virtualAddress) : 'liaison réservée aux terres' ?></span>
         </h1>
-        <p class="lead">Signal sert de boîte, de carnet et de fil. Le public reste dans Str3m ; ici, on écrit à quelqu’un, puis on peut basculer vers Écho pour aller plus direct.</p>
+        <p class="lead">Ici, on écrit à une terre et on garde le fil.</p>
 
         <div class="land-meta">
-            <a class="meta-pill meta-pill-link" href="/">retour au noyau</a>
-            <a class="meta-pill meta-pill-link" href="/str3m">courant public</a>
+            <a class="meta-pill meta-pill-link" href="<?= h($str3mHref) ?>">courant public</a>
             <a class="meta-pill meta-pill-link" href="<?= h($guideHref) ?>">0wlslw0</a>
             <?php if ($land): ?>
                 <span class="meta-pill">terre liée : <?= h((string) $land['slug']) ?></span>
@@ -187,38 +193,6 @@ $signalHistoryHash = sha1($signalHistoryHtml);
             <?php endif; ?>
         </div>
     </header>
-
-    <section class="panel reveal meaning-panel" aria-labelledby="signal-meaning-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="signal-meaning-title">Pourquoi cette porte existe</h2>
-                <p class="panel-copy"><?= h((string) ($signalGuide['copy'] ?? 'Une adresse située pour écrire à une autre terre, sans bruit public.')) ?></p>
-            </div>
-            <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0 : me guider</a>
-        </div>
-    </section>
-
-    <section class="panel reveal signal-mode-panel" aria-labelledby="signal-mode-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="signal-mode-title">Deux intensités, une même trame</h2>
-                <p class="panel-copy">Signal garde l’adresse et la mémoire du fil. Écho reprend la même liaison, mais en mode direct et sans détour.</p>
-            </div>
-            <a class="ghost-link" href="/echo">Voir Écho</a>
-        </div>
-        <div class="signal-mode-grid">
-            <article class="signal-mode-card signal-mode-card--primary">
-                <p class="signal-mode-kicker">Signal · boîte</p>
-                <h3>Ouvrir, relire, garder le fil</h3>
-                <p class="panel-copy">Utilise Signal pour choisir une terre, retrouver le carnet, relire les échanges et poser une adresse qui dure.</p>
-            </article>
-            <article class="signal-mode-card">
-                <p class="signal-mode-kicker">Écho · direct</p>
-                <h3>Toucher une terre sans passer par le reste</h3>
-                <p class="panel-copy">Passe en Écho quand la destination est déjà claire et que tu veux seulement écrire, lire, répondre.</p>
-            </article>
-        </div>
-    </section>
 
     <?php if ($message !== ''): ?>
         <section class="panel reveal">
@@ -237,8 +211,8 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                 </div>
             </div>
             <div class="action-row">
-                <a class="pill-link" href="/">Poser une terre</a>
-                <a class="ghost-link" href="/str3m">Aller vers Str3m</a>
+                <a class="pill-link" href="<?= h($joinHref) ?>">Poser une terre</a>
+                <a class="ghost-link" href="<?= h($str3mHref) ?>">Aller vers Str3m</a>
             </div>
         </section>
     <?php elseif (!$tablesReady): ?>
@@ -257,7 +231,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
             class="signal-grid reveal"
             data-message-live
             data-live-view="signal"
-            data-live-api="/signal_live.php"
+            data-live-api="<?= h($signalLiveHref) ?>"
             data-live-target="<?= h($signalLiveTarget) ?>"
             data-live-interval="2500"
             data-live-hash="<?= h($signalHistoryHash) ?>"
@@ -274,7 +248,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
 
                 <div class="signal-list-block">
                     <div class="signal-flow-shell">
-                        <form action="/signal" method="get" class="land-form signal-form signal-open-form" data-signal-open-form>
+                        <form action="<?= h($signalHref) ?>" method="get" class="land-form signal-form signal-open-form" data-signal-open-form>
                             <label>
                                 Ouvrir une liaison
                                 <input
@@ -345,7 +319,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                             </div>
                             <div class="signal-plasma-row" aria-label="Liaisons rapides">
                                 <?php foreach ($recentContacts as $contact): ?>
-                                    <a class="signal-plasma-pill signal-plasma-pill--<?= h((string) ($contact['resonance_phase'] ?? 'drift')) ?>" href="/signal?u=<?= rawurlencode((string) $contact['counterpart_slug']) ?>" title="<?= h((string) ($contact['resonance_summary'] ?? '')) ?>">
+                                    <a class="signal-plasma-pill signal-plasma-pill--<?= h((string) ($contact['resonance_phase'] ?? 'drift')) ?>" href="<?= h($signalHref) ?>?u=<?= rawurlencode((string) $contact['counterpart_slug']) ?>" title="<?= h((string) ($contact['resonance_summary'] ?? '')) ?>">
                                         <?= h((string) $contact['counterpart_username']) ?>
                                         <?php if ((int) ($contact['unread_count'] ?? 0) > 0): ?>
                                             <span><?= (int) $contact['unread_count'] ?></span>
@@ -419,7 +393,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                                         : strtolower($lastSnippet);
                                     ?>
                                     <a
-                                        href="/signal?u=<?= rawurlencode($contactSlug) ?>"
+                                        href="<?= h($signalHref) ?>?u=<?= rawurlencode($contactSlug) ?>"
                                         class="echo-contact signal-contact signal-contact--<?= h($contactHeat) ?> signal-contact--<?= h($contactPhase) ?> <?= $contactSlug === (string) ($targetLand['slug'] ?? '') ? 'is-active' : '' ?>"
                                         data-signal-contact-item
                                         data-signal-contact-name="<?= h($contactNameFilter) ?>"
@@ -463,7 +437,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                         <p class="panel-copy">Mode de livraison : <strong><?= h((string) ($identityDeliveryStatus['mode'] ?? 'mail')) ?></strong>. <?= h($identityDeliveryHint) ?></p>
                         <p class="panel-copy">Adresse interne : <?= h($virtualAddress) ?>. Ce bloc ne sert que pour relier Signal à une présence réelle.</p>
 
-                        <form action="/signal" method="post" class="land-form signal-form">
+                        <form action="<?= h($signalHref) ?>" method="post" class="land-form signal-form">
                             <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
                             <input type="hidden" name="action" value="request_identity">
 
@@ -503,10 +477,10 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                     <div class="signal-empty-state">
                         <div class="signal-compose-head">
                             <p class="panel-copy">Commence simplement : une destination, un message, puis laisse le fil se former.</p>
-                            <p class="signal-compare-note">Tu veux juste toucher une terre déjà choisie sans passer par le carnet ? <a href="/echo">Écho va droit au direct</a>.</p>
+                            <p class="signal-compare-note">Tu veux juste toucher une terre déjà choisie sans passer par le carnet ? <a href="<?= h($echoHref) ?>">Écho va droit au direct</a>.</p>
                         </div>
 
-                        <form action="/signal" method="post" class="land-form signal-form signal-compose-form" data-signal-compose data-draft-scope="new">
+                        <form action="<?= h($signalHref) ?>" method="post" class="land-form signal-form signal-compose-form" data-signal-compose data-draft-scope="new">
                             <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
                             <input type="hidden" name="action" value="send_message">
 
@@ -572,7 +546,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                         <div class="action-row signal-flow-actions">
                             <button type="submit">Ouvrir et transmettre</button>
                             <span class="signal-flow-hint" data-signal-draft-status role="status" aria-live="polite" aria-atomic="true">Signal créera le fil au premier envoi. ⌘/Ctrl + Entrée envoie.</span>
-                            <a class="ghost-link" href="/echo">Aller vers Écho</a>
+                            <a class="ghost-link" href="<?= h($echoHref) ?>">Aller vers Écho</a>
                         </div>
                         </form>
                     </div>
@@ -581,7 +555,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                         <?= $signalHistoryHtml ?>
                     </div>
 
-                    <form action="/signal?u=<?= rawurlencode((string) $targetLand['slug']) ?>" method="post" class="land-form signal-form" data-signal-compose data-draft-scope="<?= h($currentDraftScope) ?>">
+                    <form action="<?= h($signalHref) ?>?u=<?= rawurlencode((string) $targetLand['slug']) ?>" method="post" class="land-form signal-form" data-signal-compose data-draft-scope="<?= h($currentDraftScope) ?>">
                         <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
                         <input type="hidden" name="action" value="send_message">
                         <input type="hidden" name="receiver_slug" value="<?= h((string) $targetLand['slug']) ?>">
@@ -614,13 +588,35 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                         <div class="action-row">
                             <button type="submit">Transmettre</button>
                             <span class="signal-flow-hint" data-signal-draft-status role="status" aria-live="polite" aria-atomic="true">Brouillon gardé localement. ⌘/Ctrl + Entrée envoie.</span>
-                            <a class="ghost-link" href="/echo?u=<?= rawurlencode((string) $targetLand['username']) ?>">Passer en direct dans Écho</a>
+                            <a class="ghost-link" href="<?= h($echoHref) ?>?u=<?= rawurlencode((string) $targetLand['username']) ?>">Passer en direct dans Écho</a>
                         </div>
                     </form>
                 <?php endif; ?>
             </aside>
         </section>
     <?php endif; ?>
+
+    <section class="panel reveal signal-mode-panel" aria-labelledby="signal-mode-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="signal-mode-title">Signal / Écho</h2>
+                <p class="panel-copy">Signal garde l’adresse et la mémoire du fil. Écho reprend la même liaison en mode direct.</p>
+            </div>
+            <a class="ghost-link" href="<?= h($echoHref) ?>">Ouvrir Écho</a>
+        </div>
+        <div class="signal-mode-grid">
+            <article class="signal-mode-card signal-mode-card--primary">
+                <p class="signal-mode-kicker">Signal · boîte</p>
+                <h3>Ouvrir, relire, garder le fil</h3>
+                <p class="panel-copy">Choisir une terre, relire les échanges, garder une adresse qui dure.</p>
+            </article>
+            <article class="signal-mode-card">
+                <p class="signal-mode-kicker">Écho · direct</p>
+                <h3>Toucher une terre sans détour</h3>
+                <p class="panel-copy">Quand la destination est déjà claire, passe en direct.</p>
+            </article>
+        </div>
+    </section>
 </main>
 </body>
 </html>

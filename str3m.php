@@ -120,9 +120,15 @@ $host = request_host();
 $brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
 
 $authenticatedLand = current_authenticated_land();
-$guideHref = '/0wlslw0';
+$guideHref = o_route_path('/0wlslw0');
+$signalHref = o_route_path('/signal');
+$joinHref = o_route_path('/rejoindre');
+$landHref = o_route_path('/land');
+$signalItemHref = o_route_path('/signal_item.php');
+$futureShellRoute = o_route_path('/n0de');
+$shoreHref = o_route_path('/sh0re');
+$nHref = o_route_path('/n');
 $str3mGuide = guide_path('str3m');
-$futureShellRoute = '/n0de';
 
 // 1. Chargement du courant quotidien (Str3m)
 $dailyStream = str3m_build_daily_stream(null);
@@ -339,7 +345,7 @@ if ($str3mTodayCopy === '') {
 
 $str3mVisibleTitle = 'Le courant attend une première preuve';
 $str3mVisibleCopy = 'Aucune terre n’a encore laissé assez de trace publique pour tenir la surface.';
-$str3mVisibleHref = $authenticatedLand ? '/signal' : '/rejoindre';
+$str3mVisibleHref = $authenticatedLand ? $signalHref : $joinHref;
 $str3mVisibleLinkLabel = $authenticatedLand ? 'Ouvrir Signal' : 'Poser une terre';
 
 if ($publicSignalCount > 0) {
@@ -378,6 +384,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
 </head>
 <body class="experience str3m-view">
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('str3m') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, (string) ($dailyStream['mood'] ?? 'calm'), 'str3m') ?>
@@ -389,10 +396,9 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
             <strong>Le courant et les îles.</strong>
             <span>I inverse + voix</span>
         </h1>
-        <p class="lead">Ce qui affleure aujourd'hui, et les terres qui résonnent.</p>
+        <p class="lead">Le courant du jour et les terres visibles.</p>
 
         <div class="land-meta">
-            <a class="meta-pill meta-pill-link" href="/">retour au noyau</a>
             <a class="meta-pill meta-pill-link" href="<?= h($guideHref) ?>">0wlslw0</a>
             <?php if ($authenticatedLand): ?>
                 <span class="meta-pill">terre liée : <?= h((string) $authenticatedLand['slug']) ?></span>
@@ -401,21 +407,11 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         </div>
     </header>
 
-    <section class="panel reveal meaning-panel" aria-labelledby="str3m-meaning-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="str3m-meaning-title">Pourquoi cette porte existe</h2>
-                <p class="panel-copy"><?= h((string) ($str3mGuide['copy'] ?? 'Explorer le courant public sans forcer l’entrée.')) ?></p>
-            </div>
-            <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0 : me guider</a>
-        </div>
-    </section>
-
     <section class="panel reveal str3m-mode-panel" aria-labelledby="str3m-mode-title">
         <div class="section-topline">
             <div>
-                <h2 id="str3m-mode-title">Repères du courant</h2>
-                <p class="panel-copy">Str3m distingue ce qui est choisi pour aujourd’hui, ce qui devient publiquement lisible, et ce qui reste encore exploratoire.</p>
+                <h2 id="str3m-mode-title">Repères rapides</h2>
+                <p class="panel-copy">Trois couches suffisent : le jour, le visible, l’exploratoire.</p>
             </div>
             <span class="badge"><?= h($str3mModeLabel) ?></span>
         </div>
@@ -452,30 +448,6 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                         <a class="ghost-link" href="<?= h($futureShellRoute) ?>">Voir n0de</a>
                     <?php endif; ?>
                 </div>
-            </article>
-        </div>
-    </section>
-
-    <section class="panel reveal" aria-labelledby="str3m-proof-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="str3m-proof-title">Ce qui circule déjà</h2>
-                <p class="panel-copy">Même quand le str3m du jour reste léger, le courant public laisse déjà des preuves : signaux, t0ks et b0t3s.</p>
-            </div>
-        </div>
-
-        <div class="public-entry-grid">
-            <article class="public-entry-card">
-                <strong><?= h((string) $publicSignalCount) ?> signal<?= $publicSignalCount > 1 ? 's' : '' ?> public<?= $publicSignalCount > 1 ? 's' : '' ?></strong>
-                <span><?= $publicSignalCount > 0 ? 'Des traces lisibles publiquement existent déjà dans le courant.' : 'Aucun signal public n’est publié pour le moment, mais la porte est prête à les rendre visibles.' ?></span>
-            </article>
-            <article class="public-entry-card">
-                <strong><?= h((string) $recentT0kCount) ?> t0k<?= $recentT0kCount > 1 ? 's' : '' ?> en vue</strong>
-                <span><?= $recentT0kCount > 0 ? 'Des gestes publics circulent déjà entre terres et montrent que quelque chose passe.' : 'Aucun geste public n’est remonté pour l’instant.' ?></span>
-            </article>
-            <article class="public-entry-card">
-                <strong><?= h((string) $recentB0t3Count) ?> b0t3<?= $recentB0t3Count > 1 ? 's' : '' ?> lisible<?= $recentB0t3Count > 1 ? 's' : '' ?></strong>
-                <span><?= $recentB0t3Count > 0 ? 'Des lignes déposées restent consultables sans compte et donnent déjà une matière de lecture.' : 'Le champ reste ouvert, mais aucune ligne publique n’a encore été déposée.' ?></span>
             </article>
         </div>
     </section>
@@ -634,6 +606,30 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         </div>
     </section>
 
+    <section class="panel reveal" aria-labelledby="str3m-proof-title">
+        <div class="section-topline">
+            <div>
+                <h2 id="str3m-proof-title">Ce qui circule déjà</h2>
+                <p class="panel-copy">Même quand le str3m du jour reste léger, le courant public laisse déjà des preuves.</p>
+            </div>
+        </div>
+
+        <div class="public-entry-grid">
+            <article class="public-entry-card">
+                <strong><?= h((string) $publicSignalCount) ?> signal<?= $publicSignalCount > 1 ? 's' : '' ?> public<?= $publicSignalCount > 1 ? 's' : '' ?></strong>
+                <span><?= $publicSignalCount > 0 ? 'Des traces lisibles existent déjà dans le courant.' : 'Aucun signal public pour le moment.' ?></span>
+            </article>
+            <article class="public-entry-card">
+                <strong><?= h((string) $recentT0kCount) ?> t0k<?= $recentT0kCount > 1 ? 's' : '' ?> en vue</strong>
+                <span><?= $recentT0kCount > 0 ? 'Des gestes publics circulent déjà entre terres.' : 'Aucun geste public n’est remonté pour l’instant.' ?></span>
+            </article>
+            <article class="public-entry-card">
+                <strong><?= h((string) $recentB0t3Count) ?> b0t3<?= $recentB0t3Count > 1 ? 's' : '' ?> lisible<?= $recentB0t3Count > 1 ? 's' : '' ?></strong>
+                <span><?= $recentB0t3Count > 0 ? 'Des lignes déposées restent consultables sans compte.' : 'Le champ reste ouvert, mais aucune ligne publique n’a encore été déposée.' ?></span>
+            </article>
+        </div>
+    </section>
+
     <section class="panel reveal" aria-labelledby="str3m-signals-title">
         <div class="section-topline">
             <div>
@@ -646,7 +642,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         <?php if ($publicSignalPreview !== []): ?>
             <div class="public-entry-grid">
                 <?php foreach ($publicSignalPreview as $signal): ?>
-                    <a class="public-entry-card" href="/signal_item.php?id=<?= rawurlencode((string) ($signal['id'] ?? '')) ?>">
+                    <a class="public-entry-card" href="<?= h($signalItemHref) ?>?id=<?= rawurlencode((string) ($signal['id'] ?? '')) ?>">
                         <strong><?= h((string) ($signal['title'] ?? 'Signal sans titre')) ?></strong>
                         <span><?= h((string) ($signal['excerpt'] ?? 'Trace visible dans le courant.')) ?></span>
                         <span><?= h((string) ($signal['land_username'] ?? $signal['land_slug'] ?? 'terre')) ?> · <?= h(str3m_signal_kind_label((string) ($signal['kind'] ?? 'note'))) ?> · <?= h(human_created_label((string) (($signal['published_at'] ?? '') ?: ($signal['created_at'] ?? ''))) ?? 'récemment') ?></span>
@@ -656,9 +652,9 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         <?php else: ?>
             <p class="panel-copy">Aucun signal public n’est encore publié. Pour faire apparaître une terre ici, il faut publier au moins un signal public depuis une terre existante.</p>
             <div class="action-row">
-                <a class="pill-link" href="/rejoindre">Poser une terre</a>
-                <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par Owl</a>
-                <a class="ghost-link" href="/signal">Voir Signal</a>
+                <a class="pill-link" href="<?= h($joinHref) ?>">Poser une terre</a>
+                <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
+                <a class="ghost-link" href="<?= h($signalHref) ?>">Voir Signal</a>
             </div>
         <?php endif; ?>
     </section>
@@ -683,7 +679,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                         data-shell-source="str3m-visible"
                         data-land-slug="<?= h((string) ($landProfile['slug'] ?? '')) ?>"
                         data-land-label="<?= h((string) ($landProfile['username'] ?? $landProfile['slug'] ?? 'terre')) ?>"
-                        data-shell-route="/land?u=<?= rawurlencode((string) ($landProfile['slug'] ?? '')) ?>"
+                        data-shell-route="<?= h($landHref) ?>?u=<?= rawurlencode((string) ($landProfile['slug'] ?? '')) ?>"
                         data-shell-manifest-route="<?= h($futureShellRoute) ?>"
                         data-shell-state="<?= h((string) ($state['key'] ?? 'unknown')) ?>"
                     >
@@ -696,16 +692,16 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                         <span class="presence-hint"><?= h((string) ($state['hint'] ?? 'indice public')) ?></span>
                         <span class="presence-ledger"><?= h((string) ($landProfile['signal_count'] ?? 0)) ?> signal<?= ((int) ($landProfile['signal_count'] ?? 0)) > 1 ? 'aux' : '' ?> · <?= h((string) ($landProfile['t0k_active_count'] ?? 0)) ?> t0k actif<?= ((int) ($landProfile['t0k_active_count'] ?? 0)) > 1 ? 's' : '' ?> · <?= h((string) ($landProfile['t0k_pending_count'] ?? 0)) ?> en chemin · <?= h((string) ($landProfile['b0t3_count'] ?? 0)) ?> b0t3<?= ((int) ($landProfile['b0t3_count'] ?? 0)) > 1 ? 's' : '' ?><?= !empty($landProfile['latest_at']) ? ' · ' . h(human_created_label((string) $landProfile['latest_at']) ?? 'récemment') : '' ?></span>
                         <span>
-                            <a class="pill-link" href="/land?u=<?= rawurlencode((string) ($landProfile['slug'] ?? '')) ?>">Explorer l'île</a>
+                            <a class="pill-link" href="<?= h($landHref) ?>?u=<?= rawurlencode((string) ($landProfile['slug'] ?? '')) ?>">Explorer l'île</a>
                         </span>
                     </article>
                 <?php endforeach; ?>
             </div>
         <?php else: ?>
-            <p class="panel-copy">Aucune terre n’est encore assez visible pour composer cette couche. Owl peut t’expliquer la carte, et le parcours terre permet d’en faire apparaître une ici.</p>
+            <p class="panel-copy">Aucune terre n’est encore assez visible pour composer cette couche. 0wlslw0 peut t’expliquer la carte, et le parcours terre permet d’en faire apparaître une ici.</p>
             <div class="action-row">
-                <a class="pill-link" href="<?= h($guideHref) ?>">Passer par Owl</a>
-                <a class="ghost-link" href="/rejoindre">Poser une terre</a>
+                <a class="pill-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
+                <a class="ghost-link" href="<?= h($joinHref) ?>">Poser une terre</a>
             </div>
         <?php endif; ?>
     </section>
@@ -783,7 +779,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                                     data-shell-source="archipelago"
                                     data-land-slug="<?= h((string) ($island['slug'] ?? '')) ?>"
                                     data-land-label="<?= h((string) ($island['username'] ?? $island['slug'] ?? 'terre')) ?>"
-                                    data-shell-route="/land?u=<?= rawurlencode((string) ($island['slug'] ?? '')) ?>"
+                                    data-shell-route="<?= h($landHref) ?>?u=<?= rawurlencode((string) ($island['slug'] ?? '')) ?>"
                                     data-shell-manifest-route="<?= h($futureShellRoute) ?>"
                                     data-shell-state="<?= h((string) ($state['key'] ?? 'unknown')) ?>"
                                 >
@@ -807,7 +803,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                                     <?php if ($island['last_active']): ?>
                                         <p class="island-meta">Dernière trace : <?= h(human_created_label($island['last_active']) ?? 'récemment') ?></p>
                                     <?php endif; ?>
-                                    <a class="pill-link" href="/land?u=<?= rawurlencode($island['slug']) ?>">Explorer l'île</a>
+                                    <a class="pill-link" href="<?= h($landHref) ?>?u=<?= rawurlencode($island['slug']) ?>">Explorer l'île</a>
                                 </article>
                             </div>
                         </div>
@@ -852,21 +848,21 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                 <h2 id="str3m-t0ks-title">T0ks dans le courant</h2>
                 <p class="panel-copy">Les gestes publics. Voulez-vous grandir avec moi ?</p>
             </div>
-            <a class="ghost-link" href="/sh0re">Mon sh0re</a>
+            <a class="ghost-link" href="<?= h($shoreHref) ?>">Mon sh0re</a>
         </div>
         <div class="t0k-stream">
             <?php foreach ($recentT0ks as $t0k): ?>
                 <article class="t0k-stream-item t0k-stream-<?= h((string) $t0k['status']) ?>">
-                    <a class="t0k-stream-main" href="/n?t=<?= h((string) $t0k['token']) ?>">
+                    <a class="t0k-stream-main" href="<?= h($nHref) ?>?t=<?= h((string) $t0k['token']) ?>">
                         <span class="t0k-stream-token"><?= h(t0k_format_token((string) $t0k['token'])) ?></span>
                     </a>
                     <span class="t0k-stream-route">
-                        <a class="ghost-link" href="/sh0re?u=<?= rawurlencode((string) $t0k['from_land']) ?>"><?= h((string) $t0k['from_land']) ?></a>
+                        <a class="ghost-link" href="<?= h($shoreHref) ?>?u=<?= rawurlencode((string) $t0k['from_land']) ?>"><?= h((string) $t0k['from_land']) ?></a>
                         <span>→</span>
-                        <a class="ghost-link" href="/sh0re?u=<?= rawurlencode((string) $t0k['to_land']) ?>"><?= h((string) $t0k['to_land']) ?></a>
+                        <a class="ghost-link" href="<?= h($shoreHref) ?>?u=<?= rawurlencode((string) $t0k['to_land']) ?>"><?= h((string) $t0k['to_land']) ?></a>
                     </span>
                     <span class="t0k-stream-status">
-                        <a class="ghost-link t0k-stream-status-link" href="/n?t=<?= h((string) $t0k['token']) ?>"><?= h(t0k_status_label((string) $t0k['status'])) ?></a>
+                        <a class="ghost-link t0k-stream-status-link" href="<?= h($nHref) ?>?t=<?= h((string) $t0k['token']) ?>"><?= h(t0k_status_label((string) $t0k['status'])) ?></a>
                     </span>
                 </article>
             <?php endforeach; ?>
@@ -884,7 +880,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         <div class="b0t3-stream-field">
             <?php foreach ($recentB0t3s as $b0t3): ?>
                 <a class="b0t3-stream-line"
-                   href="/sh0re?u=<?= rawurlencode((string) $b0t3['target_land']) ?>"
+                   href="<?= h($shoreHref) ?>?u=<?= rawurlencode((string) $b0t3['target_land']) ?>"
                    data-b0t3="<?= h((string) $b0t3['text']) ?>"
                    data-b0t3-instability="<?= h((string) $b0t3['instability']) ?>"
                    title="<?= h((string) $b0t3['target_land']) ?> · <?= h((string) $b0t3['kind']) ?>"
@@ -914,8 +910,8 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
             <p class="str3m-shell-ghost-dock__state" data-str3m-shell-ghost-state>Survole ou touche une terre visible pour préparer un futur shell porté.</p>
             <p class="str3m-shell-ghost-dock__meta" data-str3m-shell-ghost-meta>manifest n0de · route · état public</p>
             <div class="str3m-shell-ghost-dock__actions">
-                <a class="pill-link" href="/n0de" data-str3m-shell-ghost-manifest>Voir n0de</a>
-                <a class="ghost-link" href="/str3m" data-str3m-shell-ghost-route>Rester dans le courant</a>
+                <a class="pill-link" href="<?= h($futureShellRoute) ?>" data-str3m-shell-ghost-manifest>Voir n0de</a>
+                <a class="ghost-link" href="<?= h(o_route_path('/str3m')) ?>" data-str3m-shell-ghost-route>Rester dans le courant</a>
             </div>
         </div>
     </aside>

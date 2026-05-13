@@ -81,7 +81,7 @@ docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php
 
 ```bash
 curl -I https://0wlslw0.com
-curl -sL https://0wlslw0.com | grep -E 'Signal before story|concierge d entree|Entrer sans se perdre|0wlslw0'
+curl -sL https://0wlslw0.com | grep -E 'Entrer sans se perdre|Accompagnement vocal|0wlslw0'
 
 curl -sL https://sowwwl.com/0wlslw0 | grep -E 'Accompagnement vocal|voice only|guide vocal|fallback local|Activer la voix'
 

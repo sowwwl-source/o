@@ -627,7 +627,7 @@ function signal_render_echo_contacts_html(array $contacts, string $targetUsernam
         $username = trim((string) ($contact['username'] ?? ''));
         $unreadCount = (int) ($contact['unread_count'] ?? 0);
         ?>
-        <a href="/echo?u=<?= rawurlencode($username) ?>" class="echo-contact <?= $username === $targetUsername ? 'is-active' : '' ?>">
+        <a href="<?= h(function_exists('o_route_path') ? o_route_path('/echo') : '/echo') ?>?u=<?= rawurlencode($username) ?>" class="echo-contact <?= $username === $targetUsername ? 'is-active' : '' ?>">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <strong><?= h($username) ?></strong>
                 <?php if ($unreadCount > 0): ?>
@@ -768,7 +768,7 @@ function signal_request_identity_verification(array $land, string $notificationE
     $slug = normalize_username((string) ($land['slug'] ?? ''));
     $token = bin2hex(random_bytes(24));
     $tokenHash = hash('sha256', $slug . '|' . $token);
-    $verificationUrl = site_origin() . '/signal?land=' . rawurlencode($slug) . '&verify=' . rawurlencode($token);
+    $verificationUrl = site_origin() . (function_exists('o_route_path') ? o_route_path('/signal') : '/signal') . '?land=' . rawurlencode($slug) . '&verify=' . rawurlencode($token);
     $subject = 'Validation de votre identité Signal';
     $body = "Bonjour,\n\nValidez l’identité de la terre {$land['username']} pour activer la messagerie Signal et recevoir les notifications :\n\n{$verificationUrl}\n\nCe lien reste valide 24 heures.\n";
     $error = null;

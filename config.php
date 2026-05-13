@@ -154,6 +154,10 @@ function aza_absolute_storage_path(?string $publicPath): ?string
     }
 
     $normalized = ltrim(str_replace('\\', '/', $publicPath), '/');
+    $mountPrefix = trim(o_mount_prefix(), '/');
+    if ($mountPrefix !== '' && ($normalized === $mountPrefix || str_starts_with($normalized, $mountPrefix . '/'))) {
+        $normalized = ltrim(substr($normalized, strlen($mountPrefix)), '/');
+    }
     $publicRoot = aza_public_storage_root();
 
     if ($normalized === $publicRoot) {
@@ -222,6 +226,49 @@ function o_public_href(string $asset, bool $withVersion = false, ?string $filePa
 function o_asset_href(string $asset): string
 {
     return o_public_href($asset, true);
+}
+
+function o_route_path(string $path = '/'): string
+{
+    $candidate = trim($path);
+    if ($candidate === '') {
+        $candidate = '/';
+    }
+
+    if (preg_match('~^(?:[a-z][a-z0-9+.-]*:|//)~i', $candidate) === 1) {
+        return $candidate;
+    }
+
+    if ($candidate[0] !== '/') {
+        $candidate = '/' . ltrim($candidate, '/');
+    }
+
+    $prefix = rtrim(o_mount_prefix(), '/');
+    if ($prefix === '') {
+        return $candidate;
+    }
+
+    if ($candidate === $prefix || str_starts_with($candidate, $prefix . '/')) {
+        return $candidate;
+    }
+
+    return $candidate === '/' ? $prefix . '/' : $prefix . $candidate;
+}
+
+function o_request_path(?string $uri = null): string
+{
+    $path = parse_url((string) ($uri ?? ($_SERVER['REQUEST_URI'] ?? '/')), PHP_URL_PATH);
+    $normalized = is_string($path) && $path !== '' ? $path : '/';
+    $prefix = rtrim(o_mount_prefix(), '/');
+
+    if ($prefix !== '' && ($normalized === $prefix || str_starts_with($normalized, $prefix . '/'))) {
+        $normalized = substr($normalized, strlen($prefix));
+        if ($normalized === '') {
+            $normalized = '/';
+        }
+    }
+
+    return $normalized;
 }
 
 function get_pdo(): PDO
@@ -327,48 +374,48 @@ function pwa_app_catalog(): array
 
     $catalog = [
         'main' => [
-            'id' => '/app/main',
+            'id' => o_route_path('/app/main'),
             'name' => SITE_TITLE,
             'short_name' => 'O.',
             'description' => 'O. le réseau minimal — un espace vivant, personnel, discret. Pose ta terre et laisse la nuit coder le reste.',
-            'start_url' => '/',
-            'scope' => '/',
+            'start_url' => o_route_path('/'),
+            'scope' => o_route_path('/'),
             'theme_color' => '#09090b',
             'background_color' => '#09090b',
             'shortcuts' => [
-                ['name' => 'Signal', 'short_name' => 'Signal', 'url' => '/signal'],
-                ['name' => 'Str3m', 'short_name' => 'Str3m', 'url' => '/str3m'],
-                ['name' => '0wlslw0', 'short_name' => 'Owl', 'url' => '/0wlslw0'],
+                ['name' => 'Signal', 'short_name' => 'Signal', 'url' => o_route_path('/signal')],
+                ['name' => 'Str3m', 'short_name' => 'Str3m', 'url' => o_route_path('/str3m')],
+                ['name' => '0wlslw0', 'short_name' => '0wlslw0', 'url' => o_route_path('/0wlslw0')],
             ],
         ],
         'owl' => [
-            'id' => '/app/owl',
+            'id' => o_route_path('/app/owl'),
             'name' => '0wlslw0',
-            'short_name' => 'Owl',
+            'short_name' => '0wlslw0',
             'description' => '0wlslw0 — guide d entree pour comprendre O. et trouver la bonne porte sans se perdre.',
-            'start_url' => '/0wlslw0',
-            'scope' => '/0wlslw0',
+            'start_url' => o_route_path('/0wlslw0'),
+            'scope' => o_route_path('/0wlslw0'),
             'theme_color' => '#09090b',
             'background_color' => '#09090b',
             'shortcuts' => [
-                ['name' => 'Retour au noyau', 'short_name' => 'Noyau', 'url' => '/'],
-                ['name' => 'Ouvrir Str3m', 'short_name' => 'Str3m', 'url' => '/str3m'],
-                ['name' => 'Poser une terre', 'short_name' => 'Terre', 'url' => '/rejoindre'],
+                ['name' => 'Retour au noyau', 'short_name' => 'Noyau', 'url' => o_route_path('/')],
+                ['name' => 'Ouvrir Str3m', 'short_name' => 'Str3m', 'url' => o_route_path('/str3m')],
+                ['name' => 'Poser une terre', 'short_name' => 'Terre', 'url' => o_route_path('/rejoindre')],
             ],
         ],
         'xyz' => [
-            'id' => '/app/xyz',
+            'id' => o_route_path('/app/xyz'),
             'name' => 'SOWWWL XYZ',
             'short_name' => 'XYZ',
             'description' => 'SOWWWL XYZ — surface torique, carte sensible et seuil d entree dans le tore.',
-            'start_url' => '/',
-            'scope' => '/',
+            'start_url' => o_route_path('/'),
+            'scope' => o_route_path('/'),
             'theme_color' => '#09090b',
             'background_color' => '#09090b',
             'shortcuts' => [
-                ['name' => 'Ouvrir 0wlslw0', 'short_name' => 'Owl', 'url' => '/0wlslw0'],
-                ['name' => 'Lire Str3m', 'short_name' => 'Str3m', 'url' => '/str3m'],
-                ['name' => 'Revenir au noyau', 'short_name' => 'Noyau', 'url' => '/'],
+                ['name' => 'Ouvrir 0wlslw0', 'short_name' => '0wlslw0', 'url' => o_route_path('/0wlslw0')],
+                ['name' => 'Lire Str3m', 'short_name' => 'Str3m', 'url' => o_route_path('/str3m')],
+                ['name' => 'Revenir au noyau', 'short_name' => 'Noyau', 'url' => o_route_path('/')],
             ],
         ],
     ];
@@ -477,6 +524,40 @@ function render_skip_link(string $targetId = 'main-content', string $label = 'Al
     return '<a class="skip-link" href="#' . $target . '" data-skip-link>' . $copy . '</a>';
 }
 
+function render_nucleus_banner(string $currentLabel = 'surface', string $href = '/'): string
+{
+    $label = htmlspecialchars(trim($currentLabel) !== '' ? trim($currentLabel) : 'surface', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $target = htmlspecialchars(o_route_path($href), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $aria = htmlspecialchars(
+        'Retour au noyau. Réalité traverse le plasma, se boucle en tore, puis revient au noyau. Appui long tactile puis glisse pour naviguer dans le tore. Surface actuelle : ' . $currentLabel . '.',
+        ENT_QUOTES | ENT_SUBSTITUTE,
+        'UTF-8'
+    );
+
+    return <<<HTML
+    <a class="nucleus-banner" href="{$target}" data-nucleus-banner aria-label="{$aria}">
+        <span class="nucleus-banner__art" aria-hidden="true">
+            <span class="nucleus-banner__orbit nucleus-banner__orbit--outer"></span>
+            <span class="nucleus-banner__orbit nucleus-banner__orbit--inner"></span>
+            <span class="nucleus-banner__core"></span>
+            <span class="nucleus-banner__flux nucleus-banner__flux--left"></span>
+            <span class="nucleus-banner__flux nucleus-banner__flux--right"></span>
+            <span class="nucleus-banner__spark nucleus-banner__spark--one"></span>
+            <span class="nucleus-banner__spark nucleus-banner__spark--two"></span>
+        </span>
+        <span class="nucleus-banner__copy">
+            <span class="nucleus-banner__eyebrow">commande noyau</span>
+            <strong class="nucleus-banner__title">Réalité -> plasma -> tore -> noyau</strong>
+            <span class="nucleus-banner__note" data-nucleus-banner-note>clic : noyau · appui long tactile : glisse</span>
+        </span>
+        <span class="nucleus-banner__state">
+            <span class="nucleus-banner__state-label">actuel</span>
+            <strong>{$label}</strong>
+        </span>
+    </a>
+HTML;
+}
+
 function main_landmark_attrs(string $id = 'main-content'): string
 {
     $target = htmlspecialchars($id, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -505,7 +586,7 @@ function render_negative_merge_overlay(?array $visualProfile = null, string $str
     $label = h($tokens['label']);
     $lambda = $tokens['lambda'];
     $viewToken = h(preg_replace('/[^a-z0-9_-]+/i', '-', trim($view)) ?: 'generic');
-    $streamImage = h('/storage/str3m/images/flux-radial.svg');
+    $streamImage = h(o_public_href('storage/str3m/images/flux-radial.svg'));
     $mood = h($tokens['mood']);
 
     return <<<HTML

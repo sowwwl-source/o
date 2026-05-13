@@ -34,6 +34,56 @@ if (typeof window.__O_DISABLE_SW__ !== "boolean") {
 	window.__O_DISABLE_SW__ = readRuntimeMeta("o-disable-sw", "false") === "true";
 }
 
+function bridgePrefix() {
+	return typeof window.__O_BRIDGE_PREFIX__ === "string"
+		? window.__O_BRIDGE_PREFIX__.replace(/\/+$/, "")
+		: "";
+}
+
+function withBridgePrefix(path = "/") {
+	const value = typeof path === "string" && path !== "" ? path : "/";
+	if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(value)) {
+		return value;
+	}
+
+	const hashIndex = value.indexOf("#");
+	const hash = hashIndex >= 0 ? value.slice(hashIndex) : "";
+	const beforeHash = hashIndex >= 0 ? value.slice(0, hashIndex) : value;
+	const queryIndex = beforeHash.indexOf("?");
+	const search = queryIndex >= 0 ? beforeHash.slice(queryIndex) : "";
+	const pathnameRaw = queryIndex >= 0 ? beforeHash.slice(0, queryIndex) : beforeHash;
+	const pathname = pathnameRaw.startsWith("/") ? pathnameRaw : `/${pathnameRaw}`;
+	const prefix = bridgePrefix();
+
+	if (!prefix) {
+		return `${pathname}${search}${hash}`;
+	}
+
+	if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+		return `${pathname}${search}${hash}`;
+	}
+
+	return `${pathname === "/" ? `${prefix}/` : `${prefix}${pathname}`}${search}${hash}`;
+}
+
+function withoutBridgePrefix(pathname = "/") {
+	const value = typeof pathname === "string" && pathname !== "" ? pathname : "/";
+	const prefix = bridgePrefix();
+	if (!prefix) {
+		return value;
+	}
+
+	if (value === prefix) {
+		return "/";
+	}
+
+	if (value.startsWith(`${prefix}/`)) {
+		return value.slice(prefix.length) || "/";
+	}
+
+	return value;
+}
+
 // === SIGNUP SPECTRUM LOGIC ===
 const signupProgramInputs = Array.from(document.querySelectorAll('[data-signup-program-input]'));
 const signupProgramCards = Array.from(document.querySelectorAll('[data-signup-program-card]'));
@@ -568,7 +618,7 @@ function swipeDestination(direction) {
 		case "left":
 			return "/signal";
 		case "right":
-			return "/aza.php";
+			return "/aza";
 		case "up":
 			return "/#str3m-quotidien";
 		case "down":
@@ -579,28 +629,28 @@ function swipeDestination(direction) {
 }
 
 function navigateToStr3mSurface() {
-	if (window.location.pathname === "/") {
+	if (withoutBridgePrefix(window.location.pathname) === "/") {
 		const target = document.getElementById("str3m-quotidien");
 		if (target) {
 			target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
-			window.history.replaceState(null, "", "/#str3m-quotidien");
+			window.history.replaceState(null, "", withBridgePrefix("/#str3m-quotidien"));
 			return true;
 		}
 	}
 
-	window.location.assign("/#str3m-quotidien");
+	window.location.assign(withBridgePrefix("/#str3m-quotidien"));
 	return true;
 }
 
 function navigateToCoreSurface() {
-	const current = `${window.location.pathname}${window.location.hash}`;
+	const current = `${withoutBridgePrefix(window.location.pathname)}${window.location.hash}`;
 	if (current === "/" || current === "/#" || current === "/#str3m-quotidien") {
 		window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
-		window.history.replaceState(null, "", "/");
+		window.history.replaceState(null, "", withBridgePrefix("/"));
 		return true;
 	}
 
-	window.location.assign("/");
+	window.location.assign(withBridgePrefix("/"));
 	return true;
 }
 
@@ -618,13 +668,187 @@ function navigateFromSwipe(direction) {
 		return navigateToCoreSurface();
 	}
 
-	const current = `${window.location.pathname}${window.location.hash}`;
+	const current = `${withoutBridgePrefix(window.location.pathname)}${window.location.hash}`;
 	if (current !== destination) {
-		window.location.assign(destination);
+		window.location.assign(withBridgePrefix(destination));
 		return true;
 	}
 
 	return false;
+}
+
+function initNucleusBanner() {
+	const banner = document.querySelector("[data-nucleus-banner]");
+	if (!(banner instanceof HTMLAnchorElement)) {
+		return;
+	}
+
+	const note = banner.querySelector("[data-nucleus-banner-note]");
+	const state = {
+		pointerId: null,
+		pointerType: "",
+		startX: 0,
+		startY: 0,
+		longTouchTimer: 0,
+		longTouchActive: false,
+		longTouchDirection: "",
+		suppressClick: false,
+	};
+
+	const setNote = (direction = "") => {
+		if (!(note instanceof HTMLElement)) {
+			return;
+		}
+
+		if (state.longTouchActive) {
+			const messageByDirection = {
+				left: "Relache pour Signal",
+				right: "Relache pour aZa",
+				up: "Relache pour Str3m",
+				down: "Relache pour le noyau",
+			};
+			note.textContent = messageByDirection[direction] || "Glisse : Signal · Str3m · aZa · Noyau";
+			return;
+		}
+
+		note.textContent = coarsePointer
+			? "clic : noyau · appui long tactile : glisse"
+			: "clic : noyau";
+	};
+
+	const clearTimer = () => {
+		if (!state.longTouchTimer) {
+			return;
+		}
+
+		window.clearTimeout(state.longTouchTimer);
+		state.longTouchTimer = 0;
+	};
+
+	const setDirection = (direction = "") => {
+		state.longTouchDirection = direction;
+		if (direction) {
+			banner.dataset.navDirection = direction;
+		} else {
+			delete banner.dataset.navDirection;
+		}
+		setNote(direction);
+	};
+
+	const releasePointer = () => {
+		if (state.pointerId !== null && banner.hasPointerCapture?.(state.pointerId)) {
+			banner.releasePointerCapture(state.pointerId);
+		}
+
+		state.pointerId = null;
+		state.pointerType = "";
+	};
+
+	const resetGesture = () => {
+		clearTimer();
+		state.longTouchActive = false;
+		banner.classList.remove("is-nav-armed");
+		setDirection("");
+		setNote();
+	};
+
+	const armLongTouch = (pointerId) => {
+		clearTimer();
+		state.longTouchTimer = window.setTimeout(() => {
+			if (state.pointerId !== pointerId || state.pointerType !== "touch") {
+				return;
+			}
+
+			state.longTouchActive = true;
+			banner.classList.add("is-nav-armed");
+			banner.setPointerCapture?.(pointerId);
+			setNote();
+		}, 360);
+	};
+
+	banner.addEventListener("pointerdown", (event) => {
+		resetGesture();
+		state.pointerId = event.pointerId;
+		state.pointerType = event.pointerType || "";
+		state.startX = event.clientX;
+		state.startY = event.clientY;
+
+		if (state.pointerType === "touch") {
+			armLongTouch(event.pointerId);
+		}
+	});
+
+	banner.addEventListener("pointermove", (event) => {
+		if (state.pointerId !== event.pointerId || state.pointerType !== "touch") {
+			return;
+		}
+
+		const deltaX = event.clientX - state.startX;
+		const deltaY = event.clientY - state.startY;
+		const distance = Math.hypot(deltaX, deltaY);
+
+		if (!state.longTouchActive && distance > 14) {
+			clearTimer();
+			releasePointer();
+			return;
+		}
+
+		if (!state.longTouchActive) {
+			return;
+		}
+
+		event.preventDefault();
+		const direction = detectCardinalDirection(deltaX, deltaY, distance, 18, 1.08);
+		setDirection(direction || "");
+	});
+
+	banner.addEventListener("pointerup", (event) => {
+		if (state.pointerId !== event.pointerId) {
+			return;
+		}
+
+		const deltaX = event.clientX - state.startX;
+		const deltaY = event.clientY - state.startY;
+		const distance = Math.hypot(deltaX, deltaY);
+		const wasLongTouch = state.longTouchActive;
+		const direction = state.longTouchDirection || detectCardinalDirection(deltaX, deltaY, distance, 18, 1.08);
+
+		resetGesture();
+		releasePointer();
+
+		if (!wasLongTouch) {
+			return;
+		}
+
+		event.preventDefault();
+		state.suppressClick = true;
+		window.setTimeout(() => {
+			state.suppressClick = false;
+		}, 0);
+
+		if (direction) {
+			navigateFromSwipe(direction);
+			return;
+		}
+
+		navigateToCoreSurface();
+	});
+
+	banner.addEventListener("pointercancel", () => {
+		resetGesture();
+		releasePointer();
+	});
+
+	banner.addEventListener("click", (event) => {
+		if (!state.suppressClick) {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+	});
+
+	setNote();
 }
 
 function initStr3mArchipelago() {
@@ -1008,11 +1232,11 @@ function initStr3mGhostShellDock() {
 				: "manifest n0de · route · état public";
 		}
 		if (routeNode instanceof HTMLAnchorElement) {
-			routeNode.href = detail?.route || "/str3m";
+			routeNode.href = detail?.route || withBridgePrefix("/str3m");
 			routeNode.textContent = detail?.route ? "Ouvrir la route" : "Rester dans le courant";
 		}
 		if (manifestNode instanceof HTMLAnchorElement) {
-			manifestNode.href = detail?.manifestRoute || "/n0de";
+			manifestNode.href = detail?.manifestRoute || withBridgePrefix("/n0de");
 		}
 	};
 
@@ -1926,7 +2150,7 @@ function initTorusCloud(canvas) {
 		roll: 0.1,
 		panX: 0,
 		panY: 0,
-		zoom: 11,
+		zoom: 10.35,
 		velocityYaw: 0,
 		velocityPitch: 0,
 		velocityRoll: 0,
@@ -1958,7 +2182,7 @@ function initTorusCloud(canvas) {
 	if (isPassiveCanvas) {
 		state.pitch = 0.38;
 		state.roll = 0.04;
-		state.zoom = 10.4;
+		state.zoom = 9.8;
 	}
 
 	for (let ringIndex = 0; ringIndex < ringCount; ringIndex += 1) {
@@ -1973,7 +2197,7 @@ function initTorusCloud(canvas) {
 				phi,
 				radiusDrift,
 				phase: (ringIndex * 0.19 + tubeIndex * 0.13) % (Math.PI * 2),
-				density: 0.82 + jitter * 0.44,
+				density: 0.76 + jitter * 0.3,
 			});
 		}
 	}
@@ -2119,7 +2343,7 @@ function initTorusCloud(canvas) {
 
 	function triggerSecretAccess() {
 		canvas.classList.add("is-secret-open");
-		const guidePath = "/0wlslw0";
+		const guidePath = withBridgePrefix("/0wlslw0");
 		window.setTimeout(() => {
 			canvas.classList.remove("is-secret-open");
 			if (window.location.pathname === guidePath) {
@@ -2265,10 +2489,10 @@ function initTorusCloud(canvas) {
 			return {
 				x: centerX + finalX * perspective,
 				y: centerY + finalY * perspective,
-				alpha: clamp(0.08 + depthFactor * (0.72 + profile.pulseStrength * 0.18) * point.density + shimmer * 0.06, 0.05, 0.94),
-				radius: clamp(0.24 + depthFactor * (4.4 + profile.pulseStrength * 1.1) * point.density, 0.2, 6.2),
+				alpha: clamp(0.055 + depthFactor * (0.6 + profile.pulseStrength * 0.14) * point.density + shimmer * 0.04, 0.035, 0.84),
+				radius: clamp(0.18 + depthFactor * (3.58 + profile.pulseStrength * 0.82) * point.density, 0.16, 5.1),
 				depth,
-				mix: clamp(0.18 + depthFactor * 0.6 + shimmer * 0.14, 0, 1),
+				mix: clamp(0.2 + depthFactor * 0.56 + shimmer * 0.1, 0, 1),
 				signalSeed: point.phase + point.theta + point.phi,
 			};
 		});
@@ -2715,6 +2939,7 @@ function renderSignupPreview(options = {}) {
 	const linkOutput = previewShell.querySelector("[data-land-link-output]");
 	const timezoneOutput = previewShell.querySelector("[data-preview-timezone]");
 	const timezoneIsValid = isValidTimezone(timezone);
+	const landRouteBase = previewShell.dataset.landRouteBase || withBridgePrefix("/land");
 
 	if (slugOutput) {
 		slugOutput.textContent = slug;
@@ -2725,7 +2950,7 @@ function renderSignupPreview(options = {}) {
 	}
 
 	if (linkOutput) {
-		linkOutput.textContent = `${originBase}/land.php?u=${slug}`;
+		linkOutput.textContent = `${originBase}${landRouteBase}?u=${slug}`;
 	}
 
 	if (timezoneOutput) {
@@ -3938,7 +4163,7 @@ function initCornerDocks() {
 	});
 }
 
-async function fetchGuideVoiceState(apiPath = "/0wlslw0/voice") {
+async function fetchGuideVoiceState(apiPath = withBridgePrefix("/0wlslw0/voice")) {
 	try {
 		const response = await fetch(apiPath, {
 			method: "GET",
@@ -3980,9 +4205,9 @@ function createGuideVoiceDock(config = {}) {
 	shell.dataset.cornerDockSide = "right";
 	shell.dataset.cornerDockPriority = "secondary";
 	shell.dataset.cornerDockActive = "0";
-	shell.dataset.guideVoiceApi = config.api_path || "/0wlslw0/voice";
+	shell.dataset.guideVoiceApi = config.api_path || withBridgePrefix("/0wlslw0/voice");
 	shell.dataset.guideVoiceCsrf = config.csrf_token || "";
-	shell.dataset.guideVoiceGreeting = config.greeting || "Je suis Owl O et serai votre guide pour rejoindre le peuple de l'O.";
+	shell.dataset.guideVoiceGreeting = config.greeting || "Je suis 0wlslw0 et j'ouvre la bonne porte vers le peuple de l'O.";
 	shell.dataset.guideVoiceUpstream = config.upstream_configured ? "1" : "0";
 	shell.dataset.guideVoiceUpstreamState = config.upstream_state || (config.upstream_configured ? "remote-ready" : "local");
 	shell.dataset.guideVoiceUpstreamLabel = config.upstream_label || guideVoiceSourceLabel(shell.dataset.guideVoiceUpstreamState);
@@ -4093,7 +4318,7 @@ function normalizeGuideVoiceText(value) {
 }
 
 function currentGuideVoicePageInfo() {
-	const path = window.location.pathname;
+	const path = withoutBridgePrefix(window.location.pathname);
 	const hash = window.location.hash || "";
 	const heading = document.querySelector("h1 strong, h1")?.textContent?.trim() || "";
 	const landSlug = new URLSearchParams(window.location.search).get("u") || "";
@@ -4184,7 +4409,7 @@ function findGuideVoiceLandRoute() {
 		};
 	}
 
-	if (window.location.pathname === "/land") {
+	if (withoutBridgePrefix(window.location.pathname) === "/land") {
 		return {
 			href: `${window.location.pathname}${window.location.search}${window.location.hash}`,
 			label: "Cette terre",
@@ -4201,49 +4426,49 @@ function guideVoiceNavigationCatalog() {
 		{
 			key: "home",
 			label: "le noyau",
-			href: "/",
+			href: withBridgePrefix("/"),
 			confirm: "Je te ramène vers le noyau.",
 			matchers: ["noyau", "accueil", "centre", "retour noyau", "retour accueil", "home"],
 		},
 		{
 			key: "signal",
 			label: "Signal",
-			href: "/signal",
+			href: withBridgePrefix("/signal"),
 			confirm: "Je t’emmène vers Signal.",
 			matchers: ["signal", "inbox", "boite", "boite aux lettres", "adresse"],
 		},
 		{
 			key: "str3m",
 			label: "Str3m",
-			href: "/str3m",
+			href: withBridgePrefix("/str3m"),
 			confirm: "Je t’emmène vers Str3m.",
 			matchers: ["str3m", "stream", "courant", "courant public", "public"],
 		},
 		{
 			key: "aza",
 			label: "aZa",
-			href: "/aza",
+			href: withBridgePrefix("/aza"),
 			confirm: "Je t’emmène vers aZa.",
 			matchers: ["aza", "archive", "archives", "memoire", "memoires"],
 		},
 		{
 			key: "echo",
 			label: "Echo",
-			href: "/echo",
+			href: withBridgePrefix("/echo"),
 			confirm: "Je t’emmène vers Echo.",
 			matchers: ["echo", "echoo", "liaison", "resonance", "resonnance"],
 		},
 		{
 			key: "map",
 			label: "la map",
-			href: "/map",
+			href: withBridgePrefix("/map"),
 			confirm: "Je t’emmène vers la map du tore vivant.",
 			matchers: ["map", "carte", "tore", "torus", "courants", "courant chaud"],
 		},
 		{
 			key: "guide",
 			label: "0wlslw0",
-			href: "/0wlslw0",
+			href: withBridgePrefix("/0wlslw0"),
 			confirm: "Je te ramène vers 0wlslw0.",
 			matchers: ["0wlslw0", "guide", "hibou", "owl"],
 		},
@@ -4356,11 +4581,11 @@ function navigateToGuideVoiceRoute(href) {
 		return false;
 	}
 
-	if (href === "/#str3m-quotidien") {
+	if (href === withBridgePrefix("/#str3m-quotidien")) {
 		return navigateToStr3mSurface();
 	}
 
-	if (href === "/") {
+	if (href === withBridgePrefix("/")) {
 		return navigateToCoreSurface();
 	}
 
@@ -4399,8 +4624,8 @@ function mountGuideVoice(root) {
 	const dockStateNode = root.querySelector("[data-guide-voice-dock-state]");
 	const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 	const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
-	const greeting = root.dataset.guideVoiceGreeting || "Je suis Owl O et serai votre guide pour rejoindre le peuple de l'O.";
-	const apiPath = root.dataset.guideVoiceApi || "/0wlslw0/voice";
+	const greeting = root.dataset.guideVoiceGreeting || "Je suis 0wlslw0 et j'ouvre la bonne porte vers le peuple de l'O.";
+	const apiPath = root.dataset.guideVoiceApi || withBridgePrefix("/0wlslw0/voice");
 	const csrfToken = root.dataset.guideVoiceCsrf || "";
 	const chatUrl = root.dataset.guideVoiceChatUrl || "";
 	const starterPrompts = (() => {
@@ -4638,7 +4863,7 @@ function mountGuideVoice(root) {
 			owlLine.className = "guide-voice-history-line guide-voice-history-line--owl";
 			const owlRole = document.createElement("span");
 			owlRole.className = "guide-voice-history-role";
-			owlRole.textContent = "owl";
+			owlRole.textContent = "0wlslw0";
 			const owlText = document.createElement("p");
 			owlText.className = "guide-voice-history-text";
 			owlText.textContent = entry.reply;
@@ -5126,7 +5351,7 @@ function mountGuideVoice(root) {
 		setReply(chatUrl
 			? "Ce navigateur ne propose pas la reconnaissance vocale Web. Tu peux ouvrir le relais externe en attendant."
 			: "Ce navigateur ne propose pas la reconnaissance vocale Web. Utilise les impulsions ci-dessous ou essaie Safari ou Chrome récents.");
-		setState("idle", "Reconnaissance vocale indisponible. Owl reste guidable en texte et par impulsions.");
+		setState("idle", "Reconnaissance vocale indisponible. 0wlslw0 reste guidable en texte et par impulsions.");
 		return;
 	}
 
@@ -5318,7 +5543,7 @@ function initGuideVoice() {
 		}
 
 		if (!root) {
-			const state = await fetchGuideVoiceState(persisted.apiPath || "/0wlslw0/voice");
+			const state = await fetchGuideVoiceState(persisted.apiPath || withBridgePrefix("/0wlslw0/voice"));
 			if (!state) {
 				return;
 			}
@@ -5337,7 +5562,7 @@ function initMapSurface() {
 		return;
 	}
 
-	const pointsUrl = "/map/points";
+	const pointsUrl = withBridgePrefix("/map/points");
 	const note = document.getElementById("map-note");
 	const lexicalForm = document.querySelector("[data-map-lexical-form]");
 	const lexicalInput = document.querySelector("[data-map-lexical-input]");
@@ -5847,7 +6072,17 @@ function initMapSurface() {
 					</section>
 				</div>
 			`
-			: '<p class="map-fallback__empty">Aucune terre publique n’alimente encore la surface.</p>';
+			: `
+				<div class="map-fallback__empty-state">
+					<p class="map-fallback__empty">Aucune terre publique n’alimente encore la surface.</p>
+					<p class="map-fallback__empty-copy">Le tore local tient déjà, mais il attend ses premières terres visibles.</p>
+					<div class="action-row map-fallback__actions">
+						<a class="pill-link" href="${withBridgePrefix("/str3m")}">Lire Str3m</a>
+						<a class="ghost-link" href="${withBridgePrefix("/rejoindre")}">Poser une terre</a>
+						<a class="ghost-link" href="${withBridgePrefix("/0wlslw0")}">Passer par 0wlslw0</a>
+					</div>
+				</div>
+			`;
 
 		if (note instanceof HTMLElement) {
 			note.textContent = lands.length > 0
@@ -5865,9 +6100,19 @@ function initMapSurface() {
 			renderSurface(payload, currentLexicalQuery);
 		} catch (error) {
 			console.error("Impossible de charger la surface torique locale", error);
-			surfaceRoot.innerHTML = '<p class="map-fallback__empty">Le tore local n’a pas pu se déplier. Réessaie dans un instant.</p>';
+			surfaceRoot.innerHTML = `
+				<div class="map-fallback__empty-state">
+					<p class="map-fallback__empty">Le tore local n’a pas pu se déplier.</p>
+					<p class="map-fallback__empty-copy">Tu peux revenir au noyau, lire le courant, puis réessayer.</p>
+					<div class="action-row map-fallback__actions">
+						<a class="pill-link" href="${withBridgePrefix("/")}">Revenir au noyau</a>
+						<a class="ghost-link" href="${withBridgePrefix("/str3m")}">Lire Str3m</a>
+						<a class="ghost-link" href="${withBridgePrefix("/0wlslw0")}">Passer par 0wlslw0</a>
+					</div>
+				</div>
+			`;
 			if (note instanceof HTMLElement) {
-				note.textContent = "Erreur de chargement du tore vivant. Réessaie dans un instant.";
+				note.textContent = "Erreur de chargement du tore vivant. Reviens au noyau ou réessaie dans un instant.";
 			}
 		}
 	};
@@ -6647,7 +6892,7 @@ function initSignalLiveHelpers({
 		return;
 	}
 
-	const apiPath = liveRoot.dataset.liveApi || "/signal_live.php";
+	const apiPath = liveRoot.dataset.liveApi || withBridgePrefix("/signal_live.php");
 	const liveView = liveRoot.dataset.liveView || "signal";
 	const pollInterval = Math.max(1400, Number.parseInt(liveRoot.dataset.liveInterval || "2500", 10) || 2500);
 	const state = {
@@ -6736,6 +6981,7 @@ function initSignalFlow() {
 }
 
 initPageAccessibility();
+initNucleusBanner();
 initCornerDocks();
 initGuideVoice();
 initMapSurface();

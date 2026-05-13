@@ -107,6 +107,13 @@ function aza_direct_upload_url(?string $ownerSlug = null): ?string
     }
 
     $path = '/aza';
+    $originHost = strtolower(trim((string) (parse_url($origin, PHP_URL_HOST) ?: '')));
+    $currentHost = strtolower(trim((string) ($_SERVER['HTTP_HOST'] ?? '')));
+    $currentHost = preg_replace('/:\d+$/', '', $currentHost) ?? $currentHost;
+    if ($originHost !== '' && $originHost === $currentHost && function_exists('o_route_path')) {
+        $path = o_route_path('/aza');
+    }
+
     if ($query) {
         $path .= '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
     }

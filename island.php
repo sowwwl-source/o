@@ -36,9 +36,13 @@ $islandSourceGroups = array_slice(aza_memory_group_items_by_source($islandItems)
 $islandVisualItems = array_slice(aza_memory_filter_visual_items($islandItems), 0, 6);
 $islandRecentItems = array_slice($islandItems, 0, 8);
 $islandBaseQuery = $land ? ['u' => (string) $land['slug']] : [];
-$landHref = $land ? '/land?u=' . rawurlencode((string) $land['slug']) : '/';
-$azaHref = $land ? '/aza?u=' . rawurlencode((string) $land['slug']) : '/aza';
-$sharePath = $land ? '/island?u=' . rawurlencode((string) $land['slug']) : '/island';
+$homeHref = o_route_path('/');
+$landBaseHref = o_route_path('/land');
+$azaBaseHref = o_route_path('/aza');
+$islandBaseHref = o_route_path('/island');
+$landHref = $land ? $landBaseHref . '?u=' . rawurlencode((string) $land['slug']) : $homeHref;
+$azaHref = $land ? $azaBaseHref . '?u=' . rawurlencode((string) $land['slug']) : $azaBaseHref;
+$sharePath = $land ? $islandBaseHref . '?u=' . rawurlencode((string) $land['slug']) : $islandBaseHref;
 $shareUrl = site_origin() . $sharePath;
 
 $pickIslandItem = static function (array $items, callable $predicate): ?array {
@@ -302,6 +306,7 @@ $islandModelStatus = $buildIslandReaderStatus(
 </head>
 <body class="experience island-view">
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('island') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'calm', 'land') ?>
@@ -980,7 +985,7 @@ $islandModelStatus = $buildIslandReaderStatus(
             <h1>Aucune île ne se laisse lire ici.</h1>
             <p class="lead">Il faut une Terre existante pour tenter une lecture d’île.</p>
             <div class="hero-actions">
-                <a class="pill-link" href="/">Revenir à l’accueil</a>
+                <a class="pill-link" href="<?= h($homeHref) ?>">Revenir à l’accueil</a>
             </div>
         </section>
     <?php endif; ?>

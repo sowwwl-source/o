@@ -20,7 +20,17 @@ if ($notFound) {
 
 $created = isset($_GET['created']) && $_GET['created'] === '1';
 $sessionBound = isset($_GET['session']) && $_GET['session'] === '1';
-$sharePath = $land ? '/land?u=' . rawurlencode((string) $land['slug']) : '/';
+$homeHref = o_route_path('/');
+$landHref = o_route_path('/land');
+$azaHref = o_route_path('/aza');
+$islandHref = o_route_path('/island');
+$signalHref = o_route_path('/signal');
+$echoHref = o_route_path('/echo');
+$guideHref = o_route_path('/0wlslw0');
+$joinHref = o_route_path('/rejoindre');
+$logoutHref = o_route_path('/logout.php');
+$shoreHref = o_route_path('/sh0re');
+$sharePath = $land ? $landHref . '?u=' . rawurlencode((string) $land['slug']) : $homeHref;
 $shareUrl = site_origin() . $sharePath;
 $landRawArchives = $land ? get_archives_for_land((string) $land['slug']) : [];
 $landChronology = aza_prepare_chronology($landRawArchives);
@@ -52,8 +62,8 @@ $c0r3DensityCopy = match ($c0r3DensityLabel) {
 };
 $authenticatedLand = current_authenticated_land();
 $isAuthenticatedHere = $land && $authenticatedLand && auth_is_land_session_for((string) $land['slug']);
-$azaLandHref = $land ? '/aza?u=' . rawurlencode((string) $land['slug']) : '/aza';
-$islandLandHref = $land ? '/island?u=' . rawurlencode((string) $land['slug']) : '/island';
+$azaLandHref = $land ? $azaHref . '?u=' . rawurlencode((string) $land['slug']) : $azaHref;
+$islandLandHref = $land ? $islandHref . '?u=' . rawurlencode((string) $land['slug']) : $islandHref;
 $azaLandBaseQuery = $land ? ['u' => (string) $land['slug']] : [];
 $c0r3NextHref = aza_memory_query_href($azaLandBaseQuery, ['view' => 'finder']);
 $c0r3NextLabel = 'Explorer la matière';
@@ -90,9 +100,9 @@ if ($land && $isAuthenticatedHere) {
 }
 $shareLabel = preg_replace('#^https?://#', '', $shareUrl);
 $publicShoreHref = $land
-    ? ($isAuthenticatedHere ? '/sh0re' : '/sh0re?u=' . rawurlencode((string) $land['slug']))
-    : '/sh0re';
-$publicEchoHref = $land ? '/echo?u=' . rawurlencode((string) $land['username']) : '/echo';
+    ? ($isAuthenticatedHere ? $shoreHref : $shoreHref . '?u=' . rawurlencode((string) $land['slug']))
+    : $shoreHref;
+$publicEchoHref = $land ? $echoHref . '?u=' . rawurlencode((string) $land['username']) : $echoHref;
 $landViewLabel = $isAuthenticatedHere ? 'présence liée' : 'lecture publique';
 $landSignalStatusCopy = $signalTablesReady
     ? ($signalIdentityLabel !== '' ? $signalIdentityLabel : 'Signal prêt')
@@ -116,6 +126,7 @@ if ($land && $visualProfile) {
 </head>
 <body class="experience land-view">
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('terre') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'calm', 'land') ?>
@@ -245,7 +256,7 @@ if ($land && $visualProfile) {
                         <h2 id="ritual-title">Passages</h2>
                         <p class="panel-copy">Entrer par le bon niveau: continuer ici, montrer cette terre, ou gérer la présence.</p>
                     </div>
-                    <a class="ghost-link" href="/">Retour au noyau</a>
+                    <span class="badge"><?= h($landViewLabel) ?></span>
                 </div>
 
                 <div class="land-route-grid">
@@ -261,9 +272,9 @@ if ($land && $visualProfile) {
                         </p>
                         <div class="land-route-links">
                             <?php if ($isAuthenticatedHere): ?>
-                                <a class="ghost-link" href="/signal">Signal · boîte<?= $signalUnread > 0 ? ' · ' . $signalUnread . ' non lu' . ($signalUnread > 1 ? 's' : '') : '' ?></a>
+                                <a class="ghost-link" href="<?= h($signalHref) ?>">Signal · boîte<?= $signalUnread > 0 ? ' · ' . $signalUnread . ' non lu' . ($signalUnread > 1 ? 's' : '') : '' ?></a>
                                 <a class="ghost-link" href="<?= h($azaLandHref) ?>">aZa · édition Terre</a>
-                                <a class="ghost-link" href="/echo">Écho · direct</a>
+                                <a class="ghost-link" href="<?= h($echoHref) ?>">Écho · direct</a>
                                 <a class="ghost-link" href="<?= h($islandLandHref) ?>">Île classique</a>
                             <?php else: ?>
                                 <a class="ghost-link" href="<?= h($azaLandHref) ?>"><?= h($azaLandLinkLabel) ?></a>
@@ -300,11 +311,11 @@ if ($land && $visualProfile) {
                             <?php endif; ?>
                         </p>
                         <div class="land-route-links">
-                            <a class="ghost-link" href="/0wlslw0"><?= $isAuthenticatedHere ? '0wlslw0 · me guider' : '0wlslw0 · se repérer' ?></a>
+                            <a class="ghost-link" href="<?= h($guideHref) ?>"><?= $isAuthenticatedHere ? '0wlslw0 · me guider' : '0wlslw0 · se repérer' ?></a>
                             <?php if ($isAuthenticatedHere): ?>
-                                <a class="ghost-link" href="/logout.php">Retirer sa présence</a>
+                                <a class="ghost-link" href="<?= h($logoutHref) ?>">Retirer sa présence</a>
                             <?php else: ?>
-                                <a class="ghost-link" href="/rejoindre">Poser une terre</a>
+                                <a class="ghost-link" href="<?= h($joinHref) ?>">Poser une terre</a>
                             <?php endif; ?>
                         </div>
                     </section>
@@ -518,7 +529,7 @@ if ($land && $visualProfile) {
                 Rien ici.
             </p>
             <div class="hero-actions">
-                <a class="pill-link" href="/">Revenir à l’accueil</a>
+                <a class="pill-link" href="<?= h($homeHref) ?>">Revenir à l’accueil</a>
             </div>
         </section>
     <?php endif; ?>

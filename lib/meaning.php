@@ -3,13 +3,15 @@ declare(strict_types=1);
 
 function guide_paths(): array
 {
+    $route = static fn (string $path): string => function_exists('o_route_path') ? o_route_path($path) : $path;
+
     return [
         [
             'label' => 'Porte',
             'key' => 'home',
             'title' => 'Comprendre O.',
             'copy' => 'Voir le noyau, la logique des terres et la manière dont les ferries se répondent.',
-            'href' => '/',
+            'href' => $route('/'),
             'cta' => 'Revenir au noyau',
             'public' => true,
         ],
@@ -18,7 +20,7 @@ function guide_paths(): array
             'key' => 'signal',
             'title' => 'Signal',
             'copy' => 'Ouvrir une boîte liée à sa terre, écrire à une autre adresse du réseau et valider une identité de notification.',
-            'href' => '/signal',
+            'href' => $route('/signal'),
             'cta' => 'Ouvrir Signal',
             'public' => true,
         ],
@@ -27,7 +29,7 @@ function guide_paths(): array
             'key' => 'str3m',
             'title' => 'Str3m',
             'copy' => 'Explorer le courant public, les traces du jour et les terres qui résonnent déjà.',
-            'href' => '/str3m',
+            'href' => $route('/str3m'),
             'cta' => 'Entrer dans Str3m',
             'public' => true,
         ],
@@ -36,7 +38,7 @@ function guide_paths(): array
             'key' => 'aza',
             'title' => 'aZa',
             'copy' => 'Déposer une mémoire légère, lire publiquement, puis passer en édition quand une terre est liée.',
-            'href' => '/aza',
+            'href' => $route('/aza'),
             'cta' => 'Ouvrir aZa',
             'public' => true,
         ],
@@ -45,7 +47,7 @@ function guide_paths(): array
             'key' => 'echo',
             'title' => 'Écho',
             'copy' => 'Parler directement à une autre terre. Cette porte demande une terre active.',
-            'href' => '/echo',
+            'href' => $route('/echo'),
             'cta' => 'Ouvrir Écho',
             'public' => false,
         ],

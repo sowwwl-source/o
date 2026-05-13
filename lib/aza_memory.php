@@ -14,6 +14,12 @@ function aza_memory_allowed_views(): array
     ];
 }
 
+function aza_memory_public_href(string $path): string
+{
+    $normalized = '/' . ltrim(trim($path), '/');
+    return function_exists('o_route_path') ? o_route_path($normalized) : $normalized;
+}
+
 function aza_memory_normalize_view(string $view): string
 {
     $view = strtolower(trim($view));
@@ -30,7 +36,8 @@ function aza_memory_query_href(array $baseQuery, array $overrides = []): string
     }
 
     $encoded = http_build_query($query);
-    return '/aza' . ($encoded !== '' ? '?' . $encoded : '');
+    $path = function_exists('o_route_path') ? o_route_path('/aza') : '/aza';
+    return $path . ($encoded !== '' ? '?' . $encoded : '');
 }
 
 function aza_memory_search_normalize(string $value): string
@@ -268,7 +275,7 @@ function aza_memory_build_items(array $archives, array $files, ?array $sources =
             'source_label' => (string) ($sources[$archive['source']] ?? ($archive['source'] ?? 'Archive')),
             'meta_label' => (string) ($sources[$archive['source']] ?? ($archive['source'] ?? 'Archive')),
             'thumbnail_url' => '',
-            'href' => '/' . ltrim((string) ($archive['stored_file'] ?? ''), '/'),
+            'href' => aza_memory_public_href((string) ($archive['stored_file'] ?? '')),
             'search' => aza_memory_search_normalize($searchBlob),
             'raw' => $archive,
         ];
@@ -280,9 +287,9 @@ function aza_memory_build_items(array $archives, array $files, ?array $sources =
         $summary = trim((string) (($file['notes'] ?? '') ?: ($file['date_hint'] ?? '') ?: aza_ingest_family_label($family)));
         $thumbnail = trim((string) ($file['thumbnail'] ?? ''));
         if ($thumbnail === '' && $family === 'image') {
-            $thumbnail = '/' . ltrim((string) ($file['stored_file'] ?? ''), '/');
+            $thumbnail = aza_memory_public_href((string) ($file['stored_file'] ?? ''));
         } elseif ($thumbnail !== '') {
-            $thumbnail = '/' . ltrim($thumbnail, '/');
+            $thumbnail = aza_memory_public_href($thumbnail);
         }
 
         $searchBlob = implode(' ', array_filter([
@@ -314,7 +321,7 @@ function aza_memory_build_items(array $archives, array $files, ?array $sources =
             'source_label' => 'Dépôt libre',
             'meta_label' => aza_ingest_family_label($family),
             'thumbnail_url' => $thumbnail,
-            'href' => '/' . ltrim((string) ($file['stored_file'] ?? ''), '/'),
+            'href' => aza_memory_public_href((string) ($file['stored_file'] ?? '')),
             'search' => aza_memory_search_normalize($searchBlob),
             'raw' => $file,
         ];

@@ -12,7 +12,12 @@ $ownerLand = null;
 $directHost = aza_direct_host();
 $isDirectRequest = aza_is_direct_request($host);
 $authenticatedLand = current_authenticated_land();
-$guideHref = '/0wlslw0';
+$guideHref = o_route_path('/0wlslw0');
+$homeHref = o_route_path('/');
+$landHref = o_route_path('/land');
+$echoHref = o_route_path('/echo');
+$joinHref = o_route_path('/rejoindre');
+$azaHref = o_route_path('/aza');
 $azaGuide = guide_path('aza');
 
 if ($ownerSlug !== '') {
@@ -170,7 +175,7 @@ if ($publicReadOnly) {
         ? 'La mémoire reste lisible ici, mais l’écriture passe par la terre liée qui tient cette archive.'
         : 'La mémoire collective reste visible, mais toute sédimentation demande une terre active.';
     $azaModeDepositMeta = 'lecture publique seulement';
-    $azaModeDepositHref = $ownerLand ? '/land?u=' . rawurlencode((string) $ownerLand['slug']) : '/rejoindre';
+    $azaModeDepositHref = $ownerLand ? $landHref . '?u=' . rawurlencode((string) $ownerLand['slug']) : $joinHref;
     $azaModeDepositLinkLabel = $ownerLand ? 'Voir la terre liée' : 'Poser une terre';
 } elseif ($activeTab === 'file') {
     $azaModeDepositTitle = 'Dépôt libre en premier plan';
@@ -200,7 +205,7 @@ $azaModeBridgeCopy = $activeOwnerSlug !== ''
 $azaModeBridgeMeta = ($islandProjection['status_label'] ?? 'Aucune île encore') . ' · ' . ($activeOwnerSlug !== '' ? $activeOwnerSlug : 'mémoire collective');
 $azaModeBridgeHref = $islandHref !== '' && ($islandProjection['status'] ?? '') !== 'void'
     ? $islandHref
-    : ($activeOwnerSlug !== '' ? '/land?u=' . rawurlencode((string) $activeOwnerSlug) : '/');
+    : ($activeOwnerSlug !== '' ? $landHref . '?u=' . rawurlencode((string) $activeOwnerSlug) : $homeHref);
 $azaModeBridgeLinkLabel = $islandHref !== '' && ($islandProjection['status'] ?? '') !== 'void'
     ? 'Ouvrir l’île'
     : ($activeOwnerSlug !== '' ? 'Relire la terre' : 'Retour au noyau');
@@ -274,6 +279,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
 </head>
 <body class="experience aza-view">
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('aZa') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'nocturnal', 'aza') ?>
@@ -302,17 +308,17 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
             <?php if ($ownerLand): ?>
                 <span class="meta-pill">terre liée : <?= h((string) $ownerLand['slug']) ?></span>
                 <?php if ($isAuthenticatedHere): ?>
-                    <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">édition Terre</a>
+                    <a class="meta-pill meta-pill-link" href="<?= h($landHref) ?>?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">édition Terre</a>
                 <?php else: ?>
                     <span class="meta-pill">lecture publique seulement</span>
-                    <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">Terre</a>
+                    <a class="meta-pill meta-pill-link" href="<?= h($landHref) ?>?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">Terre</a>
                 <?php endif; ?>
                 <?php if ($authenticatedLand && $ownerLand['slug'] !== $authenticatedLand['slug']): ?>
-                    <a class="meta-pill meta-pill-link" style="color: rgb(var(--land-secondary-rgb)); border-color: rgba(var(--land-secondary-rgb)/0.5);" href="/echo?u=<?= rawurlencode((string) $ownerLand['username']) ?>">écho direct</a>
+                    <a class="meta-pill meta-pill-link" style="color: rgb(var(--land-secondary-rgb)); border-color: rgba(var(--land-secondary-rgb)/0.5);" href="<?= h($echoHref) ?>?u=<?= rawurlencode((string) $ownerLand['username']) ?>">écho direct</a>
                 <?php endif; ?>
             <?php elseif ($authenticatedLand): ?>
                 <span class="meta-pill">session liée : <?= h((string) $authenticatedLand['slug']) ?></span>
-                <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">édition Terre</a>
+                <a class="meta-pill meta-pill-link" href="<?= h($landHref) ?>?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">édition Terre</a>
             <?php else: ?>
                 <span class="meta-pill">lecture publique seulement</span>
             <?php endif; ?>
@@ -330,21 +336,11 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
         <?php endif; ?>
     </header>
 
-    <section class="panel reveal meaning-panel" aria-labelledby="aza-meaning-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="aza-meaning-title">Pourquoi cette porte existe</h2>
-                <p class="panel-copy"><?= h((string) ($azaGuide['copy'] ?? 'Déposer, lire et retrouver des archives sans transformer la mémoire en flux opaque.')) ?></p>
-            </div>
-            <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0 : me guider</a>
-        </div>
-    </section>
-
     <section class="panel reveal aza-mode-panel" aria-labelledby="aza-mode-title">
         <div class="section-topline">
             <div>
-                <h2 id="aza-mode-title">Repères de la mémoire</h2>
-                <p class="panel-copy">aZa sépare le geste de dépôt, la première lecture utile, puis le lien avec la terre et l’île qui reprendront cette matière.</p>
+                <h2 id="aza-mode-title">Déposer, situer, relire</h2>
+                <p class="panel-copy">aZa garde la mémoire sans la dissoudre dans le flux.</p>
             </div>
             <span class="badge"><?= h($azaViewLabel) ?></span>
         </div>
@@ -393,8 +389,8 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                 </div>
                 <a class="ghost-link" href="<?=
                     $editLand
-                        ? '/land?u=' . rawurlencode((string) $editLand['slug'])
-                        : ($form['owner_slug'] !== '' ? '/land?u=' . rawurlencode($form['owner_slug']) : '/')
+                        ? $landHref . '?u=' . rawurlencode((string) $editLand['slug'])
+                        : ($form['owner_slug'] !== '' ? $landHref . '?u=' . rawurlencode($form['owner_slug']) : $homeHref)
                 ?>">
                     <?= $editLand ? 'Terre' : ($form['owner_slug'] !== '' ? 'Retour à la terre' : 'Retour au noyau') ?>
                 </a>
@@ -417,12 +413,12 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                     </p>
                     <div class="action-row">
                         <?php if ($ownerLand): ?>
-                            <a class="pill-link" href="/land?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">Terre</a>
+                            <a class="pill-link" href="<?= h($landHref) ?>?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">Terre</a>
                         <?php else: ?>
-                            <a class="pill-link" href="/">Ouvrir une Terre</a>
+                            <a class="pill-link" href="<?= h($homeHref) ?>">Ouvrir une Terre</a>
                         <?php endif; ?>
                         <?php if ($authenticatedLand): ?>
-                            <a class="ghost-link" href="/land?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">Retour à mon édition</a>
+                            <a class="ghost-link" href="<?= h($landHref) ?>?u=<?= rawurlencode((string) $authenticatedLand['slug']) ?>">Retour à mon édition</a>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -632,7 +628,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
             <div class="action-row aza-island-actions">
                 <?php if (($form['owner_slug'] !== '' || $ownerSlug !== '') && ($islandProjection['status'] ?? '') !== 'void'): ?>
                     <a class="pill-link" href="<?= h($islandHref) ?>">Ouvrir l’île</a>
-                    <a class="ghost-link" href="/land?u=<?= rawurlencode((string) ($form['owner_slug'] !== '' ? $form['owner_slug'] : $ownerSlug)) ?>">Relire la Terre</a>
+                    <a class="ghost-link" href="<?= h($landHref) ?>?u=<?= rawurlencode((string) ($form['owner_slug'] !== '' ? $form['owner_slug'] : $ownerSlug)) ?>">Relire la Terre</a>
                 <?php endif; ?>
                 <a class="ghost-link" href="<?= h(aza_memory_query_href($memoryBaseQuery, ['view' => 'visual'])) ?>">Voir le visible</a>
                 <a class="ghost-link" href="<?= h(aza_memory_query_href($memoryBaseQuery, ['view' => 'source'])) ?>">Voir les provenances</a>
@@ -681,6 +677,31 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                                 </header>
                                 <div class="aza-archive-grid aza-timeline-grid bucket-content">
                                     <?php foreach ($archives as $archive): ?>
+                                        <?php
+                                        $archiveTags = [];
+                                        if (!empty($archive['memory_types']) && is_array($archive['memory_types'])) {
+                                            foreach ((array) array_slice($archive['memory_types'], 0, 2) as $type) {
+                                                $archiveTags[] = aza_label_memory_type((string) $type);
+                                            }
+                                        }
+                                        if (!empty($archive['content_families']) && is_array($archive['content_families'])) {
+                                            foreach ((array) $archive['content_families'] as $family) {
+                                                if (count($archiveTags) >= 3) {
+                                                    break;
+                                                }
+                                                $archiveTags[] = aza_label_content_family((string) $family);
+                                            }
+                                        }
+                                        $archiveSummary = trim((string) ($archive['human_summary'] ?? ''));
+                                        if ($archiveSummary === '') {
+                                            $archiveSummary = trim((string) ($archive['memory_note'] ?? ''));
+                                        }
+                                        $archiveHasContext = trim((string) ($archive['memory_note'] ?? '')) !== ''
+                                            || trim((string) ($archive['notes'] ?? '')) !== ''
+                                            || (!empty($archive['markers']) && is_array($archive['markers']))
+                                            || (!empty($archive['top_folders']) && is_array($archive['top_folders']))
+                                            || (!empty($archive['sample_paths']) && is_array($archive['sample_paths']));
+                                        ?>
                                         <article class="summary-card aza-archive-card">
                                             <header class="aza-archive-chronology card-header">
                                                 <div>
@@ -701,55 +722,50 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                                                     <span>Terre : <?= h((string) $archive['owner_slug']) ?></span>
                                                 <?php endif; ?>
                                             </div>
-                                            <p class="panel-copy aza-chronology-copy">Chronologie : <?= h((string) ($archive['chronology_origin_label'] ?? 'Date de dépôt')) ?></p>
-                                            <?php if (!empty($archive['human_summary'])): ?>
-                                                <p class="land-note aza-summary card-summary"><?= h((string) $archive['human_summary']) ?></p>
+                                            <p class="panel-copy aza-chronology-copy">Repère principal : <?= h((string) ($archive['chronology_origin_label'] ?? 'Date de dépôt')) ?></p>
+                                            <?php if ($archiveSummary !== ''): ?>
+                                                <p class="land-note aza-summary card-summary"><?= h($archiveSummary) ?></p>
                                             <?php endif; ?>
-                                            <?php if (!empty($archive['memory_note'])): ?>
-                                                <p class="panel-copy aza-memory-note"><?= h((string) $archive['memory_note']) ?></p>
-                                            <?php endif; ?>
-                                            <?php if (!empty($archive['memory_types']) && is_array($archive['memory_types'])): ?>
+                                            <?php if ($archiveTags !== []): ?>
                                                 <div class="aza-meta-list">
-                                                    <?php foreach ($archive['memory_types'] as $type): ?>
-                                                        <span class="meta-pill aza-memory-pill"><?= h(aza_label_memory_type((string) $type)) ?></span>
-                                                    <?php endforeach; ?>
-                                                </div>
-                                            <?php endif; ?>
-                                            <?php if (!empty($archive['content_families']) && is_array($archive['content_families'])): ?>
-                                                <div class="aza-meta-list">
-                                                    <?php foreach ($archive['content_families'] as $family): ?>
-                                                        <span class="meta-pill"><?= h(aza_label_content_family((string) $family)) ?></span>
+                                                    <?php foreach ($archiveTags as $tag): ?>
+                                                        <span class="meta-pill aza-memory-pill"><?= h((string) $tag) ?></span>
                                                     <?php endforeach; ?>
                                                 </div>
                                             <?php endif; ?>
                                             <?php if (!empty($archive['years']) && is_array($archive['years'])): ?>
-                                                <p class="panel-copy">Repères temporels : <?= h(implode(' · ', array_map('strval', $archive['years']))) ?></p>
+                                                <p class="panel-copy">Repères : <?= h(implode(' · ', array_map('strval', $archive['years']))) ?></p>
                                             <?php endif; ?>
-                                            <?php if (!empty($archive['markers']) && is_array($archive['markers'])): ?>
-                                                <div class="preview-grid aza-markers">
-                                                    <?php foreach ($archive['markers'] as $marker): ?>
-                                                        <p><span>Repère</span><code><?= h((string) $marker) ?></code></p>
-                                                    <?php endforeach; ?>
-                                                </div>
-                                            <?php endif; ?>
-                                            <?php if (!empty($archive['notes'])): ?>
-                                                <p class="land-note"><?= h((string) $archive['notes']) ?></p>
-                                            <?php endif; ?>
-                                            <?php if (!empty($archive['top_folders']) && is_array($archive['top_folders'])): ?>
-                                                <div class="preview-grid aza-folders">
-                                                    <?php foreach ($archive['top_folders'] as $folder => $count): ?>
-                                                        <p><span><?= h((string) $folder) ?></span><code><?= h((string) $count) ?> entrées</code></p>
-                                                    <?php endforeach; ?>
-                                                </div>
-                                            <?php endif; ?>
-                                            <?php if (!empty($archive['sample_paths']) && is_array($archive['sample_paths'])): ?>
+                                            <?php if ($archiveHasContext): ?>
                                                 <details class="aza-details">
-                                                    <summary>Voir quelques chemins</summary>
-                                                    <pre><?= h(implode("\n", array_slice($archive['sample_paths'], 0, 8))) ?></pre>
+                                                    <summary>Voir le contexte</summary>
+                                                    <?php if (!empty($archive['memory_note']) && trim((string) $archive['memory_note']) !== $archiveSummary): ?>
+                                                        <p class="panel-copy aza-memory-note"><?= h((string) $archive['memory_note']) ?></p>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($archive['notes'])): ?>
+                                                        <p class="land-note"><?= h((string) $archive['notes']) ?></p>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($archive['markers']) && is_array($archive['markers'])): ?>
+                                                        <div class="preview-grid aza-markers">
+                                                            <?php foreach (array_slice($archive['markers'], 0, 3) as $marker): ?>
+                                                                <p><span>Repère</span><code><?= h((string) $marker) ?></code></p>
+                                                            <?php endforeach; ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($archive['top_folders']) && is_array($archive['top_folders'])): ?>
+                                                        <div class="preview-grid aza-folders">
+                                                            <?php foreach (array_slice($archive['top_folders'], 0, 3, true) as $folder => $count): ?>
+                                                                <p><span><?= h((string) $folder) ?></span><code><?= h((string) $count) ?> entrées</code></p>
+                                                            <?php endforeach; ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($archive['sample_paths']) && is_array($archive['sample_paths'])): ?>
+                                                        <pre><?= h(implode("\n", array_slice($archive['sample_paths'], 0, 5))) ?></pre>
+                                                    <?php endif; ?>
                                                 </details>
                                             <?php endif; ?>
                                             <div class="card-actions aza-meta-list">
-                                                <a class="meta-pill aza-download btn-download" href="/<?= h((string) $archive['stored_file']) ?>" download>Extraire la trace</a>
+                                                <a class="meta-pill aza-download btn-download" href="<?= h(o_route_path('/' . ltrim((string) $archive['stored_file'], '/'))) ?>" download>Extraire la trace</a>
                                             </div>
                                         </article>
                                     <?php endforeach; ?>
@@ -774,7 +790,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                                 <article class="aza-file-card">
                                     <?php if (!empty($file['thumbnail'])): ?>
                                         <div class="aza-file-thumb">
-                                            <img src="/<?= h((string) $file['thumbnail']) ?>" alt="<?= h((string) $file['label']) ?>" loading="lazy">
+                                            <img src="<?= h(o_route_path('/' . ltrim((string) $file['thumbnail'], '/'))) ?>" alt="<?= h((string) $file['label']) ?>" loading="lazy">
                                         </div>
                                     <?php else: ?>
                                         <div class="aza-file-thumb aza-file-thumb-blank">
@@ -812,7 +828,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                                 <article class="aza-file-card">
                                     <?php if (!empty($file['thumbnail'])): ?>
                                         <div class="aza-file-thumb">
-                                            <img src="/<?= h((string) $file['thumbnail']) ?>" alt="<?= h((string) $file['label']) ?>" loading="lazy">
+                                            <img src="<?= h(o_route_path('/' . ltrim((string) $file['thumbnail'], '/'))) ?>" alt="<?= h((string) $file['label']) ?>" loading="lazy">
                                         </div>
                                     <?php else: ?>
                                         <div class="aza-file-thumb aza-file-thumb-blank">
@@ -848,7 +864,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                                 <article class="aza-file-card">
                                     <?php if (!empty($file['thumbnail'])): ?>
                                         <div class="aza-file-thumb">
-                                            <img src="/<?= h((string) $file['thumbnail']) ?>" alt="<?= h((string) $file['label']) ?>" loading="lazy">
+                                            <img src="<?= h(o_route_path('/' . ltrim((string) $file['thumbnail'], '/'))) ?>" alt="<?= h((string) $file['label']) ?>" loading="lazy">
                                         </div>
                                     <?php else: ?>
                                         <div class="aza-file-thumb aza-file-thumb-blank">
@@ -946,7 +962,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                 </div>
             <?php endif; ?>
         <?php else: ?>
-            <form class="aza-finder-toolbar" method="get" action="/aza" role="search" aria-label="Rechercher dans la mémoire">
+            <form class="aza-finder-toolbar" method="get" action="<?= h($azaHref) ?>" role="search" aria-label="Rechercher dans la mémoire">
                 <?php if ($form['owner_slug'] !== ''): ?>
                     <input type="hidden" name="u" value="<?= h($form['owner_slug']) ?>">
                 <?php endif; ?>

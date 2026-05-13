@@ -151,7 +151,7 @@ curl -fsSI https://sowwwl.com/
 curl -fsSI https://sowwwl.com/signal
 curl -fsSI https://sowwwl.com/str3m
 curl -fsSI https://sowwwl.org/
-curl -fsS https://sowwwl.com/ | grep -qE 'Pourquoi \.org \?|Comprendre la carte|sowwwl\.org'
+curl -fsS https://sowwwl.com/ | grep -qE 'Trois portes suffisent|Passer par 0wlslw0|commande noyau'
 curl -fsS https://sowwwl.org/ | grep -qE 'Comprendre les domaines sans se perdre|carte des rôles|Ouvrir sowwwl\.com'
 docker exec "${project_name}-app-1" php /var/www/html/scripts/check_signal_validation.php --require-schema-ready --require-delivery-ready >/dev/null
 docker inspect "${project_name}-caddy-1" --format '{{range .Mounts}}{{println .Source " -> " .Destination}}{{end}}' | grep '/srv/sites'

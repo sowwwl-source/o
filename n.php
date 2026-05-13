@@ -5,6 +5,12 @@ require __DIR__ . '/config.php';
 
 $host          = request_host();
 $brandDomain   = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
+$homeHref = o_route_path('/');
+$str3mHref = o_route_path('/str3m');
+$joinHref = o_route_path('/rejoindre');
+$shoreBaseHref = o_route_path('/sh0re');
+$landBaseHref = o_route_path('/land');
+$n0deHref = o_route_path('/n0de');
 
 $tokenRaw      = trim((string) ($_GET['t'] ?? ''));
 $t0k           = $tokenRaw !== '' ? t0k_find_by_token($tokenRaw) : null;
@@ -14,7 +20,7 @@ $authenticatedLand = current_authenticated_land();
 if ($t0k && ($t0k['status'] ?? '') === 'active' && $authenticatedLand) {
     $partner = t0k_partner_slug($t0k, (string) $authenticatedLand['slug']);
     if ($partner !== '') {
-        header('Location: /sh0re?u=' . rawurlencode($partner), true, 302);
+        header('Location: ' . $shoreBaseHref . '?u=' . rawurlencode($partner), true, 302);
         exit;
     }
 }
@@ -64,11 +70,11 @@ $nStateTitle = 'Rien au bout du token';
 $nStateCopy = 'Aucun n0us n’est attaché à ce fragment pour le moment.';
 $nAccessTitle = 'Repartir par le courant';
 $nAccessCopy = 'Reviens vers le noyau, Str3m ou Sh0re pour retrouver un passage vivant.';
-$nAccessHref = '/str3m';
+$nAccessHref = $str3mHref;
 $nAccessLinkLabel = 'Voir Str3m';
 $nSupportTitle = 'Porté matériel';
 $nSupportCopy = 'S’il s’agissait d’un objet porté, il faut repartir par n0de ou par la terre qui l’a émis.';
-$nSupportHref = '/n0de';
+$nSupportHref = $n0deHref;
 $nSupportLinkLabel = 'Voir n0de';
 $nPanelTitle = 'État du passage';
 $nPanelCopy = 'Ce fragment garde la route, l’état du geste et, parfois, son support matériel.';
@@ -91,7 +97,7 @@ if ($t0k) {
         if (!$authenticatedLand) {
             $nAccessTitle = 'Ouvrir une terre pour répondre';
             $nAccessCopy = 'Sans terre ouverte, on peut lire le passage, mais pas y répondre.';
-            $nAccessHref = '/rejoindre';
+            $nAccessHref = $joinHref;
             $nAccessLinkLabel = 'Poser une terre';
         } elseif ($isAuthenticatedRecipient) {
             $nAccessTitle = 'Tu peux répondre ici';
@@ -101,12 +107,12 @@ if ($t0k) {
         } elseif ($isAuthenticatedSender) {
             $nAccessTitle = 'Le t0k attend en face';
             $nAccessCopy = 'Ta terre a déjà envoyé ce geste. Le prochain mouvement dépend maintenant de la terre cible.';
-            $nAccessHref = '/sh0re';
+            $nAccessHref = $shoreBaseHref;
             $nAccessLinkLabel = 'Revenir à mon sh0re';
         } else {
             $nAccessTitle = 'Ce t0k vise une autre terre';
             $nAccessCopy = 'Tu peux le lire, mais la réponse appartient à la terre destinataire.';
-            $nAccessHref = $targetLand ? '/land?u=' . rawurlencode((string) $targetLand['slug']) : '/sh0re';
+            $nAccessHref = $targetLand ? $landBaseHref . '?u=' . rawurlencode((string) $targetLand['slug']) : $shoreBaseHref;
             $nAccessLinkLabel = $targetLand ? 'Voir la terre visée' : 'Voir Sh0re';
         }
     } elseif ($status === 'active') {
@@ -116,21 +122,21 @@ if ($t0k) {
         $nAccessCopy = !$authenticatedLand
             ? 'Pour vivre le passage depuis l’intérieur, il faut ouvrir une terre.'
             : 'Le passage actif se poursuit sur Sh0re plutôt qu’ici.';
-        $nAccessHref = !$authenticatedLand ? '/rejoindre' : ($ownerLand ? '/sh0re?u=' . rawurlencode((string) $ownerLand['slug']) : '/sh0re');
+        $nAccessHref = !$authenticatedLand ? $joinHref : ($ownerLand ? $shoreBaseHref . '?u=' . rawurlencode((string) $ownerLand['slug']) : $shoreBaseHref);
         $nAccessLinkLabel = !$authenticatedLand ? 'Poser une terre' : 'Voir le rivage';
     } elseif ($status === 'declined') {
         $nStateTitle = 'Le geste a été décliné';
         $nStateCopy = 'Le t0k garde la mémoire du mouvement, mais n’ouvre plus de n0us actif.';
         $nAccessTitle = 'Repartir autrement';
         $nAccessCopy = 'Un autre passage peut naître depuis une terre ou depuis le rivage, sans rejouer ce token.';
-        $nAccessHref = $ownerLand ? '/sh0re?u=' . rawurlencode((string) $ownerLand['slug']) : '/sh0re';
+        $nAccessHref = $ownerLand ? $shoreBaseHref . '?u=' . rawurlencode((string) $ownerLand['slug']) : $shoreBaseHref;
         $nAccessLinkLabel = 'Voir Sh0re';
     } elseif ($status === 'dissolved') {
         $nStateTitle = 'Le n0us est clos';
         $nStateCopy = 'Le passage a vécu. Il reste comme trace, mais ne tient plus de relation active.';
         $nAccessTitle = 'Retourner aux terres';
         $nAccessCopy = 'Pour rouvrir un geste, il faut repartir depuis une terre ou un autre t0k.';
-        $nAccessHref = $ownerLand ? '/land?u=' . rawurlencode((string) $ownerLand['slug']) : '/';
+        $nAccessHref = $ownerLand ? $landBaseHref . '?u=' . rawurlencode((string) $ownerLand['slug']) : $homeHref;
         $nAccessLinkLabel = $ownerLand ? 'Voir la terre source' : 'Retour au noyau';
     }
 
@@ -139,17 +145,17 @@ if ($t0k) {
             ? $linkedN0deCount . ' objets portent déjà ce passage'
             : 'Un objet porte déjà ce passage';
         $nSupportCopy = 'Le t0k n’est pas seulement une URL: il est déjà lié à un ou plusieurs n0des sur la terre émettrice.';
-        $nSupportHref = '/n0de';
+        $nSupportHref = $n0deHref;
         $nSupportLinkLabel = 'Voir les objets porteurs';
     } elseif ($isAuthenticatedSender) {
         $nSupportTitle = 'Tu peux encore le porter';
         $nSupportCopy = 'Si tu veux sortir ce passage du navigateur, lie ce t0k à un n0de NFC, QR ou SD.';
-        $nSupportHref = '/n0de';
+        $nSupportHref = $n0deHref;
         $nSupportLinkLabel = 'Créer un n0de';
     } elseif ($ownerLand) {
         $nSupportTitle = 'Aucun objet porté repéré';
         $nSupportCopy = 'Ce passage n’est pas encore attaché à un n0de visible sur la terre source.';
-        $nSupportHref = '/n0de';
+        $nSupportHref = $n0deHref;
         $nSupportLinkLabel = 'Comprendre n0de';
     }
 }
@@ -166,6 +172,7 @@ if ($t0k) {
 </head>
 <body class="experience n-view">
 <?= render_skip_link() ?>
+<?= render_nucleus_banner('n') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 <?= render_negative_merge_overlay($ambientProfile, 'nocturnal', 'n0us') ?>
@@ -180,8 +187,8 @@ if ($t0k) {
                 <span>ou n'existe plus.</span>
             </h1>
             <div class="land-meta">
-                <a class="meta-pill meta-pill-link" href="/">Noyau</a>
-                <a class="meta-pill meta-pill-link" href="/str3m">Str3m</a>
+                <a class="meta-pill meta-pill-link" href="<?= h($homeHref) ?>">Noyau</a>
+                <a class="meta-pill meta-pill-link" href="<?= h($str3mHref) ?>">Str3m</a>
             </div>
         <?php elseif (($t0k['status'] ?? '') === 'dissolved'): ?>
             <h1 class="land-title">
@@ -200,20 +207,20 @@ if ($t0k) {
             </h1>
             <div class="land-meta">
                 <?php if ($ownerLand): ?>
-                    <a class="meta-pill meta-pill-link" href="/land?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">
+                    <a class="meta-pill meta-pill-link" href="<?= h($landBaseHref) ?>?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">
                         Terre de <?= h((string) $ownerLand['username']) ?>
                     </a>
-                    <a class="meta-pill meta-pill-link" href="/sh0re?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">
+                    <a class="meta-pill meta-pill-link" href="<?= h($shoreBaseHref) ?>?u=<?= rawurlencode((string) $ownerLand['slug']) ?>">
                         Sh0re
                     </a>
                 <?php endif; ?>
                 <?php if ($authenticatedLand): ?>
-                    <a class="meta-pill meta-pill-link" href="/sh0re">Mon sh0re</a>
+                    <a class="meta-pill meta-pill-link" href="<?= h($shoreBaseHref) ?>">Mon sh0re</a>
                 <?php else: ?>
-                    <a class="meta-pill meta-pill-link" href="/">Ouvrir une land</a>
+                    <a class="meta-pill meta-pill-link" href="<?= h($homeHref) ?>">Ouvrir une land</a>
                 <?php endif; ?>
                 <?php if ($linkedN0deCount > 0): ?>
-                    <a class="meta-pill meta-pill-link" href="/n0de"><?= $linkedN0deCount ?> n0de<?= $linkedN0deCount > 1 ? 's' : '' ?></a>
+                    <a class="meta-pill meta-pill-link" href="<?= h($n0deHref) ?>"><?= $linkedN0deCount ?> n0de<?= $linkedN0deCount > 1 ? 's' : '' ?></a>
                 <?php endif; ?>
             </div>
         <?php endif; ?>
@@ -302,7 +309,7 @@ if ($t0k) {
                             </article>
                         <?php endforeach; ?>
                     </div>
-                    <a class="ghost-link" href="/n0de">Voir n0de</a>
+                    <a class="ghost-link" href="<?= h($n0deHref) ?>">Voir n0de</a>
                 </div>
             <?php endif; ?>
         </aside>
@@ -310,18 +317,18 @@ if ($t0k) {
 
         <?php if (!$authenticatedLand): ?>
         <div id="n-token-actions" class="action-row">
-            <a class="pill-link" href="/">Voulez-vous grandir avec moi ?</a>
+            <a class="pill-link" href="<?= h($homeHref) ?>">Voulez-vous grandir avec moi ?</a>
         </div>
         <p class="panel-copy">Ce t0k vient d'une land sur <?= h($brandDomain) ?>. Pour répondre, ouvre ta propre land.</p>
         <?php elseif (($t0k['status'] ?? '') === 'pending' && (string) $authenticatedLand['slug'] === (string) ($t0k['to_land'] ?? '')): ?>
         <div id="n-token-actions" class="action-row">
-            <form method="post" action="/sh0re">
+            <form method="post" action="<?= h($shoreBaseHref) ?>">
                 <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>">
                 <input type="hidden" name="action" value="accept">
                 <input type="hidden" name="t0k_id" value="<?= h((string) $t0k['id']) ?>">
                 <button type="submit" class="pill-link">Accepter · former le n0us</button>
             </form>
-            <form method="post" action="/sh0re">
+            <form method="post" action="<?= h($shoreBaseHref) ?>">
                 <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>">
                 <input type="hidden" name="action" value="decline">
                 <input type="hidden" name="t0k_id" value="<?= h((string) $t0k['id']) ?>">
