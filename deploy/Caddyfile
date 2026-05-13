@@ -31,11 +31,6 @@ www.sowwwl.cloud {
 sowwwl.xyz {
 	import common_headers
 	import permissions_camera
-	header {
-		Cross-Origin-Opener-Policy same-origin
-		Cross-Origin-Resource-Policy same-origin
-		X-Permitted-Cross-Domain-Policies none
-	}
 	reverse_proxy app:80
 }
 
@@ -68,11 +63,6 @@ api.sowwwl.cloud {
 lab.sowwwl.cloud {
 	import common_headers
 	import permissions_camera
-	header {
-		Cross-Origin-Opener-Policy same-origin
-		Cross-Origin-Resource-Policy same-origin
-		X-Permitted-Cross-Domain-Policies none
-	}
 	reverse_proxy sowwwl-o-lab-app-1:80
 }
 
@@ -132,11 +122,6 @@ www.0wlslw0.com {
 0wlslw0.com {
 	import common_headers
 	import permissions_default
-	header {
-		Cross-Origin-Opener-Policy same-origin
-		Cross-Origin-Resource-Policy same-origin
-		X-Permitted-Cross-Domain-Policies none
-	}
 	reverse_proxy app:80
 }
 
@@ -147,22 +132,12 @@ www.sowwwl.com {
 sowwwl.com {
 	import common_headers
 	import permissions_default
-	header {
-		Cross-Origin-Opener-Policy same-origin
-		Cross-Origin-Resource-Policy same-origin
-		X-Permitted-Cross-Domain-Policies none
-	}
 	reverse_proxy app:80
 }
 
 upload.sowwwl.com {
 	import common_headers
 	import permissions_default
-	header {
-		Cross-Origin-Opener-Policy same-origin
-		Cross-Origin-Resource-Policy same-origin
-		X-Permitted-Cross-Domain-Policies none
-	}
 	reverse_proxy app:80
 }
 

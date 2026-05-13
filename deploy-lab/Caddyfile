@@ -12,18 +12,15 @@
 	}
 }
 
-(app_headers) {
+(camera_permissions) {
 	header {
-		Cross-Origin-Opener-Policy same-origin
-		Cross-Origin-Resource-Policy same-origin
 		Permissions-Policy "camera=(self), geolocation=(), microphone=()"
-		X-Permitted-Cross-Domain-Policies none
 	}
 }
 
 lab.sowwwl.cloud {
 	import common_headers
-	import app_headers
+	import camera_permissions
 	reverse_proxy app:80
 }
 
@@ -48,6 +45,11 @@ api.lab.sowwwl.cloud {
 
 pocket.lab.sowwwl.cloud {
 	import common_headers
-	import app_headers
+	import camera_permissions
+	header {
+		Cross-Origin-Opener-Policy same-origin
+		Cross-Origin-Resource-Policy same-origin
+		X-Permitted-Cross-Domain-Policies none
+	}
 	reverse_proxy pocket:80
 }

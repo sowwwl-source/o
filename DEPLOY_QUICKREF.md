@@ -16,6 +16,7 @@ That helper:
 - updates `/root/O_installation_FRESH/o`
 - syncs `deploy/sites/` into the live static directory mounted by `sowwwl-o-caddy-1`
 - rebuilds `sowwwl-o-app-1`
+- restarts `sowwwl-o-caddy-1` so Caddyfile changes are picked up
 - verifies `sowwwl.com`, `sowwwl.org`, and Signal readiness
 
 ## 2. Sync VPS source manually

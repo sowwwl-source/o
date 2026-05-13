@@ -43,6 +43,7 @@ What this script does:
   - updates the selected production git checkout
   - synchronizes deploy/sites/ into the live static-sites directory used by Caddy
   - rebuilds and restarts the live app container from o/deploy
+  - restarts Caddy so bind-mounted proxy config changes are applied live
   - verifies the main public routes, sowwwl.org copy markers, and Signal readiness
 
 Examples:
@@ -137,6 +138,9 @@ echo "==> Rebuilding live app"
 cd "$compose_dir"
 compose_prod build app
 compose_prod up -d app
+
+echo "==> Refreshing live proxy"
+compose_prod restart caddy
 
 echo "==> Live containers"
 compose_prod ps app caddy
