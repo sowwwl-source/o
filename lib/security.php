@@ -65,6 +65,7 @@ function content_security_policy(): string
     $requestPath = function_exists('o_request_path')
         ? o_request_path((string) ($_SERVER['REQUEST_URI'] ?? '/'))
         : (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/');
+    $host = function_exists('request_host') ? request_host() : trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
 
     if ($requestPath === '/map' || $requestPath === '/island') {
         return implode('; ', [
@@ -82,7 +83,13 @@ function content_security_policy(): string
         ]);
     }
 
-    return "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'";
+    $connectSources = ["'self'"];
+    if (in_array($host, ['sowwwl.xyz', 'www.sowwwl.xyz', 'lab.sowwwl.cloud', 'www.lab.sowwwl.cloud'], true)) {
+        $connectSources[] = 'https://lab.sowwwl.cloud';
+        $connectSources[] = 'https://api.lab.sowwwl.cloud';
+    }
+
+    return "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src " . implode(' ', array_unique($connectSources)) . "; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'";
 }
 
 function site_origin(): string

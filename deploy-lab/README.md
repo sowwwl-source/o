@@ -130,12 +130,19 @@ curl -I 'https://lab.sowwwl.cloud/island?u=<slug-lab-connu>'
 curl -I 'https://lab.sowwwl.cloud/island.php?u=<slug-lab-connu>'
 curl -I https://pocket.lab.sowwwl.cloud
 curl -I https://api.lab.sowwwl.cloud/healthz
+curl -sL https://lab.sowwwl.cloud/ | grep -E 'atelier du tore|Activer les capteurs|Fake pocket avant le Pi|Le téléphone devient membrane'
+curl -sL https://lab.sowwwl.cloud/ | grep -E 'Demander à Owl|Si tu reviens|Commence ici\. Trois portes suffisent' && false || true
+curl -sSI https://lab.sowwwl.cloud/ | grep -Ei 'permissions-policy|cross-origin-opener-policy|cross-origin-resource-policy|x-permitted-cross-domain-policies'
 ```
 
 Expected island behavior:
 
 - `https://lab.sowwwl.cloud/island?u=<slug-lab-connu>` returns `200`
 - `https://lab.sowwwl.cloud/island.php?u=<slug-lab-connu>` redirects to the canonical `/island` route
+- `https://lab.sowwwl.cloud/` exposes the current lab-console markers, not the older `Owl` home copy
+- `https://lab.sowwwl.cloud/` does not expose `Demander à Owl`, `Si tu reviens`, or `Commence ici. Trois portes suffisent`
+- `https://lab.sowwwl.cloud/` exposes a `Permissions-Policy` for `camera`, `microphone`, `accelerometer`, `gyroscope`, `magnetometer`, `ambient-light-sensor`, and `screen-wake-lock`
+- each `Cross-Origin-*` and `X-Permitted-Cross-Domain-Policies` header appears exactly once
 
 Reference QA slug for multimaterial reader checks:
 

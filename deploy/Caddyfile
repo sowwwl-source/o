@@ -12,15 +12,21 @@
 	}
 }
 
-(permissions_default) {
+(permissions_static) {
 	header {
-		Permissions-Policy "geolocation=(), microphone=()"
+		Permissions-Policy "camera=(), geolocation=(), microphone=()"
 	}
 }
 
-(permissions_camera) {
+(permissions_interactive) {
 	header {
-		Permissions-Policy "camera=(self), geolocation=(), microphone=()"
+		Permissions-Policy "accelerometer=(self), ambient-light-sensor=(self), camera=(), geolocation=(), gyroscope=(self), magnetometer=(self), microphone=(self), screen-wake-lock=(self)"
+	}
+}
+
+(permissions_surface) {
+	header {
+		Permissions-Policy "accelerometer=(self), ambient-light-sensor=(self), camera=(self), geolocation=(), gyroscope=(self), magnetometer=(self), microphone=(self), screen-wake-lock=(self)"
 	}
 }
 
@@ -30,7 +36,7 @@ www.sowwwl.cloud {
 
 sowwwl.xyz {
 	import common_headers
-	import permissions_camera
+	import permissions_surface
 	reverse_proxy app:80
 }
 
@@ -40,7 +46,7 @@ www.sowwwl.xyz {
 
 sowwwl.cloud {
 	import common_headers
-	import permissions_default
+	import permissions_static
 	root * /srv/sites/sowwwl.cloud
 	file_server
 }
@@ -62,7 +68,7 @@ api.sowwwl.cloud {
 
 lab.sowwwl.cloud {
 	import common_headers
-	import permissions_camera
+	import permissions_surface
 	reverse_proxy sowwwl-o-lab-app-1:80
 }
 
@@ -87,18 +93,13 @@ api.lab.sowwwl.cloud {
 
 pocket.lab.sowwwl.cloud {
 	import common_headers
-	import permissions_camera
-	header {
-		Cross-Origin-Opener-Policy same-origin
-		Cross-Origin-Resource-Policy same-origin
-		X-Permitted-Cross-Domain-Policies none
-	}
+	import permissions_surface
 	reverse_proxy sowwwl-o-lab-pocket-1:80
 }
 
 0.user.o.sowwwl.cloud {
 	import common_headers
-	import permissions_default
+	import permissions_static
 	root * /srv/sites/0.user.o.sowwwl.cloud
 	try_files {path} {path}/ /index.html
 	file_server
@@ -110,7 +111,7 @@ www.sowwwl.org {
 
 sowwwl.org {
 	import common_headers
-	import permissions_default
+	import permissions_static
 	root * /srv/sites/sowwwl.org
 	file_server
 }
@@ -121,7 +122,7 @@ www.0wlslw0.com {
 
 0wlslw0.com {
 	import common_headers
-	import permissions_default
+	import permissions_interactive
 	reverse_proxy app:80
 }
 
@@ -131,13 +132,13 @@ www.sowwwl.com {
 
 sowwwl.com {
 	import common_headers
-	import permissions_default
+	import permissions_interactive
 	reverse_proxy app:80
 }
 
 upload.sowwwl.com {
 	import common_headers
-	import permissions_default
+	import permissions_interactive
 	reverse_proxy app:80
 }
 
@@ -147,7 +148,7 @@ www.sowwwl.art {
 
 sowwwl.art {
 	import common_headers
-	import permissions_default
+	import permissions_static
 	root * /srv/sites/0wlslw0.com
 	file_server
 }

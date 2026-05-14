@@ -33,9 +33,9 @@ function signup_portal_steps(): array
     return $portals;
 }
 
-
 $host = request_host();
 $isSowwwlXyz = ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz');
+$isLabSurface = ($host === 'lab.sowwwl.cloud' || $host === 'www.lab.sowwwl.cloud');
 // Désactive la redirection pour sowwwl.xyz, on veut un contenu spécial
 // if ($isSowwwlXyz) {
 //     $path = (string) ($_SERVER['REQUEST_URI'] ?? '/');
@@ -163,7 +163,7 @@ $selectedSignupLambda = $defaultSignupLambda;
 
 $selectedSignupLabel = (string) ($selectedSignupDefinition['label'] ?? $selectedSignupProgram);
 $selectedSignupTone = (string) ($selectedSignupDefinition['tone'] ?? '');
-$homeVisualOnly = $isSowwwlXyz;
+$homeVisualOnly = $isSowwwlXyz || $isLabSurface;
 $dailyStream = str3m_build_daily_stream(null);
 $dailyTextItem = is_array($dailyStream['items']['text'] ?? null) ? $dailyStream['items']['text'] : null;
 $dailyImageItem = is_array($dailyStream['items']['image'] ?? null) ? $dailyStream['items']['image'] : null;
@@ -248,26 +248,40 @@ $homeHeroLineTwo = $authenticatedLand ? 'module le tore.' : 'écoute le monde r�
 $homeThresholdHint = $authenticatedLand
     ? 'Le noyau reste simple : terre, adresse, courant.'
     : 'Comprendre sans quitter l’entrée.';
+$labSensorEndpointHref = o_route_path('/ingest/sensor');
+$labPublicOrigin = 'https://lab.sowwwl.cloud';
+$labPublicMembraneEndpointHref = rtrim($labPublicOrigin, '/') . o_route_path('/ingest/membrane');
+$labPublicPlasmaFeedHref = rtrim($labPublicOrigin, '/') . o_route_path('/plasma/recent');
+$labQaIslandHref = o_route_path('/island') . '?u=qa-multimatiere';
+$labPocketHref = 'https://pocket.lab.sowwwl.cloud/';
+$labApiHealthHref = 'https://api.lab.sowwwl.cloud/healthz';
+$labSensorConfigured = trim((string) (getenv('SOWWWL_PI_TOKEN') ?: '')) !== '';
+$labRecentPlasmaEvents = $isLabSurface ? plasma_recent_events(6) : [];
+$labPlasmaWeather = plasma_weather_from_events($labRecentPlasmaEvents);
+$pageHeadVariant = $isSowwwlXyz ? 'xyz' : ($isLabSurface ? 'lab' : 'main');
+$pageDescription = $isLabSurface
+    ? 'O. Lab — atelier mobile du tore pour capteurs, pocket, plasma et livraison différée.'
+    : (SITE_TITLE . ' — entrer publiquement, poser une terre, ou passer par 0wlslw0.');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="<?= h(SITE_TITLE) ?> — entrer publiquement, poser une terre, ou passer par 0wlslw0.">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
     <title><?= h(SITE_TITLE) ?></title>
-<?= render_o_page_head_assets($isSowwwlXyz ? 'xyz' : 'main') ?>
+<?= render_o_page_head_assets($pageHeadVariant) ?>
 </head>
 <body
-    class="experience home<?= $isSowwwlXyz ? ' xyz-surface-view' : '' ?>"
+    class="experience home<?= $isSowwwlXyz ? ' xyz-surface-view' : '' ?><?= $isLabSurface ? ' lab-console-view' : '' ?>"
     data-land-program="<?= h($activeLandProgram) ?>"
     data-land-label="<?= h($activeLandLabel) ?>"
     data-land-lambda="<?= h((string) $activeLambda) ?>"
     data-land-tone="<?= h($activeLandTone) ?>"
 >
 <?= render_skip_link() ?>
-<?= render_nucleus_banner('noyau') ?>
+<?= render_nucleus_banner($isLabSurface ? 'atelier' : 'noyau') ?>
 <div class="noise" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"></div>
 
@@ -341,7 +355,12 @@ $homeThresholdHint = $authenticatedLand
 
 <div class="world-container" aria-hidden="true">
     <?php if ($isSowwwlXyz): ?>
-    <div class="xyz-camera-layer" data-xyz-camera-root>
+    <div
+        class="xyz-camera-layer"
+        data-xyz-camera-root
+        data-xyz-plasma-bridge="<?= h($labPublicMembraneEndpointHref) ?>"
+        data-xyz-plasma-land="<?= h($activeLandSlug) ?>"
+    >
         <video
             class="xyz-camera-layer__video"
             data-xyz-camera-video
@@ -379,21 +398,19 @@ $homeThresholdHint = $authenticatedLand
         <header class="xyz-surface-head">
             <p class="eyebrow xyz-surface-head__eyebrow"><strong>sowwwl.xyz</strong> <span>surface torique / monde reel</span></p>
             <h1 class="xyz-surface-head__title">Le tore écoute le monde réel.</h1>
-            <p class="lead xyz-surface-head__lead">Ici, la surface ne présente pas seulement O. : elle agit comme une membrane de lecture. Le réel entre, le plasma traduit, le tore déploie.</p>
+            <p class="lead xyz-surface-head__lead">Ici, la surface devient membrane. Mouvement, souffle, lumière et grain entrent, puis le tore les rend lisibles.</p>
 
             <div class="xyz-surface-actions">
-                <button type="button" class="pill-link xyz-camera-toggle" data-xyz-camera-start>Ouvrir Ocam</button>
-                <button type="button" class="ghost-link xyz-camera-toggle hidden" data-xyz-camera-stop>Refermer Ocam</button>
-                <a class="pill-link" href="<?= h($guideHref) ?>">Entrer par 0wlslw0</a>
-                <a class="ghost-link" href="<?= h($signalHref) ?>">Laisser une enveloppe</a>
-                <a class="ghost-link" href="<?= h($str3mHref) ?>">Dériver dans Str3m</a>
-                <a class="ghost-link" href="<?= h($mapHref) ?>">Voir la carte</a>
+                <button type="button" class="pill-link xyz-camera-toggle" data-xyz-camera-start>Activer la membrane</button>
+                <button type="button" class="ghost-link xyz-camera-toggle hidden" data-xyz-camera-stop>Relâcher la membrane</button>
+                <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
             </div>
 
             <div class="xyz-surface-meta" aria-label="Signature de la surface">
                 <span class="badge badge-glass">λ <?= h((string) $activeLambda) ?> nm</span>
                 <span class="badge badge-glass"><?= h($activeLandLabel) ?></span>
                 <span class="badge badge-glass"><?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></span>
+                <span class="badge badge-glass">local d’abord</span>
             </div>
         </header>
 
@@ -411,8 +428,8 @@ $homeThresholdHint = $authenticatedLand
                             <strong>sowwwl.xyz</strong>
                             <span>réalité / plasma / tore</span>
                         </p>
-                        <h2 id="mapping-title">La carte ne représente pas le monde, elle le filtre.</h2>
-                        <p class="panel-copy mapping-panel__copy">Une action, une présence, une voix ou un climat passent par une couche plasma avant d’apparaître sur la peau torique. Ce n’est pas une simple interface&nbsp;: c’est une traduction continue.</p>
+                        <h2 id="mapping-title">La peau filtre ce qu’elle reçoit.</h2>
+                        <p class="panel-copy mapping-panel__copy">Le réel touche, le plasma traduit, le tore ouvre la lecture.</p>
                     </div>
                     <span class="badge mapping-panel__badge">real-world map</span>
                 </div>
@@ -505,24 +522,57 @@ $homeThresholdHint = $authenticatedLand
 
             <aside class="xyz-surface-aside reveal">
                 <article class="xyz-surface-note xyz-surface-note--camera" data-xyz-camera-panel>
-                    <span class="summary-label">Ocam / peau comestible</span>
-                    <strong data-xyz-camera-title>Ocam peut nourrir la surface.</strong>
-                    <p class="panel-copy" data-xyz-camera-status>Active Ocam pour laisser entrer lumière, grain, souffle, texture. Rien n’est envoyé au serveur.</p>
+                    <span class="summary-label">rituel</span>
+                    <strong data-xyz-camera-title>La membrane attend un geste.</strong>
+                    <p class="panel-copy" data-xyz-camera-status>Active la membrane pour ouvrir mouvement, voix, lumière, caméra et veille active. Rien n’est envoyé au serveur depuis cette couche.</p>
+                    <div class="xyz-surface-sensor-grid" aria-label="État direct de la membrane">
+                        <p><span>orientation</span><strong data-xyz-sensor-orientation>en attente</strong></p>
+                        <p><span>mouvement</span><strong data-xyz-sensor-motion>en attente</strong></p>
+                        <p><span>lumière</span><strong data-xyz-sensor-light>en attente</strong></p>
+                        <p><span>voix</span><strong data-xyz-sensor-audio>en attente</strong></p>
+                        <p><span>caméra</span><strong data-xyz-sensor-camera>en attente</strong></p>
+                        <p><span>veille</span><strong data-xyz-sensor-wake>en attente</strong></p>
+                    </div>
+                    <div class="device-bridge-panel" data-device-bridge-root data-device-context="xyz">
+                        <span class="summary-label">appareil</span>
+                        <div class="device-bridge-grid" aria-label="État téléphone">
+                            <p><span>silence</span><strong data-device-silence-status>web sonore</strong></p>
+                            <p><span>volume</span><strong data-device-volume-status>82%</strong></p>
+                            <p><span>haptique</span><strong data-device-haptics-status>sur demande</strong></p>
+                            <p><span>visibilité</span><strong data-device-visibility-status>visible</strong></p>
+                            <p><span>app</span><strong data-device-standalone-status>navigateur</strong></p>
+                            <p><span>natif</span><strong data-device-native-status>web seul</strong></p>
+                        </div>
+                        <div class="device-bridge-controls">
+                            <button type="button" class="ghost-link" data-device-silence-toggle>Silence web</button>
+                            <label class="device-bridge-range">
+                                <span>niveau O.</span>
+                                <input type="range" min="0" max="100" step="1" value="82" data-device-volume-input>
+                                <strong data-device-volume-readout>82%</strong>
+                            </label>
+                            <div class="device-bridge-actions">
+                                <button type="button" class="ghost-link" data-device-install hidden>Installer</button>
+                                <button type="button" class="ghost-link" data-device-share>Partager</button>
+                            </div>
+                        </div>
+                        <p class="panel-copy device-bridge-note" data-device-native-note>Le web pilote ici silence, niveau, haptique, partage et mode app. Un wrapper natif pourra ensuite donner le silence et le volume réels du téléphone.</p>
+                    </div>
                 </article>
 
                 <article class="xyz-surface-note">
                     <span class="summary-label">gestes</span>
-                    <strong>Traverse la surface.</strong>
-                    <p class="panel-copy">Glisse pour pivoter. Sur mobile, appui long puis dérive. Le centre et le geste en O ouvrent aussi 0wlslw0.</p>
+                    <strong>Traverse, puis laisse le téléphone infléchir le tore.</strong>
+                    <p class="panel-copy">Glisse pour pivoter. Sur mobile, l’orientation et le mouvement déplacent aussi la peau. Le centre et le geste en O ouvrent toujours 0wlslw0.</p>
                 </article>
 
                 <article class="xyz-surface-note">
-                    <span class="summary-label">phrases d’entrée</span>
-                    <ul class="guide-prompt-list xyz-surface-prompt-list">
-                        <?php foreach (array_slice($promptSeeds, 0, 4) as $prompt): ?>
-                            <li><code><?= h($prompt) ?></code></li>
-                        <?php endforeach; ?>
-                    </ul>
+                    <span class="summary-label">autres dérives</span>
+                    <div class="xyz-surface-route-links">
+                        <a class="ghost-link" href="<?= h($signalHref) ?>">Signal</a>
+                        <a class="ghost-link" href="<?= h($str3mHref) ?>">Str3m</a>
+                        <a class="ghost-link" href="<?= h($mapHref) ?>">Carte</a>
+                    </div>
+                    <p class="panel-copy">Quand la membrane a fini de lire, tu peux ouvrir une enveloppe, dériver dans le courant, ou relire la carte.</p>
                 </article>
 
                 <article class="xyz-surface-note">
@@ -531,6 +581,180 @@ $homeThresholdHint = $authenticatedLand
                     <p class="panel-copy"><?= h($authenticatedLand ? 'Ta fréquence colore déjà la membrane.' : 'Aucune terre liée pour l’instant. La membrane reste collective.') ?></p>
                 </article>
             </aside>
+        </div>
+    </section>
+    <?php endif; ?>
+    <?php if ($isLabSurface): ?>
+    <section
+        class="lab-console-shell reveal"
+        id="atelier"
+        data-lab-console
+        data-lab-api-url="<?= h($labApiHealthHref) ?>"
+        data-lab-pocket-url="<?= h($labPocketHref) ?>"
+        data-lab-qa-url="<?= h($labQaIslandHref) ?>"
+        data-lab-sensor-endpoint="<?= h($labSensorEndpointHref) ?>"
+        data-lab-plasma-feed="<?= h($labPublicPlasmaFeedHref) ?>"
+        data-lab-sensor-configured="<?= $labSensorConfigured ? '1' : '0' ?>"
+    >
+        <div class="lab-console-shell__veil" aria-hidden="true">
+            <span class="lab-console-shell__ring lab-console-shell__ring--outer"></span>
+            <span class="lab-console-shell__ring lab-console-shell__ring--inner"></span>
+            <span class="lab-console-shell__pulse"></span>
+        </div>
+
+        <header class="lab-console-head">
+            <p class="eyebrow lab-console-head__eyebrow"><strong>lab.sowwwl.cloud</strong> <span>atelier du tore / 3ternet</span></p>
+            <h1 class="lab-console-head__title">L’atelier mobile du tore.</h1>
+            <p class="lead lab-console-head__lead">Ici, le lab n’imite plus la home publique. Il active le téléphone, rejoue la présence, garde le plasma visible, puis prépare le passage vers le pocket.</p>
+
+            <div class="lab-console-actions">
+                <button type="button" class="pill-link" data-lab-activate>Activer les capteurs</button>
+                <button type="button" class="ghost-link" data-lab-replay>Mode replay</button>
+                <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0</a>
+                <a class="ghost-link" href="<?= h($str3mHref) ?>">Str3m</a>
+            </div>
+
+            <div class="lab-console-meta" aria-label="Signature du lab">
+                <span class="badge badge-glass"><?= h($labSensorConfigured ? 'token capteur prêt' : 'token capteur absent') ?></span>
+                <span class="badge badge-glass"><?= h($authenticatedLand ? '@' . $activeLandSlug : 'surface collective') ?></span>
+                <span class="badge badge-glass">pocket simulé avant Pi</span>
+            </div>
+
+            <p class="lab-console-head__status" data-lab-activation-status>Le tore attend un geste pour ouvrir mouvement, voix, lumière, caméra et veille active.</p>
+        </header>
+
+        <div class="lab-console-grid">
+            <article class="panel reveal lab-console-card lab-console-card--sensor" data-lab-card="sensor" data-lab-state="idle">
+                <div class="lab-console-card__topline">
+                    <div>
+                        <span class="summary-label">01 · capteurs</span>
+                        <h2 class="lab-console-card__title">Le téléphone devient membrane.</h2>
+                    </div>
+                    <span class="badge badge-glass" data-lab-sensor-badge>en veille</span>
+                </div>
+                <p class="panel-copy">Gyroscope, accéléromètre, lumière, micro, caméra et écran éveillé alimentent le tore. Quand une API manque, le lab bascule en fallback ou en replay.</p>
+                <div class="lab-console-sensor-grid" aria-label="État des capteurs">
+                    <p><span>orientation</span><strong data-lab-orientation-status>en attente</strong></p>
+                    <p><span>mouvement</span><strong data-lab-motion-status>en attente</strong></p>
+                    <p><span>lumière</span><strong data-lab-light-status>en attente</strong></p>
+                    <p><span>micro</span><strong data-lab-audio-status>en attente</strong></p>
+                    <p><span>caméra</span><strong data-lab-camera-status>en attente</strong></p>
+                    <p><span>wake lock</span><strong data-lab-wake-status>en attente</strong></p>
+                </div>
+                <div class="lab-console-camera-preview-wrap">
+                    <video class="lab-console-camera-preview" data-lab-camera-preview playsinline muted aria-hidden="true"></video>
+                    <div class="lab-console-camera-preview-fallback" data-lab-camera-fallback>aperçu local</div>
+                </div>
+                <div class="device-bridge-panel device-bridge-panel--lab" data-device-bridge-root data-device-context="lab">
+                    <span class="summary-label">appareil</span>
+                    <div class="device-bridge-grid" aria-label="État téléphone">
+                        <p><span>silence</span><strong data-device-silence-status>web sonore</strong></p>
+                        <p><span>volume</span><strong data-device-volume-status>82%</strong></p>
+                        <p><span>haptique</span><strong data-device-haptics-status>sur demande</strong></p>
+                        <p><span>visibilité</span><strong data-device-visibility-status>visible</strong></p>
+                        <p><span>app</span><strong data-device-standalone-status>navigateur</strong></p>
+                        <p><span>natif</span><strong data-device-native-status>web seul</strong></p>
+                    </div>
+                    <div class="device-bridge-controls">
+                        <button type="button" class="ghost-link" data-device-silence-toggle>Silence web</button>
+                        <label class="device-bridge-range">
+                            <span>niveau O.</span>
+                            <input type="range" min="0" max="100" step="1" value="82" data-device-volume-input>
+                            <strong data-device-volume-readout>82%</strong>
+                        </label>
+                        <div class="device-bridge-actions">
+                            <button type="button" class="ghost-link" data-device-install hidden>Installer</button>
+                            <button type="button" class="ghost-link" data-device-share>Partager</button>
+                        </div>
+                    </div>
+                    <p class="panel-copy device-bridge-note" data-device-native-note>Le lab utilise déjà veille active, haptique, partage et mode app. S’il reçoit un pont natif, il affichera ici le vrai silence et le vrai volume du téléphone.</p>
+                </div>
+            </article>
+
+            <article class="panel reveal lab-console-card lab-console-card--pocket" data-lab-card="pocket" data-lab-state="idle">
+                <div class="lab-console-card__topline">
+                    <div>
+                        <span class="summary-label">02 · pocket</span>
+                        <h2 class="lab-console-card__title">Fake pocket avant le Pi.</h2>
+                    </div>
+                    <span class="badge badge-glass">présence simulée</span>
+                </div>
+                <p class="panel-copy">Le pocket du lab est un corps temporaire: il dort, rôde, revient, puis sert de cible aux scénarios de livraison différée.</p>
+                <strong class="lab-console-card__lead" data-lab-pocket-status>En veille douce. Le replay peut le faire dériver.</strong>
+                <p class="panel-copy" data-lab-pocket-note>Ouvre la route pocket, ou laisse le mode replay alterner sommeil, roaming et retour.</p>
+                <div class="action-row">
+                    <a class="pill-link" href="<?= h($labPocketHref) ?>">Ouvrir pocket</a>
+                    <a class="ghost-link" href="<?= h($labQaIslandHref) ?>">Île QA</a>
+                </div>
+            </article>
+
+            <article class="panel reveal lab-console-card lab-console-card--api" data-lab-card="api" data-lab-state="idle">
+                <div class="lab-console-card__topline">
+                    <div>
+                        <span class="summary-label">03 · api</span>
+                        <h2 class="lab-console-card__title">Le fond parle encore même sans image.</h2>
+                    </div>
+                    <span class="badge badge-glass">healthz</span>
+                </div>
+                <p class="panel-copy">Le lab garde un point fixe: la santé de l’API, l’origine capteur, et l’URL qui recevra les premiers signaux physiques.</p>
+                <strong class="lab-console-card__lead" data-lab-api-status>Sondage en attente.</strong>
+                <p class="panel-copy"><code><?= h($labApiHealthHref) ?></code></p>
+                <p class="panel-copy"><code><?= h($labSensorEndpointHref) ?></code><?= $labSensorConfigured ? ' · prêt pour un Bearer token.' : ' · attend encore son token.' ?></p>
+            </article>
+
+            <article class="panel reveal lab-console-card lab-console-card--plasma" data-lab-card="plasma" data-lab-state="<?= h((string) ($labPlasmaWeather['tone'] ?? 'idle')) ?>">
+                <div class="lab-console-card__topline">
+                    <div>
+                        <span class="summary-label">04 · plasma</span>
+                        <h2 class="lab-console-card__title">Le journal du flux reste lisible.</h2>
+                    </div>
+                    <span class="badge badge-glass" data-lab-plasma-badge><?= h((string) ($labPlasmaWeather['badge'] ?? ($labRecentPlasmaEvents ? 'traces présentes' : 'aucune trace locale'))) ?></span>
+                </div>
+                <p class="panel-copy">Le browser n’envoie rien ici sans accord fort. En revanche, le lab relit la membrane publique de xyz, les traces Pi et la simulation locale.</p>
+                <strong class="lab-console-card__lead" data-lab-plasma-status><?= h((string) ($labPlasmaWeather['lead'] ?? 'Aucune trace plasma lue dans le runtime pour l’instant.')) ?></strong>
+                <p class="panel-copy lab-console-plasma-copy" data-lab-plasma-weather-copy><?= h((string) ($labPlasmaWeather['detail'] ?? 'Le premier ping capteur apparaîtra ici dès qu’un événement traversera le pont plasma.')) ?></p>
+                <ol class="lab-console-trace-list" data-lab-runtime-traces>
+                    <?php if ($labRecentPlasmaEvents): ?>
+                        <?php foreach ($labRecentPlasmaEvents as $event): ?>
+                            <li>
+                                <span class="summary-label"><?= h($event['event'] !== '' ? $event['event'] : 'signal') ?></span>
+                                <strong><?= h($event['source'] !== '' ? $event['source'] : ($event['camera'] !== '' ? $event['camera'] : 'unknown')) ?></strong>
+                                <span><?= h($event['message'] !== '' ? $event['message'] : ($event['timestamp'] !== '' ? $event['timestamp'] : 'trace sans message')) ?></span>
+                            </li>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <li>
+                            <span class="summary-label">veille</span>
+                            <strong>runtime</strong>
+                            <span>Le premier ping capteur apparaîtra ici dès qu’un événement traversera le pont plasma.</span>
+                        </li>
+                    <?php endif; ?>
+                </ol>
+                <ol class="lab-console-trace-list lab-console-trace-list--session" data-lab-session-traces hidden></ol>
+            </article>
+
+            <article class="panel reveal lab-console-card lab-console-card--delivery" data-lab-card="delivery" data-lab-state="idle">
+                <div class="lab-console-card__topline">
+                    <div>
+                        <span class="summary-label">05 · différé</span>
+                        <h2 class="lab-console-card__title">Préparer l’absence sans perdre le fil.</h2>
+                    </div>
+                    <span class="badge badge-glass">roaming</span>
+                </div>
+                <p class="panel-copy">La logique visée est simple: une terre s’endort, le signal reste en attente, puis le retour du pocket réouvre le passage. Le replay en montre déjà le rythme.</p>
+                <strong class="lab-console-card__lead" data-lab-delivery-status>Réveil non rejoué. Le tore attend encore une première séquence.</strong>
+                <ul class="lab-console-sequence" aria-label="Séquence d’expérimentation">
+                    <li>1. activer les capteurs</li>
+                    <li>2. bouger ou parler</li>
+                    <li>3. laisser pocket dormir</li>
+                    <li>4. relancer en replay</li>
+                    <li>5. lire la reprise dans le plasma</li>
+                </ul>
+                <div class="action-row">
+                    <a class="pill-link" href="<?= h($labQaIslandHref) ?>">Relire l’île QA</a>
+                    <a class="ghost-link" href="<?= h($signalHref) ?>">Ouvrir Signal</a>
+                </div>
+            </article>
         </div>
     </section>
     <?php endif; ?>

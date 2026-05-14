@@ -322,6 +322,7 @@ require_once __DIR__ . '/lib/n0de.php';
 require_once __DIR__ . '/lib/b0t3.php';
 require_once __DIR__ . '/lib/mailer.php';
 require_once __DIR__ . '/lib/security.php';
+require_once __DIR__ . '/lib/plasma_bridge.php';
 require_once __DIR__ . '/lib/meaning.php';
 require_once __DIR__ . '/lib/signal_mail.php';
 
@@ -418,11 +419,27 @@ function pwa_app_catalog(): array
                 ['name' => 'Revenir au noyau', 'short_name' => 'Noyau', 'url' => o_route_path('/')],
             ],
         ],
+        'lab' => [
+            'id' => o_route_path('/app/lab'),
+            'name' => 'O. Lab',
+            'short_name' => 'Lab',
+            'description' => 'O. Lab — atelier mobile du tore pour capteurs, pocket, plasma et livraison differee.',
+            'start_url' => o_route_path('/'),
+            'scope' => o_route_path('/'),
+            'theme_color' => '#09090b',
+            'background_color' => '#09090b',
+            'shortcuts' => [
+                ['name' => 'Activer les capteurs', 'short_name' => 'Capteurs', 'url' => o_route_path('/') . '#atelier'],
+                ['name' => 'QA island', 'short_name' => 'QA', 'url' => o_route_path('/island') . '?u=qa-multimatiere'],
+                ['name' => '0wlslw0', 'short_name' => '0wlslw0', 'url' => o_route_path('/0wlslw0')],
+            ],
+        ],
     ];
 
     foreach ($catalog as $appId => $config) {
         $catalog[$appId]['lang'] = 'fr';
         $catalog[$appId]['display'] = 'standalone';
+        $catalog[$appId]['display_override'] = ['window-controls-overlay', 'standalone', 'browser'];
         $catalog[$appId]['orientation'] = 'portrait';
         $catalog[$appId]['icons'] = $icons;
     }
@@ -437,6 +454,7 @@ function pwa_default_app_id(?string $host = null): string
     return match ($resolvedHost) {
         '0wlslw0.com', 'www.0wlslw0.com' => 'owl',
         'sowwwl.xyz', 'www.sowwwl.xyz' => 'xyz',
+        'lab.sowwwl.cloud', 'www.lab.sowwwl.cloud' => 'lab',
         default => 'main',
     };
 }

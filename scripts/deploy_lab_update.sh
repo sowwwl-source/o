@@ -61,6 +61,63 @@ compose_lab() {
 	docker compose -p "$project_name" --env-file "$env_path" -f "$compose_path" "$@"
 }
 
+read_header_values() {
+	local url=${1:?Missing URL}
+	local header_name=${2:?Missing header name}
+	local header_name_lc
+
+	header_name_lc=$(printf '%s' "$header_name" | tr '[:upper:]' '[:lower:]')
+	curl -fsSI "$url" | awk -F': ' -v header_name_lc="$header_name_lc" '
+		tolower($1) == header_name_lc {
+			sub(/\r$/, "", $2)
+			print $2
+		}
+	'
+}
+
+assert_single_header() {
+	local url=${1:?Missing URL}
+	local header_name=${2:?Missing header name}
+	local count
+
+	count=$(read_header_values "$url" "$header_name" | awk 'END { print NR + 0 }')
+	if [[ "$count" -ne 1 ]]; then
+		echo "Expected a single ${header_name} header on ${url}, got ${count}" >&2
+		exit 1
+	fi
+}
+
+assert_header_contains() {
+	local url=${1:?Missing URL}
+	local header_name=${2:?Missing header name}
+	local pattern=${3:?Missing pattern}
+
+	if ! read_header_values "$url" "$header_name" | grep -qE "$pattern"; then
+		echo "Expected ${header_name} on ${url} to match ${pattern}" >&2
+		exit 1
+	fi
+}
+
+assert_body_matches() {
+	local url=${1:?Missing URL}
+	local pattern=${2:?Missing pattern}
+
+	if ! curl -fsS "$url" | grep -qE "$pattern"; then
+		echo "Expected ${url} body to match ${pattern}" >&2
+		exit 1
+	fi
+}
+
+assert_body_absent() {
+	local url=${1:?Missing URL}
+	local pattern=${2:?Missing pattern}
+
+	if curl -fsS "$url" | grep -qE "$pattern"; then
+		echo "Expected ${url} body to avoid ${pattern}" >&2
+		exit 1
+	fi
+}
+
 read_env_value() {
 	local key=$1
 	local raw
@@ -228,6 +285,22 @@ curl -fsSI https://lab.sowwwl.cloud/signal
 curl -fsSI https://lab.sowwwl.cloud/aza
 curl -fsSI https://pocket.lab.sowwwl.cloud
 curl -fsSI https://api.lab.sowwwl.cloud/healthz
+assert_body_matches https://lab.sowwwl.cloud/ 'atelier du tore|Activer les capteurs|Fake pocket avant le Pi|Le téléphone devient membrane'
+assert_body_absent https://lab.sowwwl.cloud/ 'Demander à Owl|Si tu reviens|Commence ici\. Trois portes suffisent'
+assert_body_matches https://lab.sowwwl.cloud/0wlslw0 '0wlslw0|Accompagnement vocal|Comprendre le schéma'
+assert_single_header https://lab.sowwwl.cloud/ cross-origin-opener-policy
+assert_single_header https://lab.sowwwl.cloud/ cross-origin-resource-policy
+assert_single_header https://lab.sowwwl.cloud/ x-permitted-cross-domain-policies
+assert_single_header https://pocket.lab.sowwwl.cloud/ cross-origin-opener-policy
+assert_single_header https://pocket.lab.sowwwl.cloud/ cross-origin-resource-policy
+assert_single_header https://pocket.lab.sowwwl.cloud/ x-permitted-cross-domain-policies
+assert_header_contains https://lab.sowwwl.cloud/ permissions-policy 'accelerometer=\(self\)'
+assert_header_contains https://lab.sowwwl.cloud/ permissions-policy 'ambient-light-sensor=\(self\)'
+assert_header_contains https://lab.sowwwl.cloud/ permissions-policy 'camera=\(self\)'
+assert_header_contains https://lab.sowwwl.cloud/ permissions-policy 'gyroscope=\(self\)'
+assert_header_contains https://lab.sowwwl.cloud/ permissions-policy 'magnetometer=\(self\)'
+assert_header_contains https://lab.sowwwl.cloud/ permissions-policy 'microphone=\(self\)'
+assert_header_contains https://lab.sowwwl.cloud/ permissions-policy 'screen-wake-lock=\(self\)'
 
 echo "==> App internals"
 docker exec "${project_name}-app-1" sh -lc 'ls -la /var/www/html/0wlslw0.php /var/www/html/signal.php /var/www/html/aza.php /var/www/html/island.php /var/www/html/echo.php'

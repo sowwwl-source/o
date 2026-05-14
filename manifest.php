@@ -19,6 +19,7 @@ echo json_encode([
     'start_url' => (string) ($config['start_url'] ?? '/'),
     'scope' => (string) ($config['scope'] ?? '/'),
     'display' => (string) ($config['display'] ?? 'standalone'),
+    'display_override' => is_array($config['display_override'] ?? null) ? $config['display_override'] : ['standalone', 'browser'],
     'background_color' => (string) ($config['background_color'] ?? '#09090b'),
     'theme_color' => (string) ($config['theme_color'] ?? '#09090b'),
     'orientation' => (string) ($config['orientation'] ?? 'portrait'),

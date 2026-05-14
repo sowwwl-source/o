@@ -3,6 +3,8 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matc
 const coarsePointer = window.matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints || 0) > 0;
 const THEME_KEY = "o-theme-inverted";
 const GUIDE_VOICE_MUTE_KEY = "o-guide-voice-muted-v1";
+const DEVICE_SILENCE_INTENT_KEY = "o-device-silence-intent-v1";
+const DEVICE_VOLUME_LEVEL_KEY = "o-device-volume-level-v1";
 
 const reveals = Array.from(document.querySelectorAll(".reveal"));
 const usernameInput = document.querySelector("[data-username-input]");
@@ -167,6 +169,271 @@ function toggleInversionAndGuideVoiceMute() {
 }
 
 applyThemeState(readThemeState());
+
+const displayModeMedia = typeof window.matchMedia === "function"
+	? window.matchMedia("(display-mode: standalone)")
+	: null;
+
+let deferredInstallPrompt = null;
+const nativeDeviceState = {
+	silenceMode: "unknown",
+	volume: null,
+	route: "",
+	source: "web",
+};
+let currentDeviceBridgeState = null;
+
+function normalizeNativeSilenceMode(value) {
+	const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+	if (["silent", "vibrate", "ring"].includes(normalized)) {
+		return normalized;
+	}
+
+	return "unknown";
+}
+
+function normalizeNativeVolume(value) {
+	if (!Number.isFinite(Number(value))) {
+		return null;
+	}
+
+	return clampNumber(Number(value), 0, 1);
+}
+
+function readDeviceSilenceIntent() {
+	return window.localStorage.getItem(DEVICE_SILENCE_INTENT_KEY) === "1";
+}
+
+function writeDeviceSilenceIntent(isSilent) {
+	window.localStorage.setItem(DEVICE_SILENCE_INTENT_KEY, isSilent ? "1" : "0");
+	syncDeviceBridgeState();
+}
+
+function readDeviceVolumeLevel() {
+	const raw = Number(window.localStorage.getItem(DEVICE_VOLUME_LEVEL_KEY) || "0.82");
+	return clampNumber(Number.isFinite(raw) ? raw : 0.82, 0, 1);
+}
+
+function writeDeviceVolumeLevel(level) {
+	window.localStorage.setItem(DEVICE_VOLUME_LEVEL_KEY, String(clampNumber(level, 0, 1)));
+	syncDeviceBridgeState();
+}
+
+function deviceIsStandalone() {
+	return Boolean(displayModeMedia?.matches || window.navigator.standalone === true);
+}
+
+function readNativeDeviceSeed() {
+	const seed = window.__O_NATIVE_DEVICE__;
+	if (!seed || typeof seed !== "object") {
+		return null;
+	}
+
+	return seed;
+}
+
+function updateNativeDeviceState(partial = {}) {
+	if (!partial || typeof partial !== "object") {
+		return getCurrentDeviceBridgeState();
+	}
+
+	nativeDeviceState.silenceMode = normalizeNativeSilenceMode(partial.silenceMode ?? partial.ringerMode ?? nativeDeviceState.silenceMode);
+	nativeDeviceState.volume = normalizeNativeVolume(partial.volume ?? nativeDeviceState.volume);
+	nativeDeviceState.route = typeof partial.route === "string"
+		? partial.route.trim().slice(0, 32)
+		: nativeDeviceState.route;
+	nativeDeviceState.source = typeof partial.source === "string" && partial.source.trim()
+		? partial.source.trim().slice(0, 24)
+		: nativeDeviceState.source;
+
+	return syncDeviceBridgeState();
+}
+
+function syncNativeDeviceSeed() {
+	const seed = readNativeDeviceSeed();
+	if (!seed) {
+		return;
+	}
+
+	updateNativeDeviceState(seed);
+}
+
+function computeDeviceBridgeState() {
+	const silenceIntent = readDeviceSilenceIntent();
+	const volumeIntent = readDeviceVolumeLevel();
+	const nativeSilenceMode = normalizeNativeSilenceMode(nativeDeviceState.silenceMode);
+	const nativeVolume = normalizeNativeVolume(nativeDeviceState.volume);
+	const effectiveVolume = clampNumber((nativeVolume ?? 1) * volumeIntent, 0, 1);
+	const muted = silenceIntent || nativeSilenceMode === "silent" || effectiveVolume <= 0.01;
+
+	return {
+		silenceIntent,
+		volumeIntent,
+		effectiveVolume,
+		muted,
+		nativeSilenceMode,
+		nativeVolume,
+		nativeRoute: nativeDeviceState.route || "",
+		nativeSource: nativeDeviceState.source || "web",
+		visibility: document.hidden ? "hidden" : "visible",
+		standalone: deviceIsStandalone(),
+		hapticsAvailable: typeof navigator.vibrate === "function",
+		shareAvailable: typeof navigator.share === "function",
+		installAvailable: Boolean(deferredInstallPrompt),
+		orientationLockAvailable: Boolean(screen.orientation && typeof screen.orientation.lock === "function"),
+	};
+}
+
+function syncDeviceBridgeState() {
+	currentDeviceBridgeState = computeDeviceBridgeState();
+	const body = document.body;
+	if (body instanceof HTMLBodyElement) {
+		body.dataset.deviceSilenceIntent = currentDeviceBridgeState.silenceIntent ? "1" : "0";
+		body.dataset.deviceVolume = currentDeviceBridgeState.effectiveVolume.toFixed(3);
+		body.dataset.deviceNativeSilence = currentDeviceBridgeState.nativeSilenceMode;
+		body.dataset.deviceVisibility = currentDeviceBridgeState.visibility;
+		body.dataset.deviceStandalone = currentDeviceBridgeState.standalone ? "1" : "0";
+		body.dataset.deviceNativeRoute = currentDeviceBridgeState.nativeRoute || "web";
+	}
+
+	window.dispatchEvent(new CustomEvent("o:device-bridge-change", {
+		detail: currentDeviceBridgeState,
+	}));
+
+	return currentDeviceBridgeState;
+}
+
+function getCurrentDeviceBridgeState() {
+	return currentDeviceBridgeState || syncDeviceBridgeState();
+}
+
+function readDeviceAudioProfile() {
+	const state = getCurrentDeviceBridgeState();
+	return {
+		muted: Boolean(state.muted),
+		volume: clampNumber(state.effectiveVolume, 0, 1),
+		silenceIntent: Boolean(state.silenceIntent),
+		nativeSilenceMode: state.nativeSilenceMode,
+		nativeVolume: state.nativeVolume,
+		route: state.nativeRoute,
+	};
+}
+
+function pulseDeviceHaptics(pattern = "soft") {
+	if (typeof navigator.vibrate !== "function" || document.hidden) {
+		return false;
+	}
+
+	const resolvedPattern = {
+		soft: 12,
+		medium: [18, 28, 18],
+		deep: [22, 36, 22, 36, 28],
+	}[pattern] || 12;
+
+	return navigator.vibrate(resolvedPattern);
+}
+
+async function promptDeviceInstall() {
+	if (!deferredInstallPrompt) {
+		return false;
+	}
+
+	const promptEvent = deferredInstallPrompt;
+	deferredInstallPrompt = null;
+	try {
+		await promptEvent.prompt();
+		await promptEvent.userChoice.catch(() => null);
+	} catch {
+		// Ignore install prompt failures.
+	}
+
+	syncDeviceBridgeState();
+	return true;
+}
+
+async function shareCurrentDeviceSurface({ title = document.title, text = "", url = window.location.href } = {}) {
+	if (typeof navigator.share !== "function") {
+		return false;
+	}
+
+	try {
+		await navigator.share({ title, text, url });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+async function requestDeviceOrientationLock(mode = "portrait-primary") {
+	if (!coarsePointer || !screen.orientation || typeof screen.orientation.lock !== "function") {
+		return false;
+	}
+
+	try {
+		await screen.orientation.lock(mode);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function releaseDeviceOrientationLock() {
+	if (!screen.orientation || typeof screen.orientation.unlock !== "function") {
+		return;
+	}
+
+	try {
+		screen.orientation.unlock();
+	} catch {
+		// Ignore unlock failures.
+	}
+}
+
+window.addEventListener("o:native-device-state", (event) => {
+	updateNativeDeviceState(event?.detail || {});
+});
+
+window.OBridgeNativeDevice = {
+	updateState: updateNativeDeviceState,
+	readState: () => getCurrentDeviceBridgeState(),
+};
+
+window.addEventListener("beforeinstallprompt", (event) => {
+	event.preventDefault();
+	deferredInstallPrompt = event;
+	syncDeviceBridgeState();
+});
+
+window.addEventListener("appinstalled", () => {
+	deferredInstallPrompt = null;
+	syncDeviceBridgeState();
+});
+
+document.addEventListener("visibilitychange", () => {
+	syncDeviceBridgeState();
+});
+window.addEventListener("focus", () => {
+	syncDeviceBridgeState();
+});
+window.addEventListener("pageshow", () => {
+	syncNativeDeviceSeed();
+	syncDeviceBridgeState();
+});
+
+if (displayModeMedia) {
+	if (typeof displayModeMedia.addEventListener === "function") {
+		displayModeMedia.addEventListener("change", () => {
+			syncDeviceBridgeState();
+		});
+	} else if (typeof displayModeMedia.addListener === "function") {
+		displayModeMedia.addListener(() => {
+			syncDeviceBridgeState();
+		});
+	}
+}
+
+syncNativeDeviceSeed();
+syncDeviceBridgeState();
 
 function isInteractiveElementTarget(target) {
 	return target instanceof Element && Boolean(target.closest("a, button, input, textarea, select, summary, label, details, [contenteditable=\"true\"]"));
@@ -412,17 +679,42 @@ function readCameraReactiveState() {
 	if (!(body instanceof HTMLBodyElement)) {
 		return {
 			ready: false,
+			cameraReady: false,
 			luma: 0,
 			motion: 0,
 			rgb: [180, 180, 180],
+			audioLevel: 0,
+			lightLevel: 0,
+			tiltX: 0,
+			tiltY: 0,
+			motionSensor: 0,
+			presence: 0,
 		};
 	}
 
+	const cameraReady = body.classList.contains("is-camera-ready");
+	const membraneReady = body.classList.contains("is-membrane-live");
+	const luma = clampNumber(Number.parseFloat(body.dataset.cameraLuma || "0"), 0, 1);
+	const motion = clampNumber(Number.parseFloat(body.dataset.cameraMotion || "0"), 0, 1);
+	const audioLevel = clampNumber(Number.parseFloat(body.dataset.membraneAudio || "0"), 0, 1);
+	const lightLevel = clampNumber(Number.parseFloat(body.dataset.membraneLight || String(luma)), 0, 1);
+	const tiltX = clampNumber(Number.parseFloat(body.dataset.membraneTiltX || "0"), -1, 1);
+	const tiltY = clampNumber(Number.parseFloat(body.dataset.membraneTiltY || "0"), -1, 1);
+	const motionSensor = clampNumber(Number.parseFloat(body.dataset.membraneMotion || "0"), 0, 1);
+	const presence = clampNumber(Number.parseFloat(body.dataset.membranePresence || String(Math.max(luma, audioLevel))), 0, 1);
+
 	return {
-		ready: body.classList.contains("is-camera-ready"),
-		luma: clampNumber(Number.parseFloat(body.dataset.cameraLuma || "0"), 0, 1),
-		motion: clampNumber(Number.parseFloat(body.dataset.cameraMotion || "0"), 0, 1),
+		ready: cameraReady || membraneReady,
+		cameraReady,
+		luma,
+		motion,
 		rgb: parseRgbTriplet(body.dataset.cameraRgb || "180 180 180", [180, 180, 180]),
+		audioLevel,
+		lightLevel,
+		tiltX,
+		tiltY,
+		motionSensor,
+		presence,
 	};
 }
 
@@ -491,18 +783,28 @@ function resolveTorusProfile(canvas) {
 		return profile;
 	}
 
-	const chromaMix = clampNumber(0.12 + cameraState.motion * 0.28 + cameraState.luma * 0.12, 0.12, 0.46);
-	const glowMix = clampNumber(0.16 + cameraState.motion * 0.34 + cameraState.luma * 0.08, 0.16, 0.54);
+	const sensorEnergy = clampNumber(
+		cameraState.motion * 0.34
+		+ cameraState.motionSensor * 0.22
+		+ cameraState.audioLevel * 0.26
+		+ cameraState.lightLevel * 0.14
+		+ Math.abs(cameraState.tiltX) * 0.12
+		+ Math.abs(cameraState.tiltY) * 0.14,
+		0,
+		1
+	);
+	const chromaMix = clampNumber(0.12 + cameraState.motion * 0.24 + cameraState.luma * 0.08 + cameraState.audioLevel * 0.08, 0.12, 0.5);
+	const glowMix = clampNumber(0.16 + sensorEnergy * 0.3 + cameraState.presence * 0.12, 0.16, 0.58);
 
 	return {
 		...profile,
 		primary: mixRgb(profile.primary, cameraState.rgb, chromaMix),
 		secondary: mixRgb(profile.secondary, cameraState.rgb, chromaMix * 0.82),
 		glow: mixRgb(profile.glow, cameraState.rgb, glowMix),
-		waveStrength: clampNumber(profile.waveStrength + cameraState.motion * 0.34 + cameraState.luma * 0.08, 0.48, 1.48),
-		pulseStrength: clampNumber(profile.pulseStrength + cameraState.motion * 0.28 + cameraState.luma * 0.14, 0.38, 1.36),
-		motion: clampNumber(profile.motion + cameraState.motion * 0.36 + cameraState.luma * 0.08, 0.82, 1.64),
-		signalMode: profile.signalMode || cameraState.motion > 0.62,
+		waveStrength: clampNumber(profile.waveStrength + cameraState.motion * 0.24 + cameraState.motionSensor * 0.16 + cameraState.audioLevel * 0.22 + cameraState.lightLevel * 0.12, 0.48, 1.6),
+		pulseStrength: clampNumber(profile.pulseStrength + cameraState.motion * 0.2 + cameraState.motionSensor * 0.16 + cameraState.audioLevel * 0.28 + cameraState.presence * 0.12, 0.38, 1.44),
+		motion: clampNumber(profile.motion + cameraState.motion * 0.24 + cameraState.motionSensor * 0.2 + cameraState.audioLevel * 0.24 + sensorEnergy * 0.12, 0.82, 1.72),
+		signalMode: profile.signalMode || cameraState.motion > 0.62 || cameraState.motionSensor > 0.4 || cameraState.audioLevel > 0.34,
 	};
 }
 
@@ -2445,23 +2747,24 @@ function initTorusCloud(canvas) {
 		state.velocityZoom *= 0.86;
 	}
 
-	function drawFrame(time = 0) {
-		const width = state.width;
-		const height = state.height;
-		if (!width || !height) {
-			return;
-		}
+		function drawFrame(time = 0) {
+			const width = state.width;
+			const height = state.height;
+			if (!width || !height) {
+				return;
+			}
 
-		const profile = resolveTorusProfile(canvas);
-		stepNavigation();
+			const profile = resolveTorusProfile(canvas);
+			const membrane = readCameraReactiveState();
+			stepNavigation();
 
-		const centerX = width * 0.5 + state.panX * (width * 0.018);
-		const centerY = height * 0.5 + state.autoLiftY + state.panY * (height * 0.018);
-		const camera = 39 - state.zoom * 1.12;
-		const scale = Math.min(width, height) * (0.09 + state.zoom * 0.01) * state.autoScale;
-		const spinY = state.yaw + time * 0.00006;
-		const spinX = state.pitch + Math.sin(time * 0.00012) * 0.05;
-		const spinZ = state.roll + Math.cos(time * 0.00009) * 0.03;
+			const centerX = width * 0.5 + state.panX * (width * 0.018) + membrane.tiltX * width * 0.042;
+			const centerY = height * 0.5 + state.autoLiftY + state.panY * (height * 0.018) + membrane.tiltY * height * 0.038;
+			const camera = 39 - state.zoom * 1.12 - membrane.presence * 1.8;
+			const scale = Math.min(width, height) * (0.09 + state.zoom * 0.01) * state.autoScale;
+			const spinY = state.yaw + time * 0.00006 + membrane.tiltX * 0.24;
+			const spinX = state.pitch + Math.sin(time * 0.00012) * 0.05 + membrane.tiltY * 0.28;
+			const spinZ = state.roll + Math.cos(time * 0.00009) * 0.03 + (membrane.audioLevel - 0.08) * 0.16;
 
 		context.clearRect(0, 0, width, height);
 
@@ -3399,7 +3702,7 @@ function initSpectralTuner() {
 
 if ("serviceWorker" in navigator && window.__O_DISABLE_SW__ !== true) {
 	window.addEventListener("load", () => {
-		navigator.serviceWorker.register("/site-sw.js").catch(() => {
+		navigator.serviceWorker.register(withBridgePrefix("/site-sw.js")).catch(() => {
 			// Fail silently: the site still works as a regular document.
 		});
 	});
@@ -3554,6 +3857,137 @@ function initMappingGenie() {
 	startCycle();
 }
 
+function initDeviceBridgePanels() {
+	const roots = Array.from(document.querySelectorAll("[data-device-bridge-root]"));
+	if (!roots.length) {
+		return;
+	}
+
+	const panels = roots
+		.map((root) => {
+			if (!(root instanceof HTMLElement)) {
+				return null;
+			}
+
+			return {
+				root,
+				context: root.dataset.deviceContext || "surface",
+				silenceStatus: root.querySelector("[data-device-silence-status]"),
+				volumeStatus: root.querySelector("[data-device-volume-status]"),
+				hapticsStatus: root.querySelector("[data-device-haptics-status]"),
+				visibilityStatus: root.querySelector("[data-device-visibility-status]"),
+				standaloneStatus: root.querySelector("[data-device-standalone-status]"),
+				nativeStatus: root.querySelector("[data-device-native-status]"),
+				silenceToggle: root.querySelector("[data-device-silence-toggle]"),
+				volumeInput: root.querySelector("[data-device-volume-input]"),
+				volumeReadout: root.querySelector("[data-device-volume-readout]"),
+				installButton: root.querySelector("[data-device-install]"),
+				shareButton: root.querySelector("[data-device-share]"),
+				nativeNote: root.querySelector("[data-device-native-note]"),
+			};
+		})
+		.filter(Boolean);
+
+	if (!panels.length) {
+		return;
+	}
+
+	const setNodeText = (node, text) => {
+		if (node instanceof HTMLElement) {
+			node.textContent = text;
+		}
+	};
+
+	const renderPanels = (state = getCurrentDeviceBridgeState()) => {
+		panels.forEach((panel) => {
+			if (!panel) {
+				return;
+			}
+
+			const silenceLabel = state.nativeSilenceMode === "silent"
+				? "silence natif"
+				: (state.silenceIntent ? "silence web" : (state.nativeSilenceMode === "vibrate" ? "vibreur natif" : "web sonore"));
+			const volumeLabel = `${Math.round(state.effectiveVolume * 100)}%${state.nativeVolume !== null ? " · mixé" : ""}`;
+			const hapticsLabel = state.hapticsAvailable ? "prête" : "absente";
+			const visibilityLabel = state.visibility === "hidden" ? "arrière-plan" : "visible";
+			const standaloneLabel = state.standalone ? "installée" : (state.installAvailable ? "installable" : "navigateur");
+			const nativeLabel = state.nativeSilenceMode !== "unknown" || state.nativeVolume !== null || state.nativeRoute
+				? `${state.nativeSource}${state.nativeRoute ? ` · ${state.nativeRoute}` : ""}`
+				: "web seul";
+			const note = state.nativeSilenceMode !== "unknown" || state.nativeVolume !== null
+				? `Pont natif reçu: ${state.nativeSource}${state.nativeRoute ? ` · ${state.nativeRoute}` : ""}. Le silence et le volume réels du téléphone sont maintenant visibles ici.`
+				: (state.standalone
+					? "Cette surface tourne comme une app installée. Le web garde ici veille, haptique, partage et niveau O., puis attend un pont natif pour le vrai silence système."
+					: "Le web pilote ici silence, niveau, haptique, partage et mode app. Un wrapper natif pourra ensuite donner le silence et le volume réels du téléphone.");
+
+			setNodeText(panel.silenceStatus, silenceLabel);
+			setNodeText(panel.volumeStatus, volumeLabel);
+			setNodeText(panel.hapticsStatus, hapticsLabel);
+			setNodeText(panel.visibilityStatus, visibilityLabel);
+			setNodeText(panel.standaloneStatus, standaloneLabel);
+			setNodeText(panel.nativeStatus, nativeLabel);
+			setNodeText(panel.volumeReadout, `${Math.round(state.effectiveVolume * 100)}%`);
+			setNodeText(panel.nativeNote, note);
+
+			if (panel.volumeInput instanceof HTMLInputElement) {
+				panel.volumeInput.value = String(Math.round(state.volumeIntent * 100));
+			}
+
+			if (panel.installButton instanceof HTMLElement) {
+				panel.installButton.hidden = !state.installAvailable || state.standalone;
+			}
+
+			if (panel.shareButton instanceof HTMLElement) {
+				panel.shareButton.hidden = !state.shareAvailable;
+			}
+
+			if (panel.silenceToggle instanceof HTMLElement) {
+				panel.silenceToggle.textContent = state.silenceIntent ? "Réactiver le son web" : "Silence web";
+			}
+		});
+	};
+
+	panels.forEach((panel) => {
+		if (!panel) {
+			return;
+		}
+
+		if (panel.silenceToggle instanceof HTMLElement) {
+			panel.silenceToggle.addEventListener("click", () => {
+				const nextSilent = !readDeviceSilenceIntent();
+				writeDeviceSilenceIntent(nextSilent);
+				pulseDeviceHaptics(nextSilent ? "soft" : "medium");
+			});
+		}
+
+		if (panel.volumeInput instanceof HTMLInputElement) {
+			panel.volumeInput.addEventListener("input", () => {
+				writeDeviceVolumeLevel((Number(panel.volumeInput.value) || 0) / 100);
+			});
+		}
+
+		if (panel.installButton instanceof HTMLElement) {
+			panel.installButton.addEventListener("click", () => {
+				void promptDeviceInstall();
+			});
+		}
+
+		if (panel.shareButton instanceof HTMLElement) {
+			panel.shareButton.addEventListener("click", () => {
+				const text = panel.context === "lab"
+					? "Le lab du tore écoute ce téléphone et rejoue ses capteurs."
+					: "La membrane du tore lit ce téléphone en direct.";
+				void shareCurrentDeviceSurface({ text });
+			});
+		}
+	});
+
+	renderPanels();
+	window.addEventListener("o:device-bridge-change", (event) => {
+		renderPanels(event?.detail || getCurrentDeviceBridgeState());
+	});
+}
+
 function initXyzSurface() {
 	const root = document.querySelector("[data-xyz-surface]");
 	if (!(root instanceof HTMLElement)) {
@@ -3597,6 +4031,14 @@ function initXyzCamera() {
 	const stopButton = document.querySelector("[data-xyz-camera-stop]");
 	const statusNode = document.querySelector("[data-xyz-camera-status]");
 	const titleNode = document.querySelector("[data-xyz-camera-title]");
+	const orientationNode = document.querySelector("[data-xyz-sensor-orientation]");
+	const motionNode = document.querySelector("[data-xyz-sensor-motion]");
+	const lightNode = document.querySelector("[data-xyz-sensor-light]");
+	const audioNode = document.querySelector("[data-xyz-sensor-audio]");
+	const cameraNode = document.querySelector("[data-xyz-sensor-camera]");
+	const wakeNode = document.querySelector("[data-xyz-sensor-wake]");
+	const plasmaBridgeUrl = root.dataset.xyzPlasmaBridge || "";
+	const membraneLandSlug = root.dataset.xyzPlasmaLand || "";
 
 	if (!(root instanceof HTMLElement) || !(video instanceof HTMLVideoElement) || !(startButton instanceof HTMLElement) || !(stopButton instanceof HTMLElement)) {
 		return;
@@ -3604,12 +4046,192 @@ function initXyzCamera() {
 
 	let stream = null;
 	let analysisFrame = 0;
+	let audioFrame = 0;
 	let analysisLastAt = 0;
 	let previousSamples = null;
+	let audioContext = null;
+	let audioAnalyser = null;
+	let wakeLock = null;
+	let lightSensor = null;
+	let orientationBound = false;
+	let motionBound = false;
+	let bridgePulseTimer = 0;
+	let bridgeInFlight = false;
+	let bridgeLastSignature = "";
+	let bridgeLastAt = 0;
 	const analysisCanvas = document.createElement("canvas");
 	analysisCanvas.width = 48;
 	analysisCanvas.height = 36;
 	const analysisContext = analysisCanvas.getContext("2d", { willReadFrequently: true });
+	const membrane = {
+		luma: 0,
+		cameraMotion: 0,
+		audioLevel: 0,
+		lightLevel: 0,
+		tiltX: 0,
+		tiltY: 0,
+		motionSensor: 0,
+	};
+
+	const isMembraneLive = () => document.body.classList.contains("is-membrane-live");
+
+	const setSensorText = (node, text) => {
+		if (node instanceof HTMLElement) {
+			node.textContent = text;
+		}
+	};
+
+	const syncMembraneReactiveState = () => {
+		const presence = clampNumber(
+			Math.max(
+				membrane.luma,
+				membrane.cameraMotion,
+				membrane.motionSensor,
+				membrane.audioLevel,
+				membrane.lightLevel,
+				Math.abs(membrane.tiltX) * 0.8,
+				Math.abs(membrane.tiltY) * 0.9
+			),
+			0,
+			1
+		);
+		document.body.dataset.membraneAudio = membrane.audioLevel.toFixed(3);
+		document.body.dataset.membraneLight = membrane.lightLevel.toFixed(3);
+		document.body.dataset.membraneTiltX = membrane.tiltX.toFixed(3);
+		document.body.dataset.membraneTiltY = membrane.tiltY.toFixed(3);
+		document.body.dataset.membraneMotion = membrane.motionSensor.toFixed(3);
+		document.body.dataset.membranePresence = presence.toFixed(3);
+		document.body.style.setProperty("--membrane-audio", membrane.audioLevel.toFixed(3));
+		document.body.style.setProperty("--membrane-light", membrane.lightLevel.toFixed(3));
+		document.body.style.setProperty("--membrane-tilt-x", membrane.tiltX.toFixed(3));
+		document.body.style.setProperty("--membrane-tilt-y", membrane.tiltY.toFixed(3));
+		document.body.style.setProperty("--membrane-motion", membrane.motionSensor.toFixed(3));
+		document.body.style.setProperty("--membrane-presence", presence.toFixed(3));
+	};
+
+	const resetMembraneReactiveState = () => {
+		membrane.luma = 0;
+		membrane.cameraMotion = 0;
+		membrane.audioLevel = 0;
+		membrane.lightLevel = 0;
+		membrane.tiltX = 0;
+		membrane.tiltY = 0;
+		membrane.motionSensor = 0;
+		syncMembraneReactiveState();
+	};
+
+	const membraneMetricsSnapshot = () => ({
+		...(function () {
+			const deviceState = getCurrentDeviceBridgeState();
+			return {
+				device_volume: clampNumber(readDeviceAudioProfile().volume, 0, 1),
+				silence_intent: deviceState.silenceIntent ? 1 : 0,
+				native_silence: deviceState.nativeSilenceMode === "silent" ? 1 : 0,
+				visibility_hidden: deviceState.visibility === "hidden" ? 1 : 0,
+				standalone: deviceState.standalone ? 1 : 0,
+			};
+		})(),
+		presence: clampNumber(
+			Math.max(
+				membrane.luma,
+				membrane.cameraMotion,
+				membrane.motionSensor,
+				membrane.audioLevel,
+				membrane.lightLevel,
+				Math.abs(membrane.tiltX) * 0.8,
+				Math.abs(membrane.tiltY) * 0.9
+			),
+			0,
+			1
+		),
+		motion: clampNumber(Math.max(membrane.cameraMotion, membrane.motionSensor), 0, 1),
+		audio: clampNumber(membrane.audioLevel, 0, 1),
+		light: clampNumber(Math.max(membrane.lightLevel, membrane.luma), 0, 1),
+		luma: clampNumber(membrane.luma, 0, 1),
+		tilt_x: clampNumber(membrane.tiltX, -1, 1),
+		tilt_y: clampNumber(membrane.tiltY, -1, 1),
+	});
+
+	const membraneSignature = (metrics) => [
+		Math.round(clampNumber(metrics.presence, 0, 1) * 10),
+		Math.round(clampNumber(metrics.motion, 0, 1) * 10),
+		Math.round(clampNumber(metrics.audio, 0, 1) * 10),
+		Math.round(clampNumber(metrics.light, 0, 1) * 10),
+		Math.round(clampNumber(metrics.device_volume, 0, 1) * 10),
+		metrics.silence_intent > 0.5 ? 1 : 0,
+		Math.round((clampNumber(metrics.tilt_x, -1, 1) + 1) * 5),
+		Math.round((clampNumber(metrics.tilt_y, -1, 1) + 1) * 5),
+	].join(":");
+
+	const membraneBridgeCopy = (metrics) => `présence ${Math.round(metrics.presence * 100)}% · mouvement ${Math.round(metrics.motion * 100)}% · souffle ${Math.round(metrics.audio * 100)}% · lumière ${Math.round(metrics.light * 100)}% · niveau ${Math.round(metrics.device_volume * 100)}%${metrics.silence_intent > 0.5 ? " · silence web" : ""}${metrics.native_silence > 0.5 ? " · silence natif" : ""}`;
+
+	const sendMembraneBridge = async (eventName, message, { force = false, keepalive = false } = {}) => {
+		if (!plasmaBridgeUrl || bridgeInFlight) {
+			return false;
+		}
+
+		const metrics = membraneMetricsSnapshot();
+		const signature = membraneSignature(metrics);
+		const now = Date.now();
+		if (!force && signature === bridgeLastSignature && now - bridgeLastAt < 11000) {
+			return false;
+		}
+
+		bridgeInFlight = true;
+		try {
+			const response = await fetch(plasmaBridgeUrl, {
+				method: "POST",
+				mode: "cors",
+				cache: "no-store",
+				keepalive,
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					event: eventName,
+					surface: "xyz",
+					camera: document.body.dataset.cameraFlavor || "membrane",
+					land_slug: membraneLandSlug || "",
+					timestamp: new Date().toISOString(),
+					message,
+					metrics,
+				}),
+			});
+			if (!response.ok) {
+				return false;
+			}
+
+			bridgeLastSignature = signature;
+			bridgeLastAt = now;
+			return true;
+		} catch {
+			return false;
+		} finally {
+			bridgeInFlight = false;
+		}
+	};
+
+	const stopBridgePulse = () => {
+		if (bridgePulseTimer) {
+			window.clearInterval(bridgePulseTimer);
+			bridgePulseTimer = 0;
+		}
+	};
+
+	const startBridgePulse = () => {
+		if (bridgePulseTimer || !plasmaBridgeUrl) {
+			return;
+		}
+
+		bridgePulseTimer = window.setInterval(() => {
+			if (!isMembraneLive()) {
+				return;
+			}
+
+			const metrics = membraneMetricsSnapshot();
+			void sendMembraneBridge("membrane_pulse", membraneBridgeCopy(metrics));
+		}, 12000);
+	};
 
 	const setReactiveCssState = (luma = 0, motion = 0, rgb = [180, 180, 180], flavor = "neutral") => {
 		const safeLuma = clampNumber(luma, 0, 1);
@@ -3625,14 +4247,29 @@ function initXyzCamera() {
 		document.body.style.setProperty("--camera-luma", safeLuma.toFixed(3));
 		document.body.style.setProperty("--camera-motion", safeMotion.toFixed(3));
 		document.body.style.setProperty("--camera-rgb", safeRgb.join(" "));
+		membrane.luma = safeLuma;
+		membrane.cameraMotion = safeMotion;
+		if (!(lightSensor && isMembraneLive())) {
+			membrane.lightLevel = safeLuma;
+		}
+		syncMembraneReactiveState();
 	};
 
 	const resetReactiveCssState = () => {
 		previousSamples = null;
 		setReactiveCssState(0, 0, [180, 180, 180], "neutral");
+		resetMembraneReactiveState();
 	};
 
 	const describeCameraFlavor = (luma, motion) => {
+		if (motion > 0.42 && membrane.audioLevel > 0.24) {
+			return {
+				key: "sap",
+				title: "La membrane boit voix et lumière.",
+				message: "Le téléphone remonte du grain, du souffle et de l’inclinaison. Le tore devient plus nerveux, presque mastiqué par la présence.",
+			};
+		}
+
 		if (motion > 0.48 && luma > 0.54) {
 			return {
 				key: "sap",
@@ -3679,6 +4316,193 @@ function initXyzCamera() {
 		}
 		analysisLastAt = 0;
 		resetReactiveCssState();
+	};
+
+	const stopAudio = () => {
+		if (audioFrame) {
+			window.cancelAnimationFrame(audioFrame);
+			audioFrame = 0;
+		}
+		audioAnalyser = null;
+		if (audioContext && typeof audioContext.close === "function") {
+			audioContext.close().catch(() => {});
+		}
+		audioContext = null;
+		membrane.audioLevel = 0;
+		syncMembraneReactiveState();
+	};
+
+	const analyzeAudio = () => {
+		if (!audioAnalyser) {
+			return;
+		}
+
+		audioFrame = window.requestAnimationFrame(analyzeAudio);
+		if (!isMembraneLive()) {
+			return;
+		}
+
+		const buffer = new Uint8Array(audioAnalyser.fftSize);
+		audioAnalyser.getByteTimeDomainData(buffer);
+		let energy = 0;
+		for (let index = 0; index < buffer.length; index += 1) {
+			const sample = (buffer[index] - 128) / 128;
+			energy += sample * sample;
+		}
+		membrane.audioLevel = clampNumber(Math.sqrt(energy / buffer.length) * 2.6, 0, 1);
+		syncMembraneReactiveState();
+		setSensorText(audioNode, membrane.audioLevel > 0.03 ? `${Math.round(membrane.audioLevel * 100)}%` : "souffle bas");
+	};
+
+	const ensureAudioAnalyser = async (mediaStream) => {
+		const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+		if (!AudioContextClass) {
+			setSensorText(audioNode, "natif");
+			return false;
+		}
+
+		audioContext = new AudioContextClass();
+		if (audioContext.state === "suspended") {
+			await audioContext.resume().catch(() => {});
+		}
+		const source = audioContext.createMediaStreamSource(mediaStream);
+		audioAnalyser = audioContext.createAnalyser();
+		audioAnalyser.fftSize = 512;
+		source.connect(audioAnalyser);
+		audioFrame = window.requestAnimationFrame(analyzeAudio);
+		return true;
+	};
+
+	const requestWakeLock = async () => {
+		if (!("wakeLock" in navigator) || typeof navigator.wakeLock?.request !== "function") {
+			setSensorText(wakeNode, "indisponible");
+			return false;
+		}
+
+		try {
+			wakeLock = await navigator.wakeLock.request("screen");
+			wakeLock.addEventListener("release", () => {
+				if (isMembraneLive()) {
+					setSensorText(wakeNode, "relâchée");
+				}
+			});
+			setSensorText(wakeNode, "active");
+			return true;
+		} catch {
+			setSensorText(wakeNode, "refusée");
+			return false;
+		}
+	};
+
+	const releaseWakeLock = async () => {
+		if (!wakeLock) {
+			return;
+		}
+		try {
+			await wakeLock.release();
+		} catch {
+			// Ignore release failures.
+		}
+		wakeLock = null;
+	};
+
+	const ensureAmbientLightSensor = () => {
+		if (lightSensor || !("AmbientLightSensor" in window)) {
+			if (!("AmbientLightSensor" in window)) {
+				setSensorText(lightNode, "fallback Ocam");
+			}
+			return false;
+		}
+
+		try {
+			lightSensor = new window.AmbientLightSensor();
+			lightSensor.addEventListener("reading", () => {
+				if (!isMembraneLive()) {
+					return;
+				}
+				membrane.lightLevel = clampNumber(Math.log10(Math.max(1, Number(lightSensor.illuminance) || 1)) / 3, 0, 1);
+				syncMembraneReactiveState();
+				setSensorText(lightNode, `${Math.round(Number(lightSensor.illuminance) || 0)} lux`);
+			});
+			lightSensor.addEventListener("error", () => {
+				if (isMembraneLive()) {
+					setSensorText(lightNode, "fallback Ocam");
+				}
+			});
+			lightSensor.start();
+			return true;
+		} catch {
+			setSensorText(lightNode, "fallback Ocam");
+			return false;
+		}
+	};
+
+	const requestMotionPermissions = async () => {
+		let orientationReady = false;
+		let motionReady = false;
+
+		if ("DeviceOrientationEvent" in window) {
+			if (typeof DeviceOrientationEvent.requestPermission === "function") {
+				try {
+					orientationReady = (await DeviceOrientationEvent.requestPermission()) === "granted";
+				} catch {
+					orientationReady = false;
+				}
+			} else {
+				orientationReady = true;
+			}
+		}
+
+		if ("DeviceMotionEvent" in window) {
+			if (typeof DeviceMotionEvent.requestPermission === "function") {
+				try {
+					motionReady = (await DeviceMotionEvent.requestPermission()) === "granted";
+				} catch {
+					motionReady = false;
+				}
+			} else {
+				motionReady = true;
+			}
+		}
+
+		if (orientationReady && !orientationBound) {
+			window.addEventListener("deviceorientation", (event) => {
+				if (!isMembraneLive()) {
+					return;
+				}
+				membrane.tiltX = clampNumber((Number(event.gamma) || 0) / 46, -1, 1);
+				membrane.tiltY = clampNumber((Number(event.beta) || 0) / 64, -1, 1);
+				syncMembraneReactiveState();
+				setSensorText(
+					orientationNode,
+					`α ${Math.round(Number(event.alpha) || 0)}° · β ${Math.round(Number(event.beta) || 0)}°`
+				);
+			});
+			orientationBound = true;
+		} else if ("DeviceOrientationEvent" in window) {
+			setSensorText(orientationNode, "refusée");
+		}
+
+		if (motionReady && !motionBound) {
+			window.addEventListener("devicemotion", (event) => {
+				if (!isMembraneLive()) {
+					return;
+				}
+				const source = event.accelerationIncludingGravity || event.acceleration || {};
+				const x = Number(source.x || 0);
+				const y = Number(source.y || 0);
+				const z = Number(source.z || 0);
+				const magnitude = Math.sqrt(x * x + y * y + z * z);
+				membrane.motionSensor = clampNumber(magnitude / 24, 0, 1);
+				syncMembraneReactiveState();
+				setSensorText(motionNode, `${Math.round(membrane.motionSensor * 100)}%`);
+			});
+			motionBound = true;
+		} else if ("DeviceMotionEvent" in window) {
+			setSensorText(motionNode, "refusé");
+		}
+
+		return orientationReady || motionReady;
 	};
 
 	const analyzeFrame = (time = 0) => {
@@ -3747,9 +4571,11 @@ function initXyzCamera() {
 	};
 
 	const setUiState = (state, message = "", title = "") => {
+		const isLiveLike = state === "live" || state === "partial";
 		document.body.classList.toggle("is-camera-ready", state === "live");
-		startButton.classList.toggle("hidden", state === "live");
-		stopButton.classList.toggle("hidden", state !== "live");
+		document.body.classList.toggle("is-membrane-live", isLiveLike);
+		startButton.classList.toggle("hidden", isLiveLike);
+		stopButton.classList.toggle("hidden", !isLiveLike);
 
 		if (statusNode instanceof HTMLElement && message) {
 			statusNode.textContent = message;
@@ -3761,21 +4587,45 @@ function initXyzCamera() {
 	};
 
 	const stopStream = () => {
+		const shouldNotifyBridge = isMembraneLive();
+		const closeMetrics = membraneMetricsSnapshot();
+		stopBridgePulse();
+		if (shouldNotifyBridge) {
+			pulseDeviceHaptics("soft");
+			void sendMembraneBridge("membrane_close", `La membrane se relâche · ${membraneBridgeCopy(closeMetrics)}`, { force: true, keepalive: true });
+		}
 		stopAnalysis();
+		stopAudio();
 		if (stream) {
 			stream.getTracks().forEach((track) => track.stop());
 			stream = null;
 		}
 		video.srcObject = null;
+		if (lightSensor && typeof lightSensor.stop === "function") {
+			try {
+				lightSensor.stop();
+			} catch {
+				// Ignore stop failures.
+			}
+		}
+		lightSensor = null;
+		void releaseWakeLock();
+		releaseDeviceOrientationLock();
+		setSensorText(orientationNode, "en attente");
+		setSensorText(motionNode, "en attente");
+		setSensorText(lightNode, "en attente");
+		setSensorText(audioNode, "en attente");
+		setSensorText(cameraNode, "en attente");
+		setSensorText(wakeNode, "en attente");
 		setUiState(
 			"idle",
-			"Ocam est refermé. Le tore continue de respirer sur une mémoire synthétique, sans capter le monde en direct.",
-			"Ocam peut nourrir la surface."
+			"La membrane se relâche. Le tore continue de respirer sur une mémoire synthétique, sans écouter le téléphone en direct.",
+			"La membrane attend un geste."
 		);
 	};
 
 	const constraints = {
-		audio: false,
+		audio: true,
 		video: {
 			facingMode: coarsePointer ? { ideal: "environment" } : "user",
 			width: { ideal: 1280 },
@@ -3783,39 +4633,87 @@ function initXyzCamera() {
 		},
 	};
 
-	startButton.addEventListener("click", async () => {
+		startButton.addEventListener("click", async () => {
 		if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
 			setUiState(
 				"unsupported",
-				"Ocam ne trouve pas de caméra disponible ici. La membrane garde donc un monde synthétique, comme une pulpe de secours.",
-				"Ocam indisponible sur cette surface."
+				"La membrane ne trouve pas de caméra ou de micro disponibles ici. Le tore garde donc un monde synthétique comme pulpe de secours.",
+				"Membrane incomplète sur cette surface."
 			);
+			setSensorText(cameraNode, "indisponible");
+			setSensorText(audioNode, "indisponible");
 			return;
 		}
 
 		setUiState(
 			"loading",
-			"Le tore demande à Ocam la permission de goûter le réel : lumière, grain, textures. Rien n’est envoyé au serveur depuis cette couche.",
-			"Ouverture d’Ocam…"
+			"Le tore demande au téléphone lumière, souffle, mouvement et présence. Rien n’est envoyé au serveur depuis cette couche.",
+			"Activation de la membrane…"
 		);
+		setSensorText(orientationNode, "demande");
+		setSensorText(motionNode, "demande");
+		setSensorText(lightNode, "demande");
+		setSensorText(audioNode, "demande");
+		setSensorText(cameraNode, "demande");
+		setSensorText(wakeNode, "demande");
+
+		const motionReady = await requestMotionPermissions();
+		const lightReady = ensureAmbientLightSensor();
+		const wakeReady = await requestWakeLock();
+		await requestDeviceOrientationLock();
 
 		try {
 			stream = await navigator.mediaDevices.getUserMedia(constraints);
 			video.srcObject = stream;
 			await video.play().catch(() => undefined);
+			await ensureAudioAnalyser(stream);
 			stopAnalysis();
 			analysisFrame = window.requestAnimationFrame(analyzeFrame);
+			setSensorText(cameraNode, "ouverte");
+			setSensorText(audioNode, "ouvert");
+			if (!lightReady) {
+				setSensorText(lightNode, "fallback Ocam");
+			}
+			if (!motionReady && !("DeviceMotionEvent" in window) && !("DeviceOrientationEvent" in window)) {
+				setSensorText(orientationNode, "absente");
+				setSensorText(motionNode, "absent");
+			}
 			setUiState(
 				"live",
-				"Ocam est ouvert. Le tore lit maintenant la lumière réelle comme une matière presque comestible : grain, souffle, reflets, présence.",
-				"Ocam nourrit maintenant la surface."
+				"La membrane est ouverte. Le tore lit maintenant lumière, souffle, inclinaison et présence comme une matière presque comestible.",
+				"La membrane nourrit maintenant la surface."
+			);
+			pulseDeviceHaptics("medium");
+			startBridgePulse();
+			void sendMembraneBridge(
+				"membrane_open",
+				`Ouverture membrane xyz · ${membraneBridgeCopy(membraneMetricsSnapshot())}`,
+				{ force: true }
 			);
 		} catch (error) {
+			setSensorText(cameraNode, "refusée");
+			setSensorText(audioNode, "refusé");
+			if (motionReady || lightReady || wakeReady) {
+				setUiState(
+					"partial",
+					"La membrane ne capte pas encore image ou souffle, mais elle lit déjà mouvement, lumière ou présence de veille.",
+					"La membrane dérive en mode partiel."
+				);
+				pulseDeviceHaptics("soft");
+				startBridgePulse();
+				void sendMembraneBridge(
+					"membrane_partial",
+					`Membrane partielle xyz · ${membraneBridgeCopy(membraneMetricsSnapshot())}`,
+					{ force: true }
+				);
+				return;
+			}
+
 			stopStream();
 			setUiState(
 				"error",
-				"Permission refusée ou caméra inaccessible. La membrane revient à son rêve interne, sans captation directe.",
-				"La surface garde son rêve sans Ocam."
+				"Permission refusée ou capteur inaccessible. La membrane revient à son rêve interne, sans captation directe.",
+				"La surface garde son rêve sans membrane."
 			);
 		}
 	});
@@ -3826,6 +4724,753 @@ function initXyzCamera() {
 
 	window.addEventListener("beforeunload", () => {
 		stopStream();
+	});
+
+	setSensorText(orientationNode, "prête");
+	setSensorText(motionNode, "prêt");
+	setSensorText(lightNode, "capteur ou Ocam");
+	setSensorText(audioNode, "prêt");
+	setSensorText(cameraNode, "prête");
+	setSensorText(wakeNode, "sur demande");
+	resetMembraneReactiveState();
+}
+
+function initLabConsole() {
+	const root = document.querySelector("[data-lab-console]");
+	if (!(root instanceof HTMLElement)) {
+		return;
+	}
+
+	const activateButton = root.querySelector("[data-lab-activate]");
+	const replayButton = root.querySelector("[data-lab-replay]");
+	const activationStatus = root.querySelector("[data-lab-activation-status]");
+	const sensorBadge = root.querySelector("[data-lab-sensor-badge]");
+	const orientationStatus = root.querySelector("[data-lab-orientation-status]");
+	const motionStatus = root.querySelector("[data-lab-motion-status]");
+	const lightStatus = root.querySelector("[data-lab-light-status]");
+	const audioStatus = root.querySelector("[data-lab-audio-status]");
+	const cameraStatus = root.querySelector("[data-lab-camera-status]");
+	const wakeStatus = root.querySelector("[data-lab-wake-status]");
+	const cameraPreview = root.querySelector("[data-lab-camera-preview]");
+	const cameraFallback = root.querySelector("[data-lab-camera-fallback]");
+	const pocketStatus = root.querySelector("[data-lab-pocket-status]");
+	const pocketNote = root.querySelector("[data-lab-pocket-note]");
+	const apiStatus = root.querySelector("[data-lab-api-status]");
+	const plasmaStatus = root.querySelector("[data-lab-plasma-status]");
+	const plasmaBadge = root.querySelector("[data-lab-plasma-badge]");
+	const plasmaWeatherCopy = root.querySelector("[data-lab-plasma-weather-copy]");
+	const runtimeTraceList = root.querySelector("[data-lab-runtime-traces]");
+	const deliveryStatus = root.querySelector("[data-lab-delivery-status]");
+	const sessionTraceList = root.querySelector("[data-lab-session-traces]");
+
+	if (!(activateButton instanceof HTMLElement) || !(replayButton instanceof HTMLElement)) {
+		return;
+	}
+
+	const cardByName = {
+		sensor: root.querySelector('[data-lab-card="sensor"]'),
+		pocket: root.querySelector('[data-lab-card="pocket"]'),
+		api: root.querySelector('[data-lab-card="api"]'),
+		plasma: root.querySelector('[data-lab-card="plasma"]'),
+		delivery: root.querySelector('[data-lab-card="delivery"]'),
+	};
+
+	const state = {
+		orientationBound: false,
+		motionBound: false,
+		replayTimer: 0,
+		replayTick: 0,
+		cameraFrame: 0,
+		audioFrame: 0,
+		lastMotionTraceAt: 0,
+		lastAudioTraceAt: 0,
+		lastCameraTraceAt: 0,
+		lastPocketState: "idle",
+		wakeLock: null,
+		lightSensor: null,
+		lightSensorLive: false,
+		cameraFallbackLight: false,
+		stream: null,
+		audioContext: null,
+		audioAnalyser: null,
+		plasmaPollTimer: 0,
+	};
+
+	const cameraCanvas = document.createElement("canvas");
+	cameraCanvas.width = 36;
+	cameraCanvas.height = 24;
+	const cameraContext = cameraCanvas.getContext("2d", { willReadFrequently: true });
+
+	const setText = (node, text) => {
+		if (node instanceof HTMLElement) {
+			node.textContent = text;
+		}
+	};
+
+	const setCardState = (name, nextState) => {
+		const card = cardByName[name];
+		if (!(card instanceof HTMLElement)) {
+			return;
+		}
+
+		card.dataset.labState = nextState;
+	};
+
+	const appendSessionTrace = (eventName, sourceLabel, message) => {
+		if (!(sessionTraceList instanceof HTMLOListElement)) {
+			return;
+		}
+
+		const item = document.createElement("li");
+		const label = document.createElement("span");
+		const strong = document.createElement("strong");
+		const copy = document.createElement("span");
+
+		label.className = "summary-label";
+		label.textContent = eventName;
+		strong.textContent = sourceLabel;
+		copy.textContent = message;
+
+		item.append(label, strong, copy);
+		sessionTraceList.prepend(item);
+		sessionTraceList.hidden = false;
+
+		while (sessionTraceList.children.length > 4) {
+			sessionTraceList.removeChild(sessionTraceList.lastElementChild);
+		}
+	};
+
+	const renderRuntimeTraces = (events) => {
+		if (!(runtimeTraceList instanceof HTMLOListElement)) {
+			return;
+		}
+
+		runtimeTraceList.innerHTML = "";
+		if (!Array.isArray(events) || events.length === 0) {
+			const item = document.createElement("li");
+			const label = document.createElement("span");
+			const strong = document.createElement("strong");
+			const copy = document.createElement("span");
+			label.className = "summary-label";
+			label.textContent = "veille";
+			strong.textContent = "runtime";
+			copy.textContent = "Le premier ping capteur apparaîtra ici dès qu’un événement traversera le pont plasma.";
+			item.append(label, strong, copy);
+			runtimeTraceList.append(item);
+			return;
+		}
+
+		events.slice(0, 6).forEach((event) => {
+			const item = document.createElement("li");
+			const label = document.createElement("span");
+			const strong = document.createElement("strong");
+			const copy = document.createElement("span");
+			label.className = "summary-label";
+			label.textContent = event && typeof event.event === "string" && event.event ? event.event : "signal";
+			strong.textContent = event && typeof event.source === "string" && event.source
+				? event.source
+				: (event && typeof event.camera === "string" && event.camera ? event.camera : "runtime");
+			copy.textContent = event && typeof event.message === "string" && event.message
+				? event.message
+				: (event && typeof event.timestamp === "string" && event.timestamp ? event.timestamp : "trace sans message");
+			item.append(label, strong, copy);
+			runtimeTraceList.append(item);
+		});
+	};
+
+	const applyPlasmaWeather = (weather, events) => {
+		if (weather && typeof weather === "object") {
+			setText(plasmaStatus, typeof weather.lead === "string" ? weather.lead : "Météo plasma reçue.");
+			setText(plasmaBadge, typeof weather.badge === "string" ? weather.badge : "plasma");
+			setText(plasmaWeatherCopy, typeof weather.detail === "string" ? weather.detail : "");
+			if (typeof weather.tone === "string" && weather.tone) {
+				setCardState("plasma", weather.tone);
+			}
+		}
+
+		renderRuntimeTraces(Array.isArray(events) ? events : []);
+	};
+
+	const setActivationCopy = (text) => {
+		setText(activationStatus, text);
+	};
+
+	const updatePocketState = (statusText, noteText, tone = "idle") => {
+		setText(pocketStatus, statusText);
+		setText(pocketNote, noteText);
+		setCardState("pocket", tone);
+		state.lastPocketState = tone;
+	};
+
+	const updateDeliveryState = (text, tone = "idle") => {
+		setText(deliveryStatus, text);
+		setCardState("delivery", tone);
+	};
+
+	const emitTrace = (eventName, sourceLabel, message, { channel = "plasma" } = {}) => {
+		setText(plasmaStatus, message);
+		setCardState("plasma", "live");
+		appendSessionTrace(eventName, sourceLabel, message);
+		if (channel === "delivery") {
+			updateDeliveryState(message, "live");
+		}
+	};
+
+	const stopCameraLoop = () => {
+		if (state.cameraFrame) {
+			window.cancelAnimationFrame(state.cameraFrame);
+			state.cameraFrame = 0;
+		}
+	};
+
+	const stopAudioLoop = () => {
+		if (state.audioFrame) {
+			window.cancelAnimationFrame(state.audioFrame);
+			state.audioFrame = 0;
+		}
+	};
+
+	const releaseWakeLock = async () => {
+		if (!state.wakeLock) {
+			return;
+		}
+		try {
+			await state.wakeLock.release();
+		} catch {
+			// Ignore release errors on unload.
+		}
+		state.wakeLock = null;
+	};
+
+	const describeOrientation = (alpha, beta, gamma) => {
+		const safeAlpha = Number.isFinite(alpha) ? Math.round(alpha) : 0;
+		const safeBeta = Number.isFinite(beta) ? Math.round(beta) : 0;
+		const safeGamma = Number.isFinite(gamma) ? Math.round(gamma) : 0;
+		return `α ${safeAlpha}° · β ${safeBeta}° · γ ${safeGamma}°`;
+	};
+
+	const setSensorBadge = (text) => {
+		setText(sensorBadge, text);
+	};
+
+	const updateOrientation = (alpha, beta, gamma, { source = "live" } = {}) => {
+		setText(orientationStatus, describeOrientation(alpha, beta, gamma));
+		setCardState("sensor", "live");
+		if (source === "replay") {
+			return;
+		}
+	};
+
+	const updateMotion = (intensity, detail = "", { source = "live" } = {}) => {
+		const percent = Math.round(clampNumber(intensity, 0, 1) * 100);
+		setText(motionStatus, detail ? `${percent}% · ${detail}` : `${percent}%`);
+		setCardState("sensor", percent > 4 ? "live" : "idle");
+		if (source === "live" && percent >= 36 && Date.now() - state.lastMotionTraceAt > 2600) {
+			state.lastMotionTraceAt = Date.now();
+			emitTrace("motion", "accelerometer", `Secousse lisible dans le tore · ${percent}% d’intensité.`);
+		}
+	};
+
+	const updateLight = (text, { tone = "live" } = {}) => {
+		setText(lightStatus, text);
+		if (tone) {
+			setCardState("sensor", tone);
+		}
+	};
+
+	const updateAudio = (level, { source = "live" } = {}) => {
+		const percent = Math.round(clampNumber(level, 0, 1) * 100);
+		setText(audioStatus, percent > 0 ? `${percent}% d’amplitude` : "souffle bas");
+		if (source === "live" && percent >= 22 && Date.now() - state.lastAudioTraceAt > 3200) {
+			state.lastAudioTraceAt = Date.now();
+			emitTrace("voice", "micro", `Le micro pousse une houle courte · ${percent}% d’amplitude.`);
+		}
+	};
+
+	const updateCamera = (luma, rgb, { source = "live" } = {}) => {
+		const safeLuma = Math.round(clampNumber(luma, 0, 1) * 100);
+		const safeRgb = Array.isArray(rgb) && rgb.length >= 3
+			? rgb.map((value) => clampNumber(Math.round(Number(value) || 0), 0, 255))
+			: [180, 180, 180];
+		setText(cameraStatus, `luma ${safeLuma}% · rgb ${safeRgb.join("/")}`);
+		if (!state.lightSensorLive) {
+			updateLight(`fallback Ocam · ${safeLuma}%`, { tone: "live" });
+			state.cameraFallbackLight = true;
+		}
+		if (source === "live" && safeLuma >= 68 && Date.now() - state.lastCameraTraceAt > 3600) {
+			state.lastCameraTraceAt = Date.now();
+			emitTrace("light", "camera", `La peau caméra remonte une clarté nette · ${safeLuma}% de luma.`);
+		}
+	};
+
+	const analyzeCameraFrame = () => {
+		if (!(cameraPreview instanceof HTMLVideoElement) || !state.stream || !cameraContext) {
+			return;
+		}
+
+		state.cameraFrame = window.requestAnimationFrame(analyzeCameraFrame);
+		if (root.dataset.labReplay === "1") {
+			return;
+		}
+
+		if (cameraPreview.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || cameraPreview.videoWidth === 0 || cameraPreview.videoHeight === 0) {
+			return;
+		}
+
+		cameraContext.drawImage(cameraPreview, 0, 0, cameraCanvas.width, cameraCanvas.height);
+		const imageData = cameraContext.getImageData(0, 0, cameraCanvas.width, cameraCanvas.height);
+		const sampleCount = cameraCanvas.width * cameraCanvas.height;
+		let totalLuma = 0;
+		let totalR = 0;
+		let totalG = 0;
+		let totalB = 0;
+
+		for (let offset = 0; offset < imageData.data.length; offset += 4) {
+			const red = imageData.data[offset];
+			const green = imageData.data[offset + 1];
+			const blue = imageData.data[offset + 2];
+			totalR += red;
+			totalG += green;
+			totalB += blue;
+			totalLuma += (red * 0.299 + green * 0.587 + blue * 0.114) / 255;
+		}
+
+		updateCamera(
+			totalLuma / sampleCount,
+			[
+				Math.round(totalR / sampleCount),
+				Math.round(totalG / sampleCount),
+				Math.round(totalB / sampleCount),
+			]
+		);
+	};
+
+	const analyzeAudioFrame = () => {
+		if (!state.audioAnalyser) {
+			return;
+		}
+
+		state.audioFrame = window.requestAnimationFrame(analyzeAudioFrame);
+		if (root.dataset.labReplay === "1") {
+			return;
+		}
+
+		const buffer = new Uint8Array(state.audioAnalyser.fftSize);
+		state.audioAnalyser.getByteTimeDomainData(buffer);
+		let energy = 0;
+		for (let index = 0; index < buffer.length; index += 1) {
+			const sample = (buffer[index] - 128) / 128;
+			energy += sample * sample;
+		}
+
+		updateAudio(Math.sqrt(energy / buffer.length) * 2.8);
+	};
+
+	const ensureAudioAnalyser = async (stream) => {
+		const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+		if (!AudioContextClass) {
+			setText(audioStatus, "natif uniquement");
+			return false;
+		}
+
+		if (!state.audioContext) {
+			state.audioContext = new AudioContextClass();
+		}
+
+		if (state.audioContext.state === "suspended") {
+			await state.audioContext.resume().catch(() => {});
+		}
+
+		const source = state.audioContext.createMediaStreamSource(stream);
+		const analyser = state.audioContext.createAnalyser();
+		analyser.fftSize = 512;
+		source.connect(analyser);
+		state.audioAnalyser = analyser;
+		stopAudioLoop();
+		state.audioFrame = window.requestAnimationFrame(analyzeAudioFrame);
+		return true;
+	};
+
+	const startMediaCapture = async () => {
+		if (state.stream) {
+			return true;
+		}
+
+		if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+			setText(cameraStatus, "API absente");
+			setText(audioStatus, "API absente");
+			return false;
+		}
+
+		try {
+			state.stream = await navigator.mediaDevices.getUserMedia({
+				audio: true,
+				video: {
+					facingMode: coarsePointer ? { ideal: "environment" } : "user",
+					width: { ideal: 1280 },
+					height: { ideal: 720 },
+				},
+			});
+			if (cameraPreview instanceof HTMLVideoElement) {
+				cameraPreview.srcObject = state.stream;
+				await cameraPreview.play().catch(() => undefined);
+			}
+			if (cameraFallback instanceof HTMLElement) {
+				cameraFallback.hidden = true;
+			}
+			await ensureAudioAnalyser(state.stream);
+			stopCameraLoop();
+			state.cameraFrame = window.requestAnimationFrame(analyzeCameraFrame);
+			setCardState("sensor", "live");
+			return true;
+		} catch {
+			setText(cameraStatus, "permission refusée");
+			setText(audioStatus, "permission refusée");
+			return false;
+		}
+	};
+
+	const bindOrientationListeners = () => {
+		if (state.orientationBound || !("DeviceOrientationEvent" in window)) {
+			return false;
+		}
+
+		window.addEventListener("deviceorientation", (event) => {
+			if (root.dataset.labReplay === "1") {
+				return;
+			}
+			updateOrientation(Number(event.alpha), Number(event.beta), Number(event.gamma));
+		});
+		state.orientationBound = true;
+		return true;
+	};
+
+	const bindMotionListeners = () => {
+		if (state.motionBound || !("DeviceMotionEvent" in window)) {
+			return false;
+		}
+
+		window.addEventListener("devicemotion", (event) => {
+			if (root.dataset.labReplay === "1") {
+				return;
+			}
+			const source = event.accelerationIncludingGravity || event.acceleration || {};
+			const x = Number(source.x || 0);
+			const y = Number(source.y || 0);
+			const z = Number(source.z || 0);
+			const magnitude = Math.sqrt(x * x + y * y + z * z);
+			updateMotion(clampNumber(magnitude / 22, 0, 1), `${x.toFixed(1)} ${y.toFixed(1)} ${z.toFixed(1)}`);
+		});
+		state.motionBound = true;
+		return true;
+	};
+
+	const requestSensorPermissions = async () => {
+		let orientationReady = false;
+		let motionReady = false;
+
+		if ("DeviceOrientationEvent" in window) {
+			if (typeof DeviceOrientationEvent.requestPermission === "function") {
+				try {
+					orientationReady = (await DeviceOrientationEvent.requestPermission()) === "granted";
+				} catch {
+					orientationReady = false;
+				}
+			} else {
+				orientationReady = true;
+			}
+		}
+
+		if ("DeviceMotionEvent" in window) {
+			if (typeof DeviceMotionEvent.requestPermission === "function") {
+				try {
+					motionReady = (await DeviceMotionEvent.requestPermission()) === "granted";
+				} catch {
+					motionReady = false;
+				}
+			} else {
+				motionReady = true;
+			}
+		}
+
+		if (orientationReady) {
+			bindOrientationListeners();
+		} else if ("DeviceOrientationEvent" in window) {
+			setText(orientationStatus, "refusée ou absente");
+		}
+
+		if (motionReady) {
+			bindMotionListeners();
+		} else if ("DeviceMotionEvent" in window) {
+			setText(motionStatus, "refusé ou absent");
+		}
+
+		return { orientationReady, motionReady };
+	};
+
+	const requestWakeLock = async () => {
+		if (state.wakeLock) {
+			setText(wakeStatus, "actif");
+			return true;
+		}
+
+		if (!("wakeLock" in navigator) || typeof navigator.wakeLock?.request !== "function") {
+			setText(wakeStatus, "indisponible");
+			return false;
+		}
+
+		try {
+			state.wakeLock = await navigator.wakeLock.request("screen");
+			state.wakeLock.addEventListener("release", () => {
+				if (root.dataset.labReplay !== "1") {
+					setText(wakeStatus, "relâché");
+				}
+			});
+			setText(wakeStatus, "actif");
+			return true;
+		} catch {
+			setText(wakeStatus, "refusé");
+			return false;
+		}
+	};
+
+	const startAmbientLightSensor = async () => {
+		if (state.lightSensor) {
+			return true;
+		}
+
+		if (!("AmbientLightSensor" in window)) {
+			setText(lightStatus, "fallback Ocam");
+			state.lightSensorLive = false;
+			return false;
+		}
+
+		try {
+			state.lightSensor = new window.AmbientLightSensor();
+			state.lightSensor.addEventListener("reading", () => {
+				if (root.dataset.labReplay === "1") {
+					return;
+				}
+				state.lightSensorLive = true;
+				state.cameraFallbackLight = false;
+				updateLight(`${Math.round(Number(state.lightSensor.illuminance) || 0)} lux`);
+			});
+			state.lightSensor.addEventListener("error", () => {
+				state.lightSensorLive = false;
+				updateLight("fallback Ocam");
+			});
+			state.lightSensor.start();
+			return true;
+		} catch {
+			state.lightSensorLive = false;
+			updateLight("fallback Ocam");
+			return false;
+		}
+	};
+
+	const stopReplay = ({ preserveStatus = false } = {}) => {
+		if (state.replayTimer) {
+			window.clearInterval(state.replayTimer);
+			state.replayTimer = 0;
+		}
+		root.dataset.labReplay = "0";
+		replayButton.textContent = "Mode replay";
+		if (!preserveStatus) {
+			setActivationCopy("Le replay est arrêté. Tu peux repartir sur les capteurs réels.");
+		}
+		if (state.lastPocketState === "replay") {
+			updatePocketState(
+				"En veille douce. Le replay peut le faire dériver.",
+				"Ouvre la route pocket, ou laisse le mode replay alterner sommeil, roaming et retour.",
+				"idle"
+			);
+		}
+	};
+
+	const startReplay = () => {
+		stopReplay({ preserveStatus: true });
+		root.dataset.labReplay = "1";
+		replayButton.textContent = "Arrêter replay";
+		setActivationCopy("Le replay fait dériver pocket, lumière, voix et mouvement sans attendre un téléphone complet.");
+		pulseDeviceHaptics("soft");
+		setSensorBadge("replay");
+		setCardState("sensor", "replay");
+		setCardState("pocket", "replay");
+		setCardState("delivery", "replay");
+		state.lastPocketState = "replay";
+		state.replayTick = 0;
+
+		state.replayTimer = window.setInterval(() => {
+			state.replayTick += 1;
+			const phase = state.replayTick;
+			const wave = (Math.sin(phase / 1.7) + 1) / 2;
+			const drift = (Math.cos(phase / 2.4) + 1) / 2;
+			const pocketState = phase % 6 < 2 ? "présent" : (phase % 6 < 4 ? "roaming" : "endormi");
+			const pocketCopy = pocketState === "présent"
+				? "Pocket revient dans le champ et rouvre une dérive courte."
+				: (pocketState === "roaming"
+					? "Pocket circule encore. Le réseau retient une présence basse mais continue."
+					: "Pocket dort. La livraison glisse vers le différé.");
+
+			updateOrientation(wave * 180, drift * 42 - 21, wave * 28 - 14, { source: "replay" });
+			updateMotion(0.22 + wave * 0.58, pocketState, { source: "replay" });
+			updateLight(`${Math.round(40 + wave * 520)} lux · replay`, { tone: "replay" });
+			updateAudio(0.08 + drift * 0.42, { source: "replay" });
+			updateCamera(0.18 + wave * 0.62, [84 + wave * 120, 110 + drift * 70, 156 + wave * 56], { source: "replay" });
+			updatePocketState(`${pocketState}.`, pocketCopy, "replay");
+			updateDeliveryState(
+				pocketState === "endormi"
+					? "Le tore garde un paquet en suspens jusqu’au retour du pocket."
+					: "Le différé se relâche: le pocket revient assez près pour reprendre le passage.",
+				"replay"
+			);
+			setText(apiStatus, "API rejouée depuis la console.");
+			setCardState("api", "replay");
+			setText(wakeStatus, "simulé");
+
+				if (phase % 3 === 0) {
+					emitTrace(
+						pocketState === "endormi" ? "deferred" : "replay",
+						"console",
+						pocketState === "endormi"
+							? "Le replay pousse pocket hors champ: le plasma garde la trace pour plus tard."
+							: "Le replay fait revenir pocket: la reprise devient lisible dans le tore.",
+						{ channel: pocketState === "endormi" ? "delivery" : "plasma" }
+					);
+				}
+		}, 1100);
+	};
+
+	const probeApi = async () => {
+		const apiUrl = root.dataset.labApiUrl || "";
+		if (!apiUrl) {
+			return;
+		}
+
+		setText(apiStatus, "Sondage en cours…");
+		try {
+			const response = await fetch(apiUrl, { cache: "no-store", mode: "cors" });
+			if (!response.ok) {
+				throw new Error("bad status");
+			}
+
+			setText(apiStatus, "API disponible et joignable depuis la console.");
+			setCardState("api", "live");
+		} catch {
+			setText(apiStatus, "API non confirmée depuis ce navigateur.");
+			setCardState("api", "warning");
+		}
+	};
+
+	const pollPlasmaFeed = async () => {
+		const feedUrl = root.dataset.labPlasmaFeed || "";
+		if (!feedUrl) {
+			return;
+		}
+
+		try {
+			const response = await fetch(`${feedUrl}?limit=6`, { cache: "no-store", mode: "cors" });
+			if (!response.ok) {
+				throw new Error("bad status");
+			}
+
+			const payload = await response.json();
+			applyPlasmaWeather(payload && typeof payload.weather === "object" ? payload.weather : null, Array.isArray(payload?.events) ? payload.events : []);
+		} catch {
+			if (state.plasmaPollTimer === 0) {
+				setText(plasmaWeatherCopy, "Le flux public du lab n’a pas encore répondu à cette console.");
+			}
+		}
+	};
+
+	const activateSensors = async () => {
+		activateButton.setAttribute("aria-busy", "true");
+		activateButton.setAttribute("disabled", "disabled");
+		stopReplay({ preserveStatus: true });
+		setActivationCopy("Ouverture du champ sensoriel…");
+		pulseDeviceHaptics("medium");
+
+		const { orientationReady, motionReady } = await requestSensorPermissions();
+		const mediaReady = await startMediaCapture();
+		const lightReady = await startAmbientLightSensor();
+		const wakeReady = await requestWakeLock();
+		await requestDeviceOrientationLock();
+		const liveCount = [orientationReady, motionReady, mediaReady, lightReady, wakeReady].filter(Boolean).length;
+
+		if (liveCount > 0) {
+			setSensorBadge(`${liveCount} flux actifs`);
+			setActivationCopy("Le lab lit maintenant ce téléphone. Bouge, parle, ouvre la caméra ou laisse le replay prendre la relève.");
+			setCardState("sensor", "live");
+			emitTrace("session", "browser", "Le tore a ouvert une session capteur locale.");
+		} else {
+			setSensorBadge("fallback");
+			setActivationCopy("Aucun flux complet n’a pu s’ouvrir ici. Le mode replay reste disponible pour tester la console.");
+			setCardState("sensor", "warning");
+		}
+
+		activateButton.removeAttribute("aria-busy");
+		activateButton.removeAttribute("disabled");
+		activateButton.textContent = "Capteurs actifs";
+	};
+
+	if (!(cameraPreview instanceof HTMLVideoElement)) {
+		setText(cameraStatus, "aperçu indisponible");
+	}
+
+	setText(orientationStatus, "prêt si autorisé");
+	setText(motionStatus, "prêt si autorisé");
+	setText(lightStatus, "capteur ou fallback");
+	setText(audioStatus, "prêt si autorisé");
+	setText(cameraStatus, "prête si autorisée");
+	setText(wakeStatus, "sur demande");
+	updatePocketState(
+		"En veille douce. Le replay peut le faire dériver.",
+		"Ouvre la route pocket, ou laisse le mode replay alterner sommeil, roaming et retour.",
+		"idle"
+	);
+	updateDeliveryState("Réveil non rejoué. Le tore attend encore une première séquence.", "idle");
+	probeApi();
+	void pollPlasmaFeed();
+	state.plasmaPollTimer = window.setInterval(() => {
+		void pollPlasmaFeed();
+	}, 12000);
+
+	activateButton.addEventListener("click", () => {
+		void activateSensors();
+	});
+
+	replayButton.addEventListener("click", () => {
+		if (root.dataset.labReplay === "1") {
+			stopReplay();
+			return;
+		}
+		startReplay();
+	});
+
+	window.addEventListener("beforeunload", () => {
+		if (state.plasmaPollTimer) {
+			window.clearInterval(state.plasmaPollTimer);
+			state.plasmaPollTimer = 0;
+		}
+		stopReplay({ preserveStatus: true });
+		stopCameraLoop();
+		stopAudioLoop();
+		if (state.stream) {
+			state.stream.getTracks().forEach((track) => track.stop());
+			state.stream = null;
+		}
+		if (state.lightSensor && typeof state.lightSensor.stop === "function") {
+			try {
+				state.lightSensor.stop();
+			} catch {
+				// Ignore stop failures on unload.
+			}
+		}
+		if (state.audioContext && typeof state.audioContext.close === "function") {
+			state.audioContext.close().catch(() => {});
+		}
+		releaseDeviceOrientationLock();
+		void releaseWakeLock();
 	});
 }
 
@@ -3844,6 +5489,8 @@ function readGuideVoiceSession() {
 }
 
 initMappingGenie();
+initDeviceBridgePanels();
+initLabConsole();
 initXyzSurface();
 initXyzCamera();
 
@@ -4664,16 +6311,33 @@ function mountGuideVoice(root) {
 	const audioStart = root.dataset.guideVoiceSoundStart ? new Audio(root.dataset.guideVoiceSoundStart) : null;
 	const audioStop = root.dataset.guideVoiceSoundStop ? new Audio(root.dataset.guideVoiceSoundStop) : null;
 	const audioLoop = root.dataset.guideVoiceSoundLoop ? new Audio(root.dataset.guideVoiceSoundLoop) : null;
-	if (audioStart) audioStart.volume = 0.3;
-	if (audioStop) audioStop.volume = 0.3;
-	if (audioLoop) { audioLoop.volume = 0.15; audioLoop.loop = true; }
+	const readGuideVoiceOutputProfile = () => {
+		const deviceProfile = readDeviceAudioProfile();
+		return {
+			deviceProfile,
+			muted: isMuted || deviceProfile.muted,
+			volume: clampNumber(deviceProfile.volume, 0, 1),
+		};
+	};
+	const syncGuideVoiceCueLevels = () => {
+		const profile = readGuideVoiceOutputProfile();
+		if (audioStart) audioStart.volume = 0.3 * profile.volume;
+		if (audioStop) audioStop.volume = 0.3 * profile.volume;
+		if (audioLoop) {
+			audioLoop.volume = 0.15 * profile.volume;
+			audioLoop.loop = true;
+		}
+	};
+	syncGuideVoiceCueLevels();
 	let breatherInterval = 0;
 	const breatherFrames = ['0', '.', 'O', '.'];
 
 	const startBreather = () => {
 		if (!breatherEl) return;
-		if (audioStart) { audioStart.currentTime = 0; audioStart.play().catch(()=>{}); }
-		if (audioLoop) audioLoop.play().catch(()=>{});
+		const outputProfile = readGuideVoiceOutputProfile();
+		syncGuideVoiceCueLevels();
+		if (!outputProfile.muted && audioStart) { audioStart.currentTime = 0; audioStart.play().catch(()=>{}); }
+		if (!outputProfile.muted && audioLoop) audioLoop.play().catch(()=>{});
 		let frameIdx = 0;
 		breatherEl.hidden = false;
 		breatherEl.classList.add('is-breathing');
@@ -4687,7 +6351,9 @@ function mountGuideVoice(root) {
 
 	const stopBreather = () => {
 		if (!breatherEl) return;
-		if (audioStop && breatherEl.classList.contains('is-breathing')) {
+		const outputProfile = readGuideVoiceOutputProfile();
+		syncGuideVoiceCueLevels();
+		if (!outputProfile.muted && audioStop && breatherEl.classList.contains('is-breathing')) {
 			audioStop.currentTime = 0;
 			audioStop.play().catch(()=>{});
 		}
@@ -4766,12 +6432,18 @@ function mountGuideVoice(root) {
 
 	function updateMuteUI(nextMuted = isMuted) {
 		isMuted = Boolean(nextMuted);
+		const deviceProfile = readDeviceAudioProfile();
 		root.dataset.voiceMuted = isMuted ? "1" : "0";
 		if (muteIndicatorNode instanceof HTMLElement) {
 			muteIndicatorNode.textContent = isMuted
 				? "voix muette · I ou appui long pour la relancer"
-				: "voix active · I inverse + voix · appui long tactile";
+				: (deviceProfile.nativeSilenceMode === "silent"
+					? "appareil silencieux · la voix reste lisible"
+					: (deviceProfile.silenceIntent
+						? "silence web · la voix reste lisible"
+						: "voix active · I inverse + voix · appui long tactile"));
 		}
+		syncGuideVoiceCueLevels();
 		syncDockState();
 	}
 
@@ -5007,14 +6679,17 @@ function mountGuideVoice(root) {
 
 	function speakReply(text, onDone) {
 		const spectral = applyGuideVoiceSignature();
+		const deviceProfile = readDeviceAudioProfile();
 		if (!text) {
 			onDone?.();
 			return;
 		}
 
-		if (isMuted || !synth || typeof window.SpeechSynthesisUtterance !== "function") {
-			if (isMuted) {
-				setState("idle", "Voix muette. 0wlslw0 continue en texte lisible.");
+		if (isMuted || deviceProfile.muted || !synth || typeof window.SpeechSynthesisUtterance !== "function") {
+			if (isMuted || deviceProfile.muted) {
+				setState("idle", deviceProfile.nativeSilenceMode === "silent"
+					? "Appareil silencieux. 0wlslw0 continue en texte lisible."
+					: "Voix muette. 0wlslw0 continue en texte lisible.");
 			}
 			onDone?.();
 			return;
@@ -5030,7 +6705,7 @@ function mountGuideVoice(root) {
 		utterance.voice = pickGuideSpeechVoice(synth, languageCode);
 		utterance.rate = spectral.rate;
 		utterance.pitch = spectral.pitch;
-		utterance.volume = spectral.volume;
+		utterance.volume = clampNumber(spectral.volume * deviceProfile.volume, 0, 1);
 		utterance.onstart = () => {
 			startBreather();
 		};
@@ -5468,6 +7143,7 @@ function mountGuideVoice(root) {
 	window.addEventListener("o:guide-voice-mute-change", (event) => {
 		const nextMuted = Boolean(event?.detail?.muted ?? readGuideVoiceMutedState());
 		const wasSpeaking = isSpeaking;
+		const deviceProfile = readDeviceAudioProfile();
 		updateMuteUI(nextMuted);
 		if (nextMuted && synth) {
 			synth.cancel();
@@ -5477,7 +7153,9 @@ function mountGuideVoice(root) {
 		if (statusNode instanceof HTMLElement) {
 			statusNode.textContent = nextMuted
 				? "Voix muette. 0wlslw0 reste lisible et continue d’écouter."
-				: (isActive ? "Voix audible. 0wlslw0 peut repasser du grave à l’aigu." : "Voix audible. Active-la si tu veux l’entendre.");
+				: (deviceProfile.nativeSilenceMode === "silent"
+					? "Appareil silencieux. 0wlslw0 reste lisible et continue d’écouter."
+					: (isActive ? "Voix audible. 0wlslw0 peut repasser du grave à l’aigu." : "Voix audible. Active-la si tu veux l’entendre."));
 		}
 		persistSession();
 
@@ -5486,6 +7164,31 @@ function mountGuideVoice(root) {
 		}
 
 		syncDockState();
+	});
+
+	window.addEventListener("o:device-bridge-change", () => {
+		const deviceProfile = readDeviceAudioProfile();
+		const wasSpeaking = isSpeaking;
+		updateMuteUI(isMuted);
+		if (deviceProfile.muted && synth) {
+			synth.cancel();
+			isSpeaking = false;
+			if (statusNode instanceof HTMLElement) {
+				statusNode.textContent = deviceProfile.nativeSilenceMode === "silent"
+					? "Appareil silencieux. 0wlslw0 continue en texte lisible."
+					: "Silence web actif. 0wlslw0 continue en texte lisible.";
+			}
+			if (wasSpeaking && isActive && !isWaitingReply) {
+				window.setTimeout(beginListening, 140);
+			}
+			return;
+		}
+
+		if (statusNode instanceof HTMLElement && !isMuted && !isWaitingReply && !isSpeaking) {
+			statusNode.textContent = isActive
+				? "Voix audible. 0wlslw0 suit maintenant le profil du téléphone."
+				: "Voix audible. Active-la si tu veux l’entendre.";
+		}
 	});
 
 	const navigationCarry = Boolean(persisted.active);

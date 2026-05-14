@@ -114,14 +114,49 @@ compose_prod() {
 	docker compose -p "$project_name" --env-file "$env_path" -f "$compose_path" "$@"
 }
 
+read_header_values() {
+	local url=${1:?Missing URL}
+	local header_name=${2:?Missing header name}
+	local header_name_lc
+
+	header_name_lc=$(printf '%s' "$header_name" | tr '[:upper:]' '[:lower:]')
+	curl -fsSI "$url" | awk -F': ' -v header_name_lc="$header_name_lc" '
+		tolower($1) == header_name_lc {
+			sub(/\r$/, "", $2)
+			print $2
+		}
+	'
+}
+
 assert_single_header() {
 	local url=${1:?Missing URL}
 	local header_name=${2:?Missing header name}
 	local count
 
-	count=$(curl -fsSI "$url" | awk -v header_name="${header_name}:" 'tolower($1) == tolower(header_name) { count++ } END { print count + 0 }')
+	count=$(read_header_values "$url" "$header_name" | awk 'END { print NR + 0 }')
 	if [[ "$count" -ne 1 ]]; then
 		echo "Expected a single ${header_name} header on ${url}, got ${count}" >&2
+		exit 1
+	fi
+}
+
+assert_header_contains() {
+	local url=${1:?Missing URL}
+	local header_name=${2:?Missing header name}
+	local pattern=${3:?Missing pattern}
+
+	if ! read_header_values "$url" "$header_name" | grep -qE "$pattern"; then
+		echo "Expected ${header_name} on ${url} to match ${pattern}" >&2
+		exit 1
+	fi
+}
+
+assert_body_matches() {
+	local url=${1:?Missing URL}
+	local pattern=${2:?Missing pattern}
+
+	if ! curl -fsS "$url" | grep -qE "$pattern"; then
+		echo "Expected ${url} body to match ${pattern}" >&2
 		exit 1
 	fi
 }
@@ -164,17 +199,31 @@ fi
 
 echo "==> Public verification"
 curl -fsSI https://sowwwl.com/
+curl -fsSI https://sowwwl.xyz/
 curl -fsSI https://sowwwl.com/signal
 curl -fsSI https://sowwwl.com/str3m
 curl -fsSI https://sowwwl.org/
-curl -fsS https://sowwwl.com/ | grep -qE 'Trois portes : public, terre, 0wlslw0|Passer par 0wlslw0|commande noyau'
-curl -fsS https://sowwwl.org/ | grep -qE 'Comprendre les domaines sans se perdre|carte des rôles|Ouvrir sowwwl\.com'
+assert_body_matches https://sowwwl.com/ 'Trois portes : public, terre, 0wlslw0|Passer par 0wlslw0|commande noyau'
+assert_body_matches https://sowwwl.xyz/ 'Le tore écoute le monde réel|Ouvrir Ocam|surface publique en écoute'
+assert_body_matches https://sowwwl.org/ 'Comprendre les domaines sans se perdre|carte des rôles|Ouvrir sowwwl\.com'
 assert_single_header https://sowwwl.com/ cross-origin-opener-policy
 assert_single_header https://sowwwl.com/ cross-origin-resource-policy
 assert_single_header https://sowwwl.com/ x-permitted-cross-domain-policies
+assert_single_header https://sowwwl.xyz/ cross-origin-opener-policy
+assert_single_header https://sowwwl.xyz/ cross-origin-resource-policy
+assert_single_header https://sowwwl.xyz/ x-permitted-cross-domain-policies
 assert_single_header https://0wlslw0.com cross-origin-opener-policy
 assert_single_header https://0wlslw0.com cross-origin-resource-policy
 assert_single_header https://0wlslw0.com x-permitted-cross-domain-policies
+assert_header_contains https://sowwwl.com/ permissions-policy 'microphone=\(self\)'
+assert_header_contains https://sowwwl.com/ permissions-policy 'screen-wake-lock=\(self\)'
+assert_header_contains https://sowwwl.xyz/ permissions-policy 'accelerometer=\(self\)'
+assert_header_contains https://sowwwl.xyz/ permissions-policy 'ambient-light-sensor=\(self\)'
+assert_header_contains https://sowwwl.xyz/ permissions-policy 'camera=\(self\)'
+assert_header_contains https://sowwwl.xyz/ permissions-policy 'gyroscope=\(self\)'
+assert_header_contains https://sowwwl.xyz/ permissions-policy 'magnetometer=\(self\)'
+assert_header_contains https://sowwwl.xyz/ permissions-policy 'microphone=\(self\)'
+assert_header_contains https://sowwwl.xyz/ permissions-policy 'screen-wake-lock=\(self\)'
 docker exec "${project_name}-app-1" php /var/www/html/scripts/check_signal_validation.php --require-schema-ready --require-delivery-ready >/dev/null
 docker inspect "${project_name}-caddy-1" --format '{{range .Mounts}}{{println .Source " -> " .Destination}}{{end}}' | grep '/srv/sites'
 

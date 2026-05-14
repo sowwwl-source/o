@@ -34,6 +34,7 @@ Red flag:
 ### sowwwl.com entrypoints
 ```bash
 curl -I https://sowwwl.com/
+curl -I https://sowwwl.xyz/
 curl -I https://sowwwl.org/
 curl -I https://sowwwl.com/signal
 curl -I https://sowwwl.com/str3m
@@ -51,24 +52,28 @@ Expected:
 For the current entry-copy and role-map check specifically:
 
 ```bash
-curl -sL https://sowwwl.com/ | grep -E 'Trois portes suffisent|Passer par 0wlslw0|commande noyau'
+curl -sL https://sowwwl.com/ | grep -E 'Trois portes : public, terre, 0wlslw0|Passer par 0wlslw0|commande noyau'
+curl -sL https://sowwwl.xyz/ | grep -E 'Le tore écoute le monde réel|Ouvrir Ocam|surface publique en écoute'
 curl -sL https://sowwwl.org/ | grep -E 'Comprendre les domaines sans se perdre|carte des rôles|Ouvrir sowwwl\.com'
 ```
 
 Expected:
 - `sowwwl.com` exposes the current three-door entry, not stale secondary copy
+- `sowwwl.xyz` exposes the current sensor surface, not a generic old home copy
 - `sowwwl.org` exposes the current role-map copy, not an older snapshot
 
 For proxy/app header sanity specifically:
 
 ```bash
 curl -sSI https://sowwwl.com/ | grep -Ei 'cross-origin-opener-policy|cross-origin-resource-policy|x-permitted-cross-domain-policies'
+curl -sSI https://sowwwl.xyz/ | grep -Ei 'cross-origin-opener-policy|cross-origin-resource-policy|x-permitted-cross-domain-policies|permissions-policy'
 curl -sSI https://0wlslw0.com | grep -Ei 'cross-origin-opener-policy|cross-origin-resource-policy|x-permitted-cross-domain-policies'
 ```
 
 Expected:
 - each of those headers appears exactly once per response
 - if any of them appears twice, the app and Caddy are both emitting the same protection and the proxy refresh likely did not happen
+- `sowwwl.xyz` exposes a `Permissions-Policy` that includes `camera`, `microphone`, `accelerometer`, `gyroscope`, `magnetometer`, `ambient-light-sensor`, and `screen-wake-lock`
 
 ### Signal validation readiness
 ```bash

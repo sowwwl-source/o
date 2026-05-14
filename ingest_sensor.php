@@ -54,27 +54,9 @@ function sensor_ingest_string(array $payload, string $key, int $maxLength, strin
     return substr($value, 0, $maxLength);
 }
 
-function sensor_ingest_log_dir(): string
-{
-    $override = trim((string) (getenv('SOWWWL_SENSOR_LOG_DIR') ?: ''));
-    if ($override !== '') {
-        return rtrim($override, DIRECTORY_SEPARATOR);
-    }
-
-    return dirname(LANDS_DIR) . DIRECTORY_SEPARATOR . 'plasma';
-}
-
 function sensor_ingest_append_event(array $event): void
 {
-    $dir = sensor_ingest_log_dir();
-    if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
-        throw new RuntimeException('Impossible de préparer le journal plasma.');
-    }
-
-    $line = json_encode($event, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    if ($line === false || file_put_contents($dir . DIRECTORY_SEPARATOR . 'sensor-events.jsonl', $line . PHP_EOL, FILE_APPEND | LOCK_EX) === false) {
-        throw new RuntimeException('Impossible d’écrire le journal plasma.');
-    }
+    plasma_append_event($event);
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

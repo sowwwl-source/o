@@ -69,10 +69,20 @@ Options -Indexes
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*ingest_sensor\.php(?:\?|\s) [NC]
   RewriteRule ^ingest_sensor\.php$ https://%{HTTP_HOST}/ingest/sensor [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*ingest_membrane\.php(?:\?|\s) [NC]
+  RewriteRule ^ingest_membrane\.php$ https://%{HTTP_HOST}/ingest/membrane [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*plasma_recent\.php(?:\?|\s) [NC]
+  RewriteRule ^plasma_recent\.php$ https://%{HTTP_HOST}/plasma/recent [R=302,L]
 
   RewriteRule ^0wlslw0/voice/$ https://%{HTTP_HOST}/0wlslw0/voice [R=302,L,NC]
   RewriteRule ^(land|echo|map|signal|str3m|aza|island|rejoindre|0wlslw0|sh0re|n|n0de)/$ https://%{HTTP_HOST}/$1 [R=302,L,NC]
   RewriteRule ^ingest/sensor/$ https://%{HTTP_HOST}/ingest/sensor [R=302,L,NC]
+  RewriteRule ^ingest/membrane/$ https://%{HTTP_HOST}/ingest/membrane [R=302,L,NC]
+  RewriteRule ^plasma/recent/$ https://%{HTTP_HOST}/plasma/recent [R=302,L,NC]
 
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
@@ -92,6 +102,8 @@ Options -Indexes
   RewriteRule ^n$ n.php [L,NC,QSA]
   RewriteRule ^n0de$ n0de.php [L,NC,QSA]
   RewriteRule ^ingest/sensor$ ingest_sensor.php [L,NC,QSA]
+  RewriteRule ^ingest/membrane$ ingest_membrane.php [L,NC,QSA]
+  RewriteRule ^plasma/recent$ plasma_recent.php [L,NC,QSA]
   RewriteRule ^0wlslw0/voice$ 0wlslw0_voice.php [L,NC,QSA]
   RewriteRule ^0wlslw0$ 0wlslw0.php [L,NC,QSA]
   RewriteRule ^aza/0*([0-9]{1,2})$ aza.php?p=$1 [L,NC,QSA]
