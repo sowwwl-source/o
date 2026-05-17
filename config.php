@@ -334,12 +334,22 @@ function request_scheme(): string
 
 function request_public_origin(?string $host = null): string
 {
-    $resolvedHost = request_host($host);
+    $rawHost = strtolower(trim((string) ($host ?? ($_SERVER['HTTP_HOST'] ?? ''))));
+    $resolvedHost = request_host($rawHost);
     if ($resolvedHost === '') {
         return SITE_ORIGIN;
     }
 
-    return request_scheme() . '://' . $resolvedHost;
+    $scheme = request_scheme();
+    $origin = $scheme . '://' . $resolvedHost;
+    $parsed = parse_url($scheme . '://' . $rawHost);
+    $port = is_array($parsed) && isset($parsed['port']) ? (int) $parsed['port'] : null;
+    $defaultPort = $scheme === 'https' ? 443 : 80;
+    if ($port !== null && $port > 0 && $port !== $defaultPort) {
+        $origin .= ':' . $port;
+    }
+
+    return $origin;
 }
 
 function sowwwl_url_origin(?string $url): ?string

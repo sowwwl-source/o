@@ -5,6 +5,7 @@ const THEME_KEY = "o-theme-inverted";
 const GUIDE_VOICE_MUTE_KEY = "o-guide-voice-muted-v1";
 const DEVICE_SILENCE_INTENT_KEY = "o-device-silence-intent-v1";
 const DEVICE_VOLUME_LEVEL_KEY = "o-device-volume-level-v1";
+const XYZ_VOICE_ECHO_KEY = "o-xyz-voice-echo-v1";
 
 const reveals = Array.from(document.querySelectorAll(".reveal"));
 const usernameInput = document.querySelector("[data-username-input]");
@@ -217,6 +218,15 @@ function readDeviceVolumeLevel() {
 function writeDeviceVolumeLevel(level) {
 	window.localStorage.setItem(DEVICE_VOLUME_LEVEL_KEY, String(clampNumber(level, 0, 1)));
 	syncDeviceBridgeState();
+}
+
+function readXyzVoiceEchoLevel() {
+	const raw = Number(window.localStorage.getItem(XYZ_VOICE_ECHO_KEY) || "0.18");
+	return clampNumber(Number.isFinite(raw) ? raw : 0.18, 0, 1);
+}
+
+function writeXyzVoiceEchoLevel(level) {
+	window.localStorage.setItem(XYZ_VOICE_ECHO_KEY, String(clampNumber(level, 0, 1)));
 }
 
 function deviceIsStandalone() {
@@ -4099,6 +4109,8 @@ function initXyzCamera() {
 	const audioNode = document.querySelector("[data-xyz-sensor-audio]");
 	const cameraNode = document.querySelector("[data-xyz-sensor-camera]");
 	const wakeNode = document.querySelector("[data-xyz-sensor-wake]");
+	const voiceEchoInput = document.querySelector("[data-xyz-voice-echo-input]");
+	const voiceEchoReadout = document.querySelector("[data-xyz-voice-echo-readout]");
 	const plasmaBridgeUrl = root.dataset.xyzPlasmaBridge || "";
 	const membraneLandSlug = root.dataset.xyzPlasmaLand || "";
 
@@ -4121,12 +4133,35 @@ function initXyzCamera() {
 	let analysisLastAt = 0;
 	let previousSamples = null;
 	let audioContext = null;
+	let audioSource = null;
 	let audioAnalyser = null;
 	let motionVoiceOscillator = null;
+	let motionVoiceHarmonicOscillator = null;
+	let motionVoiceSubOscillator = null;
 	let motionVoiceGain = null;
+	let motionVoiceHarmonicGain = null;
+	let motionVoiceSubGain = null;
 	let motionVoiceFilter = null;
+	let motionVoicePanner = null;
 	let motionVoiceLfo = null;
 	let motionVoiceLfoGain = null;
+	let vocoderInputGain = null;
+	let vocoderHighpass = null;
+	let vocoderCompressor = null;
+	let vocoderBandpass = null;
+	let vocoderDirectGain = null;
+	let vocoderColorFilter = null;
+	let vocoderCarrierOscillator = null;
+	let vocoderCarrierHarmonicOscillator = null;
+	let vocoderCarrierGain = null;
+	let vocoderCarrierHarmonicGain = null;
+	let vocoderModDepth = null;
+	let vocoderHarmonicModDepth = null;
+	let vocoderWetGain = null;
+	let vocoderEchoSend = null;
+	let vocoderEchoDelay = null;
+	let vocoderEchoFeedback = null;
+	let vocoderEchoReturn = null;
 	let wakeLock = null;
 	let lightSensor = null;
 	let orientationBound = false;
@@ -4135,6 +4170,9 @@ function initXyzCamera() {
 	let bridgeInFlight = false;
 	let bridgeLastSignature = "";
 	let bridgeLastAt = 0;
+	const voiceFx = {
+		echoAmount: readXyzVoiceEchoLevel(),
+	};
 	const analysisCanvas = document.createElement("canvas");
 	analysisCanvas.width = 48;
 	analysisCanvas.height = 36;
@@ -4187,6 +4225,27 @@ function initXyzCamera() {
 			node.textContent = text;
 		}
 	};
+
+	const renderVoiceEchoControls = () => {
+		const percent = Math.round(clampNumber(voiceFx.echoAmount, 0, 1) * 100);
+		if (voiceEchoInput instanceof HTMLInputElement) {
+			voiceEchoInput.value = String(percent);
+		}
+		if (voiceEchoReadout instanceof HTMLElement) {
+			voiceEchoReadout.textContent = `${percent}%`;
+		}
+	};
+
+	renderVoiceEchoControls();
+	if (voiceEchoInput instanceof HTMLInputElement && voiceEchoInput.dataset.bound !== "1") {
+		voiceEchoInput.dataset.bound = "1";
+		voiceEchoInput.addEventListener("input", () => {
+			voiceFx.echoAmount = clampNumber((Number(voiceEchoInput.value) || 0) / 100, 0, 1);
+			writeXyzVoiceEchoLevel(voiceFx.echoAmount);
+			renderVoiceEchoControls();
+			updateMotionVoice();
+		});
+	}
 
 	const demoPhasePalette = (key) => {
 		switch (key) {
@@ -4471,12 +4530,35 @@ function initXyzCamera() {
 			window.cancelAnimationFrame(audioFrame);
 			audioFrame = 0;
 		}
+		audioSource = null;
 		audioAnalyser = null;
 		motionVoiceOscillator = null;
+		motionVoiceHarmonicOscillator = null;
+		motionVoiceSubOscillator = null;
 		motionVoiceGain = null;
+		motionVoiceHarmonicGain = null;
+		motionVoiceSubGain = null;
 		motionVoiceFilter = null;
+		motionVoicePanner = null;
 		motionVoiceLfo = null;
 		motionVoiceLfoGain = null;
+		vocoderInputGain = null;
+		vocoderHighpass = null;
+		vocoderCompressor = null;
+		vocoderBandpass = null;
+		vocoderDirectGain = null;
+		vocoderColorFilter = null;
+		vocoderCarrierOscillator = null;
+		vocoderCarrierHarmonicOscillator = null;
+		vocoderCarrierGain = null;
+		vocoderCarrierHarmonicGain = null;
+		vocoderModDepth = null;
+		vocoderHarmonicModDepth = null;
+		vocoderWetGain = null;
+		vocoderEchoSend = null;
+		vocoderEchoDelay = null;
+		vocoderEchoFeedback = null;
+		vocoderEchoReturn = null;
 		if (audioContext && typeof audioContext.close === "function") {
 			audioContext.close().catch(() => {});
 		}
@@ -4503,15 +4585,25 @@ function initXyzCamera() {
 	};
 
 	function updateMotionVoice(forceMute = false) {
-		if (!audioContext || !motionVoiceGain || !motionVoiceOscillator) {
+		if (
+			!audioContext
+			|| !motionVoiceGain
+			|| !motionVoiceOscillator
+			|| !motionVoiceHarmonicOscillator
+			|| !motionVoiceSubOscillator
+		) {
 			return;
 		}
 
 		const deviceProfile = readDeviceAudioProfile();
 		const motionEnergy = clampNumber(Math.max(membrane.motionSensor, membrane.cameraMotion * 0.92), 0, 1);
 		const tiltEnergy = clampNumber((Math.abs(membrane.tiltX) + Math.abs(membrane.tiltY)) * 0.5, 0, 1);
-		const shimmer = clampNumber(membrane.audioLevel * 0.48 + membrane.lightLevel * 0.18 + membrane.luma * 0.12, 0, 1);
-		const movement = clampNumber(motionEnergy * 0.76 + tiltEnergy * 0.24, 0, 1);
+		const lightTone = clampNumber(membrane.lightLevel * 0.58 + membrane.luma * 0.42, 0, 1);
+		const ambient = clampNumber(membrane.audioLevel, 0, 1);
+		const orientationX = clampNumber((membrane.tiltX + 1) * 0.5, 0, 1);
+		const orientationY = clampNumber((1 - membrane.tiltY) * 0.5, 0, 1);
+		const shimmer = clampNumber(ambient * 0.46 + lightTone * 0.28 + membrane.cameraMotion * 0.18 + motionEnergy * 0.08, 0, 1);
+		const movement = clampNumber(motionEnergy * 0.68 + membrane.cameraMotion * 0.14 + tiltEnergy * 0.18, 0, 1);
 		const presence = clampNumber(
 			Math.max(
 				membrane.luma,
@@ -4525,29 +4617,121 @@ function initXyzCamera() {
 			0,
 			1
 		);
-		const gate = clampNumber((movement - 0.04) / 0.96, 0, 1) * clampNumber(0.45 + presence * 0.55, 0, 1);
+		const gate = clampNumber((movement - 0.03) / 0.97, 0, 1) * clampNumber(0.34 + presence * 0.66, 0, 1);
+		const handOpen = clampNumber(orientationY * 0.74 + presence * 0.18 + movement * 0.08, 0, 1);
+		const feedbackSafety = clampNumber(1 - ambient * 0.28, 0.62, 1);
 		const audible = !forceMute && !document.hidden && isMembraneLive() && !deviceProfile.muted;
-		const targetFrequency = 62 + membrane.luma * 28 + membrane.lightLevel * 16 + movement * 118 + shimmer * 34 + membrane.audioLevel * 18;
-		const targetDetune = membrane.tiltX * 36 - membrane.tiltY * 24;
-		const targetGain = audible ? clampNumber(gate * deviceProfile.volume * 0.04, 0, 0.045) : 0;
+		const pitchOctaves = 0.28 + orientationX * 2.08 + lightTone * 0.82 + ambient * 0.24;
+		const targetFrequency = 82 * Math.pow(2, pitchOctaves);
+		const harmonicRatio = 1.42 + lightTone * 0.42 + ambient * 0.18;
+		const harmonicFrequency = targetFrequency * harmonicRatio;
+		const subFrequency = Math.max(42, targetFrequency * 0.5 * (0.94 + orientationY * 0.08));
+		const targetDetune = membrane.tiltX * 96 - membrane.tiltY * 52 + ambient * 14 - movement * 8;
+		const targetGain = audible ? clampNumber(gate * handOpen * deviceProfile.volume * feedbackSafety * 0.052, 0, 0.055) : 0;
+		const targetHarmonicGain = audible ? clampNumber(targetGain * (0.28 + lightTone * 0.36 + ambient * 0.18), 0, 0.028) : 0;
+		const targetSubGain = audible ? clampNumber(targetGain * (0.18 + (1 - lightTone) * 0.26 + movement * 0.1), 0, 0.02) : 0;
+		const targetPan = clampNumber(membrane.tiltX * 0.92 + (orientationX - 0.5) * 0.18, -1, 1);
+		const targetVoiceDrive = audible ? clampNumber(1.18 + presence * 1.12 + handOpen * 0.42 - ambient * 0.3, 0.92, 2.45) : 0.84;
+		const targetVoiceModDepth = audible ? clampNumber(0.24 + gate * 0.42 + lightTone * 0.12 + ambient * 0.08, 0.16, 0.78) : 0.02;
+		const targetVoiceHarmonicDepth = audible ? clampNumber(targetVoiceModDepth * (0.44 + lightTone * 0.3 + ambient * 0.08), 0.08, 0.48) : 0.01;
+		const targetVoiceDirect = audible ? clampNumber(gate * deviceProfile.volume * feedbackSafety * (0.038 + handOpen * 0.05), 0, 0.072) : 0;
+		const targetVoiceWet = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.16 + handOpen * 0.12 + movement * 0.08), 0, 0.36) : 0;
+		const targetVoiceBandpass = clampNumber(targetFrequency * (0.94 + lightTone * 0.36), 140, 2600);
+		const targetVoiceBandpassQ = 1 + ambient * 0.85 + movement * 0.65;
+		const targetVoiceColor = clampNumber(340 + lightTone * 1920 + ambient * 380 + movement * 240, 320, 4200);
+		const targetVoiceEchoSend = audible ? clampNumber(voiceFx.echoAmount * (0.14 + handOpen * 0.18 + lightTone * 0.08) * feedbackSafety, 0, 0.24) : 0;
+		const targetVoiceEchoFeedback = audible ? clampNumber(0.1 + voiceFx.echoAmount * 0.36 + ambient * 0.06, 0.08, 0.42) : 0.08;
+		const targetVoiceEchoReturn = audible ? clampNumber(voiceFx.echoAmount * (0.28 + lightTone * 0.16), 0, 0.22) : 0;
 		const now = audioContext.currentTime;
 
 		motionVoiceOscillator.frequency.setTargetAtTime(targetFrequency, now, 0.09);
+		motionVoiceHarmonicOscillator.frequency.setTargetAtTime(harmonicFrequency, now, 0.11);
+		motionVoiceSubOscillator.frequency.setTargetAtTime(subFrequency, now, 0.12);
 		motionVoiceOscillator.detune.setTargetAtTime(targetDetune, now, 0.12);
+		motionVoiceHarmonicOscillator.detune.setTargetAtTime(targetDetune * 0.42, now, 0.14);
+		motionVoiceSubOscillator.detune.setTargetAtTime(targetDetune * -0.12, now, 0.16);
 		motionVoiceGain.gain.cancelScheduledValues(now);
 		motionVoiceGain.gain.setTargetAtTime(targetGain, now, audible ? 0.06 : 0.02);
+		if (motionVoiceHarmonicGain) {
+			motionVoiceHarmonicGain.gain.setTargetAtTime(targetHarmonicGain, now, audible ? 0.08 : 0.02);
+		}
+		if (motionVoiceSubGain) {
+			motionVoiceSubGain.gain.setTargetAtTime(targetSubGain, now, audible ? 0.08 : 0.02);
+		}
 
 		if (motionVoiceFilter) {
-			motionVoiceFilter.frequency.setTargetAtTime(160 + movement * 800 + shimmer * 420, now, 0.12);
-			motionVoiceFilter.Q.setTargetAtTime(0.7 + movement * 1.6, now, 0.12);
+			motionVoiceFilter.frequency.setTargetAtTime(180 + lightTone * 1750 + ambient * 650 + movement * 480, now, 0.12);
+			motionVoiceFilter.Q.setTargetAtTime(0.8 + ambient * 2.2 + movement * 0.9, now, 0.12);
+		}
+
+		if (motionVoicePanner) {
+			motionVoicePanner.pan.setTargetAtTime(targetPan, now, 0.14);
 		}
 
 		if (motionVoiceLfo) {
-			motionVoiceLfo.frequency.setTargetAtTime(0.24 + movement * 3.2 + membrane.audioLevel * 0.8, now, 0.18);
+			motionVoiceLfo.frequency.setTargetAtTime(0.18 + movement * 4.6 + ambient * 1.2 + lightTone * 0.4, now, 0.18);
 		}
 
 		if (motionVoiceLfoGain) {
-			motionVoiceLfoGain.gain.setTargetAtTime(8 + movement * 32 + membrane.audioLevel * 12, now, 0.18);
+			motionVoiceLfoGain.gain.setTargetAtTime(6 + movement * 42 + ambient * 16 + Math.abs(membrane.tiltX) * 14, now, 0.18);
+		}
+
+		if (vocoderCarrierOscillator) {
+			vocoderCarrierOscillator.frequency.setTargetAtTime(targetFrequency, now, 0.08);
+		}
+
+		if (vocoderCarrierHarmonicOscillator) {
+			vocoderCarrierHarmonicOscillator.frequency.setTargetAtTime(harmonicFrequency, now, 0.1);
+		}
+
+		if (vocoderCarrierGain) {
+			vocoderCarrierGain.gain.setTargetAtTime(audible ? 0.01 + gate * 0.018 : 0, now, audible ? 0.12 : 0.04);
+		}
+
+		if (vocoderCarrierHarmonicGain) {
+			vocoderCarrierHarmonicGain.gain.setTargetAtTime(audible ? 0.004 + lightTone * 0.014 : 0, now, audible ? 0.12 : 0.04);
+		}
+
+		if (vocoderInputGain) {
+			vocoderInputGain.gain.setTargetAtTime(targetVoiceDrive, now, 0.18);
+		}
+
+		if (vocoderBandpass) {
+			vocoderBandpass.frequency.setTargetAtTime(targetVoiceBandpass, now, 0.12);
+			vocoderBandpass.Q.setTargetAtTime(targetVoiceBandpassQ, now, 0.12);
+		}
+
+		if (vocoderColorFilter) {
+			vocoderColorFilter.frequency.setTargetAtTime(targetVoiceColor, now, 0.16);
+			vocoderColorFilter.Q.setTargetAtTime(0.72 + lightTone * 0.6 + ambient * 0.18, now, 0.16);
+		}
+
+		if (vocoderModDepth) {
+			vocoderModDepth.gain.setTargetAtTime(targetVoiceModDepth, now, audible ? 0.12 : 0.04);
+		}
+
+		if (vocoderHarmonicModDepth) {
+			vocoderHarmonicModDepth.gain.setTargetAtTime(targetVoiceHarmonicDepth, now, audible ? 0.12 : 0.04);
+		}
+
+		if (vocoderDirectGain) {
+			vocoderDirectGain.gain.setTargetAtTime(targetVoiceDirect, now, audible ? 0.12 : 0.04);
+		}
+
+		if (vocoderWetGain) {
+			vocoderWetGain.gain.setTargetAtTime(targetVoiceWet, now, audible ? 0.12 : 0.04);
+		}
+
+		if (vocoderEchoSend) {
+			vocoderEchoSend.gain.setTargetAtTime(targetVoiceEchoSend, now, audible ? 0.16 : 0.04);
+		}
+
+		if (vocoderEchoFeedback) {
+			vocoderEchoFeedback.gain.setTargetAtTime(targetVoiceEchoFeedback, now, audible ? 0.18 : 0.04);
+		}
+
+		if (vocoderEchoReturn) {
+			vocoderEchoReturn.gain.setTargetAtTime(targetVoiceEchoReturn, now, audible ? 0.18 : 0.04);
 		}
 	}
 
@@ -4563,28 +4747,141 @@ function initXyzCamera() {
 		}
 
 		motionVoiceOscillator = context.createOscillator();
+		motionVoiceHarmonicOscillator = context.createOscillator();
+		motionVoiceSubOscillator = context.createOscillator();
 		motionVoiceFilter = context.createBiquadFilter();
 		motionVoiceGain = context.createGain();
+		motionVoiceHarmonicGain = context.createGain();
+		motionVoiceSubGain = context.createGain();
+		motionVoicePanner = typeof context.createStereoPanner === "function" ? context.createStereoPanner() : null;
 		motionVoiceLfo = context.createOscillator();
 		motionVoiceLfoGain = context.createGain();
 
-		motionVoiceOscillator.type = "triangle";
-		motionVoiceOscillator.frequency.value = 72;
+		motionVoiceOscillator.type = "sine";
+		motionVoiceHarmonicOscillator.type = "triangle";
+		motionVoiceSubOscillator.type = "sine";
+		motionVoiceOscillator.frequency.value = 164;
+		motionVoiceHarmonicOscillator.frequency.value = 246;
+		motionVoiceSubOscillator.frequency.value = 82;
 		motionVoiceFilter.type = "lowpass";
-		motionVoiceFilter.frequency.value = 220;
-		motionVoiceFilter.Q.value = 0.8;
+		motionVoiceFilter.frequency.value = 360;
+		motionVoiceFilter.Q.value = 1.2;
 		motionVoiceGain.gain.value = 0;
+		motionVoiceHarmonicGain.gain.value = 0;
+		motionVoiceSubGain.gain.value = 0;
+		if (motionVoicePanner) {
+			motionVoicePanner.pan.value = 0;
+		}
 		motionVoiceLfo.type = "sine";
-		motionVoiceLfo.frequency.value = 0.4;
-		motionVoiceLfoGain.gain.value = 12;
+		motionVoiceLfo.frequency.value = 0.28;
+		motionVoiceLfoGain.gain.value = 8;
 
 		motionVoiceLfo.connect(motionVoiceLfoGain);
-		motionVoiceLfoGain.connect(motionVoiceOscillator.frequency);
+		motionVoiceLfoGain.connect(motionVoiceOscillator.detune);
+		motionVoiceLfoGain.connect(motionVoiceHarmonicOscillator.detune);
 		motionVoiceOscillator.connect(motionVoiceFilter);
-		motionVoiceFilter.connect(motionVoiceGain);
+		motionVoiceHarmonicOscillator.connect(motionVoiceHarmonicGain);
+		motionVoiceHarmonicGain.connect(motionVoiceFilter);
+		motionVoiceSubOscillator.connect(motionVoiceSubGain);
+		motionVoiceSubGain.connect(motionVoiceFilter);
+		if (motionVoicePanner) {
+			motionVoiceFilter.connect(motionVoicePanner);
+			motionVoicePanner.connect(motionVoiceGain);
+		} else {
+			motionVoiceFilter.connect(motionVoiceGain);
+		}
 		motionVoiceGain.connect(context.destination);
 		motionVoiceOscillator.start();
+		motionVoiceHarmonicOscillator.start();
+		motionVoiceSubOscillator.start();
 		motionVoiceLfo.start();
+		updateMotionVoice();
+		return true;
+	};
+
+	const ensureVoiceVocoder = async () => {
+		const context = await ensureReactiveAudioContext();
+		if (!context || !audioSource) {
+			return false;
+		}
+
+		if (vocoderCarrierOscillator && vocoderWetGain) {
+			updateMotionVoice();
+			return true;
+		}
+
+		vocoderInputGain = context.createGain();
+		vocoderHighpass = context.createBiquadFilter();
+		vocoderCompressor = context.createDynamicsCompressor();
+		vocoderBandpass = context.createBiquadFilter();
+		vocoderDirectGain = context.createGain();
+		vocoderColorFilter = context.createBiquadFilter();
+		vocoderCarrierOscillator = context.createOscillator();
+		vocoderCarrierHarmonicOscillator = context.createOscillator();
+		vocoderCarrierGain = context.createGain();
+		vocoderCarrierHarmonicGain = context.createGain();
+		vocoderModDepth = context.createGain();
+		vocoderHarmonicModDepth = context.createGain();
+		vocoderWetGain = context.createGain();
+		vocoderEchoSend = context.createGain();
+		vocoderEchoDelay = context.createDelay(0.9);
+		vocoderEchoFeedback = context.createGain();
+		vocoderEchoReturn = context.createGain();
+
+		vocoderInputGain.gain.value = 1.24;
+		vocoderHighpass.type = "highpass";
+		vocoderHighpass.frequency.value = 150;
+		vocoderHighpass.Q.value = 0.78;
+		vocoderCompressor.threshold.value = -22;
+		vocoderCompressor.knee.value = 18;
+		vocoderCompressor.ratio.value = 3.2;
+		vocoderCompressor.attack.value = 0.006;
+		vocoderCompressor.release.value = 0.22;
+		vocoderBandpass.type = "bandpass";
+		vocoderBandpass.frequency.value = 360;
+		vocoderBandpass.Q.value = 1.2;
+		vocoderDirectGain.gain.value = 0;
+		vocoderColorFilter.type = "lowpass";
+		vocoderColorFilter.frequency.value = 980;
+		vocoderColorFilter.Q.value = 0.92;
+		vocoderCarrierOscillator.type = "sawtooth";
+		vocoderCarrierHarmonicOscillator.type = "triangle";
+		vocoderCarrierOscillator.frequency.value = 164;
+		vocoderCarrierHarmonicOscillator.frequency.value = 246;
+		vocoderCarrierGain.gain.value = 0;
+		vocoderCarrierHarmonicGain.gain.value = 0;
+		vocoderModDepth.gain.value = 0.2;
+		vocoderHarmonicModDepth.gain.value = 0.12;
+		vocoderWetGain.gain.value = 0;
+		vocoderEchoSend.gain.value = 0;
+		vocoderEchoDelay.delayTime.value = 0.24;
+		vocoderEchoFeedback.gain.value = 0.16;
+		vocoderEchoReturn.gain.value = 0;
+
+		audioSource.connect(vocoderInputGain);
+		vocoderInputGain.connect(vocoderHighpass);
+		vocoderHighpass.connect(vocoderCompressor);
+		vocoderCompressor.connect(vocoderBandpass);
+		vocoderBandpass.connect(vocoderModDepth);
+		vocoderBandpass.connect(vocoderHarmonicModDepth);
+		vocoderBandpass.connect(vocoderDirectGain);
+		vocoderModDepth.connect(vocoderCarrierGain.gain);
+		vocoderHarmonicModDepth.connect(vocoderCarrierHarmonicGain.gain);
+		vocoderCarrierOscillator.connect(vocoderCarrierGain);
+		vocoderCarrierHarmonicOscillator.connect(vocoderCarrierHarmonicGain);
+		vocoderDirectGain.connect(vocoderColorFilter);
+		vocoderCarrierGain.connect(vocoderColorFilter);
+		vocoderCarrierHarmonicGain.connect(vocoderColorFilter);
+		vocoderColorFilter.connect(vocoderWetGain);
+		vocoderWetGain.connect(context.destination);
+		vocoderWetGain.connect(vocoderEchoSend);
+		vocoderEchoSend.connect(vocoderEchoDelay);
+		vocoderEchoDelay.connect(vocoderEchoFeedback);
+		vocoderEchoFeedback.connect(vocoderEchoDelay);
+		vocoderEchoDelay.connect(vocoderEchoReturn);
+		vocoderEchoReturn.connect(context.destination);
+		vocoderCarrierOscillator.start();
+		vocoderCarrierHarmonicOscillator.start();
 		updateMotionVoice();
 		return true;
 	};
@@ -4608,7 +4905,12 @@ function initXyzCamera() {
 		}
 		membrane.audioLevel = clampNumber(Math.sqrt(energy / buffer.length) * 2.6, 0, 1);
 		syncMembraneReactiveState();
-		setSensorText(audioNode, membrane.audioLevel > 0.03 ? `${Math.round(membrane.audioLevel * 100)}%` : "souffle bas");
+		setSensorText(
+			audioNode,
+			membrane.audioLevel > 0.03
+				? `${Math.round(membrane.audioLevel * 100)}% · voix portée`
+				: "souffle bas"
+		);
 	};
 
 	const ensureAudioAnalyser = async (mediaStream) => {
@@ -4618,11 +4920,12 @@ function initXyzCamera() {
 			return false;
 		}
 
-		const source = context.createMediaStreamSource(mediaStream);
+		audioSource = context.createMediaStreamSource(mediaStream);
 		audioAnalyser = context.createAnalyser();
 		audioAnalyser.fftSize = 512;
-		source.connect(audioAnalyser);
+		audioSource.connect(audioAnalyser);
 		audioFrame = window.requestAnimationFrame(analyzeAudio);
+		await ensureVoiceVocoder();
 		await ensureMotionVoice();
 		return true;
 	};
@@ -4640,8 +4943,8 @@ function initXyzCamera() {
 		stopDemoMode();
 		setUiState(
 			"demo",
-			"Démo locale. Le tore se nourrit ici d’une partition synthétique: lumière, souffle, secousse et inclinaison reviennent en boucle pour tester la membrane.",
-			"Le tore répète une montée sensorielle."
+			"Démo locale. Le tore se nourrit ici d’un thérémin synthétique: lumière, souffle, secousse et inclinaison reviennent en boucle pour tester la membrane. La voix portée reste en veille tant que le micro réel n’entre pas.",
+			"Le tore répète un thérémin sensoriel."
 		);
 		void ensureMotionVoice().catch(() => false);
 		setSensorText(cameraNode, "synthèse locale");
@@ -4982,7 +5285,7 @@ function initXyzCamera() {
 
 		setUiState(
 			"loading",
-			"Le tore demande au téléphone lumière, souffle, mouvement et présence. La réaction sonore reste locale à ce navigateur.",
+			"Le tore demande au téléphone lumière, souffle, mouvement et présence. La réaction sonore et la voix portée restent locales à ce navigateur.",
 			"Activation de la membrane…"
 		);
 		setSensorText(orientationNode, "demande");
@@ -5016,7 +5319,7 @@ function initXyzCamera() {
 			}
 			setUiState(
 				"live",
-				"La membrane est ouverte. Le tore lit maintenant lumière, souffle, inclinaison, mouvement et présence, puis leur prête une voix locale.",
+				"La membrane est ouverte. Le tore lit maintenant lumière, souffle, inclinaison, mouvement et présence, puis les convertit en thérémin local et en voix portée.",
 				"La membrane nourrit maintenant la surface."
 			);
 			pulseDeviceHaptics("medium");
@@ -5032,7 +5335,7 @@ function initXyzCamera() {
 			if (motionReady || lightReady || wakeReady) {
 				setUiState(
 					"partial",
-					"La membrane ne capte pas encore image ou souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut encore faire vibrer le tore.",
+					"La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le thérémin du tore.",
 					"La membrane dérive en mode partiel."
 				);
 				pulseDeviceHaptics("soft");

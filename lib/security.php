@@ -106,7 +106,7 @@ function site_origin(): string
     }
 
     if (function_exists('request_public_origin')) {
-        return request_public_origin($host);
+        return request_public_origin();
     }
 
     return (request_is_secure() ? 'https://' : 'http://') . $host;

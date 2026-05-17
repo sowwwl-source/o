@@ -530,7 +530,7 @@ $pageDescription = $isLabSurface
                 <article class="xyz-surface-note xyz-surface-note--camera" data-xyz-camera-panel>
                     <span class="summary-label">rituel</span>
                     <strong data-xyz-camera-title>La membrane attend un geste.</strong>
-                    <p class="panel-copy" data-xyz-camera-status>Active la membrane pour ouvrir mouvement, voix, lumière, caméra et veille active, ou lance le mode demo pour tester la montée sans capteurs. Aucune image brute n’est envoyée. Si le pont plasma est actif, seuls des signaux synthétiques quittent cette couche.</p>
+                    <p class="panel-copy" data-xyz-camera-status>Active la membrane pour ouvrir mouvement, voix, lumière, caméra et veille active, puis laisser le téléphone jouer un thérémin local et porter légèrement la voix. Le mode demo permet aussi de tester la montée sans capteurs. Aucune image brute n’est envoyée. Si le pont plasma est actif, seuls des signaux synthétiques quittent cette couche.</p>
                     <div class="xyz-surface-sensor-grid" aria-label="État direct de la membrane">
                         <p><span>orientation</span><strong data-xyz-sensor-orientation>en attente</strong></p>
                         <p><span>mouvement</span><strong data-xyz-sensor-motion>en attente</strong></p>
@@ -555,6 +555,11 @@ $pageDescription = $isLabSurface
                                 <span>niveau O.</span>
                                 <input type="range" min="0" max="100" step="1" value="82" data-device-volume-input>
                                 <strong data-device-volume-readout>82%</strong>
+                            </label>
+                            <label class="device-bridge-range">
+                                <span>écho voix</span>
+                                <input type="range" min="0" max="100" step="1" value="18" data-xyz-voice-echo-input>
+                                <strong data-xyz-voice-echo-readout>18%</strong>
                             </label>
                             <div class="device-bridge-actions">
                                 <button type="button" class="ghost-link" data-device-install hidden>Installer</button>
