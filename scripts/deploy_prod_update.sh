@@ -132,6 +132,63 @@ compose_prod() {
 	docker compose -p "$project_name" --env-file "$env_path" -f "$compose_path" "$@"
 }
 
+cleanup_conflicting_service_containers() {
+	local service_pattern
+	local line
+	local container_id
+	local container_name
+	local -a services=("$@")
+	local -a conflict_ids=()
+
+	if [[ ${#services[@]} -eq 0 ]]; then
+		return 0
+	fi
+
+	service_pattern=$(printf '%s|' "${services[@]}")
+	service_pattern=${service_pattern%|}
+
+	while IFS= read -r line; do
+		container_id=${line%% *}
+		container_name=${line#* }
+		if [[ "$container_name" =~ (^|_)${project_name}-(${service_pattern})-1$ ]]; then
+			conflict_ids+=("$container_id")
+		fi
+	done < <(docker ps -a --format '{{.ID}} {{.Names}}')
+
+	if [[ ${#conflict_ids[@]} -eq 0 ]]; then
+		return 0
+	fi
+
+	echo "==> Cleaning conflicting live containers"
+	docker ps -a --format '{{.ID}}\t{{.Names}}\t{{.Status}}' | awk -v project="$project_name" -v services="$service_pattern" '
+		$2 ~ ("(^|_)" project "-(" services ")-1$") { print }
+	'
+	docker rm -f "${conflict_ids[@]}" >/dev/null
+}
+
+compose_prod_up_retry_conflicts() {
+	local output
+	local retried_on_conflict=0
+	local -a services=("$@")
+
+	while true; do
+		if output=$(compose_prod up -d "${services[@]}" 2>&1); then
+			printf '%s\n' "$output"
+			return 0
+		fi
+
+		printf '%s\n' "$output" >&2
+		if [[ $retried_on_conflict -eq 0 && "$output" == *"Error when allocating new name: Conflict."* ]]; then
+			retried_on_conflict=1
+			cleanup_conflicting_service_containers "${services[@]}"
+			echo "==> Retrying live stack after container cleanup"
+			continue
+		fi
+
+		return 1
+	done
+}
+
 resolve_dir_path() {
 	local dir=$1
 
@@ -378,10 +435,10 @@ else
 fi
 
 echo "==> Refreshing live app/api"
-compose_prod up -d app api
+compose_prod_up_retry_conflicts app api
 
 echo "==> Ensuring live proxy is up"
-compose_prod up -d caddy
+compose_prod_up_retry_conflicts caddy
 
 echo "==> Live containers"
 compose_prod ps app api caddy
