@@ -530,7 +530,7 @@ $pageDescription = $isLabSurface
                 <article class="xyz-surface-note xyz-surface-note--camera" data-xyz-camera-panel>
                     <span class="summary-label">rituel</span>
                     <strong data-xyz-camera-title>La membrane attend un geste.</strong>
-                    <p class="panel-copy" data-xyz-camera-status>Active la membrane pour ouvrir mouvement, voix, lumière, caméra et veille active, puis laisser le téléphone jouer un thérémin local et porter légèrement la voix. Terre &amp; Mine permet aussi de tester la montée sans capteurs. Aucune image brute n’est envoyée. Si le pont plasma est actif, seuls des signaux synthétiques quittent cette couche.</p>
+                    <p class="panel-copy" data-xyz-camera-status>Active la membrane pour ouvrir mouvement, voix, lumière, caméra et veille active, puis laisser le téléphone jouer un thérémin local et accorder légèrement la voix. Terre &amp; Mine permet aussi de tester la montée sans capteurs. Aucune image brute n’est envoyée. Si le pont plasma est actif, seuls des signaux synthétiques quittent cette couche.</p>
                     <div class="xyz-surface-sensor-grid" aria-label="État direct de la membrane">
                         <p><span>orientation</span><strong data-xyz-sensor-orientation>en attente</strong></p>
                         <p><span>mouvement</span><strong data-xyz-sensor-motion>en attente</strong></p>
@@ -575,7 +575,7 @@ $pageDescription = $isLabSurface
                             <p><span>note</span><strong data-xyz-music-note>Mi2</strong></p>
                             <p><span>rythme</span><strong data-xyz-music-rhythm>drone stable</strong></p>
                         </div>
-                        <p class="panel-copy" data-xyz-music-guide>La lumière ouvre le majeur, l’ombre garde le mineur, l’inclinaison tient la note et la secousse déclenche un shaker.</p>
+                        <p class="panel-copy" data-xyz-music-guide>La lumière ouvre le majeur, l’ombre garde le mineur, l’inclinaison tient la note, la voix s’y accroche et la secousse déclenche un shaker.</p>
                     </div>
                 </article>
 

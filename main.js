@@ -4185,6 +4185,10 @@ function initXyzCamera() {
 	let vocoderEchoDelay = null;
 	let vocoderEchoFeedback = null;
 	let vocoderEchoReturn = null;
+	let vocoderTuneFilter = null;
+	let vocoderTuneHarmonicFilter = null;
+	let vocoderTuneGain = null;
+	let vocoderTuneHarmonicGain = null;
 	let wakeLock = null;
 	let lightSensor = null;
 	let orientationBound = false;
@@ -4353,17 +4357,17 @@ function initXyzCamera() {
 				: (safeMovement > 0.38
 					? "pulsation mobile"
 					: (isMembraneDemo() ? "mine lente" : "drone stable"));
-			let guideText = "Incline pour tenir une note, éclaire pour ouvrir le mode, puis secoue par impulsions courtes pour marquer le shaker.";
+			let guideText = "Incline pour tenir une note, parle pour que la voix se cale dessus, puis secoue par impulsions courtes pour marquer le shaker.";
 			if (!isMembraneAudible()) {
-				guideText = "Ouvre la membrane ou Terre & Mine pour installer un drone stable, puis construis à partir de la lumière et de la secousse.";
+				guideText = "Ouvre la membrane ou Terre & Mine pour installer un drone stable, puis construis avec la lumière, la voix accordée et la secousse.";
 			} else if (safeShake > 0.56) {
-				guideText = "Le shaker est ouvert: garde des secousses courtes et régulières, puis stabilise la main pour laisser la note respirer au-dessus.";
+				guideText = "Le shaker est ouvert: garde des secousses courtes et régulières, puis stabilise la main pour laisser la voix accordée respirer au-dessus.";
 			} else if (mode === "major") {
 				guideText = safeLight > 0.66
-					? "La lumière pousse vers le majeur. Tiens l’inclinaison pour garder la note claire, puis parle pour épaissir l’accord."
+					? "La lumière pousse vers le majeur. Tiens l’inclinaison pour garder la note claire, puis parle pour accrocher ta voix à l’accord."
 					: "Le majeur est là mais encore fragile. Ouvre un peu plus la lumière ou lève le téléphone pour élargir la couleur.";
 			} else if (safeAmbient > 0.22) {
-				guideText = "Le mineur tient le terrain. Parle, souffle ou fais grésiller la pièce pour épaissir la matière avant d’ajouter le shaker.";
+				guideText = "Le mineur tient le terrain. Parle, souffle ou fais grésiller la pièce pour verrouiller la voix sur la note avant d’ajouter le shaker.";
 			}
 			document.body.dataset.musicalMode = mode;
 			setSensorText(musicModeNode, toreModeLabels[mode] || toreModeLabels.minor);
@@ -4740,6 +4744,10 @@ function initXyzCamera() {
 		vocoderEchoDelay = null;
 		vocoderEchoFeedback = null;
 		vocoderEchoReturn = null;
+		vocoderTuneFilter = null;
+		vocoderTuneHarmonicFilter = null;
+		vocoderTuneGain = null;
+		vocoderTuneHarmonicGain = null;
 			if (audioContext && typeof audioContext.close === "function") {
 				audioContext.close().catch(() => {});
 			}
@@ -4855,15 +4863,22 @@ function initXyzCamera() {
 				? clampNumber(targetGain * (0.28 + (1 - lightTone) * 0.24 + movement * 0.1), 0, isMembraneDemo() ? 0.052 : 0.046)
 				: 0;
 			const targetPan = clampNumber(membrane.tiltX * 0.92 + (orientationX - 0.5) * 0.18, -1, 1);
-			const targetVoiceDrive = audible ? clampNumber(1.18 + presence * 1.12 + handOpen * 0.42 - ambient * 0.3, 0.92, 2.45) : 0.84;
-			const targetVoiceModDepth = audible ? clampNumber(0.24 + gate * 0.42 + lightTone * 0.12 + ambient * 0.08, 0.16, 0.78) : 0.02;
+			const tunePresence = audible ? clampNumber(((ambient - 0.015) / 0.52) + handOpen * 0.22 + movement * 0.08 + lightTone * 0.06, 0, 1) : 0;
+			const targetVoiceDrive = audible ? clampNumber(1.18 + presence * 1.12 + handOpen * 0.42 + ambient * 0.34 - ambient * 0.18, 0.96, 2.68) : 0.84;
+			const targetVoiceModDepth = audible ? clampNumber(0.24 + gate * 0.42 + lightTone * 0.12 + ambient * 0.08 + tunePresence * 0.14, 0.16, 0.86) : 0.02;
 			const targetVoiceHarmonicDepth = audible ? clampNumber(targetVoiceModDepth * (0.44 + lightTone * 0.3 + ambient * 0.08), 0.08, 0.48) : 0.01;
-			const targetVoiceDirect = audible ? clampNumber(gate * deviceProfile.volume * feedbackSafety * (0.065 + handOpen * 0.082), 0, 0.122) : 0;
-			const targetVoiceWet = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.24 + handOpen * 0.18 + movement * 0.12), 0, 0.54) : 0;
+			const targetVoiceDirect = audible ? clampNumber(gate * deviceProfile.volume * feedbackSafety * (0.05 + handOpen * 0.07) * (1 - tunePresence * 0.56), 0, 0.098) : 0;
+			const targetVoiceWet = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.28 + handOpen * 0.18 + movement * 0.12 + ambient * 0.08 + tunePresence * 0.08), 0, 0.62) : 0;
 			const targetVoiceBandpass = clampNumber(targetFrequency * (0.94 + lightTone * 0.36), 140, 2600);
 			const targetVoiceBandpassQ = 1 + ambient * 0.85 + movement * 0.65;
 			const targetVoiceColor = clampNumber(340 + lightTone * 1920 + ambient * 380 + movement * 240, 320, 4200);
-			const targetVoiceEchoSend = audible ? clampNumber(voiceFx.echoAmount * (0.14 + handOpen * 0.18 + lightTone * 0.08) * feedbackSafety, 0, 0.24) : 0;
+			const targetVoiceTuneFrequency = clampNumber(Math.max(targetFrequency * 2, targetFrequency + 72), 140, 2800);
+			const targetVoiceTuneHarmonicFrequency = clampNumber(Math.max(harmonicFrequency, targetFrequency * 3), 220, 4200);
+			const targetVoiceTuneQ = 7.5 + handOpen * 4.8 + ambient * 3.4 + lightTone * 1.8 - movement * 1.2;
+			const targetVoiceTuneHarmonicQ = 6.2 + lightTone * 4.6 + ambient * 2.8 + shakeLevel * 2.1;
+			const targetVoiceTuneGain = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.034 + tunePresence * 0.19 + ambient * 0.12 + handOpen * 0.05), 0, isMembraneDemo() ? 0.26 : 0.22) : 0;
+			const targetVoiceTuneHarmonicGain = audible ? clampNumber(targetVoiceTuneGain * (0.38 + lightTone * 0.28 + ambient * 0.18 + shakeLevel * 0.08), 0, isMembraneDemo() ? 0.16 : 0.14) : 0;
+			const targetVoiceEchoSend = audible ? clampNumber(voiceFx.echoAmount * (0.14 + handOpen * 0.18 + lightTone * 0.08 + tunePresence * 0.06) * feedbackSafety, 0, 0.24) : 0;
 			const targetVoiceEchoFeedback = audible ? clampNumber(0.1 + voiceFx.echoAmount * 0.36 + ambient * 0.06, 0.08, 0.42) : 0.08;
 			const targetVoiceEchoReturn = audible ? clampNumber(voiceFx.echoAmount * (0.28 + lightTone * 0.16), 0, 0.22) : 0;
 			renderToreGuide({
@@ -4938,6 +4953,16 @@ function initXyzCamera() {
 			vocoderColorFilter.Q.setTargetAtTime(0.72 + lightTone * 0.6 + ambient * 0.18, now, 0.16);
 		}
 
+		if (vocoderTuneFilter) {
+			vocoderTuneFilter.frequency.setTargetAtTime(targetVoiceTuneFrequency, now, 0.1);
+			vocoderTuneFilter.Q.setTargetAtTime(targetVoiceTuneQ, now, 0.12);
+		}
+
+		if (vocoderTuneHarmonicFilter) {
+			vocoderTuneHarmonicFilter.frequency.setTargetAtTime(targetVoiceTuneHarmonicFrequency, now, 0.12);
+			vocoderTuneHarmonicFilter.Q.setTargetAtTime(targetVoiceTuneHarmonicQ, now, 0.14);
+		}
+
 		if (vocoderModDepth) {
 			vocoderModDepth.gain.setTargetAtTime(targetVoiceModDepth, now, audible ? 0.12 : 0.04);
 		}
@@ -4948,6 +4973,14 @@ function initXyzCamera() {
 
 		if (vocoderDirectGain) {
 			vocoderDirectGain.gain.setTargetAtTime(targetVoiceDirect, now, audible ? 0.12 : 0.04);
+		}
+
+		if (vocoderTuneGain) {
+			vocoderTuneGain.gain.setTargetAtTime(targetVoiceTuneGain, now, audible ? 0.12 : 0.04);
+		}
+
+		if (vocoderTuneHarmonicGain) {
+			vocoderTuneHarmonicGain.gain.setTargetAtTime(targetVoiceTuneHarmonicGain, now, audible ? 0.12 : 0.04);
 		}
 
 		if (vocoderWetGain) {
@@ -5054,6 +5087,10 @@ function initXyzCamera() {
 		vocoderCarrierHarmonicGain = context.createGain();
 		vocoderModDepth = context.createGain();
 		vocoderHarmonicModDepth = context.createGain();
+		vocoderTuneFilter = context.createBiquadFilter();
+		vocoderTuneHarmonicFilter = context.createBiquadFilter();
+		vocoderTuneGain = context.createGain();
+		vocoderTuneHarmonicGain = context.createGain();
 		vocoderWetGain = context.createGain();
 		vocoderEchoSend = context.createGain();
 		vocoderEchoDelay = context.createDelay(0.9);
@@ -5084,6 +5121,14 @@ function initXyzCamera() {
 		vocoderCarrierHarmonicGain.gain.value = 0;
 		vocoderModDepth.gain.value = 0.2;
 		vocoderHarmonicModDepth.gain.value = 0.12;
+		vocoderTuneFilter.type = "bandpass";
+		vocoderTuneFilter.frequency.value = 220;
+		vocoderTuneFilter.Q.value = 8.4;
+		vocoderTuneHarmonicFilter.type = "bandpass";
+		vocoderTuneHarmonicFilter.frequency.value = 440;
+		vocoderTuneHarmonicFilter.Q.value = 6.6;
+		vocoderTuneGain.gain.value = 0;
+		vocoderTuneHarmonicGain.gain.value = 0;
 		vocoderWetGain.gain.value = 0;
 		vocoderEchoSend.gain.value = 0;
 		vocoderEchoDelay.delayTime.value = 0.24;
@@ -5094,14 +5139,20 @@ function initXyzCamera() {
 		vocoderInputGain.connect(vocoderHighpass);
 		vocoderHighpass.connect(vocoderCompressor);
 		vocoderCompressor.connect(vocoderBandpass);
+		vocoderCompressor.connect(vocoderTuneFilter);
+		vocoderCompressor.connect(vocoderTuneHarmonicFilter);
 		vocoderBandpass.connect(vocoderModDepth);
 		vocoderBandpass.connect(vocoderHarmonicModDepth);
 		vocoderBandpass.connect(vocoderDirectGain);
+		vocoderTuneFilter.connect(vocoderTuneGain);
+		vocoderTuneHarmonicFilter.connect(vocoderTuneHarmonicGain);
 		vocoderModDepth.connect(vocoderCarrierGain.gain);
 		vocoderHarmonicModDepth.connect(vocoderCarrierHarmonicGain.gain);
 		vocoderCarrierOscillator.connect(vocoderCarrierGain);
 		vocoderCarrierHarmonicOscillator.connect(vocoderCarrierHarmonicGain);
 		vocoderDirectGain.connect(vocoderColorFilter);
+		vocoderTuneGain.connect(vocoderColorFilter);
+		vocoderTuneHarmonicGain.connect(vocoderColorFilter);
 		vocoderCarrierGain.connect(vocoderColorFilter);
 		vocoderCarrierHarmonicGain.connect(vocoderColorFilter);
 		vocoderColorFilter.connect(vocoderWetGain);
@@ -5171,7 +5222,7 @@ function initXyzCamera() {
 		setSensorText(
 			audioNode,
 			membrane.audioLevel > 0.03
-				? `${Math.round(membrane.audioLevel * 100)}% · voix portée`
+				? `${Math.round(membrane.audioLevel * 100)}% · voix accordée`
 				: "souffle bas"
 		);
 	};
@@ -5583,7 +5634,7 @@ function initXyzCamera() {
 
 			setUiState(
 				"loading",
-				"Le tore demande au téléphone lumière, souffle, mouvement et présence. La réaction sonore, les modes majeur/mineur et la voix portée restent locales à ce navigateur.",
+				"Le tore demande au téléphone lumière, souffle, mouvement et présence. La réaction sonore, les modes majeur/mineur et la voix accordée restent locales à ce navigateur.",
 				"Activation de la membrane…"
 			);
 		setSensorText(orientationNode, "demande");
@@ -5617,7 +5668,7 @@ function initXyzCamera() {
 			}
 				setUiState(
 					"live",
-					"La membrane est ouverte. Le tore lit maintenant lumière, souffle, inclinaison, secousse et présence, puis les convertit en thérémin local, shaker et voix portée.",
+					"La membrane est ouverte. Le tore lit maintenant lumière, souffle, inclinaison, secousse et présence, puis les convertit en thérémin local, shaker et voix accordée.",
 					"La membrane nourrit maintenant la surface."
 				);
 			updateMotionVoice();
