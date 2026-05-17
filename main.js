@@ -271,20 +271,30 @@ function syncNativeDeviceSeed() {
 function computeDeviceBridgeState() {
 	const silenceIntent = readDeviceSilenceIntent();
 	const volumeIntent = readDeviceVolumeLevel();
+	const webVolume = clampNumber(volumeIntent, 0, 1);
 	const nativeSilenceMode = normalizeNativeSilenceMode(nativeDeviceState.silenceMode);
 	const nativeVolume = normalizeNativeVolume(nativeDeviceState.volume);
-	const effectiveVolume = clampNumber((nativeVolume ?? 1) * volumeIntent, 0, 1);
-	const muted = silenceIntent || nativeSilenceMode === "silent" || effectiveVolume <= 0.01;
+	const nativeSource = nativeDeviceState.source || "web";
+	const nativeRoute = nativeDeviceState.route || "";
+	const nativeAudioTrusted = (
+		nativeSilenceMode !== "unknown"
+		|| nativeRoute !== ""
+		|| (nativeSource && nativeSource !== "web")
+	);
+	const effectiveVolume = clampNumber(((nativeAudioTrusted ? nativeVolume : null) ?? 1) * webVolume, 0, 1);
+	const muted = silenceIntent || nativeSilenceMode === "silent" || webVolume <= 0.01;
 
 	return {
 		silenceIntent,
 		volumeIntent,
+		webVolume,
 		effectiveVolume,
 		muted,
 		nativeSilenceMode,
 		nativeVolume,
-		nativeRoute: nativeDeviceState.route || "",
-		nativeSource: nativeDeviceState.source || "web",
+		nativeAudioTrusted,
+		nativeRoute,
+		nativeSource,
 		visibility: document.hidden ? "hidden" : "visible",
 		standalone: deviceIsStandalone(),
 		hapticsAvailable: typeof navigator.vibrate === "function",
@@ -299,7 +309,7 @@ function syncDeviceBridgeState() {
 	const body = document.body;
 	if (body instanceof HTMLBodyElement) {
 		body.dataset.deviceSilenceIntent = currentDeviceBridgeState.silenceIntent ? "1" : "0";
-		body.dataset.deviceVolume = currentDeviceBridgeState.effectiveVolume.toFixed(3);
+		body.dataset.deviceVolume = currentDeviceBridgeState.webVolume.toFixed(3);
 		body.dataset.deviceNativeSilence = currentDeviceBridgeState.nativeSilenceMode;
 		body.dataset.deviceVisibility = currentDeviceBridgeState.visibility;
 		body.dataset.deviceStandalone = currentDeviceBridgeState.standalone ? "1" : "0";
@@ -321,7 +331,8 @@ function readDeviceAudioProfile() {
 	const state = getCurrentDeviceBridgeState();
 	return {
 		muted: Boolean(state.muted),
-		volume: clampNumber(state.effectiveVolume, 0, 1),
+		volume: clampNumber(state.webVolume, 0, 1),
+		mixedVolume: clampNumber(state.effectiveVolume, 0, 1),
 		silenceIntent: Boolean(state.silenceIntent),
 		nativeSilenceMode: state.nativeSilenceMode,
 		nativeVolume: state.nativeVolume,
@@ -3978,18 +3989,26 @@ function initDeviceBridgePanels() {
 			const silenceLabel = state.nativeSilenceMode === "silent"
 				? "silence natif"
 				: (state.silenceIntent ? "silence web" : (state.nativeSilenceMode === "vibrate" ? "vibreur natif" : "web sonore"));
-			const volumeLabel = `${Math.round(state.effectiveVolume * 100)}%${state.nativeVolume !== null ? " · mixé" : ""}`;
+			const webVolumeLabel = `${Math.round(state.webVolume * 100)}%`;
+			const nativeVolumeLabel = state.nativeVolume !== null
+				? `${Math.round(state.nativeVolume * 100)}%`
+				: null;
+			const volumeLabel = state.nativeAudioTrusted && nativeVolumeLabel
+				? `${webVolumeLabel} web · natif ${nativeVolumeLabel}`
+				: webVolumeLabel;
 			const hapticsLabel = state.hapticsAvailable ? "prête" : "absente";
 			const visibilityLabel = state.visibility === "hidden" ? "arrière-plan" : "visible";
 			const standaloneLabel = state.standalone ? "installée" : (state.installAvailable ? "installable" : "navigateur");
-			const nativeLabel = state.nativeSilenceMode !== "unknown" || state.nativeVolume !== null || state.nativeRoute
+			const nativeLabel = state.nativeAudioTrusted || state.nativeVolume !== null
 				? `${state.nativeSource}${state.nativeRoute ? ` · ${state.nativeRoute}` : ""}`
 				: "web seul";
-			const note = state.nativeSilenceMode !== "unknown" || state.nativeVolume !== null
-				? `Pont natif reçu: ${state.nativeSource}${state.nativeRoute ? ` · ${state.nativeRoute}` : ""}. Le silence et le volume réels du téléphone sont maintenant visibles ici.`
-				: (state.standalone
-					? "Cette surface tourne comme une app installée. Le web garde ici veille, haptique, partage et niveau O., puis attend un pont natif pour le vrai silence système."
-					: "Le web pilote ici silence, niveau, haptique, partage et mode app. Un wrapper natif pourra ensuite donner le silence et le volume réels du téléphone.");
+			const note = state.nativeAudioTrusted
+				? `Pont natif reçu: ${state.nativeSource}${state.nativeRoute ? ` · ${state.nativeRoute}` : ""}. Le thérémin local garde le niveau O. (${webVolumeLabel}) et le téléphone signale en plus un volume système à ${nativeVolumeLabel || "?"}.`
+				: (state.nativeVolume !== null
+					? "Le navigateur a reçu une valeur de volume isolée, mais elle n'est pas assez fiable pour couper le thérémin local. Le niveau O. garde donc la main."
+					: (state.standalone
+						? "Cette surface tourne comme une app installée. Le web garde ici veille, haptique, partage et niveau O., puis attend un pont natif pour le vrai silence système."
+						: "Le web pilote ici silence, niveau, haptique, partage et mode app. Un wrapper natif pourra ensuite donner le silence et le volume réels du téléphone."));
 
 			setNodeText(panel.silenceStatus, silenceLabel);
 			setNodeText(panel.volumeStatus, volumeLabel);
@@ -3997,7 +4016,7 @@ function initDeviceBridgePanels() {
 			setNodeText(panel.visibilityStatus, visibilityLabel);
 			setNodeText(panel.standaloneStatus, standaloneLabel);
 			setNodeText(panel.nativeStatus, nativeLabel);
-			setNodeText(panel.volumeReadout, `${Math.round(state.effectiveVolume * 100)}%`);
+			setNodeText(panel.volumeReadout, webVolumeLabel);
 			setNodeText(panel.nativeNote, note);
 
 			if (panel.volumeInput instanceof HTMLInputElement) {
