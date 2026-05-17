@@ -56,6 +56,7 @@ For subsequent updates on the lab droplet:
 
 ```bash
 cd /opt/o-3ternet-lab
+bash scripts/deploy_lab_update.sh --preflight-only
 bash scripts/deploy_lab_update.sh
 ```
 
@@ -68,9 +69,12 @@ bash scripts/deploy_lab_update.sh --root /root/o-3ternet-lab
 
 The deploy helper is intentionally resilient now:
 
+- `--preflight-only` validates the Compose config and builds `app`, `pocket`, `api`, and `db` without touching the live stack
 - it first tries the full lab stack, including `caddy`
 - if that local `caddy` cannot start because `80/443` are already owned elsewhere or because `/opt` is mounted read-only, it automatically retries with `db`, `api`, `app`, and `pocket` only
 - public verification still runs through the active ingress on `lab.sowwwl.cloud`
+- use `--require-local-caddy` when the lab split must fail closed instead of silently sharing ingress
+- plasma overrides that point outside `*.lab.sowwwl.cloud` are refused unless you pass `--allow-cross-origin-plasma`
 
 Useful switches:
 
@@ -81,8 +85,17 @@ bash scripts/deploy_lab_update.sh --skip-caddy
 # Force a full local caddy attempt.
 bash scripts/deploy_lab_update.sh --with-caddy
 
+# Fail if the local caddy service cannot start.
+bash scripts/deploy_lab_update.sh --require-local-caddy
+
+# Build and validate first, without touching the live lab.
+bash scripts/deploy_lab_update.sh --preflight-only
+
 # Send a harmless sensor event after deploy to verify the physical -> digital bridge.
 bash scripts/deploy_lab_update.sh --smoke-sensor
+
+# Override the plasma split guard only when a cross-origin route is truly intentional.
+bash scripts/deploy_lab_update.sh --allow-cross-origin-plasma
 ```
 
 ## Recovery checklist
@@ -130,7 +143,9 @@ curl -I 'https://lab.sowwwl.cloud/island?u=<slug-lab-connu>'
 curl -I 'https://lab.sowwwl.cloud/island.php?u=<slug-lab-connu>'
 curl -I https://pocket.lab.sowwwl.cloud
 curl -I https://api.lab.sowwwl.cloud/healthz
+curl -sL https://api.lab.sowwwl.cloud/v1/status | grep -E '"service": ?"api.lab.sowwwl.cloud"|AzA_v0.7_openapi.min.yaml'
 curl -sL https://lab.sowwwl.cloud/ | grep -E 'atelier du tore|Activer les capteurs|Fake pocket avant le Pi|Le téléphone devient membrane'
+curl -sL https://lab.sowwwl.cloud/ | grep -E 'data-lab-plasma-feed="https://lab\.sowwwl\.cloud(/o)?/plasma/recent"'
 curl -sL https://lab.sowwwl.cloud/ | grep -E 'Demander à Owl|Si tu reviens|Commence ici\. Trois portes suffisent' && false || true
 curl -sSI https://lab.sowwwl.cloud/ | grep -Ei 'permissions-policy|cross-origin-opener-policy|cross-origin-resource-policy|x-permitted-cross-domain-policies'
 ```
@@ -140,6 +155,7 @@ Expected island behavior:
 - `https://lab.sowwwl.cloud/island?u=<slug-lab-connu>` returns `200`
 - `https://lab.sowwwl.cloud/island.php?u=<slug-lab-connu>` redirects to the canonical `/island` route
 - `https://lab.sowwwl.cloud/` exposes the current lab-console markers, not the older `Owl` home copy
+- `https://lab.sowwwl.cloud/` keeps its plasma feed on `lab.sowwwl.cloud`, not on another host
 - `https://lab.sowwwl.cloud/` does not expose `Demander à Owl`, `Si tu reviens`, or `Commence ici. Trois portes suffisent`
 - `https://lab.sowwwl.cloud/` exposes a `Permissions-Policy` for `camera`, `microphone`, `accelerometer`, `gyroscope`, `magnetometer`, `ambient-light-sensor`, and `screen-wake-lock`
 - each `Cross-Origin-*` and `X-Permitted-Cross-Domain-Policies` header appears exactly once

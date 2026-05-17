@@ -135,6 +135,12 @@ Keep these values aligned with the lab domains:
 - `SOWWWL_AZA_DIRECT_ORIGIN=https://lab.sowwwl.cloud`
 - `SOWWWL_POCKET_PUBLIC_ORIGIN=https://pocket.lab.sowwwl.cloud`
 
+For an isolated lab, leave these unset unless you intentionally reintroduce a cross-origin membrane/plasma route:
+
+- `SOWWWL_MEMBRANE_BRIDGE_URL`
+- `SOWWWL_PLASMA_FEED_URL`
+- `SOWWWL_PLASMA_ALLOWED_ORIGINS`
+
 ## Step 5 — point DNS before TLS
 
 In Cloudflare, create:
@@ -174,6 +180,18 @@ Or, from the fallback root path:
 ```bash
 cd /root/o-3ternet-lab
 bash scripts/deploy_lab_update.sh --root /root/o-3ternet-lab
+```
+
+If the split must fail closed when local `caddy` cannot bind `80/443`, use:
+
+```bash
+bash scripts/deploy_lab_update.sh --require-local-caddy
+```
+
+If you intentionally want a cross-origin membrane/plasma route despite the split, opt in explicitly:
+
+```bash
+bash scripts/deploy_lab_update.sh --allow-cross-origin-plasma
 ```
 
 ## Step 7 — verify the containers

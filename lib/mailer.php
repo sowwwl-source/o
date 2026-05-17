@@ -41,6 +41,7 @@ function sowwwl_send_email(string $toEmail, string $subject, string $body, ?stri
     $username = (string) (getenv('SOWWWL_SMTP_USERNAME') ?: '');
     $password = (string) (getenv('SOWWWL_SMTP_PASSWORD') ?: '');
     $encryption = strtolower(trim((string) (getenv('SOWWWL_SMTP_ENCRYPTION') ?: 'tls')));
+    $brandDomain = current_brand_domain();
 
     if ($host !== '') {
         sowwwl_try_require_vendor_autoload();
@@ -77,7 +78,7 @@ function sowwwl_send_email(string $toEmail, string $subject, string $body, ?stri
             if ($from !== '') {
                 $mail->setFrom($from, $fromName !== '' ? $fromName : $from);
             } else {
-                $mail->setFrom('no-reply@' . (string) ($_SERVER['HTTP_HOST'] ?? 'sowwwl.com'), 'sowwwl');
+                $mail->setFrom('no-reply@' . $brandDomain, 'sowwwl');
             }
 
             $mail->addAddress($toEmail);
@@ -121,7 +122,7 @@ function sowwwl_send_magic_link_email(string $toEmail, string $link, ?string &$e
     $from = trim((string) (getenv('SOWWWL_MAGIC_LINK_FROM') ?: ''));
     $fromName = trim((string) (getenv('SOWWWL_MAGIC_LINK_FROM_NAME') ?: ''));
 
-    $subject = 'Lien de connexion sowwwl.com';
+    $subject = 'Lien de connexion ' . current_brand_domain();
     $body = "Bonjour,\n\nVoici ton lien de connexion (valide ~15 minutes) :\n\n" . $link . "\n\nSi tu n’es pas à l’origine de cette demande, ignore cet email.\n";
 
     return sowwwl_send_email($toEmail, $subject, $body, $error);

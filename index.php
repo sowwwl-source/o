@@ -36,12 +36,7 @@ function signup_portal_steps(): array
 $host = request_host();
 $isSowwwlXyz = ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz');
 $isLabSurface = ($host === 'lab.sowwwl.cloud' || $host === 'www.lab.sowwwl.cloud');
-// Désactive la redirection pour sowwwl.xyz, on veut un contenu spécial
-// if ($isSowwwlXyz) {
-//     $path = (string) ($_SERVER['REQUEST_URI'] ?? '/');
-//     header('Location: https://sowwwl.com' . $path, true, 302);
-//     exit;
-// }
+// sowwwl.xyz and lab.sowwwl.cloud keep their own local surfaces here.
 
 $requestPath = o_request_path('/');
 if (($host === '0wlslw0.com' || $host === 'www.0wlslw0.com') && ($requestPath === '/' || $requestPath === '/index.php')) {
@@ -248,10 +243,9 @@ $homeHeroLineTwo = $authenticatedLand ? 'module le tore.' : 'écoute le monde r�
 $homeThresholdHint = $authenticatedLand
     ? 'Le noyau reste simple : terre, adresse, courant.'
     : 'Comprendre sans quitter l’entrée.';
+$membraneBridgeHref = plasma_bridge_url();
 $labSensorEndpointHref = o_route_path('/ingest/sensor');
-$labPublicOrigin = 'https://lab.sowwwl.cloud';
-$labPublicMembraneEndpointHref = rtrim($labPublicOrigin, '/') . o_route_path('/ingest/membrane');
-$labPublicPlasmaFeedHref = rtrim($labPublicOrigin, '/') . o_route_path('/plasma/recent');
+$labPublicPlasmaFeedHref = plasma_feed_url();
 $labQaIslandHref = o_route_path('/island') . '?u=qa-multimatiere';
 $labPocketHref = 'https://pocket.lab.sowwwl.cloud/';
 $labApiHealthHref = 'https://api.lab.sowwwl.cloud/healthz';
@@ -358,7 +352,7 @@ $pageDescription = $isLabSurface
     <div
         class="xyz-camera-layer"
         data-xyz-camera-root
-        data-xyz-plasma-bridge="<?= h($labPublicMembraneEndpointHref) ?>"
+        data-xyz-plasma-bridge="<?= h($membraneBridgeHref) ?>"
         data-xyz-plasma-land="<?= h($activeLandSlug) ?>"
     >
         <video
@@ -524,7 +518,7 @@ $pageDescription = $isLabSurface
                 <article class="xyz-surface-note xyz-surface-note--camera" data-xyz-camera-panel>
                     <span class="summary-label">rituel</span>
                     <strong data-xyz-camera-title>La membrane attend un geste.</strong>
-                    <p class="panel-copy" data-xyz-camera-status>Active la membrane pour ouvrir mouvement, voix, lumière, caméra et veille active. Rien n’est envoyé au serveur depuis cette couche.</p>
+                    <p class="panel-copy" data-xyz-camera-status>Active la membrane pour ouvrir mouvement, voix, lumière, caméra et veille active. Aucune image brute n’est envoyée. Si le pont plasma est actif, seuls des signaux synthétiques quittent cette couche.</p>
                     <div class="xyz-surface-sensor-grid" aria-label="État direct de la membrane">
                         <p><span>orientation</span><strong data-xyz-sensor-orientation>en attente</strong></p>
                         <p><span>mouvement</span><strong data-xyz-sensor-motion>en attente</strong></p>
@@ -710,7 +704,7 @@ $pageDescription = $isLabSurface
                     </div>
                     <span class="badge badge-glass" data-lab-plasma-badge><?= h((string) ($labPlasmaWeather['badge'] ?? ($labRecentPlasmaEvents ? 'traces présentes' : 'aucune trace locale'))) ?></span>
                 </div>
-                <p class="panel-copy">Le browser n’envoie rien ici sans accord fort. En revanche, le lab relit la membrane publique de xyz, les traces Pi et la simulation locale.</p>
+                <p class="panel-copy">Le browser n’envoie rien ici sans accord fort. En revanche, le lab relit son plasma local, les traces Pi et la simulation locale.</p>
                 <strong class="lab-console-card__lead" data-lab-plasma-status><?= h((string) ($labPlasmaWeather['lead'] ?? 'Aucune trace plasma lue dans le runtime pour l’instant.')) ?></strong>
                 <p class="panel-copy lab-console-plasma-copy" data-lab-plasma-weather-copy><?= h((string) ($labPlasmaWeather['detail'] ?? 'Le premier ping capteur apparaîtra ici dès qu’un événement traversera le pont plasma.')) ?></p>
                 <ol class="lab-console-trace-list" data-lab-runtime-traces>

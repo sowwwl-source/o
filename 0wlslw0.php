@@ -63,7 +63,7 @@ function guide_ascii_note(string $label, string $value): string
 }
 
 $host = request_host();
-// sowwwl.xyz is now allowed to render the mapping UI directly—no redirect!
+// The guide stays on the current host instead of bouncing to another surface.
 
 $requestPath = o_request_path('/0wlslw0');
 if ($requestPath === '/0wlslw0.php') {
@@ -71,7 +71,7 @@ if ($requestPath === '/0wlslw0.php') {
     exit;
 }
 
-$brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
+$brandDomain = current_brand_domain($host);
 $isSpatialMappingHost = ($brandDomain === 'sowwwl.xyz');
 $authenticatedLand = current_authenticated_land();
 $ambientProfile = $authenticatedLand ? land_visual_profile($authenticatedLand) : land_collective_profile('calm');

@@ -4,14 +4,9 @@ declare(strict_types=1);
 require __DIR__ . '/config.php';
 
 $host = request_host();
-if ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz') {
-    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/map');
-    header('Location: https://sowwwl.com' . $path, true, 302);
-    exit;
-}
-
-$brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
+$brandDomain = current_brand_domain($host);
 $str3mHref = o_route_path('/str3m');
+$pageHeadVariant = pwa_default_app_id($host);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -21,7 +16,7 @@ $str3mHref = o_route_path('/str3m');
     <meta name="description" content="Map — tore vivant de <?= h(SITE_TITLE) ?>, terres et courants actifs.">
     <meta name="theme-color" content="#09090b">
     <title>Map — <?= h(SITE_TITLE) ?></title>
-<?= render_o_page_head_assets('main') ?>
+<?= render_o_page_head_assets($pageHeadVariant, $host) ?>
 </head>
 <body class="experience map-view">
 <?= render_skip_link() ?>

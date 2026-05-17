@@ -303,7 +303,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
     <meta name="description" content="<?= $land ? h((string) $land['username']) . ' — île classique en devenir dans ' . h(SITE_TITLE) : 'Île introuvable — ' . h(SITE_TITLE) ?>">
     <meta name="theme-color" content="#09090b">
     <title><?= $land ? h((string) $land['username']) . ' — Île classique — ' . h(SITE_TITLE) : 'Île introuvable — ' . h(SITE_TITLE) ?></title>
-<?= render_o_page_head_assets('main') ?>
+<?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 <?php if ($islandNeedsModelViewer): ?>
     <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 <?php endif; ?>

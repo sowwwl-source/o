@@ -4,10 +4,46 @@ declare(strict_types=1);
 
 date_default_timezone_set('UTC');
 
+function request_is_secure(): bool
+{
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        return true;
+    }
+
+    $forwardedProto = strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
+    if ($forwardedProto !== '') {
+        $parts = preg_split('/\s*,\s*/', $forwardedProto) ?: [];
+        $candidate = strtolower(trim((string) ($parts[0] ?? $forwardedProto)));
+        if ($candidate === 'https') {
+            return true;
+        }
+    }
+
+    $cfVisitor = (string) ($_SERVER['HTTP_CF_VISITOR'] ?? '');
+    return str_contains($cfVisitor, '"scheme":"https"');
+}
+
+function request_public_base_url(): string
+{
+    $override = trim((string) (getenv('API_PUBLIC_BASE_URL') ?: ''));
+    if ($override !== '') {
+        return rtrim($override, '/');
+    }
+
+    $host = trim((string) ($_SERVER['HTTP_HOST'] ?? 'api.sowwwl.cloud'));
+    $scheme = request_is_secure() ? 'https' : 'http';
+
+    return $scheme . '://' . $host;
+}
+
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
-$baseUrl = rtrim((string)(getenv('API_PUBLIC_BASE_URL') ?: 'https://api.sowwwl.cloud'), '/');
+$baseUrl = request_public_base_url();
 $bearerToken = (string)(getenv('API_BEARER_TOKEN') ?: '');
+$parsedBaseHost = parse_url($baseUrl, PHP_URL_HOST);
+$serviceLabel = is_string($parsedBaseHost) && $parsedBaseHost !== ''
+    ? strtolower($parsedBaseHost)
+    : trim((string) ($_SERVER['HTTP_HOST'] ?? 'api.sowwwl.cloud'));
 
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Authorization, Content-Type');
@@ -57,11 +93,13 @@ function read_json_body(): array
 
 function stub_response(string $path, string $method): void
 {
+    global $serviceLabel;
+
     $payload = read_json_body();
     json_response(501, [
         'ok' => false,
         'error' => 'not_implemented',
-        'service' => 'api.sowwwl.cloud',
+        'service' => $serviceLabel,
         'path' => $path,
         'method' => $method,
         'received' => $payload,
@@ -90,13 +128,14 @@ if (!in_array($path, $publicPaths, true)) {
 }
 
 if ($path === '/') {
-    html_response(200, '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>api.sowwwl.cloud</title><style>body{margin:0;background:#08111b;color:#e9f2ff;font-family:Menlo,Consolas,monospace}main{max-width:860px;margin:0 auto;padding:56px 24px}a{color:#9cd0ff}code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px}</style></head><body><main><h1>api.sowwwl.cloud</h1><p>Minimal AzA API stub running.</p><p>Health: <a href="/healthz">/healthz</a></p><p>Docs: <a href="/docs">/docs</a></p><p>Status: <a href="/v1/status">/v1/status</a></p><p>Protected endpoints return <code>501 not_implemented</code> until the production service is wired.</p></main></body></html>');
+    $safeServiceLabel = htmlspecialchars($serviceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    html_response(200, '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' . $safeServiceLabel . '</title><style>body{margin:0;background:#08111b;color:#e9f2ff;font-family:Menlo,Consolas,monospace}main{max-width:860px;margin:0 auto;padding:56px 24px}a{color:#9cd0ff}code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px}</style></head><body><main><h1>' . $safeServiceLabel . '</h1><p>Minimal AzA API stub running.</p><p>Health: <a href="/healthz">/healthz</a></p><p>Docs: <a href="/docs">/docs</a></p><p>Status: <a href="/v1/status">/v1/status</a></p><p>Protected endpoints return <code>501 not_implemented</code> until the production service is wired.</p></main></body></html>');
 }
 
 if ($path === '/healthz') {
     json_response(200, [
         'ok' => true,
-        'service' => 'api.sowwwl.cloud',
+        'service' => $serviceLabel,
         'mode' => 'stub',
         'time' => gmdate(DATE_ATOM),
     ]);
@@ -105,7 +144,7 @@ if ($path === '/healthz') {
 if ($path === '/v1/status') {
     json_response(200, [
         'ok' => true,
-        'service' => 'api.sowwwl.cloud',
+        'service' => $serviceLabel,
         'mode' => 'stub',
         'docs' => $baseUrl . '/docs',
         'openapi' => $baseUrl . '/docs/AzA_v0.7_openapi.min.yaml',
@@ -118,12 +157,35 @@ if ($path === '/docs') {
 }
 
 if ($path === '/docs/AzA_v0.7_openapi.min.yaml') {
-    $file = __DIR__ . '/docs/AzA_v0.7_openapi.min.yaml';
-    if (!is_file($file)) {
+    $fileCandidates = [
+        __DIR__ . '/docs/AzA_v0.7_openapi.min.yaml',
+        dirname(__DIR__) . '/docs/AzA_v0.7_openapi.min.yaml',
+    ];
+    $file = '';
+    foreach ($fileCandidates as $candidate) {
+        if (is_file($candidate)) {
+            $file = $candidate;
+            break;
+        }
+    }
+
+    if ($file === '') {
         json_response(404, ['ok' => false, 'error' => 'not_found']);
     }
+
+    $yaml = file_get_contents($file);
+    if ($yaml === false) {
+        json_response(500, ['ok' => false, 'error' => 'read_failed']);
+    }
+
+    $yaml = str_replace(
+        ['{{API_PUBLIC_BASE_URL}}', '{{API_SERVICE_HOST}}', 'https://api.sowwwl.cloud', 'api.sowwwl.cloud'],
+        [$baseUrl, $serviceLabel, $baseUrl, $serviceLabel],
+        $yaml
+    );
+
     header('Content-Type: application/yaml; charset=utf-8');
-    readfile($file);
+    echo $yaml;
     exit;
 }
 

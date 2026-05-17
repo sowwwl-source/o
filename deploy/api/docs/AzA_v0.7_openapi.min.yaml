@@ -2,9 +2,9 @@ openapi: 3.0.3
 info:
   title: AzA API Stub
   version: 0.1.0
-  description: Minimal compatibility surface for api.sowwwl.cloud while the production service is being rebuilt.
+  description: Minimal compatibility surface for {{API_SERVICE_HOST}} while the production service is being rebuilt.
 servers:
-  - url: https://api.sowwwl.cloud
+  - url: {{API_PUBLIC_BASE_URL}}
 paths:
   /healthz:
     get:

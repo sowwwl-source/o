@@ -14,7 +14,7 @@ if (!$signal || !signal_can_view($signal, $currentLand)) {
     http_response_code(404);
 }
 
-$brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
+$brandDomain = current_brand_domain($host);
 $created = isset($_GET['created']) && $_GET['created'] === '1';
 $isOwner = $signal ? signal_is_owner($signal, $currentLand) : false;
 $signalHref = o_route_path('/signal');
@@ -41,7 +41,7 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
     <meta name="description" content="Signal — détail d'une transmission dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
     <title><?= $signal ? h((string) $signal['title']) . ' — Signal · ' . h(SITE_TITLE) : 'Signal introuvable — ' . h(SITE_TITLE) ?></title>
-<?= render_o_page_head_assets('main') ?>
+<?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience signal-view">
 <?= render_skip_link() ?>

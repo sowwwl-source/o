@@ -4,7 +4,7 @@ declare(strict_types=1);
 require __DIR__ . '/config.php';
 
 $host          = request_host();
-$brandDomain   = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
+$brandDomain   = current_brand_domain($host);
 $homeHref = o_route_path('/');
 $str3mHref = o_route_path('/str3m');
 $joinHref = o_route_path('/rejoindre');
@@ -168,7 +168,7 @@ if ($t0k) {
     <meta name="description" content="T0k — fragment du n0us dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
     <title>T0k<?= $t0k ? ' · ' . h(t0k_format_token((string) $t0k['token'])) : '' ?> — <?= h(SITE_TITLE) ?></title>
-<?= render_o_page_head_assets('main') ?>
+<?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience n-view">
 <?= render_skip_link() ?>

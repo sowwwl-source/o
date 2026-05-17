@@ -210,12 +210,13 @@ function plasma_weather_from_events(array $events): array
 
 function plasma_public_allowed_origins(): array
 {
-    return [
-        'https://sowwwl.xyz',
-        'https://www.sowwwl.xyz',
-        'https://lab.sowwwl.cloud',
-        'https://www.lab.sowwwl.cloud',
-    ];
+    $origins = plasma_configured_allowed_origins();
+    $origins[] = request_public_origin();
+
+    return array_values(array_unique(array_filter(
+        $origins,
+        static fn ($origin): bool => is_string($origin) && $origin !== ''
+    )));
 }
 
 function plasma_public_resolve_origin(?string $origin = null): ?string

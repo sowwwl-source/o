@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/config.php';
 
+$host = request_host();
 $identifier = (string) ($_GET['u'] ?? '');
 $land = null;
 $notFound = false;
@@ -123,7 +124,7 @@ $landContextOpen = $created || ($sessionBound && $isAuthenticatedHere);
     <meta name="description" content="<?= $land ? h((string) $land['username']) . ' — espace personnel dans ' . h(SITE_TITLE) : 'Terre introuvable — ' . h(SITE_TITLE) ?>">
     <meta name="theme-color" content="#09090b">
     <title><?= $land ? h((string) $land['username']) . ' — ' . h(SITE_TITLE) : 'Terre introuvable — ' . h(SITE_TITLE) ?></title>
-<?= render_o_page_head_assets('main') ?>
+<?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience land-view">
 <?= render_skip_link() ?>

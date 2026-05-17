@@ -35,6 +35,7 @@ Red flag:
 ```bash
 curl -I https://sowwwl.com/
 curl -I https://sowwwl.xyz/
+curl -I https://sowwwl.xyz/map
 curl -I https://sowwwl.org/
 curl -I https://sowwwl.com/signal
 curl -I https://sowwwl.com/str3m
@@ -46,6 +47,7 @@ Expected:
 - `sowwwl.org` responds from the current explanatory static site
 - `signal` responds from the mailbox app
 - `str3m` responds publicly
+- `sowwwl.xyz/map` responds from the O. app instead of redirecting to `sowwwl.com`
 - `map` responds from the O. app
 - `island` responds from the O. app for a known land slug
 
@@ -53,13 +55,18 @@ For the current entry-copy and role-map check specifically:
 
 ```bash
 curl -sL https://sowwwl.com/ | grep -E 'Trois portes : public, terre, 0wlslw0|Passer par 0wlslw0|commande noyau'
-curl -sL https://sowwwl.xyz/ | grep -E 'Le tore écoute le monde réel|Ouvrir Ocam|surface publique en écoute'
+curl -sL https://sowwwl.xyz/ | grep -E 'Le tore écoute le monde réel|Activer la membrane|Silence web|Partager'
 curl -sL https://sowwwl.org/ | grep -E 'Comprendre les domaines sans se perdre|carte des rôles|Ouvrir sowwwl\.com'
+curl -sL https://sowwwl.xyz/ | grep -E 'data-xyz-plasma-bridge="https://sowwwl\.xyz(/o)?/ingest/membrane"'
+curl -sL https://sowwwl.xyz/ | grep -E 'data-xyz-plasma-bridge="https://lab\.sowwwl\.cloud' && false || true
+curl -sL https://sowwwl.xyz/map | grep -E 'Le tore des terres actives|Console lexicale de la map|courants actifs'
 ```
 
 Expected:
 - `sowwwl.com` exposes the current three-door entry, not stale secondary copy
-- `sowwwl.xyz` exposes the current sensor surface, not a generic old home copy
+- `sowwwl.xyz` exposes the current membrane surface, not the older `Ouvrir Ocam` variant or a generic home copy
+- `sowwwl.xyz` keeps its membrane bridge on `sowwwl.xyz`, not on `lab.sowwwl.cloud`
+- `sowwwl.xyz/map` stays local to `sowwwl.xyz`
 - `sowwwl.org` exposes the current role-map copy, not an older snapshot
 
 For proxy/app header sanity specifically:

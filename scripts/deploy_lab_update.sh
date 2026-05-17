@@ -11,6 +11,9 @@ slug=""
 skip_caddy="auto"
 sensor_smoke=0
 deployed_without_caddy=0
+require_local_caddy=0
+allow_cross_origin_plasma=0
+preflight_only=0
 
 default_lab_root() {
 	if [[ -d "/opt/o-3ternet-lab/.git" ]]; then
@@ -34,21 +37,29 @@ Usage:
 	scripts/deploy_lab_update.sh [--root /opt/o-3ternet-lab] [--branch main] [--slug audrey]
 	scripts/deploy_lab_update.sh [--root /root/o-3ternet-lab] [--no-verify]
 	scripts/deploy_lab_update.sh [--skip-caddy] [--smoke-sensor]
+	scripts/deploy_lab_update.sh [--require-local-caddy]
+	scripts/deploy_lab_update.sh [--allow-cross-origin-plasma]
+	scripts/deploy_lab_update.sh [--preflight-only]
 
 What this script does:
   - updates the lab repo from the selected Git branch
   - rebuilds and restarts the lab stack from deploy-lab/
-  - retries without the local caddy service when the host already uses another ingress or when /opt is mounted read-only
-  - verifies that key public routes answer from the lab domains
-  - optionally verifies the canonical island route when a slug is known
+	- retries without the local caddy service when the host already uses another ingress or when /opt is mounted read-only
+	- verifies that key public routes answer from the lab domains
+	- optionally verifies the canonical island route when a slug is known
 	- optionally sends a harmless physical-signal smoke event through /ingest/sensor
 	- defaults to /opt/o-3ternet-lab, but falls back to /root/o-3ternet-lab if that checkout already exists
+	- can require a fully local ingress with --require-local-caddy
+	- refuses prod-facing plasma overrides unless --allow-cross-origin-plasma is passed
+	- can stop after a safe build/config preflight with --preflight-only
 
 Examples:
   scripts/deploy_lab_update.sh --slug audrey
 	scripts/deploy_lab_update.sh --root /opt/o-3ternet-lab --branch main
 	scripts/deploy_lab_update.sh --root /root/o-3ternet-lab --slug audrey
   scripts/deploy_lab_update.sh --skip-caddy --smoke-sensor
+  scripts/deploy_lab_update.sh --require-local-caddy
+  scripts/deploy_lab_update.sh --preflight-only
   scripts/deploy_lab_update.sh --no-verify
 EOF
 }
@@ -130,6 +141,75 @@ read_env_value() {
 	printf '%s' "$raw"
 }
 
+origin_from_url() {
+	local value=${1:-}
+	value=${value#http://}
+	value=${value#https://}
+	value=${value%%/*}
+	value=${value%%\?*}
+	printf '%s' "${value,,}"
+}
+
+csv_contains_origin() {
+	local csv=${1:-}
+	local origin=${2:-}
+	local item
+
+	[[ -z "$csv" || -z "$origin" ]] && return 1
+
+	IFS=',' read -r -a items <<<"${csv// /}"
+	for item in "${items[@]}"; do
+		if [[ "${item,,}" == "${origin,,}" ]]; then
+			return 0
+		fi
+	done
+
+	return 1
+}
+
+validate_plasma_split() {
+	local public_origin
+	local bridge_url
+	local feed_url
+	local allowed_origins
+	local bridge_host
+	local feed_host
+	local host
+
+	public_origin=$(read_env_value "SOWWWL_PUBLIC_ORIGIN")
+	bridge_url=$(read_env_value "SOWWWL_MEMBRANE_BRIDGE_URL")
+	feed_url=$(read_env_value "SOWWWL_PLASMA_FEED_URL")
+	allowed_origins=$(read_env_value "SOWWWL_PLASMA_ALLOWED_ORIGINS")
+	bridge_host=$(origin_from_url "$bridge_url")
+	feed_host=$(origin_from_url "$feed_url")
+
+	if [[ $allow_cross_origin_plasma -eq 1 ]]; then
+		return 0
+	fi
+
+	for host in "$bridge_host" "$feed_host"; do
+		if [[ -n "$host" && ! "$host" =~ (^|\.)lab\.sowwwl\.cloud$ ]]; then
+			echo "Refusing cross-origin plasma target on lab: $host" >&2
+			echo "Use --allow-cross-origin-plasma only if this split is intentional." >&2
+			exit 1
+		fi
+	done
+
+	for host in "https://sowwwl.com" "https://www.sowwwl.com" "https://sowwwl.xyz" "https://www.sowwwl.xyz" "https://sowwwl.cloud" "https://www.sowwwl.cloud" "https://0wlslw0.com" "https://www.0wlslw0.com"; do
+		if csv_contains_origin "$allowed_origins" "$host"; then
+			echo "Refusing prod-facing plasma allowlist entry on lab: $host" >&2
+			echo "Use --allow-cross-origin-plasma only if this split is intentional." >&2
+			exit 1
+		fi
+	done
+
+	if [[ -n "$bridge_url" || -n "$feed_url" || -n "$allowed_origins" ]]; then
+		echo "==> Plasma routing guard"
+		echo "Lab plasma overrides are present and stay inside *.lab.sowwwl.cloud."
+		[[ -n "$public_origin" ]] && echo "Public origin: $public_origin"
+	fi
+}
+
 deploy_service_bundle() {
 	local label=$1
 	shift
@@ -203,6 +283,18 @@ while [[ $# -gt 0 ]]; do
 			skip_caddy="no"
 			shift
 			;;
+		--require-local-caddy)
+			require_local_caddy=1
+			shift
+			;;
+		--allow-cross-origin-plasma)
+			allow_cross_origin_plasma=1
+			shift
+			;;
+		--preflight-only)
+			preflight_only=1
+			shift
+			;;
 		--smoke-sensor)
 			sensor_smoke=1
 			shift
@@ -221,6 +313,11 @@ done
 
 if [[ ! -d "$lab_root/.git" ]]; then
 	echo "Lab root does not look like a git checkout: $lab_root" >&2
+	exit 1
+fi
+
+if [[ "$skip_caddy" == "yes" && $require_local_caddy -eq 1 ]]; then
+	echo "--skip-caddy and --require-local-caddy cannot be used together." >&2
 	exit 1
 fi
 
@@ -245,7 +342,20 @@ if [[ ! -f "$compose_path" ]]; then
 	exit 1
 fi
 
+validate_plasma_split
+
 cd "$compose_dir"
+
+echo "==> Validating compose config"
+compose_lab config -q
+
+echo "==> Building lab images (safe preflight)"
+compose_lab build app pocket api db
+
+if [[ $preflight_only -eq 1 ]]; then
+	echo "Preflight complete (--preflight-only). No live containers were changed."
+	exit 0
+fi
 
 if [[ "$skip_caddy" == "yes" ]]; then
 	deployed_without_caddy=1
@@ -254,6 +364,10 @@ elif [[ "$skip_caddy" == "no" ]]; then
 	deploy_service_bundle "full stack" caddy db api app pocket
 else
 	if ! deploy_service_bundle "full stack" caddy db api app pocket; then
+		if [[ $require_local_caddy -eq 1 ]]; then
+			echo "Local caddy is required for this lab deploy, but the full stack did not start." >&2
+			exit 1
+		fi
 		echo "==> Full-stack deploy failed; retrying without the local caddy service"
 		deployed_without_caddy=1
 		deploy_service_bundle "without caddy (fallback)" db api app pocket
@@ -268,6 +382,7 @@ if [[ $deployed_without_caddy -eq 1 ]]; then
 The lab app/api/pocket services are running, but the local caddy service was skipped.
 This is expected when another ingress already owns 80/443 or when the checkout lives on a read-only /opt mount.
 Public verification still goes through the active ingress at lab.sowwwl.cloud.
+Use --require-local-caddy on the next run if the split must fail closed instead of sharing ingress.
 EOF
 else
 	compose_lab ps
@@ -285,9 +400,13 @@ curl -fsSI https://lab.sowwwl.cloud/signal
 curl -fsSI https://lab.sowwwl.cloud/aza
 curl -fsSI https://pocket.lab.sowwwl.cloud
 curl -fsSI https://api.lab.sowwwl.cloud/healthz
+curl -fsSI https://api.lab.sowwwl.cloud/v1/status
 assert_body_matches https://lab.sowwwl.cloud/ 'atelier du tore|Activer les capteurs|Fake pocket avant le Pi|Le téléphone devient membrane'
+assert_body_matches https://lab.sowwwl.cloud/ 'data-lab-plasma-feed="https://lab\.sowwwl\.cloud(?:/o)?/plasma/recent"'
 assert_body_absent https://lab.sowwwl.cloud/ 'Demander à Owl|Si tu reviens|Commence ici\. Trois portes suffisent'
 assert_body_matches https://lab.sowwwl.cloud/0wlslw0 '0wlslw0|Accompagnement vocal|Comprendre le schéma'
+assert_body_matches https://api.lab.sowwwl.cloud/v1/status '"service"[[:space:]]*:[[:space:]]*"api\.lab\.sowwwl\.cloud"'
+assert_body_matches https://api.lab.sowwwl.cloud/v1/status '"openapi"[[:space:]]*:[[:space:]]*"https://api\.lab\.sowwwl\.cloud/docs/AzA_v0\.7_openapi\.min\.yaml"'
 assert_single_header https://lab.sowwwl.cloud/ cross-origin-opener-policy
 assert_single_header https://lab.sowwwl.cloud/ cross-origin-resource-policy
 assert_single_header https://lab.sowwwl.cloud/ x-permitted-cross-domain-policies

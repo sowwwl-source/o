@@ -5,7 +5,7 @@ require __DIR__ . '/config.php';
 
 $host              = request_host();
 $csrfToken         = csrf_token();
-$brandDomain       = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
+$brandDomain       = current_brand_domain($host);
 $authenticatedLand = current_authenticated_land();
 $homeHref = o_route_path('/');
 $landBaseHref = o_route_path('/land');
@@ -195,7 +195,7 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
     <meta name="description" content="Sh0re — le rivage de <?= h((string) ($viewLand['username'] ?? 'cette land')) ?> dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
     <title>Sh0re<?= $viewLand ? ' · ' . h((string) $viewLand['username']) : '' ?> — <?= h(SITE_TITLE) ?></title>
-<?= render_o_page_head_assets('main') ?>
+<?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience sh0re-view">
 <?= render_skip_link() ?>

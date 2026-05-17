@@ -6,7 +6,7 @@ require __DIR__ . '/config.php';
 $host = request_host();
 
 $csrfToken = csrf_token();
-$brandDomain = preg_replace('/^www\./', '', $host ?: 'sowwwl.com');
+$brandDomain = current_brand_domain($host);
 $ownerSlug = trim((string) ($_GET['u'] ?? $_POST['owner_slug'] ?? ''));
 $ownerLand = null;
 $directHost = aza_direct_host();
@@ -275,7 +275,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
     <meta name="description" content="Ferry 03 — fichiers et sédimentation d'archives dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
     <title>Fichiers (aZa) — <?= h(SITE_TITLE) ?></title>
-<?= render_o_page_head_assets('main') ?>
+<?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience aza-view">
 <?= render_skip_link() ?>

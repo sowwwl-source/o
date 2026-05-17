@@ -117,7 +117,7 @@ function str3m_compact_copy(string $text, int $limit = 160): string
 
 $host = request_host();
 
-$brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
+$brandDomain = current_brand_domain($host);
 
 $authenticatedLand = current_authenticated_land();
 $guideHref = o_route_path('/0wlslw0');
@@ -381,7 +381,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
     <meta name="description" content="Str3m — explorer le courant quotidien et les îles dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
     <title>Str3m — <?= h(SITE_TITLE) ?></title>
-<?= render_o_page_head_assets('main') ?>
+<?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience str3m-view">
 <?= render_skip_link() ?>

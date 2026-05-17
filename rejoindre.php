@@ -55,7 +55,7 @@ $host = request_host();
 
 $csrfToken = csrf_token();
 $authenticatedLand = current_authenticated_land();
-$brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
+$brandDomain = current_brand_domain($host);
 $originBase = site_origin();
 $guideHref = o_route_path('/0wlslw0');
 $homeHref = o_route_path('/');
@@ -199,7 +199,7 @@ $journeyStatusAside = match (true) {
     <meta name="description" content="Rejoindre le peuple de l'O — lecture AzA et configuration complète de la terre.">
     <meta name="theme-color" content="#09090b">
     <title>Rejoindre le peuple de l'O — <?= h(SITE_TITLE) ?></title>
-<?= render_o_page_head_assets('main') ?>
+<?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body
     class="experience signup-journey-view"

@@ -306,6 +306,158 @@ function request_host(?string $host = null): string
     return (string) preg_replace('/:\d+$/', '', $candidate);
 }
 
+function request_scheme(): string
+{
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        return 'https';
+    }
+
+    $forwardedProto = strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
+    if ($forwardedProto !== '') {
+        $parts = preg_split('/\s*,\s*/', $forwardedProto) ?: [];
+        $candidate = strtolower(trim((string) ($parts[0] ?? $forwardedProto)));
+        if ($candidate === 'https') {
+            return 'https';
+        }
+        if ($candidate === 'http') {
+            return 'http';
+        }
+    }
+
+    $cfVisitor = (string) ($_SERVER['HTTP_CF_VISITOR'] ?? '');
+    if (str_contains($cfVisitor, '"scheme":"https"')) {
+        return 'https';
+    }
+
+    return 'http';
+}
+
+function request_public_origin(?string $host = null): string
+{
+    $resolvedHost = request_host($host);
+    if ($resolvedHost === '') {
+        return SITE_ORIGIN;
+    }
+
+    return request_scheme() . '://' . $resolvedHost;
+}
+
+function sowwwl_url_origin(?string $url): ?string
+{
+    $candidate = trim((string) $url);
+    if ($candidate === '') {
+        return null;
+    }
+
+    $parts = parse_url($candidate);
+    if (!is_array($parts)) {
+        return null;
+    }
+
+    $scheme = strtolower(trim((string) ($parts['scheme'] ?? '')));
+    $host = strtolower(trim((string) ($parts['host'] ?? '')));
+    if ($scheme === '' || $host === '') {
+        return null;
+    }
+
+    $origin = $scheme . '://' . $host;
+    $port = isset($parts['port']) ? (int) $parts['port'] : null;
+    $defaultPort = $scheme === 'https' ? 443 : ($scheme === 'http' ? 80 : null);
+
+    if ($port !== null && $port > 0 && $port !== $defaultPort) {
+        $origin .= ':' . $port;
+    }
+
+    return $origin;
+}
+
+function sowwwl_parse_origin_list(?string $raw): array
+{
+    $origins = [];
+    $items = preg_split('/[\s,]+/', trim((string) $raw)) ?: [];
+
+    foreach ($items as $item) {
+        $origin = sowwwl_url_origin($item);
+        if ($origin !== null) {
+            $origins[] = $origin;
+        }
+    }
+
+    return array_values(array_unique($origins));
+}
+
+function sowwwl_runtime_url(string $envKey, string $defaultPath): string
+{
+    $override = trim((string) (getenv($envKey) ?: ''));
+    if ($override !== '') {
+        if (in_array(strtolower($override), ['0', 'false', 'off', 'disabled', 'none'], true)) {
+            return '';
+        }
+
+        if (preg_match('~^(?:https?:)?//~i', $override) === 1) {
+            return $override;
+        }
+
+        return request_public_origin() . o_route_path($override);
+    }
+
+    return request_public_origin() . o_route_path($defaultPath);
+}
+
+function plasma_bridge_url(): string
+{
+    return sowwwl_runtime_url('SOWWWL_MEMBRANE_BRIDGE_URL', '/ingest/membrane');
+}
+
+function plasma_feed_url(): string
+{
+    return sowwwl_runtime_url('SOWWWL_PLASMA_FEED_URL', '/plasma/recent');
+}
+
+function plasma_configured_allowed_origins(): array
+{
+    return sowwwl_parse_origin_list((string) (getenv('SOWWWL_PLASMA_ALLOWED_ORIGINS') ?: ''));
+}
+
+function plasma_connect_src_origins(?string $host = null): array
+{
+    $resolvedHost = request_host($host);
+    if (!in_array($resolvedHost, ['sowwwl.xyz', 'www.sowwwl.xyz', 'lab.sowwwl.cloud', 'www.lab.sowwwl.cloud'], true)) {
+        return [];
+    }
+
+    $origins = [];
+    $currentOrigin = request_public_origin($resolvedHost);
+
+    foreach ([plasma_bridge_url(), plasma_feed_url()] as $url) {
+        $origin = sowwwl_url_origin($url);
+        if ($origin !== null && $origin !== $currentOrigin) {
+            $origins[] = $origin;
+        }
+    }
+
+    if (in_array($resolvedHost, ['lab.sowwwl.cloud', 'www.lab.sowwwl.cloud'], true)) {
+        $origins[] = 'https://api.lab.sowwwl.cloud';
+    }
+
+    return array_values(array_unique($origins));
+}
+
+function current_brand_domain(?string $host = null): string
+{
+    $resolvedHost = preg_replace('/^www\./', '', request_host($host));
+    if (is_string($resolvedHost) && $resolvedHost !== '') {
+        return $resolvedHost;
+    }
+
+    $originHost = parse_url(SITE_ORIGIN, PHP_URL_HOST);
+    if (is_string($originHost) && $originHost !== '') {
+        return strtolower($originHost);
+    }
+
+    return SITE_DOMAIN;
+}
+
 $pdo = null;
 try {
     $pdo = get_pdo();

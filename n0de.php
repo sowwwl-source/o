@@ -5,7 +5,7 @@ require __DIR__ . '/config.php';
 
 $host              = request_host();
 $csrfToken         = csrf_token();
-$brandDomain       = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
+$brandDomain       = current_brand_domain($host);
 $authenticatedLand = current_authenticated_land();
 $homeHref = o_route_path('/');
 $joinHref = o_route_path('/rejoindre');
@@ -166,7 +166,7 @@ $ambientProfile = $authenticatedLand
     <meta name="description" content="N0des — objets physiques porteurs dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
     <title>N0des — <?= h(SITE_TITLE) ?></title>
-<?= render_o_page_head_assets('main') ?>
+<?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
     <script defer src="<?= h($qrScriptHref) ?>"></script>
 </head>
 <body class="experience n0de-view">

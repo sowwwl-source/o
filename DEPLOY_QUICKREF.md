@@ -8,16 +8,19 @@ When the change touches the live app and/or the static sites served by Caddy (fo
 
 ```bash
 cd /root/O_installation_FRESH/o
+bash scripts/deploy_prod_update.sh --preflight-only
 bash scripts/deploy_prod_update.sh
 ```
 
 That helper:
 
 - updates `/root/O_installation_FRESH/o`
-- syncs `deploy/sites/` into the live static directory mounted by `sowwwl-o-caddy-1`
-- rebuilds `sowwwl-o-app-1`
-- restarts `sowwwl-o-caddy-1` so Caddyfile changes are picked up
-- verifies `sowwwl.com`, `sowwwl.org`, and Signal readiness
+- first validates the served static-sites directory and builds `app` + `api` without touching the live stack
+- only mutates the live stack after that preflight succeeds
+- keeps `deploy/sites/` aligned with the directory actually mounted by `sowwwl-o-caddy-1`
+- refreshes `sowwwl-o-app-1`, `sowwwl-o-api-1`, and Caddy
+- verifies `sowwwl.com`, `sowwwl.org`, `api.sowwwl.cloud`, and Signal readiness
+- refuses a membrane/plasma override back toward `*.lab.sowwwl.cloud` unless you pass `--allow-cross-origin-plasma`
 
 ## 2. Sync VPS source manually
 
@@ -31,7 +34,7 @@ git reset --hard origin/main
 
 ```bash
 cd /root/O_installation_FRESH/o/deploy
-docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml build --no-cache app
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml build --no-cache app api
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml up -d
 ```
 
@@ -89,6 +92,8 @@ curl -sL https://sowwwl.com/0wlslw0 | grep -E 'Accompagnement vocal|voice only|g
 curl -I https://sowwwl.com/signal
 curl -I https://sowwwl.com/str3m
 curl -I https://sowwwl.com/map
+curl -I https://api.sowwwl.cloud/healthz
+curl -sL https://api.sowwwl.cloud/v1/status | grep -E '"service": ?"api.sowwwl.cloud"|AzA_v0.7_openapi.min.yaml'
 curl -I 'https://sowwwl.com/island?u=<slug-connu>'
 curl -sL 'https://sowwwl.com/island?u=<slug-connu>' | grep -E 'île classique|Relief|Finder mémoire|Dernières traces'
 ```

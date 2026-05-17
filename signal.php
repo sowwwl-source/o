@@ -7,7 +7,7 @@ require_once __DIR__ . '/lib/signals.php';
 
 $host = request_host();
 
-$brandDomain = preg_replace('/^www\./', '', $host ?: SITE_DOMAIN);
+$brandDomain = current_brand_domain($host);
 $guideHref = o_route_path('/0wlslw0');
 $signalHref = o_route_path('/signal');
 $str3mHref = o_route_path('/str3m');
@@ -160,7 +160,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
     <meta name="description" content="Signal — boîte de réception située dans <?= h(SITE_TITLE) ?>.">
     <meta name="theme-color" content="#09090b">
     <title>Signal — <?= h(SITE_TITLE) ?></title>
-<?= render_o_page_head_assets('main') ?>
+<?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience signal-view">
 <?= render_skip_link() ?>

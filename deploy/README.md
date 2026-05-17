@@ -39,6 +39,10 @@ It uses one VPS, one Caddy reverse proxy, one PHP app container for the `o/` exp
 3. Replace the `CHANGE_ME_*` values, especially `DB_PASS`, `DB_ROOT_PASSWORD`, `SOWWWL_ADMIN_PIN`, `SOWWWL_MAGIC_LINK_SECRET`, and SMTP credentials if Signal identity emails should be delivered.
 4. Point DNS records at the VPS public IP.
 
+Keep `SOWWWL_MEMBRANE_BRIDGE_URL` and `SOWWWL_PLASMA_FEED_URL` empty unless you intentionally want the browser membrane/plasma flow to cross origins.
+Only set `SOWWWL_PLASMA_ALLOWED_ORIGINS` when that cross-origin routing is deliberate.
+The production deploy helper refuses lab-facing plasma overrides unless you pass `--allow-cross-origin-plasma`.
+
 ## DNS records
 
 Required apex records:
@@ -83,6 +87,15 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 
 Using an explicit project name avoids clashing with the sibling top-level `deploy/` directory, which would otherwise also default to the Compose project name `deploy`.
 
+Before mutating the live containers, prefer the safe preflight:
+
+```bash
+cd /root/O_installation_FRESH/o
+bash scripts/deploy_prod_update.sh --preflight-only
+```
+
+That path validates the served static-sites directory, checks the Compose config, and builds `app` + `api` without restarting the live stack.
+
 On a fresh MySQL volume, `init.sql`, the liaisons+p0rts migration, and the Signal mailbox migration are imported automatically.
 
 If the database already exists and predates p0rts or Signal, apply the missing migration manually:
@@ -110,6 +123,19 @@ After deploy, verify at least:
 - `https://sowwwl.com/signal`
 - `https://sowwwl.com/str3m`
 - `https://sowwwl.com/echo.php`
+- `https://sowwwl.xyz/` and confirm the membrane bridge stays on `sowwwl.xyz`
+- `https://sowwwl.xyz/map`
+- `https://api.sowwwl.cloud/healthz`
+- `https://api.sowwwl.cloud/v1/status`
+
+For the bridge specifically, the live HTML on `sowwwl.xyz` should expose a same-host endpoint, not the lab:
+
+```bash
+curl -sL https://sowwwl.xyz/ | grep -E 'data-xyz-plasma-bridge="https://sowwwl\.xyz(/o)?/ingest/membrane"'
+curl -sL https://sowwwl.xyz/ | grep -E 'data-xyz-plasma-bridge="https://lab\.sowwwl\.cloud' && false || true
+curl -sL https://sowwwl.xyz/map | grep -E 'Le tore des terres actives|Console lexicale de la map|courants actifs'
+curl -sL https://api.sowwwl.cloud/v1/status | grep -E '"service": ?"api.sowwwl.cloud"|AzA_v0.7_openapi.min.yaml'
+```
 
 For Signal identity validation specifically, check the runtime from inside the live app container:
 
@@ -131,7 +157,8 @@ Expected behavior:
 - `Signal` shows a mailbox UX, not the old public trace wall
 - `Signal` uses the land virtual email and can send an identity verification email
 - `Écho` still works and lists contacts from JSON lands, even if SQL `lands` rows are absent
-- `sowwwl.xyz` redirects toward `sowwwl.com`
+- `sowwwl.xyz` exposes the membrane surface and keeps its plasma bridge on `sowwwl.xyz`, unless you intentionally override it
+- `sowwwl.xyz/map` responds from the same O. app instead of redirecting back to `sowwwl.com`
 
 If you want the live app to relay to the DigitalOcean voice agent, also set these variables in `.env.production`:
 
@@ -189,6 +216,8 @@ The `api.sowwwl.cloud` service now provides:
 - `GET /v1/status`
 
 Protected write endpoints return `501 not_implemented` with JSON. This is deliberate: the host resolves and responds, but it does not pretend the production AzA service exists yet.
+
+The production deploy helper now rebuilds `api` alongside `app` and verifies that `/v1/status` still reports `api.sowwwl.cloud` before it declares success.
 
 ## Customization
 

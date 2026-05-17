@@ -84,9 +84,8 @@ function content_security_policy(): string
     }
 
     $connectSources = ["'self'"];
-    if (in_array($host, ['sowwwl.xyz', 'www.sowwwl.xyz', 'lab.sowwwl.cloud', 'www.lab.sowwwl.cloud'], true)) {
-        $connectSources[] = 'https://lab.sowwwl.cloud';
-        $connectSources[] = 'https://api.lab.sowwwl.cloud';
+    foreach (plasma_connect_src_origins($host) as $origin) {
+        $connectSources[] = $origin;
     }
 
     return "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src " . implode(' ', array_unique($connectSources)) . "; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'";
@@ -94,14 +93,20 @@ function content_security_policy(): string
 
 function site_origin(): string
 {
-    $publicOriginOverride = trim((string) (getenv('SOWWWL_PUBLIC_ORIGIN') ?: ''));
-    if ($publicOriginOverride !== '') {
-        return rtrim($publicOriginOverride, '/');
+    $host = function_exists('request_host')
+        ? request_host()
+        : trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    if ($host === '') {
+        $publicOriginOverride = trim((string) (getenv('SOWWWL_PUBLIC_ORIGIN') ?: ''));
+        if ($publicOriginOverride !== '') {
+            return rtrim($publicOriginOverride, '/');
+        }
+
+        return SITE_ORIGIN;
     }
 
-    $host = trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
-    if ($host === '') {
-        return SITE_ORIGIN;
+    if (function_exists('request_public_origin')) {
+        return request_public_origin($host);
     }
 
     return (request_is_secure() ? 'https://' : 'http://') . $host;
