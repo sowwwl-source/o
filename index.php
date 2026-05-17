@@ -36,6 +36,17 @@ function signup_portal_steps(): array
 $host = request_host();
 $isSowwwlXyz = ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz');
 $isLabSurface = ($host === 'lab.sowwwl.cloud' || $host === 'www.lab.sowwwl.cloud');
+$surfaceOverride = strtolower(trim((string) ($_GET['surface'] ?? '')));
+$isLocalPreviewHost = in_array($host, ['127.0.0.1', 'localhost', '[::1]'], true);
+if ($isLocalPreviewHost) {
+    if ($surfaceOverride === 'xyz') {
+        $isSowwwlXyz = true;
+        $isLabSurface = false;
+    } elseif ($surfaceOverride === 'lab') {
+        $isSowwwlXyz = false;
+        $isLabSurface = true;
+    }
+}
 // sowwwl.xyz and lab.sowwwl.cloud keep their own local surfaces here.
 
 $requestPath = o_request_path('/');
@@ -396,6 +407,7 @@ $pageDescription = $isLabSurface
 
             <div class="xyz-surface-actions">
                 <button type="button" class="pill-link xyz-camera-toggle" data-xyz-camera-start>Activer la membrane</button>
+                <button type="button" class="ghost-link xyz-camera-toggle" data-xyz-camera-demo aria-pressed="false">Mode demo</button>
                 <button type="button" class="ghost-link xyz-camera-toggle hidden" data-xyz-camera-stop>Relâcher la membrane</button>
                 <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
             </div>
@@ -518,7 +530,7 @@ $pageDescription = $isLabSurface
                 <article class="xyz-surface-note xyz-surface-note--camera" data-xyz-camera-panel>
                     <span class="summary-label">rituel</span>
                     <strong data-xyz-camera-title>La membrane attend un geste.</strong>
-                    <p class="panel-copy" data-xyz-camera-status>Active la membrane pour ouvrir mouvement, voix, lumière, caméra et veille active. Aucune image brute n’est envoyée. Si le pont plasma est actif, seuls des signaux synthétiques quittent cette couche.</p>
+                    <p class="panel-copy" data-xyz-camera-status>Active la membrane pour ouvrir mouvement, voix, lumière, caméra et veille active, ou lance le mode demo pour tester la montée sans capteurs. Aucune image brute n’est envoyée. Si le pont plasma est actif, seuls des signaux synthétiques quittent cette couche.</p>
                     <div class="xyz-surface-sensor-grid" aria-label="État direct de la membrane">
                         <p><span>orientation</span><strong data-xyz-sensor-orientation>en attente</strong></p>
                         <p><span>mouvement</span><strong data-xyz-sensor-motion>en attente</strong></p>

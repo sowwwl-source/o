@@ -780,9 +780,24 @@ function resolveTorusProfile(canvas) {
 	}
 
 	if (!cameraState.ready) {
-		return profile;
+		return {
+			...profile,
+			haloStrength: 0.28,
+			haloColor: mixRgb(profile.glow, profile.secondary, 0.38),
+			streakMix: profile.signalMode ? 0.34 : 0.18,
+			signalColors: Array.isArray(profile.signalColors) && profile.signalColors.length
+				? profile.signalColors
+				: [
+					mixRgb(profile.primary, profile.secondary, 0.28),
+					mixRgb(profile.secondary, profile.glow, 0.42),
+					mixRgb(profile.primary, [255, 255, 255], 0.16),
+				],
+		};
 	}
 
+	const motionEnergy = clampNumber(Math.max(cameraState.motion, cameraState.motionSensor * 0.92), 0, 1);
+	const audioEnergy = clampNumber(cameraState.audioLevel, 0, 1);
+	const tiltEnergy = clampNumber((Math.abs(cameraState.tiltX) + Math.abs(cameraState.tiltY)) * 0.5, 0, 1);
 	const sensorEnergy = clampNumber(
 		cameraState.motion * 0.34
 		+ cameraState.motionSensor * 0.22
@@ -793,18 +808,51 @@ function resolveTorusProfile(canvas) {
 		0,
 		1
 	);
-	const chromaMix = clampNumber(0.12 + cameraState.motion * 0.24 + cameraState.luma * 0.08 + cameraState.audioLevel * 0.08, 0.12, 0.5);
-	const glowMix = clampNumber(0.16 + sensorEnergy * 0.3 + cameraState.presence * 0.12, 0.16, 0.58);
+	const coolAccent = mixRgb(
+		cameraState.rgb,
+		[96, 232, 255],
+		clampNumber(0.24 + cameraState.lightLevel * 0.44 + cameraState.luma * 0.18, 0.24, 0.72)
+	);
+	const warmAccent = mixRgb(
+		cameraState.rgb,
+		[255, 110, 166],
+		clampNumber(0.22 + motionEnergy * 0.5 + audioEnergy * 0.18, 0.22, 0.78)
+	);
+	const kineticAccent = mixRgb(
+		coolAccent,
+		warmAccent,
+		clampNumber(0.38 + motionEnergy * 0.44 + audioEnergy * 0.18 - cameraState.lightLevel * 0.12, 0, 1)
+	);
+	const chromaMix = clampNumber(0.18 + cameraState.motion * 0.28 + cameraState.motionSensor * 0.22 + cameraState.luma * 0.08 + audioEnergy * 0.12, 0.18, 0.72);
+	const secondaryMix = clampNumber(chromaMix * 0.88 + tiltEnergy * 0.12, 0.16, 0.78);
+	const glowMix = clampNumber(0.22 + sensorEnergy * 0.42 + cameraState.presence * 0.16 + motionEnergy * 0.12, 0.22, 0.86);
+	const kineticMix = clampNumber(0.18 + motionEnergy * 0.48 + audioEnergy * 0.16, 0.18, 0.72);
 
 	return {
 		...profile,
-		primary: mixRgb(profile.primary, cameraState.rgb, chromaMix),
-		secondary: mixRgb(profile.secondary, cameraState.rgb, chromaMix * 0.82),
-		glow: mixRgb(profile.glow, cameraState.rgb, glowMix),
+		primary: mixRgb(mixRgb(profile.primary, cameraState.rgb, chromaMix), kineticAccent, kineticMix),
+		secondary: mixRgb(
+			mixRgb(profile.secondary, cameraState.rgb, secondaryMix),
+			coolAccent,
+			clampNumber(0.14 + cameraState.lightLevel * 0.32 + cameraState.luma * 0.18, 0.14, 0.62)
+		),
+		glow: mixRgb(
+			mixRgb(profile.glow, cameraState.rgb, glowMix),
+			warmAccent,
+			clampNumber(0.12 + motionEnergy * 0.4 + audioEnergy * 0.18, 0.12, 0.74)
+		),
 		waveStrength: clampNumber(profile.waveStrength + cameraState.motion * 0.24 + cameraState.motionSensor * 0.16 + cameraState.audioLevel * 0.22 + cameraState.lightLevel * 0.12, 0.48, 1.6),
 		pulseStrength: clampNumber(profile.pulseStrength + cameraState.motion * 0.2 + cameraState.motionSensor * 0.16 + cameraState.audioLevel * 0.28 + cameraState.presence * 0.12, 0.38, 1.44),
 		motion: clampNumber(profile.motion + cameraState.motion * 0.24 + cameraState.motionSensor * 0.2 + cameraState.audioLevel * 0.24 + sensorEnergy * 0.12, 0.82, 1.72),
-		signalMode: profile.signalMode || cameraState.motion > 0.62 || cameraState.motionSensor > 0.4 || cameraState.audioLevel > 0.34,
+		haloStrength: clampNumber(0.26 + sensorEnergy * 0.72 + motionEnergy * 0.16, 0.26, 1),
+		haloColor: mixRgb(kineticAccent, profile.glow, 0.34),
+		streakMix: clampNumber(0.18 + motionEnergy * 0.44 + audioEnergy * 0.22, 0.18, 0.78),
+		signalMode: profile.signalMode || motionEnergy > 0.34 || audioEnergy > 0.22 || cameraState.presence > 0.5,
+		signalColors: [
+			warmAccent,
+			kineticAccent,
+			mixRgb(coolAccent, [255, 255, 255], 0.18 + cameraState.luma * 0.28),
+		],
 	};
 }
 
@@ -2747,26 +2795,38 @@ function initTorusCloud(canvas) {
 		state.velocityZoom *= 0.86;
 	}
 
-		function drawFrame(time = 0) {
-			const width = state.width;
-			const height = state.height;
-			if (!width || !height) {
-				return;
-			}
+	function drawFrame(time = 0) {
+		const width = state.width;
+		const height = state.height;
+		if (!width || !height) {
+			return;
+		}
 
-			const profile = resolveTorusProfile(canvas);
-			const membrane = readCameraReactiveState();
-			stepNavigation();
+		const profile = resolveTorusProfile(canvas);
+		const membrane = readCameraReactiveState();
+		const isXyzScene = document.body.classList.contains("xyz-surface-view");
+		const mobileLayoutBias = isXyzScene && width < 720
+			? clamp((720 - width) / 360, 0, 1)
+			: 0;
+		stepNavigation();
 
-			const centerX = width * 0.5 + state.panX * (width * 0.018) + membrane.tiltX * width * 0.042;
-			const centerY = height * 0.5 + state.autoLiftY + state.panY * (height * 0.018) + membrane.tiltY * height * 0.038;
-			const camera = 39 - state.zoom * 1.12 - membrane.presence * 1.8;
-			const scale = Math.min(width, height) * (0.09 + state.zoom * 0.01) * state.autoScale;
-			const spinY = state.yaw + time * 0.00006 + membrane.tiltX * 0.24;
-			const spinX = state.pitch + Math.sin(time * 0.00012) * 0.05 + membrane.tiltY * 0.28;
-			const spinZ = state.roll + Math.cos(time * 0.00009) * 0.03 + (membrane.audioLevel - 0.08) * 0.16;
+		const centerX = width * (0.5 + mobileLayoutBias * 0.16) + state.panX * (width * 0.018) + membrane.tiltX * width * 0.042;
+		const centerY = height * (0.5 + mobileLayoutBias * 0.045) + state.autoLiftY + state.panY * (height * 0.018) + membrane.tiltY * height * 0.038;
+		const camera = 39 - state.zoom * 1.12 - membrane.presence * 1.8;
+		const scale = Math.min(width, height) * (0.09 + state.zoom * 0.01) * state.autoScale * (1 - mobileLayoutBias * 0.18);
+		const spinY = state.yaw + time * 0.00006 + membrane.tiltX * 0.24;
+		const spinX = state.pitch + Math.sin(time * 0.00012) * 0.05 + membrane.tiltY * 0.28;
+		const spinZ = state.roll + Math.cos(time * 0.00009) * 0.03 + (membrane.audioLevel - 0.08) * 0.16;
 
 		context.clearRect(0, 0, width, height);
+		const haloColor = Array.isArray(profile.haloColor) && profile.haloColor.length >= 3 ? profile.haloColor : profile.glow;
+		const haloRadius = Math.min(width, height) * (0.16 + profile.haloStrength * 0.24 + membrane.presence * 0.08);
+		const haloGradient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, haloRadius);
+		haloGradient.addColorStop(0, `rgba(${haloColor[0]}, ${haloColor[1]}, ${haloColor[2]}, ${clamp(0.08 + profile.haloStrength * 0.08 + membrane.audioLevel * 0.05, 0.06, 0.22)})`);
+		haloGradient.addColorStop(0.46, `rgba(${profile.glow[0]}, ${profile.glow[1]}, ${profile.glow[2]}, ${clamp(0.04 + profile.haloStrength * 0.06, 0.03, 0.12)})`);
+		haloGradient.addColorStop(1, `rgba(${profile.glow[0]}, ${profile.glow[1]}, ${profile.glow[2]}, 0)`);
+		context.fillStyle = haloGradient;
+		context.fillRect(0, 0, width, height);
 
 		const rendered = state.points.map((point) => {
 			const ripple = Math.sin(time * 0.0012 * profile.motion + point.phase) * (0.028 * torusScale);
@@ -2804,6 +2864,7 @@ function initTorusCloud(canvas) {
 
 		rendered.forEach((point) => {
 			let color = mixRgb(profile.primary, profile.secondary, point.mix);
+			color = mixRgb(color, haloColor, profile.streakMix * clamp(point.mix * 0.36 + membrane.presence * 0.18, 0, 0.48));
 			if (profile.signalMode && Array.isArray(profile.signalColors)) {
 				const trigger = Math.sin(time * 0.0024 + point.signalSeed * 3.6 + point.depth * 0.08);
 				if (trigger > 0.74) {
@@ -4028,6 +4089,7 @@ function initXyzCamera() {
 	const root = document.querySelector("[data-xyz-camera-root]");
 	const video = document.querySelector("[data-xyz-camera-video]");
 	const startButton = document.querySelector("[data-xyz-camera-start]");
+	const demoButton = document.querySelector("[data-xyz-camera-demo]");
 	const stopButton = document.querySelector("[data-xyz-camera-stop]");
 	const statusNode = document.querySelector("[data-xyz-camera-status]");
 	const titleNode = document.querySelector("[data-xyz-camera-title]");
@@ -4040,17 +4102,31 @@ function initXyzCamera() {
 	const plasmaBridgeUrl = root.dataset.xyzPlasmaBridge || "";
 	const membraneLandSlug = root.dataset.xyzPlasmaLand || "";
 
-	if (!(root instanceof HTMLElement) || !(video instanceof HTMLVideoElement) || !(startButton instanceof HTMLElement) || !(stopButton instanceof HTMLElement)) {
+	if (
+		!(root instanceof HTMLElement)
+		|| !(video instanceof HTMLVideoElement)
+		|| !(startButton instanceof HTMLElement)
+		|| !(stopButton instanceof HTMLElement)
+		|| !(demoButton instanceof HTMLElement)
+	) {
 		return;
 	}
 
 	let stream = null;
 	let analysisFrame = 0;
 	let audioFrame = 0;
+	let demoFrame = 0;
+	let demoStartedAt = 0;
+	let demoPhaseIndex = -1;
 	let analysisLastAt = 0;
 	let previousSamples = null;
 	let audioContext = null;
 	let audioAnalyser = null;
+	let motionVoiceOscillator = null;
+	let motionVoiceGain = null;
+	let motionVoiceFilter = null;
+	let motionVoiceLfo = null;
+	let motionVoiceLfoGain = null;
 	let wakeLock = null;
 	let lightSensor = null;
 	let orientationBound = false;
@@ -4074,11 +4150,82 @@ function initXyzCamera() {
 	};
 
 	const isMembraneLive = () => document.body.classList.contains("is-membrane-live");
+	const isMembraneDemo = () => document.body.classList.contains("is-membrane-demo");
+	const demoPhases = [
+		{
+			until: 0.24,
+			key: "velvet",
+			title: "La membrane boit une nuit douce.",
+			message: "Démo locale. Le tore commence bas, velours, presque minéral, comme s’il cherchait encore sa respiration.",
+			haptic: "soft",
+		},
+		{
+			until: 0.52,
+			key: "gloss",
+			title: "La clarté remonte dans la peau.",
+			message: "La lumière synthétique ouvre le champ et polit le tore. On entend la matière s’éclaircir avant la poussée suivante.",
+			haptic: "soft",
+		},
+		{
+			until: 0.8,
+			key: "pulse",
+			title: "Le tore prend le mouvement de face.",
+			message: "Inclinaison, secousse et souffle s’épaississent. La démo passe du simple halo à une vraie montée de corps.",
+			haptic: "medium",
+		},
+		{
+			until: 1,
+			key: "sap",
+			title: "La membrane chante à plein tore.",
+			message: "Dernière montée: lumière, voix et mouvement se nouent. La surface devient presque animale, puis recommence son cycle.",
+			haptic: "deep",
+		},
+	];
 
 	const setSensorText = (node, text) => {
 		if (node instanceof HTMLElement) {
 			node.textContent = text;
 		}
+	};
+
+	const demoPhasePalette = (key) => {
+		switch (key) {
+			case "velvet":
+				return [96, 92, 166];
+			case "gloss":
+				return [122, 226, 255];
+			case "pulse":
+				return [255, 118, 172];
+			case "sap":
+				return [255, 210, 110];
+			default:
+				return [180, 180, 180];
+		}
+	};
+
+	const demoPhaseMetaAt = (progress) => {
+		const safeProgress = clampNumber(progress, 0, 1);
+		for (let index = 0; index < demoPhases.length; index += 1) {
+			const phase = demoPhases[index];
+			if (safeProgress <= phase.until) {
+				const previousEdge = index === 0 ? 0 : demoPhases[index - 1].until;
+				const span = Math.max(phase.until - previousEdge, 0.0001);
+				return {
+					phase,
+					index,
+					localProgress: clampNumber((safeProgress - previousEdge) / span, 0, 1),
+					previousEdge,
+				};
+			}
+		}
+
+		const phase = demoPhases[demoPhases.length - 1];
+		return {
+			phase,
+			index: demoPhases.length - 1,
+			localProgress: 1,
+			previousEdge: demoPhases[demoPhases.length - 2]?.until || 0,
+		};
 	};
 
 	const syncMembraneReactiveState = () => {
@@ -4107,6 +4254,7 @@ function initXyzCamera() {
 		document.body.style.setProperty("--membrane-tilt-y", membrane.tiltY.toFixed(3));
 		document.body.style.setProperty("--membrane-motion", membrane.motionSensor.toFixed(3));
 		document.body.style.setProperty("--membrane-presence", presence.toFixed(3));
+		updateMotionVoice();
 	};
 
 	const resetMembraneReactiveState = () => {
@@ -4324,12 +4472,121 @@ function initXyzCamera() {
 			audioFrame = 0;
 		}
 		audioAnalyser = null;
+		motionVoiceOscillator = null;
+		motionVoiceGain = null;
+		motionVoiceFilter = null;
+		motionVoiceLfo = null;
+		motionVoiceLfoGain = null;
 		if (audioContext && typeof audioContext.close === "function") {
 			audioContext.close().catch(() => {});
 		}
 		audioContext = null;
 		membrane.audioLevel = 0;
 		syncMembraneReactiveState();
+	};
+
+	const ensureReactiveAudioContext = async () => {
+		const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+		if (!AudioContextClass) {
+			return null;
+		}
+
+		if (!audioContext) {
+			audioContext = new AudioContextClass();
+		}
+
+		if (audioContext.state === "suspended") {
+			await audioContext.resume().catch(() => {});
+		}
+
+		return audioContext;
+	};
+
+	function updateMotionVoice(forceMute = false) {
+		if (!audioContext || !motionVoiceGain || !motionVoiceOscillator) {
+			return;
+		}
+
+		const deviceProfile = readDeviceAudioProfile();
+		const motionEnergy = clampNumber(Math.max(membrane.motionSensor, membrane.cameraMotion * 0.92), 0, 1);
+		const tiltEnergy = clampNumber((Math.abs(membrane.tiltX) + Math.abs(membrane.tiltY)) * 0.5, 0, 1);
+		const shimmer = clampNumber(membrane.audioLevel * 0.48 + membrane.lightLevel * 0.18 + membrane.luma * 0.12, 0, 1);
+		const movement = clampNumber(motionEnergy * 0.76 + tiltEnergy * 0.24, 0, 1);
+		const presence = clampNumber(
+			Math.max(
+				membrane.luma,
+				membrane.cameraMotion,
+				membrane.motionSensor,
+				membrane.audioLevel,
+				membrane.lightLevel,
+				Math.abs(membrane.tiltX) * 0.8,
+				Math.abs(membrane.tiltY) * 0.9
+			),
+			0,
+			1
+		);
+		const gate = clampNumber((movement - 0.04) / 0.96, 0, 1) * clampNumber(0.45 + presence * 0.55, 0, 1);
+		const audible = !forceMute && !document.hidden && isMembraneLive() && !deviceProfile.muted;
+		const targetFrequency = 62 + membrane.luma * 28 + membrane.lightLevel * 16 + movement * 118 + shimmer * 34 + membrane.audioLevel * 18;
+		const targetDetune = membrane.tiltX * 36 - membrane.tiltY * 24;
+		const targetGain = audible ? clampNumber(gate * deviceProfile.volume * 0.04, 0, 0.045) : 0;
+		const now = audioContext.currentTime;
+
+		motionVoiceOscillator.frequency.setTargetAtTime(targetFrequency, now, 0.09);
+		motionVoiceOscillator.detune.setTargetAtTime(targetDetune, now, 0.12);
+		motionVoiceGain.gain.cancelScheduledValues(now);
+		motionVoiceGain.gain.setTargetAtTime(targetGain, now, audible ? 0.06 : 0.02);
+
+		if (motionVoiceFilter) {
+			motionVoiceFilter.frequency.setTargetAtTime(160 + movement * 800 + shimmer * 420, now, 0.12);
+			motionVoiceFilter.Q.setTargetAtTime(0.7 + movement * 1.6, now, 0.12);
+		}
+
+		if (motionVoiceLfo) {
+			motionVoiceLfo.frequency.setTargetAtTime(0.24 + movement * 3.2 + membrane.audioLevel * 0.8, now, 0.18);
+		}
+
+		if (motionVoiceLfoGain) {
+			motionVoiceLfoGain.gain.setTargetAtTime(8 + movement * 32 + membrane.audioLevel * 12, now, 0.18);
+		}
+	}
+
+	const ensureMotionVoice = async () => {
+		const context = await ensureReactiveAudioContext();
+		if (!context) {
+			return false;
+		}
+
+		if (motionVoiceOscillator && motionVoiceGain) {
+			updateMotionVoice();
+			return true;
+		}
+
+		motionVoiceOscillator = context.createOscillator();
+		motionVoiceFilter = context.createBiquadFilter();
+		motionVoiceGain = context.createGain();
+		motionVoiceLfo = context.createOscillator();
+		motionVoiceLfoGain = context.createGain();
+
+		motionVoiceOscillator.type = "triangle";
+		motionVoiceOscillator.frequency.value = 72;
+		motionVoiceFilter.type = "lowpass";
+		motionVoiceFilter.frequency.value = 220;
+		motionVoiceFilter.Q.value = 0.8;
+		motionVoiceGain.gain.value = 0;
+		motionVoiceLfo.type = "sine";
+		motionVoiceLfo.frequency.value = 0.4;
+		motionVoiceLfoGain.gain.value = 12;
+
+		motionVoiceLfo.connect(motionVoiceLfoGain);
+		motionVoiceLfoGain.connect(motionVoiceOscillator.frequency);
+		motionVoiceOscillator.connect(motionVoiceFilter);
+		motionVoiceFilter.connect(motionVoiceGain);
+		motionVoiceGain.connect(context.destination);
+		motionVoiceOscillator.start();
+		motionVoiceLfo.start();
+		updateMotionVoice();
+		return true;
 	};
 
 	const analyzeAudio = () => {
@@ -4355,22 +4612,94 @@ function initXyzCamera() {
 	};
 
 	const ensureAudioAnalyser = async (mediaStream) => {
-		const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-		if (!AudioContextClass) {
+		const context = await ensureReactiveAudioContext();
+		if (!context) {
 			setSensorText(audioNode, "natif");
 			return false;
 		}
 
-		audioContext = new AudioContextClass();
-		if (audioContext.state === "suspended") {
-			await audioContext.resume().catch(() => {});
-		}
-		const source = audioContext.createMediaStreamSource(mediaStream);
-		audioAnalyser = audioContext.createAnalyser();
+		const source = context.createMediaStreamSource(mediaStream);
+		audioAnalyser = context.createAnalyser();
 		audioAnalyser.fftSize = 512;
 		source.connect(audioAnalyser);
 		audioFrame = window.requestAnimationFrame(analyzeAudio);
+		await ensureMotionVoice();
 		return true;
+	};
+
+	const stopDemoMode = () => {
+		if (demoFrame) {
+			window.cancelAnimationFrame(demoFrame);
+			demoFrame = 0;
+		}
+		demoStartedAt = 0;
+		demoPhaseIndex = -1;
+	};
+
+	const startDemoMembrane = async () => {
+		stopDemoMode();
+		setUiState(
+			"demo",
+			"Démo locale. Le tore se nourrit ici d’une partition synthétique: lumière, souffle, secousse et inclinaison reviennent en boucle pour tester la membrane.",
+			"Le tore répète une montée sensorielle."
+		);
+		void ensureMotionVoice().catch(() => false);
+		setSensorText(cameraNode, "synthèse locale");
+		setSensorText(wakeNode, "démo locale");
+		pulseDeviceHaptics("soft");
+		demoStartedAt = performance.now();
+
+		const renderDemoFrame = (time) => {
+			const elapsed = Math.max(0, time - demoStartedAt);
+			const progress = (elapsed % 28000) / 28000;
+			const seconds = elapsed / 1000;
+			const wave = (Math.sin(seconds * 0.84) + 1) / 2;
+			const undertow = (Math.cos(seconds * 0.31 + 1.2) + 1) / 2;
+			const shimmer = (Math.sin(seconds * 2.8 + progress * Math.PI * 6) + 1) / 2;
+			const lift = Math.pow(Math.sin(progress * Math.PI), 1.28);
+			const burst = Math.pow(Math.max(0, Math.sin(progress * Math.PI * 2.1 - 0.65)), 2.2);
+			const phaseMeta = demoPhaseMetaAt(progress);
+			const phase = phaseMeta.phase;
+			const nextPhase = demoPhases[(phaseMeta.index + 1) % demoPhases.length] || phase;
+			const blend = clampNumber(phaseMeta.localProgress, 0, 1);
+			const baseRgb = mixRgb(demoPhasePalette(phase.key), demoPhasePalette(nextPhase.key), blend * 0.72);
+			const accentRgb = mixRgb([255, 255, 255], [78, 232, 255], undertow * 0.52);
+			const rgb = mixRgb(baseRgb, accentRgb, 0.12 + shimmer * 0.16);
+			const luma = clampNumber(0.14 + progress * 0.32 + wave * 0.14 + undertow * 0.08 + burst * 0.1, 0.1, 0.94);
+			const motion = clampNumber(0.06 + lift * 0.34 + shimmer * 0.18 + burst * 0.22, 0.04, 0.98);
+			const audio = clampNumber(0.05 + motion * 0.28 + shimmer * 0.18 + burst * 0.16, 0.04, 0.92);
+			const lightLevel = clampNumber(luma * 0.76 + undertow * 0.18 + (phase.key === "gloss" ? 0.08 : 0), 0.08, 1);
+			const motionSensor = clampNumber(motion * 0.84 + wave * 0.1, 0.04, 1);
+			const tiltX = Math.sin(seconds * (0.42 + motion * 0.72)) * (0.08 + motion * 0.54);
+			const tiltY = Math.cos(seconds * (0.36 + motion * 0.64) + 0.6) * (0.07 + burst * 0.42 + undertow * 0.16);
+
+			setReactiveCssState(luma, motion, rgb, phase.key);
+			membrane.lightLevel = lightLevel;
+			membrane.audioLevel = audio;
+			membrane.motionSensor = motionSensor;
+			membrane.tiltX = tiltX;
+			membrane.tiltY = tiltY;
+			syncMembraneReactiveState();
+
+			setSensorText(
+				orientationNode,
+				`α ${Math.round(((tiltX + 1) * 90) + shimmer * 14)}° · β ${Math.round((tiltY * 54) + wave * 8)}° · demo`
+			);
+			setSensorText(motionNode, `${Math.round(motionSensor * 100)}% · demo`);
+			setSensorText(lightNode, `${Math.round(60 + lightLevel * 860)} lux · demo`);
+			setSensorText(audioNode, `${Math.round(audio * 100)}% d’amplitude`);
+			setSensorText(cameraNode, `${phase.key} synthétique`);
+
+			if (phaseMeta.index !== demoPhaseIndex) {
+				demoPhaseIndex = phaseMeta.index;
+				setUiState("demo", phase.message, phase.title);
+				pulseDeviceHaptics(phase.haptic);
+			}
+
+			demoFrame = window.requestAnimationFrame(renderDemoFrame);
+		};
+
+		demoFrame = window.requestAnimationFrame(renderDemoFrame);
 	};
 
 	const requestWakeLock = async () => {
@@ -4571,11 +4900,16 @@ function initXyzCamera() {
 	};
 
 	const setUiState = (state, message = "", title = "") => {
-		const isLiveLike = state === "live" || state === "partial";
-		document.body.classList.toggle("is-camera-ready", state === "live");
+		const isDemo = state === "demo";
+		const isLiveLike = state === "live" || state === "partial" || isDemo;
+		document.body.classList.toggle("is-camera-ready", state === "live" || isDemo);
 		document.body.classList.toggle("is-membrane-live", isLiveLike);
+		document.body.classList.toggle("is-membrane-demo", isDemo);
 		startButton.classList.toggle("hidden", isLiveLike);
 		stopButton.classList.toggle("hidden", !isLiveLike);
+		demoButton.setAttribute("aria-pressed", isDemo ? "true" : "false");
+		demoButton.textContent = isDemo ? "Arrêter la démo" : "Mode demo";
+		stopButton.textContent = isDemo ? "Couper la démo" : "Relâcher la membrane";
 
 		if (statusNode instanceof HTMLElement && message) {
 			statusNode.textContent = message;
@@ -4587,9 +4921,10 @@ function initXyzCamera() {
 	};
 
 	const stopStream = () => {
-		const shouldNotifyBridge = isMembraneLive();
+		const shouldNotifyBridge = isMembraneLive() && !isMembraneDemo();
 		const closeMetrics = membraneMetricsSnapshot();
 		stopBridgePulse();
+		stopDemoMode();
 		if (shouldNotifyBridge) {
 			pulseDeviceHaptics("soft");
 			void sendMembraneBridge("membrane_close", `La membrane se relâche · ${membraneBridgeCopy(closeMetrics)}`, { force: true, keepalive: true });
@@ -4633,7 +4968,7 @@ function initXyzCamera() {
 		},
 	};
 
-		startButton.addEventListener("click", async () => {
+	startButton.addEventListener("click", async () => {
 		if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
 			setUiState(
 				"unsupported",
@@ -4647,7 +4982,7 @@ function initXyzCamera() {
 
 		setUiState(
 			"loading",
-			"Le tore demande au téléphone lumière, souffle, mouvement et présence. Rien n’est envoyé au serveur depuis cette couche.",
+			"Le tore demande au téléphone lumière, souffle, mouvement et présence. La réaction sonore reste locale à ce navigateur.",
 			"Activation de la membrane…"
 		);
 		setSensorText(orientationNode, "demande");
@@ -4660,6 +4995,7 @@ function initXyzCamera() {
 		const motionReady = await requestMotionPermissions();
 		const lightReady = ensureAmbientLightSensor();
 		const wakeReady = await requestWakeLock();
+		await ensureMotionVoice().catch(() => false);
 		await requestDeviceOrientationLock();
 
 		try {
@@ -4680,7 +5016,7 @@ function initXyzCamera() {
 			}
 			setUiState(
 				"live",
-				"La membrane est ouverte. Le tore lit maintenant lumière, souffle, inclinaison et présence comme une matière presque comestible.",
+				"La membrane est ouverte. Le tore lit maintenant lumière, souffle, inclinaison, mouvement et présence, puis leur prête une voix locale.",
 				"La membrane nourrit maintenant la surface."
 			);
 			pulseDeviceHaptics("medium");
@@ -4696,7 +5032,7 @@ function initXyzCamera() {
 			if (motionReady || lightReady || wakeReady) {
 				setUiState(
 					"partial",
-					"La membrane ne capte pas encore image ou souffle, mais elle lit déjà mouvement, lumière ou présence de veille.",
+					"La membrane ne capte pas encore image ou souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut encore faire vibrer le tore.",
 					"La membrane dérive en mode partiel."
 				);
 				pulseDeviceHaptics("soft");
@@ -4722,8 +5058,29 @@ function initXyzCamera() {
 		stopStream();
 	});
 
+	demoButton.addEventListener("click", () => {
+		if (isMembraneDemo()) {
+			stopStream();
+			return;
+		}
+
+		if (stream || isMembraneLive()) {
+			stopStream();
+		}
+
+		void startDemoMembrane();
+	});
+
 	window.addEventListener("beforeunload", () => {
 		stopStream();
+	});
+
+	window.addEventListener("o:device-bridge-change", () => {
+		updateMotionVoice();
+	});
+
+	document.addEventListener("visibilitychange", () => {
+		updateMotionVoice(document.hidden);
 	});
 
 	setSensorText(orientationNode, "prête");
@@ -4733,6 +5090,15 @@ function initXyzCamera() {
 	setSensorText(cameraNode, "prête");
 	setSensorText(wakeNode, "sur demande");
 	resetMembraneReactiveState();
+
+	try {
+		const params = new URL(window.location.href).searchParams;
+		if (params.get("demo") === "1") {
+			void startDemoMembrane();
+		}
+	} catch {
+		// Ignore malformed runtime URLs.
+	}
 }
 
 function initLabConsole() {

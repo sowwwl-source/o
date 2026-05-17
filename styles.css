@@ -493,10 +493,19 @@ body.xyz-surface-view.is-camera-ready .xyz-camera-layer__fallback {
 
 body.xyz-surface-view.is-camera-ready .main-torus {
 	filter:
-		brightness(calc(1.24 + var(--camera-luma) * 0.2))
-		contrast(calc(1.12 + var(--camera-motion) * 0.08))
-		saturate(calc(1.16 + var(--camera-motion) * 0.12))
-		drop-shadow(0 0 calc(1rem + var(--camera-motion) * 1.2rem) rgba(var(--camera-rgb) / 0.18));
+		brightness(calc(1.22 + var(--camera-luma) * 0.22))
+		contrast(calc(1.12 + var(--camera-motion) * 0.12))
+		saturate(calc(1.18 + var(--camera-motion) * 0.18 + var(--membrane-audio) * 0.12))
+		drop-shadow(0 0 calc(1rem + var(--camera-motion) * 1.3rem) rgba(var(--camera-rgb) / calc(0.18 + var(--camera-luma) * 0.06)))
+		drop-shadow(0 0 calc(1.2rem + var(--membrane-presence) * 1.6rem) rgba(var(--camera-rgb) / calc(0.05 + var(--membrane-audio) * 0.12)));
+}
+
+body.xyz-surface-view.is-membrane-live .main-torus {
+	filter:
+		brightness(calc(1.2 + var(--camera-luma) * 0.16 + var(--membrane-presence) * 0.08))
+		contrast(calc(1.12 + var(--camera-motion) * 0.1 + var(--membrane-presence) * 0.04))
+		saturate(calc(1.18 + var(--camera-motion) * 0.16 + var(--membrane-audio) * 0.18))
+		drop-shadow(0 0 calc(1rem + var(--membrane-presence) * 1.4rem) rgba(var(--camera-rgb) / calc(0.08 + var(--membrane-presence) * 0.14)));
 }
 
 body.xyz-surface-view .main-torus {
@@ -513,6 +522,8 @@ body.xyz-surface-view .main-torus {
 	outline: none;
 	position: relative;
 	z-index: 1;
+	transition: filter 0.28s ease, opacity 0.28s ease;
+	will-change: filter, opacity;
 }
 
 .main-torus.is-nav-armed,
@@ -4304,6 +4315,12 @@ body.xyz-surface-view.is-camera-ready .xyz-surface-shell__pulse {
 	justify-content: center;
 }
 
+.xyz-surface-actions .xyz-camera-toggle[aria-pressed="true"] {
+	border-color: rgba(var(--land-secondary-rgb) / 0.58);
+	color: rgba(var(--fg-rgb) / 0.96);
+	opacity: 1;
+}
+
 .xyz-camera-toggle.hidden {
 	display: none;
 }
@@ -4488,7 +4505,23 @@ body.xyz-surface-view.is-camera-ready .xyz-surface-shell__pulse {
 body.xyz-surface-view.is-membrane-live .xyz-surface-shell__pulse {
 	background: radial-gradient(circle, rgba(var(--camera-rgb) / calc(0.08 + var(--membrane-presence) * 0.18)), transparent 70%);
 	opacity: calc(0.5 + var(--membrane-presence) * 0.34);
-	filter: blur(calc(30px + var(--membrane-audio) * 16px));
+	filter: blur(calc(30px + var(--membrane-audio) * 16px)) saturate(calc(1 + var(--camera-motion) * 0.2));
+}
+
+body.xyz-surface-view.is-membrane-demo .xyz-surface-shell__pulse {
+	opacity: calc(0.58 + var(--membrane-presence) * 0.3);
+	filter: blur(calc(34px + var(--membrane-audio) * 22px)) saturate(calc(1.16 + var(--camera-motion) * 0.24));
+	animation-duration: 5.8s;
+}
+
+body.xyz-surface-view.is-membrane-demo .xyz-surface-head__title {
+	text-shadow: 0 0 calc(0.6rem + var(--membrane-presence) * 1.4rem) rgba(var(--camera-rgb) / calc(0.08 + var(--membrane-audio) * 0.18));
+}
+
+body.xyz-surface-view.is-membrane-demo .mapping-chorus__meter span {
+	background: linear-gradient(180deg, rgba(var(--camera-rgb) / 0.18), rgba(var(--camera-rgb) / 0.92));
+	transform: scaleY(calc(0.74 + var(--membrane-presence) * 0.46));
+	transform-origin: bottom center;
 }
 
 body.xyz-surface-view.is-membrane-live .xyz-surface-head {
