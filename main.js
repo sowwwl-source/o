@@ -4617,8 +4617,14 @@ function initXyzCamera() {
 			0,
 			1
 		);
-		const gate = clampNumber((movement - 0.03) / 0.97, 0, 1) * clampNumber(0.34 + presence * 0.66, 0, 1);
 		const handOpen = clampNumber(orientationY * 0.74 + presence * 0.18 + movement * 0.08, 0, 1);
+		const movementGate = clampNumber((movement - 0.015) / 0.985, 0, 1);
+		const orientationGate = clampNumber(handOpen * 0.72 + lightTone * 0.18 + Math.abs(membrane.tiltX) * 0.1, 0, 1);
+		const gate = clampNumber(
+			Math.max(movementGate * 0.82, orientationGate * 0.68),
+			0,
+			1
+		) * clampNumber(0.42 + presence * 0.58, 0, 1);
 		const feedbackSafety = clampNumber(1 - ambient * 0.28, 0.62, 1);
 		const audible = !forceMute && !document.hidden && isMembraneLive() && !deviceProfile.muted;
 		const pitchOctaves = 0.28 + orientationX * 2.08 + lightTone * 0.82 + ambient * 0.24;
@@ -4627,15 +4633,20 @@ function initXyzCamera() {
 		const harmonicFrequency = targetFrequency * harmonicRatio;
 		const subFrequency = Math.max(42, targetFrequency * 0.5 * (0.94 + orientationY * 0.08));
 		const targetDetune = membrane.tiltX * 96 - membrane.tiltY * 52 + ambient * 14 - movement * 8;
-		const targetGain = audible ? clampNumber(gate * handOpen * deviceProfile.volume * feedbackSafety * 0.052, 0, 0.055) : 0;
-		const targetHarmonicGain = audible ? clampNumber(targetGain * (0.28 + lightTone * 0.36 + ambient * 0.18), 0, 0.028) : 0;
-		const targetSubGain = audible ? clampNumber(targetGain * (0.18 + (1 - lightTone) * 0.26 + movement * 0.1), 0, 0.02) : 0;
+		const droneFloor = audible
+			? clampNumber((0.008 + handOpen * 0.01 + lightTone * 0.006) * deviceProfile.volume * feedbackSafety, 0, 0.026)
+			: 0;
+		const targetGain = audible
+			? clampNumber(gate * handOpen * deviceProfile.volume * feedbackSafety * 0.085 + droneFloor, 0, 0.095)
+			: 0;
+		const targetHarmonicGain = audible ? clampNumber(targetGain * (0.34 + lightTone * 0.42 + ambient * 0.2), 0, 0.045) : 0;
+		const targetSubGain = audible ? clampNumber(targetGain * (0.24 + (1 - lightTone) * 0.28 + movement * 0.12), 0, 0.032) : 0;
 		const targetPan = clampNumber(membrane.tiltX * 0.92 + (orientationX - 0.5) * 0.18, -1, 1);
 		const targetVoiceDrive = audible ? clampNumber(1.18 + presence * 1.12 + handOpen * 0.42 - ambient * 0.3, 0.92, 2.45) : 0.84;
 		const targetVoiceModDepth = audible ? clampNumber(0.24 + gate * 0.42 + lightTone * 0.12 + ambient * 0.08, 0.16, 0.78) : 0.02;
 		const targetVoiceHarmonicDepth = audible ? clampNumber(targetVoiceModDepth * (0.44 + lightTone * 0.3 + ambient * 0.08), 0.08, 0.48) : 0.01;
-		const targetVoiceDirect = audible ? clampNumber(gate * deviceProfile.volume * feedbackSafety * (0.038 + handOpen * 0.05), 0, 0.072) : 0;
-		const targetVoiceWet = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.16 + handOpen * 0.12 + movement * 0.08), 0, 0.36) : 0;
+		const targetVoiceDirect = audible ? clampNumber(gate * deviceProfile.volume * feedbackSafety * (0.05 + handOpen * 0.065), 0, 0.095) : 0;
+		const targetVoiceWet = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.2 + handOpen * 0.16 + movement * 0.1), 0, 0.46) : 0;
 		const targetVoiceBandpass = clampNumber(targetFrequency * (0.94 + lightTone * 0.36), 140, 2600);
 		const targetVoiceBandpassQ = 1 + ambient * 0.85 + movement * 0.65;
 		const targetVoiceColor = clampNumber(340 + lightTone * 1920 + ambient * 380 + movement * 240, 320, 4200);
@@ -4685,11 +4696,11 @@ function initXyzCamera() {
 		}
 
 		if (vocoderCarrierGain) {
-			vocoderCarrierGain.gain.setTargetAtTime(audible ? 0.01 + gate * 0.018 : 0, now, audible ? 0.12 : 0.04);
+			vocoderCarrierGain.gain.setTargetAtTime(audible ? 0.016 + gate * 0.026 + lightTone * 0.006 : 0, now, audible ? 0.12 : 0.04);
 		}
 
 		if (vocoderCarrierHarmonicGain) {
-			vocoderCarrierHarmonicGain.gain.setTargetAtTime(audible ? 0.004 + lightTone * 0.014 : 0, now, audible ? 0.12 : 0.04);
+			vocoderCarrierHarmonicGain.gain.setTargetAtTime(audible ? 0.008 + lightTone * 0.02 + ambient * 0.004 : 0, now, audible ? 0.12 : 0.04);
 		}
 
 		if (vocoderInputGain) {
@@ -4884,6 +4895,32 @@ function initXyzCamera() {
 		vocoderCarrierHarmonicOscillator.start();
 		updateMotionVoice();
 		return true;
+	};
+
+	const cueMotionVoice = (intensity = 1) => {
+		if (!audioContext || !motionVoiceGain) {
+			return;
+		}
+
+		const deviceProfile = readDeviceAudioProfile();
+		if (deviceProfile.muted || document.hidden || !isMembraneLive()) {
+			return;
+		}
+
+		const now = audioContext.currentTime;
+		const peak = clampNumber(0.028 + deviceProfile.volume * 0.034 * intensity, 0.02, 0.065);
+		const sustain = clampNumber(peak * 0.34, 0.008, 0.026);
+		motionVoiceGain.gain.cancelScheduledValues(now);
+		motionVoiceGain.gain.setValueAtTime(Math.max(motionVoiceGain.gain.value, 0.002), now);
+		motionVoiceGain.gain.linearRampToValueAtTime(peak, now + 0.06);
+		motionVoiceGain.gain.exponentialRampToValueAtTime(sustain, now + 0.42);
+
+		if (motionVoiceHarmonicGain) {
+			motionVoiceHarmonicGain.gain.cancelScheduledValues(now);
+			motionVoiceHarmonicGain.gain.setValueAtTime(Math.max(motionVoiceHarmonicGain.gain.value, 0.001), now);
+			motionVoiceHarmonicGain.gain.linearRampToValueAtTime(clampNumber(peak * 0.52, 0.01, 0.032), now + 0.08);
+			motionVoiceHarmonicGain.gain.exponentialRampToValueAtTime(clampNumber(sustain * 0.55, 0.004, 0.016), now + 0.44);
+		}
 	};
 
 	const analyzeAudio = () => {
@@ -5322,6 +5359,8 @@ function initXyzCamera() {
 				"La membrane est ouverte. Le tore lit maintenant lumière, souffle, inclinaison, mouvement et présence, puis les convertit en thérémin local et en voix portée.",
 				"La membrane nourrit maintenant la surface."
 			);
+			updateMotionVoice();
+			cueMotionVoice(1);
 			pulseDeviceHaptics("medium");
 			startBridgePulse();
 			void sendMembraneBridge(
@@ -5338,6 +5377,8 @@ function initXyzCamera() {
 					"La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le thérémin du tore.",
 					"La membrane dérive en mode partiel."
 				);
+				updateMotionVoice();
+				cueMotionVoice(0.82);
 				pulseDeviceHaptics("soft");
 				startBridgePulse();
 				void sendMembraneBridge(
