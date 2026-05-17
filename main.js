@@ -4189,6 +4189,7 @@ function initXyzCamera() {
 
 	const isMembraneLive = () => document.body.classList.contains("is-membrane-live");
 	const isMembraneDemo = () => document.body.classList.contains("is-membrane-demo");
+	const isMembraneAudible = () => isMembraneLive() || isMembraneDemo();
 	const demoPhases = [
 		{
 			until: 0.24,
@@ -4626,7 +4627,10 @@ function initXyzCamera() {
 			1
 		) * clampNumber(0.42 + presence * 0.58, 0, 1);
 		const feedbackSafety = clampNumber(1 - ambient * 0.28, 0.62, 1);
-		const audible = !forceMute && !document.hidden && isMembraneLive() && !deviceProfile.muted;
+		const audible = !forceMute && !document.hidden && isMembraneAudible() && !deviceProfile.muted;
+		const demoPulseFloor = audible && isMembraneDemo()
+			? clampNumber((0.014 + handOpen * 0.012 + lightTone * 0.008) * deviceProfile.volume * feedbackSafety, 0.014, 0.032)
+			: 0;
 		const pitchOctaves = 0.28 + orientationX * 2.08 + lightTone * 0.82 + ambient * 0.24;
 		const targetFrequency = 82 * Math.pow(2, pitchOctaves);
 		const harmonicRatio = 1.42 + lightTone * 0.42 + ambient * 0.18;
@@ -4637,10 +4641,18 @@ function initXyzCamera() {
 			? clampNumber((0.008 + handOpen * 0.01 + lightTone * 0.006) * deviceProfile.volume * feedbackSafety, 0, 0.026)
 			: 0;
 		const targetGain = audible
-			? clampNumber(gate * handOpen * deviceProfile.volume * feedbackSafety * 0.085 + droneFloor, 0, 0.095)
+			? clampNumber(
+				gate * handOpen * deviceProfile.volume * feedbackSafety * 0.085 + droneFloor + demoPulseFloor,
+				0,
+				isMembraneDemo() ? 0.11 : 0.095
+			)
 			: 0;
-		const targetHarmonicGain = audible ? clampNumber(targetGain * (0.34 + lightTone * 0.42 + ambient * 0.2), 0, 0.045) : 0;
-		const targetSubGain = audible ? clampNumber(targetGain * (0.24 + (1 - lightTone) * 0.28 + movement * 0.12), 0, 0.032) : 0;
+		const targetHarmonicGain = audible
+			? clampNumber(targetGain * (0.34 + lightTone * 0.42 + ambient * 0.2), 0, isMembraneDemo() ? 0.052 : 0.045)
+			: 0;
+		const targetSubGain = audible
+			? clampNumber(targetGain * (0.24 + (1 - lightTone) * 0.28 + movement * 0.12), 0, isMembraneDemo() ? 0.038 : 0.032)
+			: 0;
 		const targetPan = clampNumber(membrane.tiltX * 0.92 + (orientationX - 0.5) * 0.18, -1, 1);
 		const targetVoiceDrive = audible ? clampNumber(1.18 + presence * 1.12 + handOpen * 0.42 - ambient * 0.3, 0.92, 2.45) : 0.84;
 		const targetVoiceModDepth = audible ? clampNumber(0.24 + gate * 0.42 + lightTone * 0.12 + ambient * 0.08, 0.16, 0.78) : 0.02;
@@ -4903,13 +4915,18 @@ function initXyzCamera() {
 		}
 
 		const deviceProfile = readDeviceAudioProfile();
-		if (deviceProfile.muted || document.hidden || !isMembraneLive()) {
+		if (deviceProfile.muted || document.hidden || !isMembraneAudible()) {
 			return;
 		}
 
 		const now = audioContext.currentTime;
-		const peak = clampNumber(0.028 + deviceProfile.volume * 0.034 * intensity, 0.02, 0.065);
-		const sustain = clampNumber(peak * 0.34, 0.008, 0.026);
+		const isDemoCue = isMembraneDemo();
+		const peak = isDemoCue
+			? clampNumber(0.044 + deviceProfile.volume * 0.05 * intensity, 0.036, 0.11)
+			: clampNumber(0.028 + deviceProfile.volume * 0.034 * intensity, 0.02, 0.065);
+		const sustain = isDemoCue
+			? clampNumber(peak * 0.42, 0.014, 0.042)
+			: clampNumber(peak * 0.34, 0.008, 0.026);
 		motionVoiceGain.gain.cancelScheduledValues(now);
 		motionVoiceGain.gain.setValueAtTime(Math.max(motionVoiceGain.gain.value, 0.002), now);
 		motionVoiceGain.gain.linearRampToValueAtTime(peak, now + 0.06);
@@ -4983,7 +5000,17 @@ function initXyzCamera() {
 			"Démo locale. Le tore se nourrit ici d’un thérémin synthétique: lumière, souffle, secousse et inclinaison reviennent en boucle pour tester la membrane. La voix portée reste en veille tant que le micro réel n’entre pas.",
 			"Le tore répète un thérémin sensoriel."
 		);
-		void ensureMotionVoice().catch(() => false);
+		setReactiveCssState(0.28, 0.14, [112, 122, 196], "velvet");
+		membrane.audioLevel = 0.08;
+		membrane.motionSensor = 0.18;
+		membrane.tiltX = 0.12;
+		membrane.tiltY = 0.16;
+		syncMembraneReactiveState();
+		const voiceReady = await ensureMotionVoice().catch(() => false);
+		if (voiceReady) {
+			updateMotionVoice();
+			cueMotionVoice(1.22);
+		}
 		setSensorText(cameraNode, "synthèse locale");
 		setSensorText(wakeNode, "démo locale");
 		pulseDeviceHaptics("soft");
@@ -5034,6 +5061,7 @@ function initXyzCamera() {
 				demoPhaseIndex = phaseMeta.index;
 				setUiState("demo", phase.message, phase.title);
 				pulseDeviceHaptics(phase.haptic);
+				cueMotionVoice(0.82 + blend * 0.18);
 			}
 
 			demoFrame = window.requestAnimationFrame(renderDemoFrame);
@@ -5402,7 +5430,7 @@ function initXyzCamera() {
 		stopStream();
 	});
 
-	demoButton.addEventListener("click", () => {
+	demoButton.addEventListener("click", async () => {
 		if (isMembraneDemo()) {
 			stopStream();
 			return;
@@ -5412,7 +5440,7 @@ function initXyzCamera() {
 			stopStream();
 		}
 
-		void startDemoMembrane();
+		await startDemoMembrane();
 	});
 
 	window.addEventListener("beforeunload", () => {
