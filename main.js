@@ -2824,7 +2824,7 @@ function initTorusCloud(canvas) {
 		}
 
 		const profile = resolveTorusProfile(canvas);
-		const membrane = readCameraReactiveState();
+	const membrane = readCameraReactiveState();
 		const isXyzScene = document.body.classList.contains("xyz-surface-view");
 		const mobileLayoutBias = isXyzScene && width < 720
 			? clamp((720 - width) / 360, 0, 1)
@@ -4130,6 +4130,10 @@ function initXyzCamera() {
 	const wakeNode = document.querySelector("[data-xyz-sensor-wake]");
 	const voiceEchoInput = document.querySelector("[data-xyz-voice-echo-input]");
 	const voiceEchoReadout = document.querySelector("[data-xyz-voice-echo-readout]");
+	const musicModeNode = document.querySelector("[data-xyz-music-mode]");
+	const musicNoteNode = document.querySelector("[data-xyz-music-note]");
+	const musicRhythmNode = document.querySelector("[data-xyz-music-rhythm]");
+	const musicGuideNode = document.querySelector("[data-xyz-music-guide]");
 	const plasmaBridgeUrl = root.dataset.xyzPlasmaBridge || "";
 	const membraneLandSlug = root.dataset.xyzPlasmaLand || "";
 
@@ -4189,56 +4193,73 @@ function initXyzCamera() {
 	let bridgeInFlight = false;
 	let bridgeLastSignature = "";
 	let bridgeLastAt = 0;
+	let shakerNoiseBuffer = null;
+	let lastShakeAt = 0;
+	let lastMotionMagnitude = 0;
+	let lastDemoShakeBurst = 0;
+	let currentToreMode = "minor";
+	let lastQuantizedMidi = 40;
 	const voiceFx = {
-		echoAmount: readXyzVoiceEchoLevel(),
-	};
+			echoAmount: readXyzVoiceEchoLevel(),
+		};
 	const analysisCanvas = document.createElement("canvas");
 	analysisCanvas.width = 48;
 	analysisCanvas.height = 36;
 	const analysisContext = analysisCanvas.getContext("2d", { willReadFrequently: true });
 	const membrane = {
-		luma: 0,
-		cameraMotion: 0,
-		audioLevel: 0,
-		lightLevel: 0,
-		tiltX: 0,
-		tiltY: 0,
-		motionSensor: 0,
-	};
+			luma: 0,
+			cameraMotion: 0,
+			audioLevel: 0,
+			lightLevel: 0,
+			tiltX: 0,
+			tiltY: 0,
+			motionSensor: 0,
+			shake: 0,
+		};
 
 	const isMembraneLive = () => document.body.classList.contains("is-membrane-live");
 	const isMembraneDemo = () => document.body.classList.contains("is-membrane-demo");
 	const isMembraneAudible = () => isMembraneLive() || isMembraneDemo();
+	const toreRootMidi = 40;
+	const toreScaleSteps = {
+			major: [0, 2, 4, 5, 7, 9, 11],
+			minor: [0, 2, 3, 5, 7, 8, 10],
+		};
+	const toreModeLabels = {
+			major: "Mi majeur",
+			minor: "Mi mineur",
+		};
+	const toreNoteNames = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
 	const demoPhases = [
-		{
-			until: 0.24,
-			key: "velvet",
-			title: "La membrane boit une nuit douce.",
-			message: "Démo locale. Le tore commence bas, velours, presque minéral, comme s’il cherchait encore sa respiration.",
-			haptic: "soft",
-		},
-		{
-			until: 0.52,
-			key: "gloss",
-			title: "La clarté remonte dans la peau.",
-			message: "La lumière synthétique ouvre le champ et polit le tore. On entend la matière s’éclaircir avant la poussée suivante.",
-			haptic: "soft",
-		},
-		{
-			until: 0.8,
-			key: "pulse",
-			title: "Le tore prend le mouvement de face.",
-			message: "Inclinaison, secousse et souffle s’épaississent. La démo passe du simple halo à une vraie montée de corps.",
-			haptic: "medium",
-		},
-		{
-			until: 1,
-			key: "sap",
-			title: "La membrane chante à plein tore.",
-			message: "Dernière montée: lumière, voix et mouvement se nouent. La surface devient presque animale, puis recommence son cycle.",
-			haptic: "deep",
-		},
-	];
+			{
+				until: 0.24,
+				key: "velvet",
+				title: "Terre & Mine creuse une nuit douce.",
+				message: "Le tore commence bas, velours, presque minéral. Le mode reste mineur, la note tient longuement, comme si la matière cherchait encore sa respiration.",
+				haptic: "soft",
+			},
+			{
+				until: 0.52,
+				key: "gloss",
+				title: "Terre & Mine laisse entrer le jour.",
+				message: "La lumière synthétique ouvre le champ et pousse vers le majeur. La matière s’éclaircit, la note devient plus claire, presque solaire.",
+				haptic: "soft",
+			},
+			{
+				until: 0.8,
+				key: "pulse",
+				title: "Terre & Mine prend le rythme de face.",
+				message: "Inclinaison, secousse et souffle s’épaississent. Les impulsions ouvrent le shaker et la démo passe du halo à une vraie montée de corps.",
+				haptic: "medium",
+			},
+			{
+				until: 1,
+				key: "sap",
+				title: "Terre & Mine chante à plein tore.",
+				message: "Dernière montée: lumière, voix, shaker et mouvement se nouent. La surface devient presque animale, puis recommence son cycle.",
+				haptic: "deep",
+			},
+		];
 
 	const setSensorText = (node, text) => {
 		if (node instanceof HTMLElement) {
@@ -4248,7 +4269,7 @@ function initXyzCamera() {
 
 	const renderVoiceEchoControls = () => {
 		const percent = Math.round(clampNumber(voiceFx.echoAmount, 0, 1) * 100);
-		if (voiceEchoInput instanceof HTMLInputElement) {
+	if (voiceEchoInput instanceof HTMLInputElement) {
 			voiceEchoInput.value = String(percent);
 		}
 		if (voiceEchoReadout instanceof HTMLElement) {
@@ -4258,29 +4279,166 @@ function initXyzCamera() {
 
 	renderVoiceEchoControls();
 	if (voiceEchoInput instanceof HTMLInputElement && voiceEchoInput.dataset.bound !== "1") {
-		voiceEchoInput.dataset.bound = "1";
-		voiceEchoInput.addEventListener("input", () => {
-			voiceFx.echoAmount = clampNumber((Number(voiceEchoInput.value) || 0) / 100, 0, 1);
-			writeXyzVoiceEchoLevel(voiceFx.echoAmount);
-			renderVoiceEchoControls();
-			updateMotionVoice();
-		});
-	}
+			voiceEchoInput.dataset.bound = "1";
+			voiceEchoInput.addEventListener("input", () => {
+				voiceFx.echoAmount = clampNumber((Number(voiceEchoInput.value) || 0) / 100, 0, 1);
+				writeXyzVoiceEchoLevel(voiceFx.echoAmount);
+				renderVoiceEchoControls();
+				updateMotionVoice();
+			});
+		}
+
+	const midiToFrequency = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
+	const frequencyToMidi = (frequency) => 69 + (12 * Math.log2(Math.max(1, frequency) / 440));
+	const formatToreNoteLabel = (midi) => {
+			const roundedMidi = Math.round(Number(midi) || toreRootMidi);
+			const noteIndex = ((roundedMidi % 12) + 12) % 12;
+			const octave = Math.floor(roundedMidi / 12) - 1;
+			return `${toreNoteNames[noteIndex]}${octave}`;
+		};
+	const resolveToreMode = (lightTone, flavor = "") => {
+			if (flavor === "velvet") {
+				currentToreMode = "minor";
+			} else if (flavor === "gloss" || flavor === "sap") {
+				currentToreMode = "major";
+			} else if (lightTone <= 0.42) {
+				currentToreMode = "minor";
+			} else if (lightTone >= 0.58) {
+				currentToreMode = "major";
+			}
+			document.body.dataset.musicalMode = currentToreMode;
+			return currentToreMode;
+		};
+	const quantizeToreMidi = (rawMidi, mode = currentToreMode) => {
+			const scale = toreScaleSteps[mode] || toreScaleSteps.minor;
+			let bestMidi = lastQuantizedMidi;
+			let bestDistance = Number.POSITIVE_INFINITY;
+			for (let octave = -1; octave <= 4; octave += 1) {
+				const baseMidi = toreRootMidi + (octave * 12);
+				for (const step of scale) {
+					const candidateMidi = baseMidi + step;
+					if (candidateMidi < 40 || candidateMidi > 79) {
+						continue;
+					}
+					const distance = Math.abs(rawMidi - candidateMidi);
+					if (distance < bestDistance) {
+						bestDistance = distance;
+						bestMidi = candidateMidi;
+					}
+				}
+			}
+			if (Math.abs(rawMidi - lastQuantizedMidi) < 0.46) {
+				return lastQuantizedMidi;
+			}
+			if (Math.abs(bestMidi - lastQuantizedMidi) <= 1 && Math.abs(rawMidi - lastQuantizedMidi) < 0.84) {
+				return lastQuantizedMidi;
+			}
+			lastQuantizedMidi = bestMidi;
+			return bestMidi;
+		};
+	const renderToreGuide = ({
+			mode = currentToreMode,
+			noteLabel = formatToreNoteLabel(lastQuantizedMidi),
+			shakeLevel = 0,
+			movement = 0,
+			lightTone = 0,
+			ambient = 0,
+		} = {}) => {
+			const safeShake = clampNumber(shakeLevel, 0, 1);
+			const safeMovement = clampNumber(movement, 0, 1);
+			const safeLight = clampNumber(lightTone, 0, 1);
+			const safeAmbient = clampNumber(ambient, 0, 1);
+			const rhythmLabel = safeShake > 0.56
+				? "shaker ouvert"
+				: (safeMovement > 0.38
+					? "pulsation mobile"
+					: (isMembraneDemo() ? "mine lente" : "drone stable"));
+			let guideText = "Incline pour tenir une note, éclaire pour ouvrir le mode, puis secoue par impulsions courtes pour marquer le shaker.";
+			if (!isMembraneAudible()) {
+				guideText = "Ouvre la membrane ou Terre & Mine pour installer un drone stable, puis construis à partir de la lumière et de la secousse.";
+			} else if (safeShake > 0.56) {
+				guideText = "Le shaker est ouvert: garde des secousses courtes et régulières, puis stabilise la main pour laisser la note respirer au-dessus.";
+			} else if (mode === "major") {
+				guideText = safeLight > 0.66
+					? "La lumière pousse vers le majeur. Tiens l’inclinaison pour garder la note claire, puis parle pour épaissir l’accord."
+					: "Le majeur est là mais encore fragile. Ouvre un peu plus la lumière ou lève le téléphone pour élargir la couleur.";
+			} else if (safeAmbient > 0.22) {
+				guideText = "Le mineur tient le terrain. Parle, souffle ou fais grésiller la pièce pour épaissir la matière avant d’ajouter le shaker.";
+			}
+			document.body.dataset.musicalMode = mode;
+			setSensorText(musicModeNode, toreModeLabels[mode] || toreModeLabels.minor);
+			setSensorText(musicNoteNode, noteLabel);
+			setSensorText(musicRhythmNode, rhythmLabel);
+			setSensorText(musicGuideNode, guideText);
+		};
+	const ensureShakerNoiseBuffer = (context) => {
+			if (shakerNoiseBuffer && shakerNoiseBuffer.sampleRate === context.sampleRate) {
+				return shakerNoiseBuffer;
+			}
+			const frameCount = Math.max(1, Math.round(context.sampleRate * 0.18));
+			const buffer = context.createBuffer(1, frameCount, context.sampleRate);
+			const channel = buffer.getChannelData(0);
+			for (let index = 0; index < channel.length; index += 1) {
+				channel[index] = (Math.random() * 2) - 1;
+			}
+			shakerNoiseBuffer = buffer;
+			return shakerNoiseBuffer;
+		};
+	const triggerShaker = async (intensity = 0.4) => {
+			const context = await ensureReactiveAudioContext();
+			if (!context) {
+				return false;
+			}
+			const deviceProfile = readDeviceAudioProfile();
+			if (deviceProfile.muted || document.hidden || !isMembraneAudible()) {
+				return false;
+			}
+			const nowStamp = performance.now();
+			if (nowStamp - lastShakeAt < 92) {
+				return false;
+			}
+			lastShakeAt = nowStamp;
+			const buffer = ensureShakerNoiseBuffer(context);
+			const source = context.createBufferSource();
+			const highpass = context.createBiquadFilter();
+			const bandpass = context.createBiquadFilter();
+			const gain = context.createGain();
+			source.buffer = buffer;
+			highpass.type = "highpass";
+			highpass.frequency.value = 1800 + (intensity * 2200);
+			bandpass.type = "bandpass";
+			bandpass.frequency.value = 2800 + (intensity * 2400);
+			bandpass.Q.value = 0.8 + (intensity * 2.2);
+			gain.gain.value = 0.0001;
+			source.connect(highpass);
+			highpass.connect(bandpass);
+			bandpass.connect(gain);
+			gain.connect(context.destination);
+			const now = context.currentTime;
+			const peak = clampNumber((0.018 + (intensity * 0.072)) * deviceProfile.volume, 0.016, 0.11);
+			gain.gain.setValueAtTime(0.0001, now);
+			gain.gain.linearRampToValueAtTime(peak, now + 0.01);
+			gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16 + (intensity * 0.1));
+			source.start(now);
+			source.stop(now + 0.22 + (intensity * 0.12));
+			return true;
+		};
+	renderToreGuide();
 
 	const demoPhasePalette = (key) => {
-		switch (key) {
-			case "velvet":
-				return [96, 92, 166];
-			case "gloss":
-				return [122, 226, 255];
-			case "pulse":
-				return [255, 118, 172];
-			case "sap":
-				return [255, 210, 110];
-			default:
-				return [180, 180, 180];
-		}
-	};
+			switch (key) {
+				case "velvet":
+					return [96, 92, 166];
+				case "gloss":
+					return [122, 226, 255];
+				case "pulse":
+					return [255, 118, 172];
+				case "sap":
+					return [255, 210, 110];
+				default:
+					return [180, 180, 180];
+			}
+		};
 
 	const demoPhaseMetaAt = (progress) => {
 		const safeProgress = clampNumber(progress, 0, 1);
@@ -4322,30 +4480,33 @@ function initXyzCamera() {
 			1
 		);
 		document.body.dataset.membraneAudio = membrane.audioLevel.toFixed(3);
-		document.body.dataset.membraneLight = membrane.lightLevel.toFixed(3);
-		document.body.dataset.membraneTiltX = membrane.tiltX.toFixed(3);
-		document.body.dataset.membraneTiltY = membrane.tiltY.toFixed(3);
-		document.body.dataset.membraneMotion = membrane.motionSensor.toFixed(3);
-		document.body.dataset.membranePresence = presence.toFixed(3);
-		document.body.style.setProperty("--membrane-audio", membrane.audioLevel.toFixed(3));
-		document.body.style.setProperty("--membrane-light", membrane.lightLevel.toFixed(3));
-		document.body.style.setProperty("--membrane-tilt-x", membrane.tiltX.toFixed(3));
-		document.body.style.setProperty("--membrane-tilt-y", membrane.tiltY.toFixed(3));
-		document.body.style.setProperty("--membrane-motion", membrane.motionSensor.toFixed(3));
-		document.body.style.setProperty("--membrane-presence", presence.toFixed(3));
-		updateMotionVoice();
-	};
+			document.body.dataset.membraneLight = membrane.lightLevel.toFixed(3);
+			document.body.dataset.membraneTiltX = membrane.tiltX.toFixed(3);
+			document.body.dataset.membraneTiltY = membrane.tiltY.toFixed(3);
+			document.body.dataset.membraneMotion = membrane.motionSensor.toFixed(3);
+			document.body.dataset.membraneShake = clampNumber(membrane.shake, 0, 1).toFixed(3);
+			document.body.dataset.membranePresence = presence.toFixed(3);
+			document.body.style.setProperty("--membrane-audio", membrane.audioLevel.toFixed(3));
+			document.body.style.setProperty("--membrane-light", membrane.lightLevel.toFixed(3));
+			document.body.style.setProperty("--membrane-tilt-x", membrane.tiltX.toFixed(3));
+			document.body.style.setProperty("--membrane-tilt-y", membrane.tiltY.toFixed(3));
+			document.body.style.setProperty("--membrane-motion", membrane.motionSensor.toFixed(3));
+			document.body.style.setProperty("--membrane-shake", clampNumber(membrane.shake, 0, 1).toFixed(3));
+			document.body.style.setProperty("--membrane-presence", presence.toFixed(3));
+			updateMotionVoice();
+		};
 
 	const resetMembraneReactiveState = () => {
 		membrane.luma = 0;
 		membrane.cameraMotion = 0;
 		membrane.audioLevel = 0;
-		membrane.lightLevel = 0;
-		membrane.tiltX = 0;
-		membrane.tiltY = 0;
-		membrane.motionSensor = 0;
-		syncMembraneReactiveState();
-	};
+			membrane.lightLevel = 0;
+			membrane.tiltX = 0;
+			membrane.tiltY = 0;
+			membrane.motionSensor = 0;
+			membrane.shake = 0;
+			syncMembraneReactiveState();
+		};
 
 	const membraneMetricsSnapshot = () => ({
 		...(function () {
@@ -4579,13 +4740,28 @@ function initXyzCamera() {
 		vocoderEchoDelay = null;
 		vocoderEchoFeedback = null;
 		vocoderEchoReturn = null;
-		if (audioContext && typeof audioContext.close === "function") {
-			audioContext.close().catch(() => {});
-		}
-		audioContext = null;
-		membrane.audioLevel = 0;
-		syncMembraneReactiveState();
-	};
+			if (audioContext && typeof audioContext.close === "function") {
+				audioContext.close().catch(() => {});
+			}
+			audioContext = null;
+			shakerNoiseBuffer = null;
+			lastShakeAt = 0;
+			lastMotionMagnitude = 0;
+			lastDemoShakeBurst = 0;
+			currentToreMode = "minor";
+			lastQuantizedMidi = toreRootMidi;
+			membrane.audioLevel = 0;
+			membrane.shake = 0;
+			syncMembraneReactiveState();
+			renderToreGuide({
+				mode: currentToreMode,
+				noteLabel: formatToreNoteLabel(lastQuantizedMidi),
+				shakeLevel: 0,
+				movement: 0,
+				lightTone: 0,
+				ambient: 0,
+			});
+		};
 
 	const ensureReactiveAudioContext = async () => {
 		const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -4604,29 +4780,33 @@ function initXyzCamera() {
 		return audioContext;
 	};
 
-	function updateMotionVoice(forceMute = false) {
-		if (
-			!audioContext
+		function updateMotionVoice(forceMute = false) {
+			if (
+				!audioContext
 			|| !motionVoiceGain
 			|| !motionVoiceOscillator
 			|| !motionVoiceHarmonicOscillator
 			|| !motionVoiceSubOscillator
 		) {
 			return;
-		}
+			}
 
-		const deviceProfile = readDeviceAudioProfile();
-		const motionEnergy = clampNumber(Math.max(membrane.motionSensor, membrane.cameraMotion * 0.92), 0, 1);
-		const tiltEnergy = clampNumber((Math.abs(membrane.tiltX) + Math.abs(membrane.tiltY)) * 0.5, 0, 1);
-		const lightTone = clampNumber(membrane.lightLevel * 0.58 + membrane.luma * 0.42, 0, 1);
-		const ambient = clampNumber(membrane.audioLevel, 0, 1);
-		const orientationX = clampNumber((membrane.tiltX + 1) * 0.5, 0, 1);
-		const orientationY = clampNumber((1 - membrane.tiltY) * 0.5, 0, 1);
-		const shimmer = clampNumber(ambient * 0.46 + lightTone * 0.28 + membrane.cameraMotion * 0.18 + motionEnergy * 0.08, 0, 1);
-		const movement = clampNumber(motionEnergy * 0.68 + membrane.cameraMotion * 0.14 + tiltEnergy * 0.18, 0, 1);
-		const presence = clampNumber(
-			Math.max(
-				membrane.luma,
+			const deviceProfile = readDeviceAudioProfile();
+			const flavor = document.body.dataset.cameraFlavor || "";
+			membrane.shake = clampNumber(membrane.shake * (isMembraneDemo() ? 0.96 : 0.88), 0, 1);
+			const shakeLevel = clampNumber(membrane.shake, 0, 1);
+			const motionEnergy = clampNumber(Math.max(membrane.motionSensor, membrane.cameraMotion * 0.92), 0, 1);
+			const tiltEnergy = clampNumber((Math.abs(membrane.tiltX) + Math.abs(membrane.tiltY)) * 0.5, 0, 1);
+			const lightTone = clampNumber(membrane.lightLevel * 0.58 + membrane.luma * 0.42, 0, 1);
+			const ambient = clampNumber(membrane.audioLevel, 0, 1);
+			const orientationX = clampNumber((membrane.tiltX + 1) * 0.5, 0, 1);
+			const orientationY = clampNumber((1 - membrane.tiltY) * 0.5, 0, 1);
+			const harmonicMode = resolveToreMode(lightTone, flavor);
+			const shimmer = clampNumber(ambient * 0.36 + lightTone * 0.24 + membrane.cameraMotion * 0.14 + motionEnergy * 0.08 + shakeLevel * 0.18, 0, 1);
+			const movement = clampNumber(motionEnergy * 0.58 + membrane.cameraMotion * 0.14 + tiltEnergy * 0.14 + shakeLevel * 0.32, 0, 1);
+			const presence = clampNumber(
+				Math.max(
+					membrane.luma,
 				membrane.cameraMotion,
 				membrane.motionSensor,
 				membrane.audioLevel,
@@ -4640,51 +4820,61 @@ function initXyzCamera() {
 		const handOpen = clampNumber(orientationY * 0.74 + presence * 0.18 + movement * 0.08, 0, 1);
 		const movementGate = clampNumber((movement - 0.015) / 0.985, 0, 1);
 		const orientationGate = clampNumber(handOpen * 0.72 + lightTone * 0.18 + Math.abs(membrane.tiltX) * 0.1, 0, 1);
-		const gate = clampNumber(
-			Math.max(movementGate * 0.82, orientationGate * 0.68),
-			0,
-			1
-		) * clampNumber(0.42 + presence * 0.58, 0, 1);
-		const feedbackSafety = clampNumber(1 - ambient * 0.28, 0.62, 1);
-		const audible = !forceMute && !document.hidden && isMembraneAudible() && !deviceProfile.muted;
-		const demoPulseFloor = audible && isMembraneDemo()
-			? clampNumber((0.014 + handOpen * 0.012 + lightTone * 0.008) * deviceProfile.volume * feedbackSafety, 0.014, 0.032)
-			: 0;
-		const pitchOctaves = 0.28 + orientationX * 2.08 + lightTone * 0.82 + ambient * 0.24;
-		const targetFrequency = 82 * Math.pow(2, pitchOctaves);
-		const harmonicRatio = 1.42 + lightTone * 0.42 + ambient * 0.18;
-		const harmonicFrequency = targetFrequency * harmonicRatio;
-		const subFrequency = Math.max(42, targetFrequency * 0.5 * (0.94 + orientationY * 0.08));
-		const targetDetune = membrane.tiltX * 96 - membrane.tiltY * 52 + ambient * 14 - movement * 8;
-		const droneFloor = audible
-			? clampNumber((0.008 + handOpen * 0.01 + lightTone * 0.006) * deviceProfile.volume * feedbackSafety, 0, 0.026)
-			: 0;
-		const targetGain = audible
-			? clampNumber(
-				gate * handOpen * deviceProfile.volume * feedbackSafety * 0.085 + droneFloor + demoPulseFloor,
+			const gate = clampNumber(
+				Math.max(movementGate * 0.82, orientationGate * 0.68),
 				0,
-				isMembraneDemo() ? 0.11 : 0.095
-			)
-			: 0;
-		const targetHarmonicGain = audible
-			? clampNumber(targetGain * (0.34 + lightTone * 0.42 + ambient * 0.2), 0, isMembraneDemo() ? 0.052 : 0.045)
-			: 0;
-		const targetSubGain = audible
-			? clampNumber(targetGain * (0.24 + (1 - lightTone) * 0.28 + movement * 0.12), 0, isMembraneDemo() ? 0.038 : 0.032)
-			: 0;
-		const targetPan = clampNumber(membrane.tiltX * 0.92 + (orientationX - 0.5) * 0.18, -1, 1);
-		const targetVoiceDrive = audible ? clampNumber(1.18 + presence * 1.12 + handOpen * 0.42 - ambient * 0.3, 0.92, 2.45) : 0.84;
-		const targetVoiceModDepth = audible ? clampNumber(0.24 + gate * 0.42 + lightTone * 0.12 + ambient * 0.08, 0.16, 0.78) : 0.02;
-		const targetVoiceHarmonicDepth = audible ? clampNumber(targetVoiceModDepth * (0.44 + lightTone * 0.3 + ambient * 0.08), 0.08, 0.48) : 0.01;
-		const targetVoiceDirect = audible ? clampNumber(gate * deviceProfile.volume * feedbackSafety * (0.05 + handOpen * 0.065), 0, 0.095) : 0;
-		const targetVoiceWet = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.2 + handOpen * 0.16 + movement * 0.1), 0, 0.46) : 0;
-		const targetVoiceBandpass = clampNumber(targetFrequency * (0.94 + lightTone * 0.36), 140, 2600);
-		const targetVoiceBandpassQ = 1 + ambient * 0.85 + movement * 0.65;
-		const targetVoiceColor = clampNumber(340 + lightTone * 1920 + ambient * 380 + movement * 240, 320, 4200);
-		const targetVoiceEchoSend = audible ? clampNumber(voiceFx.echoAmount * (0.14 + handOpen * 0.18 + lightTone * 0.08) * feedbackSafety, 0, 0.24) : 0;
-		const targetVoiceEchoFeedback = audible ? clampNumber(0.1 + voiceFx.echoAmount * 0.36 + ambient * 0.06, 0.08, 0.42) : 0.08;
-		const targetVoiceEchoReturn = audible ? clampNumber(voiceFx.echoAmount * (0.28 + lightTone * 0.16), 0, 0.22) : 0;
-		const now = audioContext.currentTime;
+				1
+			) * clampNumber(0.42 + presence * 0.58, 0, 1);
+			const feedbackSafety = clampNumber(1 - ambient * 0.28, 0.62, 1);
+			const audible = !forceMute && !document.hidden && isMembraneAudible() && !deviceProfile.muted;
+			const demoPulseFloor = audible && isMembraneDemo()
+				? clampNumber((0.02 + handOpen * 0.016 + lightTone * 0.01 + shakeLevel * 0.008) * deviceProfile.volume * feedbackSafety, 0.02, 0.044)
+				: 0;
+			const pitchOctaves = 0.3 + orientationX * 1.68 + lightTone * 0.42 + ambient * 0.12;
+			const rawMidi = toreRootMidi + (pitchOctaves * 12);
+			const quantizedMidi = quantizeToreMidi(rawMidi, harmonicMode);
+			const noteLabel = formatToreNoteLabel(quantizedMidi);
+			const targetFrequency = midiToFrequency(quantizedMidi);
+			const harmonicFrequency = midiToFrequency(Math.min(quantizedMidi + (harmonicMode === "major" ? 16 : 15), 91));
+			const subFrequency = midiToFrequency(Math.max(quantizedMidi - 12, 28));
+			const targetDetune = (membrane.tiltX * 26) - (membrane.tiltY * 16) + (ambient * 4) + (shakeLevel * 6) - (movement * 3);
+			const droneFloor = audible
+				? clampNumber((0.014 + handOpen * 0.016 + lightTone * 0.008) * deviceProfile.volume * feedbackSafety, 0, 0.038)
+				: 0;
+			const targetGain = audible
+				? clampNumber(
+					gate * handOpen * deviceProfile.volume * feedbackSafety * 0.118 + droneFloor + demoPulseFloor,
+					0,
+					isMembraneDemo() ? 0.148 : 0.128
+				)
+				: 0;
+			const targetHarmonicGain = audible
+				? clampNumber(targetGain * (0.42 + lightTone * 0.24 + shakeLevel * 0.18), 0, isMembraneDemo() ? 0.072 : 0.064)
+				: 0;
+			const targetSubGain = audible
+				? clampNumber(targetGain * (0.28 + (1 - lightTone) * 0.24 + movement * 0.1), 0, isMembraneDemo() ? 0.052 : 0.046)
+				: 0;
+			const targetPan = clampNumber(membrane.tiltX * 0.92 + (orientationX - 0.5) * 0.18, -1, 1);
+			const targetVoiceDrive = audible ? clampNumber(1.18 + presence * 1.12 + handOpen * 0.42 - ambient * 0.3, 0.92, 2.45) : 0.84;
+			const targetVoiceModDepth = audible ? clampNumber(0.24 + gate * 0.42 + lightTone * 0.12 + ambient * 0.08, 0.16, 0.78) : 0.02;
+			const targetVoiceHarmonicDepth = audible ? clampNumber(targetVoiceModDepth * (0.44 + lightTone * 0.3 + ambient * 0.08), 0.08, 0.48) : 0.01;
+			const targetVoiceDirect = audible ? clampNumber(gate * deviceProfile.volume * feedbackSafety * (0.065 + handOpen * 0.082), 0, 0.122) : 0;
+			const targetVoiceWet = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.24 + handOpen * 0.18 + movement * 0.12), 0, 0.54) : 0;
+			const targetVoiceBandpass = clampNumber(targetFrequency * (0.94 + lightTone * 0.36), 140, 2600);
+			const targetVoiceBandpassQ = 1 + ambient * 0.85 + movement * 0.65;
+			const targetVoiceColor = clampNumber(340 + lightTone * 1920 + ambient * 380 + movement * 240, 320, 4200);
+			const targetVoiceEchoSend = audible ? clampNumber(voiceFx.echoAmount * (0.14 + handOpen * 0.18 + lightTone * 0.08) * feedbackSafety, 0, 0.24) : 0;
+			const targetVoiceEchoFeedback = audible ? clampNumber(0.1 + voiceFx.echoAmount * 0.36 + ambient * 0.06, 0.08, 0.42) : 0.08;
+			const targetVoiceEchoReturn = audible ? clampNumber(voiceFx.echoAmount * (0.28 + lightTone * 0.16), 0, 0.22) : 0;
+			renderToreGuide({
+				mode: harmonicMode,
+				noteLabel,
+				shakeLevel,
+				movement,
+				lightTone,
+				ambient,
+			});
+			const now = audioContext.currentTime;
 
 		motionVoiceOscillator.frequency.setTargetAtTime(targetFrequency, now, 0.09);
 		motionVoiceHarmonicOscillator.frequency.setTargetAtTime(harmonicFrequency, now, 0.11);
@@ -4701,22 +4891,22 @@ function initXyzCamera() {
 			motionVoiceSubGain.gain.setTargetAtTime(targetSubGain, now, audible ? 0.08 : 0.02);
 		}
 
-		if (motionVoiceFilter) {
-			motionVoiceFilter.frequency.setTargetAtTime(180 + lightTone * 1750 + ambient * 650 + movement * 480, now, 0.12);
-			motionVoiceFilter.Q.setTargetAtTime(0.8 + ambient * 2.2 + movement * 0.9, now, 0.12);
-		}
+			if (motionVoiceFilter) {
+				motionVoiceFilter.frequency.setTargetAtTime(220 + lightTone * 1680 + ambient * 540 + movement * 360 + shakeLevel * 520, now, 0.12);
+				motionVoiceFilter.Q.setTargetAtTime(0.7 + ambient * 1.8 + movement * 0.6 + shakeLevel * 0.8, now, 0.12);
+			}
 
 		if (motionVoicePanner) {
 			motionVoicePanner.pan.setTargetAtTime(targetPan, now, 0.14);
 		}
 
-		if (motionVoiceLfo) {
-			motionVoiceLfo.frequency.setTargetAtTime(0.18 + movement * 4.6 + ambient * 1.2 + lightTone * 0.4, now, 0.18);
-		}
+			if (motionVoiceLfo) {
+				motionVoiceLfo.frequency.setTargetAtTime(0.12 + movement * 2.4 + ambient * 0.7 + shakeLevel * 1.2 + lightTone * 0.22, now, 0.18);
+			}
 
-		if (motionVoiceLfoGain) {
-			motionVoiceLfoGain.gain.setTargetAtTime(6 + movement * 42 + ambient * 16 + Math.abs(membrane.tiltX) * 14, now, 0.18);
-		}
+			if (motionVoiceLfoGain) {
+				motionVoiceLfoGain.gain.setTargetAtTime(2.6 + movement * 15 + ambient * 7 + shakeLevel * 10 + Math.abs(membrane.tiltX) * 5, now, 0.18);
+			}
 
 		if (vocoderCarrierOscillator) {
 			vocoderCarrierOscillator.frequency.setTargetAtTime(targetFrequency, now, 0.08);
@@ -4726,13 +4916,13 @@ function initXyzCamera() {
 			vocoderCarrierHarmonicOscillator.frequency.setTargetAtTime(harmonicFrequency, now, 0.1);
 		}
 
-		if (vocoderCarrierGain) {
-			vocoderCarrierGain.gain.setTargetAtTime(audible ? 0.016 + gate * 0.026 + lightTone * 0.006 : 0, now, audible ? 0.12 : 0.04);
-		}
+			if (vocoderCarrierGain) {
+				vocoderCarrierGain.gain.setTargetAtTime(audible ? 0.022 + gate * 0.03 + lightTone * 0.008 : 0, now, audible ? 0.12 : 0.04);
+			}
 
-		if (vocoderCarrierHarmonicGain) {
-			vocoderCarrierHarmonicGain.gain.setTargetAtTime(audible ? 0.008 + lightTone * 0.02 + ambient * 0.004 : 0, now, audible ? 0.12 : 0.04);
-		}
+			if (vocoderCarrierHarmonicGain) {
+				vocoderCarrierHarmonicGain.gain.setTargetAtTime(audible ? 0.014 + lightTone * 0.022 + ambient * 0.006 + shakeLevel * 0.004 : 0, now, audible ? 0.12 : 0.04);
+			}
 
 		if (vocoderInputGain) {
 			vocoderInputGain.gain.setTargetAtTime(targetVoiceDrive, now, 0.18);
@@ -4938,25 +5128,25 @@ function initXyzCamera() {
 			return;
 		}
 
-		const now = audioContext.currentTime;
-		const isDemoCue = isMembraneDemo();
-		const peak = isDemoCue
-			? clampNumber(0.044 + deviceProfile.volume * 0.05 * intensity, 0.036, 0.11)
-			: clampNumber(0.028 + deviceProfile.volume * 0.034 * intensity, 0.02, 0.065);
-		const sustain = isDemoCue
-			? clampNumber(peak * 0.42, 0.014, 0.042)
-			: clampNumber(peak * 0.34, 0.008, 0.026);
+			const now = audioContext.currentTime;
+			const isDemoCue = isMembraneDemo();
+			const peak = isDemoCue
+				? clampNumber(0.066 + deviceProfile.volume * 0.072 * intensity, 0.054, 0.16)
+				: clampNumber(0.042 + deviceProfile.volume * 0.048 * intensity, 0.03, 0.098);
+			const sustain = isDemoCue
+				? clampNumber(peak * 0.46, 0.02, 0.06)
+				: clampNumber(peak * 0.38, 0.012, 0.038);
 		motionVoiceGain.gain.cancelScheduledValues(now);
 		motionVoiceGain.gain.setValueAtTime(Math.max(motionVoiceGain.gain.value, 0.002), now);
 		motionVoiceGain.gain.linearRampToValueAtTime(peak, now + 0.06);
 		motionVoiceGain.gain.exponentialRampToValueAtTime(sustain, now + 0.42);
 
-		if (motionVoiceHarmonicGain) {
-			motionVoiceHarmonicGain.gain.cancelScheduledValues(now);
-			motionVoiceHarmonicGain.gain.setValueAtTime(Math.max(motionVoiceHarmonicGain.gain.value, 0.001), now);
-			motionVoiceHarmonicGain.gain.linearRampToValueAtTime(clampNumber(peak * 0.52, 0.01, 0.032), now + 0.08);
-			motionVoiceHarmonicGain.gain.exponentialRampToValueAtTime(clampNumber(sustain * 0.55, 0.004, 0.016), now + 0.44);
-		}
+			if (motionVoiceHarmonicGain) {
+				motionVoiceHarmonicGain.gain.cancelScheduledValues(now);
+				motionVoiceHarmonicGain.gain.setValueAtTime(Math.max(motionVoiceHarmonicGain.gain.value, 0.001), now);
+				motionVoiceHarmonicGain.gain.linearRampToValueAtTime(clampNumber(peak * 0.58, 0.014, 0.05), now + 0.08);
+				motionVoiceHarmonicGain.gain.exponentialRampToValueAtTime(clampNumber(sustain * 0.58, 0.006, 0.022), now + 0.44);
+			}
 	};
 
 	const analyzeAudio = () => {
@@ -5012,19 +5202,20 @@ function initXyzCamera() {
 		demoPhaseIndex = -1;
 	};
 
-	const startDemoMembrane = async () => {
-		stopDemoMode();
-		setUiState(
-			"demo",
-			"Démo locale. Le tore se nourrit ici d’un thérémin synthétique: lumière, souffle, secousse et inclinaison reviennent en boucle pour tester la membrane. La voix portée reste en veille tant que le micro réel n’entre pas.",
-			"Le tore répète un thérémin sensoriel."
-		);
-		setReactiveCssState(0.28, 0.14, [112, 122, 196], "velvet");
-		membrane.audioLevel = 0.08;
-		membrane.motionSensor = 0.18;
-		membrane.tiltX = 0.12;
-		membrane.tiltY = 0.16;
-		syncMembraneReactiveState();
+		const startDemoMembrane = async () => {
+			stopDemoMode();
+			setUiState(
+				"demo",
+				"Terre & Mine ouvre un atelier local: le tore y répète un thérémin synthétique, alterne majeur et mineur selon la lumière, et transforme les secousses en shaker.",
+				"Terre & Mine ouvre la matière du tore."
+			);
+			setReactiveCssState(0.28, 0.14, [112, 122, 196], "velvet");
+			membrane.audioLevel = 0.08;
+			membrane.motionSensor = 0.18;
+			membrane.shake = 0.12;
+			membrane.tiltX = 0.12;
+			membrane.tiltY = 0.16;
+			syncMembraneReactiveState();
 		const voiceReady = await ensureMotionVoice().catch(() => false);
 		if (voiceReady) {
 			updateMotionVoice();
@@ -5059,32 +5250,40 @@ function initXyzCamera() {
 			const tiltX = Math.sin(seconds * (0.42 + motion * 0.72)) * (0.08 + motion * 0.54);
 			const tiltY = Math.cos(seconds * (0.36 + motion * 0.64) + 0.6) * (0.07 + burst * 0.42 + undertow * 0.16);
 
-			setReactiveCssState(luma, motion, rgb, phase.key);
-			membrane.lightLevel = lightLevel;
-			membrane.audioLevel = audio;
-			membrane.motionSensor = motionSensor;
-			membrane.tiltX = tiltX;
-			membrane.tiltY = tiltY;
-			syncMembraneReactiveState();
+				setReactiveCssState(luma, motion, rgb, phase.key);
+				membrane.lightLevel = lightLevel;
+				membrane.audioLevel = audio;
+				membrane.motionSensor = motionSensor;
+				membrane.shake = clampNumber((burst * 0.82) + (motion * 0.12), 0, 1);
+				membrane.tiltX = tiltX;
+				membrane.tiltY = tiltY;
+				syncMembraneReactiveState();
 
 			setSensorText(
 				orientationNode,
 				`α ${Math.round(((tiltX + 1) * 90) + shimmer * 14)}° · β ${Math.round((tiltY * 54) + wave * 8)}° · demo`
 			);
 			setSensorText(motionNode, `${Math.round(motionSensor * 100)}% · demo`);
-			setSensorText(lightNode, `${Math.round(60 + lightLevel * 860)} lux · demo`);
+				setSensorText(
+					lightNode,
+					`${Math.round(60 + lightLevel * 860)} lux · ${currentToreMode === "major" ? "majeur" : "mineur"}`
+				);
 			setSensorText(audioNode, `${Math.round(audio * 100)}% d’amplitude`);
 			setSensorText(cameraNode, `${phase.key} synthétique`);
 
-			if (phaseMeta.index !== demoPhaseIndex) {
-				demoPhaseIndex = phaseMeta.index;
-				setUiState("demo", phase.message, phase.title);
-				pulseDeviceHaptics(phase.haptic);
-				cueMotionVoice(0.82 + blend * 0.18);
-			}
+				if (phaseMeta.index !== demoPhaseIndex) {
+					demoPhaseIndex = phaseMeta.index;
+					setUiState("demo", phase.message, phase.title);
+					pulseDeviceHaptics(phase.haptic);
+					cueMotionVoice(0.82 + blend * 0.18);
+				}
+				if (burst > 0.6 && lastDemoShakeBurst <= 0.6) {
+					void triggerShaker(0.42 + (burst * 0.34));
+				}
+				lastDemoShakeBurst = burst;
 
-			demoFrame = window.requestAnimationFrame(renderDemoFrame);
-		};
+				demoFrame = window.requestAnimationFrame(renderDemoFrame);
+			};
 
 		demoFrame = window.requestAnimationFrame(renderDemoFrame);
 	};
@@ -5132,14 +5331,17 @@ function initXyzCamera() {
 
 		try {
 			lightSensor = new window.AmbientLightSensor();
-			lightSensor.addEventListener("reading", () => {
-				if (!isMembraneLive()) {
-					return;
-				}
-				membrane.lightLevel = clampNumber(Math.log10(Math.max(1, Number(lightSensor.illuminance) || 1)) / 3, 0, 1);
-				syncMembraneReactiveState();
-				setSensorText(lightNode, `${Math.round(Number(lightSensor.illuminance) || 0)} lux`);
-			});
+				lightSensor.addEventListener("reading", () => {
+					if (!isMembraneLive()) {
+						return;
+					}
+					membrane.lightLevel = clampNumber(Math.log10(Math.max(1, Number(lightSensor.illuminance) || 1)) / 3, 0, 1);
+					syncMembraneReactiveState();
+					setSensorText(
+						lightNode,
+						`${Math.round(Number(lightSensor.illuminance) || 0)} lux · ${currentToreMode === "major" ? "majeur" : "mineur"}`
+					);
+				});
 			lightSensor.addEventListener("error", () => {
 				if (isMembraneLive()) {
 					setSensorText(lightNode, "fallback Ocam");
@@ -5200,19 +5402,31 @@ function initXyzCamera() {
 		}
 
 		if (motionReady && !motionBound) {
-			window.addEventListener("devicemotion", (event) => {
-				if (!isMembraneLive()) {
-					return;
-				}
-				const source = event.accelerationIncludingGravity || event.acceleration || {};
-				const x = Number(source.x || 0);
-				const y = Number(source.y || 0);
-				const z = Number(source.z || 0);
-				const magnitude = Math.sqrt(x * x + y * y + z * z);
-				membrane.motionSensor = clampNumber(magnitude / 24, 0, 1);
-				syncMembraneReactiveState();
-				setSensorText(motionNode, `${Math.round(membrane.motionSensor * 100)}%`);
-			});
+				window.addEventListener("devicemotion", (event) => {
+					if (!isMembraneLive()) {
+						return;
+					}
+					const source = event.accelerationIncludingGravity || event.acceleration || {};
+					const x = Number(source.x || 0);
+					const y = Number(source.y || 0);
+					const z = Number(source.z || 0);
+					const magnitude = Math.sqrt(x * x + y * y + z * z);
+					const motionDelta = Math.abs(magnitude - lastMotionMagnitude);
+					lastMotionMagnitude = magnitude;
+					const shakeImpulse = clampNumber((motionDelta - 1.8) / 9.8, 0, 1);
+					membrane.motionSensor = clampNumber(magnitude / 24, 0, 1);
+					membrane.shake = clampNumber(Math.max(shakeImpulse, membrane.shake * 0.72), 0, 1);
+					syncMembraneReactiveState();
+					if (shakeImpulse > 0.14) {
+						void triggerShaker(0.36 + (shakeImpulse * 0.5));
+					}
+					setSensorText(
+						motionNode,
+						shakeImpulse > 0.12
+							? `${Math.round(membrane.motionSensor * 100)}% · shaker`
+							: `${Math.round(membrane.motionSensor * 100)}%`
+					);
+				});
 			motionBound = true;
 		} else if ("DeviceMotionEvent" in window) {
 			setSensorText(motionNode, "refusé");
@@ -5291,12 +5505,12 @@ function initXyzCamera() {
 		const isLiveLike = state === "live" || state === "partial" || isDemo;
 		document.body.classList.toggle("is-camera-ready", state === "live" || isDemo);
 		document.body.classList.toggle("is-membrane-live", isLiveLike);
-		document.body.classList.toggle("is-membrane-demo", isDemo);
-		startButton.classList.toggle("hidden", isLiveLike);
-		stopButton.classList.toggle("hidden", !isLiveLike);
-		demoButton.setAttribute("aria-pressed", isDemo ? "true" : "false");
-		demoButton.textContent = isDemo ? "Arrêter la démo" : "Mode demo";
-		stopButton.textContent = isDemo ? "Couper la démo" : "Relâcher la membrane";
+			document.body.classList.toggle("is-membrane-demo", isDemo);
+			startButton.classList.toggle("hidden", isLiveLike);
+			stopButton.classList.toggle("hidden", !isLiveLike);
+			demoButton.setAttribute("aria-pressed", isDemo ? "true" : "false");
+			demoButton.textContent = isDemo ? "Quitter Terre & Mine" : "Terre & Mine";
+			stopButton.textContent = isDemo ? "Couper Terre & Mine" : "Relâcher la membrane";
 
 		if (statusNode instanceof HTMLElement && message) {
 			statusNode.textContent = message;
@@ -5367,11 +5581,11 @@ function initXyzCamera() {
 			return;
 		}
 
-		setUiState(
-			"loading",
-			"Le tore demande au téléphone lumière, souffle, mouvement et présence. La réaction sonore et la voix portée restent locales à ce navigateur.",
-			"Activation de la membrane…"
-		);
+			setUiState(
+				"loading",
+				"Le tore demande au téléphone lumière, souffle, mouvement et présence. La réaction sonore, les modes majeur/mineur et la voix portée restent locales à ce navigateur.",
+				"Activation de la membrane…"
+			);
 		setSensorText(orientationNode, "demande");
 		setSensorText(motionNode, "demande");
 		setSensorText(lightNode, "demande");
@@ -5401,11 +5615,11 @@ function initXyzCamera() {
 				setSensorText(orientationNode, "absente");
 				setSensorText(motionNode, "absent");
 			}
-			setUiState(
-				"live",
-				"La membrane est ouverte. Le tore lit maintenant lumière, souffle, inclinaison, mouvement et présence, puis les convertit en thérémin local et en voix portée.",
-				"La membrane nourrit maintenant la surface."
-			);
+				setUiState(
+					"live",
+					"La membrane est ouverte. Le tore lit maintenant lumière, souffle, inclinaison, secousse et présence, puis les convertit en thérémin local, shaker et voix portée.",
+					"La membrane nourrit maintenant la surface."
+				);
 			updateMotionVoice();
 			cueMotionVoice(1);
 			pulseDeviceHaptics("medium");
@@ -5419,11 +5633,11 @@ function initXyzCamera() {
 			setSensorText(cameraNode, "refusée");
 			setSensorText(audioNode, "refusé");
 			if (motionReady || lightReady || wakeReady) {
-				setUiState(
-					"partial",
-					"La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le thérémin du tore.",
-					"La membrane dérive en mode partiel."
-				);
+					setUiState(
+						"partial",
+						"La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le thérémin du tore.",
+						"La membrane dérive en mode partiel."
+					);
 				updateMotionVoice();
 				cueMotionVoice(0.82);
 				pulseDeviceHaptics("soft");
