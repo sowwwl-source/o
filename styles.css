@@ -7172,15 +7172,6 @@ body:has(.connection-meter) {
 		justify-self: start;
 	}
 
-
-@supports (height: 100dvh) {
-	@media (max-width: 720px) {
-		.connection-meter[open],
-		.guide-voice-dock[open] {
-			max-height: calc(100dvh - 1.5rem - env(safe-area-inset-top));
-		}
-	}
-}
 	.guide-voice-history-line {
 		grid-template-columns: auto minmax(0, 1fr);
 		grid-template-areas:
@@ -7204,6 +7195,15 @@ body:has(.connection-meter) {
 
 	.guide-voice-dock__toggle strong {
 		font-size: 0.82rem;
+	}
+}
+
+@supports (height: 100dvh) {
+	@media (max-width: 720px) {
+		.connection-meter[open],
+		.guide-voice-dock[open] {
+			max-height: calc(100dvh - 1.5rem - env(safe-area-inset-top));
+		}
 	}
 }
 

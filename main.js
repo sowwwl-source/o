@@ -4142,8 +4142,6 @@ function initXyzCamera() {
 	const musicNoteNode = document.querySelector("[data-xyz-music-note]");
 	const musicRhythmNode = document.querySelector("[data-xyz-music-rhythm]");
 	const musicGuideNode = document.querySelector("[data-xyz-music-guide]");
-	const plasmaBridgeUrl = root.dataset.xyzPlasmaBridge || "";
-	const membraneLandSlug = root.dataset.xyzPlasmaLand || "";
 
 	if (
 		!(root instanceof HTMLElement)
@@ -4154,6 +4152,9 @@ function initXyzCamera() {
 	) {
 		return;
 	}
+
+	const plasmaBridgeUrl = root.dataset.xyzPlasmaBridge || "";
+	const membraneLandSlug = root.dataset.xyzPlasmaLand || "";
 
 	let stream = null;
 	let analysisFrame = 0;
@@ -6518,11 +6519,28 @@ function readGuideVoiceSession() {
 	}
 }
 
-initMappingGenie();
-initDeviceBridgePanels();
-initLabConsole();
-initXyzSurface();
-initXyzCamera();
+function runPageInit(label, init) {
+	if (typeof init !== "function") {
+		return;
+	}
+
+	try {
+		const result = init();
+		if (result && typeof result.then === "function") {
+			result.catch((error) => {
+				console.error(`Init failed: ${label}`, error);
+			});
+		}
+	} catch (error) {
+		console.error(`Init failed: ${label}`, error);
+	}
+}
+
+runPageInit("mappingGenie", initMappingGenie);
+runPageInit("deviceBridgePanels", initDeviceBridgePanels);
+runPageInit("labConsole", initLabConsole);
+runPageInit("xyzSurface", initXyzSurface);
+runPageInit("xyzCamera", initXyzCamera);
 
 function writeGuideVoiceSession(session) {
 	if (!session || typeof session !== "object") {
@@ -10064,20 +10082,20 @@ function initSignalFlow() {
 	});
 }
 
-initPageAccessibility();
-initNucleusBanner();
-initCornerDocks();
-initGuideVoice();
-initMapSurface();
-initSignalFlow();
-initSpectralTuner();
-initStr3mArchipelago();
-initStr3mParallax();
-initStr3mShellFutureBridge();
-initStr3mGhostShellDock();
-initStr3mIntegratedPlayer();
-initIslandReaderStation();
-initIslandReaderFullscreen();
+runPageInit("pageAccessibility", initPageAccessibility);
+runPageInit("nucleusBanner", initNucleusBanner);
+runPageInit("cornerDocks", initCornerDocks);
+runPageInit("guideVoice", initGuideVoice);
+runPageInit("mapSurface", initMapSurface);
+runPageInit("signalFlow", initSignalFlow);
+runPageInit("spectralTuner", initSpectralTuner);
+runPageInit("str3mArchipelago", initStr3mArchipelago);
+runPageInit("str3mParallax", initStr3mParallax);
+runPageInit("str3mShellFutureBridge", initStr3mShellFutureBridge);
+runPageInit("str3mGhostShellDock", initStr3mGhostShellDock);
+runPageInit("str3mIntegratedPlayer", initStr3mIntegratedPlayer);
+runPageInit("islandReaderStation", initIslandReaderStation);
+runPageInit("islandReaderFullscreen", initIslandReaderFullscreen);
 
 function initAzaTabs() {
 	const tabs = document.querySelectorAll('.aza-tab[data-tab]');
@@ -10097,7 +10115,7 @@ function initAzaTabs() {
 	});
 }
 
-initAzaTabs();
+runPageInit("azaTabs", initAzaTabs);
 
 function initB0t3() {
 	// Poetic substitution map — noise that keeps meaning partial
