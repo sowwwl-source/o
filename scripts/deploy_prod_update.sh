@@ -461,6 +461,20 @@ docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon.svg
 docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon-192.png
 docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_signal_validation.php
 docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_0wlslw0_agent.php
+docker exec "${project_name}-app-1" php -r '
+$headers = @get_headers("http://127.0.0.1/icons/icon.svg");
+if (!is_array($headers) || !isset($headers[0]) || stripos((string) $headers[0], "200") === false) {
+    fwrite(STDERR, "icons/icon.svg is not served over HTTP inside the app container\n");
+    exit(1);
+}
+'
+docker exec "${project_name}-app-1" php -r '
+$headers = @get_headers("http://127.0.0.1/icons/icon-192.png");
+if (!is_array($headers) || !isset($headers[0]) || stripos((string) $headers[0], "200") === false) {
+    fwrite(STDERR, "icons/icon-192.png is not served over HTTP inside the app container\n");
+    exit(1);
+}
+'
 
 echo "==> Public verification"
 if should_verify_0wlslw0_agent; then
