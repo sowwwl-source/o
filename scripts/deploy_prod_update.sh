@@ -467,10 +467,17 @@ curl -fsSI https://sowwwl.xyz/
 curl -fsSI https://sowwwl.xyz/map
 curl -fsSI https://sowwwl.com/signal
 curl -fsSI https://sowwwl.com/str3m
+curl -fsSI https://sowwwl.com/0wlslw0
+curl -fsSI https://sowwwl.com/icons/icon.svg
+curl -fsSI https://sowwwl.com/icons/icon-192.png
+curl -fsSI 'https://sowwwl.com/manifest.php?app=owl'
 curl -fsSI https://sowwwl.org/
 curl -fsSI https://api.sowwwl.cloud/healthz
 curl -fsSI https://api.sowwwl.cloud/v1/status
 assert_body_matches https://sowwwl.com/ 'Trois portes : public, terre, 0wlslw0|Passer par 0wlslw0|commande noyau'
+assert_body_matches https://sowwwl.com/main.js 'runPageInit\("xyzCamera", initXyzCamera\);'
+assert_body_matches https://sowwwl.com/main.js 'runPageInit\("guideVoice", initGuideVoice\);'
+assert_body_matches https://sowwwl.com/main.js 'const hasRecognition = Boolean\(RecognitionCtor\);'
 assert_body_matches https://sowwwl.xyz/ 'Le tore écoute le monde réel|Activer la membrane|Silence web|Partager'
 assert_body_matches https://sowwwl.xyz/ 'data-xyz-plasma-bridge="https://sowwwl\.xyz(?:/o)?/ingest/membrane"'
 assert_body_absent https://sowwwl.xyz/ 'data-xyz-plasma-bridge="https://lab\.sowwwl\.cloud'

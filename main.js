@@ -7508,6 +7508,7 @@ function mountGuideVoice(root) {
 	const dockLabelNode = root.querySelector("[data-guide-voice-dock-label]");
 	const dockStateNode = root.querySelector("[data-guide-voice-dock-state]");
 	const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+	const hasRecognition = Boolean(RecognitionCtor);
 	const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
 	const greeting = root.dataset.guideVoiceGreeting || "Je suis 0wlslw0 et j'ouvre la bonne porte vers le peuple de l'O.";
 	const apiPath = root.dataset.guideVoiceApi || withBridgePrefix("/0wlslw0/voice");
@@ -7611,7 +7612,9 @@ function mountGuideVoice(root) {
 
 		root.dataset.cornerDockActive = isActive ? "1" : "0";
 		if (dockLabelNode instanceof HTMLElement) {
-			dockLabelNode.textContent = isActive ? "voix active" : "voix persistante";
+			dockLabelNode.textContent = isActive
+				? (hasRecognition ? "voix active" : "texte actif")
+				: (hasRecognition ? "voix persistante" : "texte persistant");
 		}
 
 		if (dockStateNode instanceof HTMLElement) {
@@ -7624,6 +7627,8 @@ function mountGuideVoice(root) {
 				compactLabel = "répond";
 			} else if (root.dataset.voiceState === "listening") {
 				compactLabel = "écoute";
+			} else if (isActive && !hasRecognition) {
+				compactLabel = "texte";
 			} else if (isActive) {
 				compactLabel = "veille";
 			}
@@ -7882,6 +7887,61 @@ function mountGuideVoice(root) {
 		persistSession({ route: normalized });
 	}
 
+	function startGuideVoiceButtonLabel() {
+		if (!hasRecognition) {
+			return "Écrire à 0wlslw0";
+		}
+
+		return isDock ? "Réactiver la voix" : "Activer la voix";
+	}
+
+	function focusGuideVoiceInput() {
+		if (isDock && isCompactCornerDockViewport()) {
+			root.open = true;
+		}
+
+		if (!(inputNode instanceof HTMLInputElement)) {
+			return;
+		}
+
+		window.requestAnimationFrame(() => {
+			inputNode.focus({ preventScroll: false });
+			const caret = typeof inputNode.value === "string" ? inputNode.value.length : 0;
+			if (typeof inputNode.setSelectionRange === "function") {
+				inputNode.setSelectionRange(caret, caret);
+			}
+		});
+	}
+
+	function activateGuideVoiceTextMode(firstActivation = false) {
+		isActive = true;
+		isWaitingReply = false;
+		hideRoute();
+		startButton.hidden = true;
+		stopButton.hidden = false;
+		renderSuggestions(starterPrompts);
+		persistSession({ active: true, autoResume: true, everActivated: true, pendingNavigation: "" });
+
+		setReply(firstActivation
+			? "Le micro Web manque ici. Écris-moi, je reste présent et je peux quand même lire mes réponses."
+			: "Le texte prend le relais ici. Écris-moi quand tu veux.");
+		setState("idle", "Micro Web indisponible. Le texte reste ouvert.");
+
+		if (firstActivation && synth) {
+			speakReply(greeting, () => {
+				if (!isActive) {
+					return;
+				}
+
+				setState("idle", "Micro Web indisponible. Le texte reste ouvert.");
+				focusGuideVoiceInput();
+			});
+			return;
+		}
+
+		focusGuideVoiceInput();
+	}
+
 	function stopListening() {
 		if (!recognition) {
 			return;
@@ -7977,7 +8037,7 @@ function mountGuideVoice(root) {
 		}
 		if (startButton instanceof HTMLElement) {
 			startButton.hidden = false;
-			startButton.textContent = isDock ? "Réactiver la voix" : "Activer la voix";
+			startButton.textContent = startGuideVoiceButtonLabel();
 		}
 		if (stopButton instanceof HTMLElement) {
 			stopButton.hidden = true;
@@ -8274,78 +8334,68 @@ function mountGuideVoice(root) {
 		});
 	}
 
-	if (!RecognitionCtor) {
-		if (startButton instanceof HTMLButtonElement) {
-			startButton.disabled = true;
-			startButton.textContent = "Micro indisponible";
-		}
-		setReply(chatUrl
-			? "Ce navigateur ne propose pas la reconnaissance vocale Web. Le relais externe reste disponible."
-			: "Ce navigateur ne propose pas la reconnaissance vocale Web. Utilise le texte ou les impulsions.");
-		setState("idle", "Reconnaissance vocale indisponible. 0wlslw0 reste guidable en texte.");
-		return;
+	if (hasRecognition) {
+		recognition = new RecognitionCtor();
+		recognition.lang = "fr-FR";
+		recognition.continuous = false;
+		recognition.interimResults = true;
+		recognition.maxAlternatives = 1;
+
+		recognition.onresult = (event) => {
+			let interim = "";
+			let finalTranscript = "";
+
+			for (let index = event.resultIndex; index < event.results.length; index += 1) {
+				const result = event.results[index];
+				const transcript = result[0]?.transcript?.trim() || "";
+				if (!transcript) {
+					continue;
+				}
+
+				if (result.isFinal) {
+					finalTranscript += `${transcript} `;
+				} else {
+					interim += `${transcript} `;
+				}
+			}
+
+			if (interim.trim()) {
+				setTranscript(`J’entends : ${interim.trim()}`);
+			}
+
+			if (finalTranscript.trim()) {
+				stopListening();
+				submitGuideUtterance(finalTranscript.trim(), { channel: "voice" });
+			}
+		};
+
+		recognition.onerror = (event) => {
+			if (!isActive) {
+				return;
+			}
+
+			const errorCode = event?.error || "unknown";
+			if (errorCode === "not-allowed" || errorCode === "service-not-allowed") {
+				stopGuide("Le micro doit être réautorisé sur cette page.");
+				return;
+			}
+
+			if (errorCode === "no-speech") {
+				setState("idle", "Je n’ai rien capté. Réessaie quand tu veux.");
+				window.setTimeout(beginListening, 420);
+				return;
+			}
+
+			setState("idle", "Le micro a décroché. Je relance l’écoute.");
+			window.setTimeout(beginListening, 680);
+		};
+
+		recognition.onend = () => {
+			if (isActive && !isSpeaking && !isWaitingReply) {
+				window.setTimeout(beginListening, 240);
+			}
+		};
 	}
-
-	recognition = new RecognitionCtor();
-	recognition.lang = "fr-FR";
-	recognition.continuous = false;
-	recognition.interimResults = true;
-	recognition.maxAlternatives = 1;
-
-	recognition.onresult = (event) => {
-		let interim = "";
-		let finalTranscript = "";
-
-		for (let index = event.resultIndex; index < event.results.length; index += 1) {
-			const result = event.results[index];
-			const transcript = result[0]?.transcript?.trim() || "";
-			if (!transcript) {
-				continue;
-			}
-
-			if (result.isFinal) {
-				finalTranscript += `${transcript} `;
-			} else {
-				interim += `${transcript} `;
-			}
-		}
-
-		if (interim.trim()) {
-			setTranscript(`J’entends : ${interim.trim()}`);
-		}
-
-		if (finalTranscript.trim()) {
-			stopListening();
-			submitGuideUtterance(finalTranscript.trim(), { channel: "voice" });
-		}
-	};
-
-	recognition.onerror = (event) => {
-		if (!isActive) {
-			return;
-		}
-
-		const errorCode = event?.error || "unknown";
-		if (errorCode === "not-allowed" || errorCode === "service-not-allowed") {
-			stopGuide("Le micro doit être réautorisé sur cette page.");
-			return;
-		}
-
-		if (errorCode === "no-speech") {
-			setState("idle", "Je n’ai rien capté. Réessaie quand tu veux.");
-			window.setTimeout(beginListening, 420);
-			return;
-		}
-
-		setState("idle", "Le micro a décroché. Je relance l’écoute.");
-		window.setTimeout(beginListening, 680);
-	};
-
-	recognition.onend = () => {
-		if (isActive && !isSpeaking && !isWaitingReply) {
-			window.setTimeout(beginListening, 240);
-		}
-	};
 
 	startButton.addEventListener("click", () => {
 		const session = readGuideVoiceSession();
@@ -8353,6 +8403,12 @@ function mountGuideVoice(root) {
 		if (startButton instanceof HTMLButtonElement) {
 			startButton.disabled = false;
 		}
+
+		if (!hasRecognition) {
+			activateGuideVoiceTextMode(firstActivation);
+			return;
+		}
+
 		isActive = true;
 		isWaitingReply = false;
 		if (isDock && isCompactCornerDockViewport()) {
@@ -8408,10 +8464,18 @@ function mountGuideVoice(root) {
 
 		if (statusNode instanceof HTMLElement) {
 			statusNode.textContent = nextMuted
-				? "Voix muette. 0wlslw0 reste lisible et continue d’écouter."
+				? (hasRecognition
+					? "Voix muette. 0wlslw0 reste lisible et continue d’écouter."
+					: "Voix muette. 0wlslw0 reste lisible et disponible en texte.")
 				: (deviceProfile.nativeSilenceMode === "silent"
 					? "Appareil silencieux. 0wlslw0 reste lisible et continue d’écouter."
-					: (isActive ? "Voix audible. 0wlslw0 peut repasser du grave à l’aigu." : "Voix audible. Active-la si tu veux l’entendre."));
+					: (isActive
+						? (hasRecognition
+							? "Voix audible. 0wlslw0 peut repasser du grave à l’aigu."
+							: "Lecture audible. 0wlslw0 peut reparler depuis le texte.")
+						: (hasRecognition
+							? "Voix audible. Active-la si tu veux l’entendre."
+							: "Lecture audible. Ouvre le texte si tu veux l’entendre.")));
 		}
 		persistSession();
 
@@ -8442,8 +8506,12 @@ function mountGuideVoice(root) {
 
 		if (statusNode instanceof HTMLElement && !isMuted && !isWaitingReply && !isSpeaking) {
 			statusNode.textContent = isActive
-				? "Voix audible. 0wlslw0 suit maintenant le profil du téléphone."
-				: "Voix audible. Active-la si tu veux l’entendre.";
+				? (hasRecognition
+					? "Voix audible. 0wlslw0 suit maintenant le profil du téléphone."
+					: "Lecture audible. 0wlslw0 répondra depuis le texte.")
+				: (hasRecognition
+					? "Voix audible. Active-la si tu veux l’entendre."
+					: "Lecture audible. Ouvre le texte si tu veux l’entendre.");
 		}
 	});
 
@@ -8455,13 +8523,19 @@ function mountGuideVoice(root) {
 		setState(
 			"idle",
 			crossedPageBoundary
-				? "Je te suis ici. Je reprends la navigation vocale."
-				: (persisted.status || (isDock ? "0wlslw0 reste actif ici." : "La voix reste active."))
+				? (hasRecognition ? "Je te suis ici. Je reprends la navigation vocale." : "Je te suis ici. Le texte reprend le relais.")
+				: (persisted.status || (isDock
+					? (hasRecognition ? "0wlslw0 reste actif ici." : "0wlslw0 reste disponible ici en texte.")
+					: (hasRecognition ? "La voix reste active." : "Le texte reste actif pendant la traversée.")))
 		);
 		if (!(replyNode instanceof HTMLElement) || !replyNode.textContent) {
 			setReply(isDock
-				? "0wlslw0 est toujours là. Continue simplement à parler."
-				: "0wlslw0 reste actif pendant la traversée.");
+				? (hasRecognition
+					? "0wlslw0 est toujours là. Continue simplement à parler."
+					: "0wlslw0 est toujours là. Continue simplement à écrire.")
+				: (hasRecognition
+					? "0wlslw0 reste actif pendant la traversée."
+					: "0wlslw0 reste actif en texte pendant la traversée."));
 		}
 		if (crossedPageBoundary) {
 			window.setTimeout(() => {
@@ -8478,15 +8552,26 @@ function mountGuideVoice(root) {
 	}
 
 	setState("idle", isDock
-		? "0wlslw0 peut te suivre ici si tu actives la voix depuis son passage."
-		: "Prêt. Active la voix puis parle naturellement.");
+		? (hasRecognition
+			? "0wlslw0 peut te suivre ici si tu actives la voix depuis son passage."
+			: "0wlslw0 peut te suivre ici si tu ouvres le texte depuis son passage.")
+		: (hasRecognition
+			? "Prêt. Active la voix puis parle naturellement."
+			: "Prêt. Écris à 0wlslw0 si le micro Web manque ici."));
 	if (!(replyNode instanceof HTMLElement) || !replyNode.textContent) {
 		setReply(isDock
-			? "Active la voix depuis 0wlslw0, puis elle te suivra pendant la navigation."
-			: "0wlslw0 répondra ici puis lira sa réponse.");
+			? (hasRecognition
+				? "Active la voix depuis 0wlslw0, puis elle te suivra pendant la navigation."
+				: "Ouvre le texte depuis 0wlslw0, puis il te suivra pendant la navigation.")
+			: (hasRecognition
+				? "0wlslw0 répondra ici puis lira sa réponse."
+				: (chatUrl
+					? "Le micro Web manque ici. Écris à 0wlslw0, le relais externe reste disponible."
+					: "Le micro Web manque ici. Écris à 0wlslw0, il répondra ici et lira si possible.")));
 	}
 	if (startButton instanceof HTMLElement) {
-		startButton.textContent = isDock ? "Réactiver la voix" : "Activer la voix";
+		startButton.disabled = false;
+		startButton.textContent = startGuideVoiceButtonLabel();
 	}
 	syncDockState();
 }
@@ -10231,4 +10316,4 @@ function initB0t3SingleEl(el) {
 	}).join('');
 }
 
-initB0t3();
+runPageInit("b0t3", initB0t3);
