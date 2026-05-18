@@ -19,7 +19,7 @@ That helper:
 - only mutates the live stack after that preflight succeeds
 - keeps `deploy/sites/` aligned with the directory actually mounted by `sowwwl-o-caddy-1`
 - refreshes `sowwwl-o-app-1`, `sowwwl-o-api-1`, and Caddy
-- verifies `sowwwl.com`, `sowwwl.org`, `api.sowwwl.cloud`, and Signal readiness
+- verifies `sowwwl.com`, `sowwwl.org`, `api.sowwwl.cloud`, Signal readiness, and the real `0wlslw0` relay when it is configured
 - refuses a membrane/plasma override back toward `*.lab.sowwwl.cloud` unless you pass `--allow-cross-origin-plasma`
 
 ## 2. Sync VPS source manually
@@ -65,6 +65,8 @@ For a fuller schema-state checklist, see `DB_MIGRATION_PROTOCOL.md`.
 ```bash
 docker exec sowwwl-o-app-1 sh -lc 'ls -la /var/www/html/.htaccess /var/www/html/0wlslw0.php /var/www/html/0wlslw0_voice.php /var/www/html/str3m.php /var/www/html/map.php /var/www/html/map_points.php /var/www/html/land.php /var/www/html/aza.php /var/www/html/island.php'
 docker exec sowwwl-o-app-1 sh -lc 'printenv | grep -E "SOWWWL_0WLSLW0_(CHAT_URL|AGENT_ENDPOINT|AGENT_MODE|AGENT_INPUT_FIELD|AGENT_TIMEOUT_SECONDS)"'
+docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_0wlslw0_agent.php
+docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_0wlslw0_agent.php --require-remote-ok
 docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --json
 docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_signal_validation.php --require-schema-ready
 ```
@@ -120,6 +122,7 @@ Expected interpretation:
 - `0wlslw0.com` should not serve the old static placeholder
 - `0wlslw0.com` should redirect to `/0wlslw0` or serve the guide content
 - `/0wlslw0` should expose the voice-only guide block
+- if `SOWWWL_0WLSLW0_AGENT_ENDPOINT` is set, `scripts/check_0wlslw0_agent.php --require-remote-ok` should succeed
 - `signal` should expose mailbox behavior
 - `scripts/check_signal_validation.php` should report both a ready Signal schema and an honest delivery state (`mail`, `log`, or `display`)
 - `sowwwl.org` should expose the current explanatory copy, not an older static snapshot

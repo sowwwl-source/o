@@ -2290,6 +2290,15 @@ function initIslandReaderStation() {
 			item.tabIndex = isActive ? 0 : -1;
 		});
 
+		const activeNavItem = navItems.find((item) => item.dataset.islandReaderNav === key);
+		if (activeNavItem instanceof HTMLElement) {
+			activeNavItem.scrollIntoView({
+				block: "nearest",
+				inline: "nearest",
+				behavior: fromAutoplay ? "auto" : "smooth",
+			});
+		}
+
 		syncCurator(key);
 
 		if (!fromAutoplay) {
@@ -2302,7 +2311,6 @@ function initIslandReaderStation() {
 		}
 
 		if (focusTarget === "nav") {
-			const activeNavItem = navItems.find((item) => item.dataset.islandReaderNav === key);
 			activeNavItem?.focus();
 		}
 	};
@@ -6554,7 +6562,7 @@ function guideVoiceSourceLabel(source) {
 		case "remote":
 			return "remote";
 		case "remote-ready":
-			return "remote prêt";
+			return "remote configuré";
 		case "auth-missing":
 			return "amont incomplet";
 		case "unavailable":
@@ -6975,6 +6983,26 @@ function normalizeGuideVoiceSuggestions(value) {
 		.slice(0, 4);
 }
 
+function mergeGuideVoiceSuggestions(...groups) {
+	const merged = [];
+	const seen = new Set();
+
+	groups.forEach((group) => {
+		normalizeGuideVoiceSuggestions(group).forEach((item) => {
+			const utterance = typeof item.utterance === "string" ? item.utterance.trim() : "";
+			const key = normalizeGuideVoiceText(utterance);
+			if (!utterance || !key || seen.has(key)) {
+				return;
+			}
+
+			seen.add(key);
+			merged.push(item);
+		});
+	});
+
+	return merged.slice(0, 4);
+}
+
 function normalizeGuideVoiceText(value) {
 	const input = typeof value === "string" ? value : "";
 	const normalized = typeof input.normalize === "function" ? input.normalize("NFD") : input;
@@ -7049,6 +7077,12 @@ function currentGuideVoicePageInfo() {
 				label: heading || (landSlug ? `la terre ${landSlug}` : "une terre"),
 				hint: "Tu peux dire noyau, Signal, Str3m, aZa, Echo, map, ou guide.",
 			};
+		case "/island":
+			return {
+				key: "island",
+				label: heading || (landSlug ? `l'île ${landSlug}` : "une île"),
+				hint: "Tu peux dire matière suivante, matière précédente, Str3m, noyau, ou guide.",
+			};
 		default:
 			return {
 				key: "unknown",
@@ -7087,6 +7121,106 @@ function findGuideVoiceLandRoute() {
 	}
 
 	return null;
+}
+
+function guideVoiceCompactPageLabel(page = currentGuideVoicePageInfo()) {
+	switch (page.key) {
+		case "home":
+			return "noyau";
+		case "signal":
+			return "signal";
+		case "str3m":
+			return "str3m";
+		case "aza":
+			return "aZa";
+		case "echo":
+			return "echo";
+		case "map":
+			return "map";
+		case "guide":
+			return "guide";
+		case "land":
+			return "terre";
+		case "island":
+			return "île";
+		default:
+			return "ouvrir";
+	}
+}
+
+function guideVoicePageSuggestions(page = currentGuideVoicePageInfo()) {
+	const hasLandRoute = Boolean(findGuideVoiceLandRoute());
+
+	switch (page.key) {
+		case "home":
+			return hasLandRoute
+				? [
+					{ utterance: "Ouvre ma terre.", label: "Rouvrir ma terre" },
+					{ utterance: "Guide-moi vers Signal.", label: "Aller à Signal" },
+					{ utterance: "Ramène-moi vers Str3m.", label: "Relire Str3m" },
+				]
+				: [
+					{ utterance: "Je veux visiter publiquement.", label: "Visiter publiquement" },
+					{ utterance: "Je veux poser une terre.", label: "Poser une terre" },
+					{ utterance: "Aide-moi à choisir la bonne porte.", label: "Aide-moi à choisir" },
+				];
+		case "signal":
+			return hasLandRoute
+				? [
+					{ utterance: "Écris à une autre terre.", label: "Écrire maintenant" },
+					{ utterance: "Rouvre ma terre.", label: "Retour terre" },
+					{ utterance: "Ramène-moi vers Str3m.", label: "Retour Str3m" },
+				]
+				: [
+					{ utterance: "Explique-moi Signal.", label: "Expliquer Signal" },
+					{ utterance: "Je veux poser une terre.", label: "Poser une terre" },
+					{ utterance: "Ramène-moi vers le noyau.", label: "Retour noyau" },
+				];
+		case "str3m":
+			return [
+				{ utterance: "Je veux regarder sans compte.", label: "Regarder sans compte" },
+				{ utterance: "Guide-moi vers Signal.", label: "Aller à Signal" },
+				{ utterance: "Explique-moi la différence entre Str3m et aZa.", label: "Str3m ou aZa" },
+			];
+		case "aza":
+			return [
+				{ utterance: "Explique-moi aZa.", label: "Expliquer aZa" },
+				{ utterance: "Montre-moi le public d'abord.", label: "Voir le public" },
+				{ utterance: "Ramène-moi au noyau.", label: "Retour noyau" },
+			];
+		case "echo":
+			return [
+				{ utterance: "Explique-moi Echo.", label: "Expliquer Echo" },
+				{ utterance: "Guide-moi vers Signal.", label: "Aller à Signal" },
+				{ utterance: "Rouvre ma terre.", label: "Retour terre" },
+			];
+		case "map":
+			return [
+				{ utterance: "Explique-moi la map.", label: "Expliquer la map" },
+				{ utterance: "Guide-moi vers Str3m.", label: "Aller à Str3m" },
+				{ utterance: "Ramène-moi au noyau.", label: "Retour noyau" },
+			];
+		case "land":
+			return [
+				{ utterance: "Rouvre ma terre.", label: "Rouvrir ma terre" },
+				{ utterance: "Guide-moi vers Signal.", label: "Aller à Signal" },
+				{ utterance: "Explique-moi la différence entre Signal et aZa.", label: "Signal ou aZa" },
+			];
+		case "island":
+			return [
+				{ utterance: "Passe à la matière suivante.", label: "Matière suivante" },
+				{ utterance: "Reviens à la matière précédente.", label: "Matière précédente" },
+				{ utterance: "Ramène-moi vers Str3m.", label: "Retour Str3m" },
+			];
+		case "guide":
+			return [
+				{ utterance: "Je veux comprendre le projet.", label: "Comprendre O." },
+				{ utterance: "Je veux visiter publiquement.", label: "Visiter publiquement" },
+				{ utterance: "Je veux poser une terre.", label: "Poser une terre" },
+			];
+		default:
+			return [];
+	}
 }
 
 function guideVoiceNavigationCatalog() {
@@ -7179,11 +7313,75 @@ function guideVoiceLooksLikeNavigation(text) {
 	return verbs.some((verb) => text.includes(verb));
 }
 
+function triggerIslandReaderTraversal(direction = 1) {
+	const shell = document.querySelector("[data-island-reader-shell]");
+	if (!(shell instanceof HTMLElement)) {
+		return false;
+	}
+
+	const selector = direction >= 0 ? "[data-island-reader-next]" : "[data-island-reader-prev]";
+	const control = shell.querySelector(selector);
+	if (!(control instanceof HTMLButtonElement) || control.disabled) {
+		return false;
+	}
+
+	control.click();
+	return true;
+}
+
+function resolveGuideVoiceIslandReaderCommand(utterance) {
+	const page = currentGuideVoicePageInfo();
+	if (page.key !== "island") {
+		return null;
+	}
+
+	const text = normalizeGuideVoiceText(utterance);
+	const nextPatterns = [
+		"matiere suivante",
+		"matiere d apres",
+		"matiere d'apres",
+		"lecture suivante",
+		"lecteur suivant",
+		"trace suivante",
+	];
+	const previousPatterns = [
+		"matiere precedente",
+		"matiere d avant",
+		"matiere d'avant",
+		"lecture precedente",
+		"lecteur precedent",
+		"trace precedente",
+	];
+
+	if (nextPatterns.some((pattern) => text.includes(pattern)) || text === "suivant") {
+		return {
+			type: "reader",
+			direction: 1,
+			reply: "Je passe à la matière suivante de l’île.",
+		};
+	}
+
+	if (previousPatterns.some((pattern) => text.includes(pattern)) || text === "precedent") {
+		return {
+			type: "reader",
+			direction: -1,
+			reply: "Je reviens à la matière précédente de l’île.",
+		};
+	}
+
+	return null;
+}
+
 function resolveGuideVoiceNativeCommand(utterance) {
 	const text = normalizeGuideVoiceText(utterance);
 	const page = currentGuideVoicePageInfo();
 	if (!text) {
 		return null;
+	}
+
+	const islandReaderCommand = resolveGuideVoiceIslandReaderCommand(utterance);
+	if (islandReaderCommand) {
+		return islandReaderCommand;
 	}
 
 	if (["ou suis je", "ou on est", "on est ou", "quelle page", "ou sommes nous"].some((phrase) => text.includes(phrase))) {
@@ -7311,6 +7509,8 @@ function mountGuideVoice(root) {
 		}
 	})();
 	const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+	const pageSuggestions = guideVoicePageSuggestions();
+	const baselineSuggestions = mergeGuideVoiceSuggestions(pageSuggestions, starterPrompts);
 	const isDock = root.dataset.guideVoiceDock === "1";
 	const upstreamConfigured = root.dataset.guideVoiceUpstream === "1";
 	const upstreamState = root.dataset.guideVoiceUpstreamState || (upstreamConfigured ? "remote-ready" : "local");
@@ -7323,7 +7523,7 @@ function mountGuideVoice(root) {
 	let isSpeaking = false;
 	let isWaitingReply = false;
 	let interactionsBound = false;
-	let activeSuggestions = persistedSuggestions.length ? persistedSuggestions : starterPrompts;
+	let activeSuggestions = mergeGuideVoiceSuggestions(pageSuggestions, persistedSuggestions, starterPrompts);
 	let history = persistedHistory;
 	let lastSource = normalizeGuideVoiceSource(persisted.lastSource, { upstreamConfigured, upstreamState });
 	
@@ -7397,7 +7597,7 @@ function mountGuideVoice(root) {
 		}
 
 		if (dockStateNode instanceof HTMLElement) {
-			let compactLabel = "ouvrir";
+			let compactLabel = guideVoiceCompactPageLabel();
 			if (isActive && isMuted) {
 				compactLabel = "muette";
 			} else if (isWaitingReply) {
@@ -7613,13 +7813,16 @@ function mountGuideVoice(root) {
 
 		const normalized = normalizeGuideVoiceSuggestions(suggestions);
 		const explicitSuggestions = Array.isArray(suggestions);
+		const fallbackSuggestions = mergeGuideVoiceSuggestions(activeSuggestions, baselineSuggestions);
 		const items = normalized.length
 			? normalized
 			: explicitSuggestions
 				? []
-				: (activeSuggestions.length ? activeSuggestions : starterPrompts);
+				: fallbackSuggestions;
 
-		activeSuggestions = items;
+		activeSuggestions = normalized.length
+			? normalized
+			: (explicitSuggestions ? [] : fallbackSuggestions);
 		suggestionsNode.innerHTML = "";
 		items.forEach((item) => {
 			const button = document.createElement("button");
@@ -7799,6 +8002,19 @@ function mountGuideVoice(root) {
 			setReply(command.reply);
 			rememberExchange({ utterance, reply: command.reply, channel, source: "local" });
 			stopGuide("Voix coupée localement.");
+			return true;
+		}
+
+		if (command.type === "reader") {
+			const moved = triggerIslandReaderTraversal(command.direction);
+			const reply = moved
+				? command.reply
+				: "La station n’a pas d’autre matière active à ouvrir pour l’instant.";
+			setReply(reply);
+			rememberExchange({ utterance, reply, channel, source: "local" });
+			speakReply(reply, () => {
+				resumeAfterReply(220);
+			});
 			return true;
 		}
 
@@ -9228,6 +9444,79 @@ function updateSignalRecipientChoiceVisibility({ choiceNodes, query, normalizeSi
 	});
 }
 
+function createSignalRecipientPreviewRenderer(previewNode) {
+	if (!(previewNode instanceof HTMLElement)) {
+		return () => {};
+	}
+
+	const titleNode = previewNode.querySelector("[data-signal-preview-title]");
+	const copyNode = previewNode.querySelector("[data-signal-preview-copy]");
+	const kickerNode = previewNode.querySelector("[data-signal-preview-kicker]");
+	const spectrumNode = previewNode.querySelector("[data-signal-preview-spectrum]");
+	const lambdaNode = previewNode.querySelector("[data-signal-preview-lambda]");
+	const phaseNode = previewNode.querySelector("[data-signal-preview-phase]");
+	const gapNode = previewNode.querySelector("[data-signal-preview-gap]");
+	const actionsNode = previewNode.querySelector("[data-signal-preview-actions]");
+	const openLink = previewNode.querySelector("[data-signal-preview-open]");
+	const echoLink = previewNode.querySelector("[data-signal-preview-echo]");
+	const emptyTitle = previewNode.dataset.previewEmptyTitle || "Aucune terre retenue";
+	const emptyCopy = previewNode.dataset.previewEmptyCopy || "Choisis une terre pour afficher son contexte.";
+	const signalBase = previewNode.dataset.previewSignalBase || withBridgePrefix("/signal");
+	const echoBase = previewNode.dataset.previewEchoBase || withBridgePrefix("/echo");
+
+	return (match) => {
+		if (!(titleNode instanceof HTMLElement) || !(copyNode instanceof HTMLElement)) {
+			return;
+		}
+
+		if (!match) {
+			previewNode.classList.add("is-empty");
+			titleNode.textContent = emptyTitle;
+			copyNode.textContent = emptyCopy;
+			if (kickerNode instanceof HTMLElement) {
+				kickerNode.textContent = "Aperçu de liaison";
+			}
+			if (spectrumNode instanceof HTMLElement) {
+				spectrumNode.hidden = true;
+			}
+			if (actionsNode instanceof HTMLElement) {
+				actionsNode.hidden = true;
+			}
+			return;
+		}
+
+		previewNode.classList.remove("is-empty");
+		titleNode.textContent = match.username || match.slug || match.value || "terre reconnue";
+		copyNode.textContent = `@${match.slug} · ${match.phaseLabel} — ${match.summary || "Le fil peut s’ouvrir ou passer en direct."}`;
+
+		if (kickerNode instanceof HTMLElement) {
+			kickerNode.textContent = "Terre reconnue";
+		}
+		if (lambdaNode instanceof HTMLElement) {
+			lambdaNode.textContent = `λ ${match.lambda} nm`;
+		}
+		if (phaseNode instanceof HTMLElement) {
+			phaseNode.textContent = match.phaseLabel;
+			phaseNode.className = `signal-spectrum-pill signal-spectrum-pill--${match.phase || "drift"}`;
+		}
+		if (gapNode instanceof HTMLElement) {
+			gapNode.textContent = `Δ ${match.gap} nm`;
+		}
+		if (spectrumNode instanceof HTMLElement) {
+			spectrumNode.hidden = false;
+		}
+		if (openLink instanceof HTMLAnchorElement) {
+			openLink.href = `${signalBase}?u=${encodeURIComponent(match.slug || match.value || "")}`;
+		}
+		if (echoLink instanceof HTMLAnchorElement) {
+			echoLink.href = `${echoBase}?u=${encodeURIComponent(match.username || match.slug || match.value || "")}`;
+		}
+		if (actionsNode instanceof HTMLElement) {
+			actionsNode.hidden = false;
+		}
+	};
+}
+
 function createSignalRecipientHintRenderer({
 	input,
 	hintNode,
@@ -9238,6 +9527,7 @@ function createSignalRecipientHintRenderer({
 	applyPlaceholders,
 	normalizeSignalRecipient,
 	choiceNodes,
+	renderPreview,
 }) {
 	return () => {
 		if (!(hintNode instanceof HTMLElement)) {
@@ -9248,9 +9538,11 @@ function createSignalRecipientHintRenderer({
 		if (!match) {
 			hintNode.textContent = (algoraCopy[getAlgoraMode()] || algoraCopy.douceur).fallbackHint || defaultHint || "Choisis une terre et la phase apparaîtra ici.";
 			applyPlaceholders(null);
+			renderPreview(null);
 		} else {
 			hintNode.textContent = `${match.username} · λ ${match.lambda} nm · Δ ${match.gap} nm · ${match.phaseLabel} — ${match.summary}`;
 			applyPlaceholders(match.phase);
+			renderPreview(match);
 		}
 
 		updateSignalRecipientChoiceVisibility({
@@ -9281,7 +9573,7 @@ function bindSignalAlgoraModeButtons({ algoraNodes, getAlgoraMode, setAlgoraMode
 	});
 }
 
-function bindSignalRecipientChoiceButtons({ choiceNodes, input }) {
+function bindSignalRecipientChoiceButtons({ choiceNodes, input, bodyInput }) {
 	choiceNodes.forEach((node) => {
 		if (!(node instanceof HTMLButtonElement)) {
 			return;
@@ -9290,6 +9582,11 @@ function bindSignalRecipientChoiceButtons({ choiceNodes, input }) {
 		node.addEventListener("click", () => {
 			input.value = node.dataset.recipientValue || "";
 			input.dispatchEvent(new Event("input", { bubbles: true }));
+			if (bodyInput instanceof HTMLTextAreaElement) {
+				bodyInput.focus();
+				return;
+			}
+
 			input.focus();
 		});
 	});
@@ -9389,6 +9686,7 @@ function initSignalRecipientAssist({
 		const algoraNodes = Array.from(form?.querySelectorAll("[data-signal-algora-choice]") || []);
 		const subjectInput = form?.querySelector("[data-signal-draft-subject]");
 		const bodyInput = form?.querySelector("[data-signal-draft-body]");
+		const previewNode = form?.querySelector("[data-signal-recipient-preview]");
 		let algoraMode = getSavedAlgoraMode();
 		const defaultHint = hintNode instanceof HTMLElement ? hintNode.textContent : "";
 		const getAlgoraMode = () => algoraMode;
@@ -9420,6 +9718,7 @@ function initSignalRecipientAssist({
 			applyPlaceholders,
 			normalizeSignalRecipient,
 			choiceNodes,
+			renderPreview: createSignalRecipientPreviewRenderer(previewNode),
 		});
 
 		bindSignalAlgoraModeButtons({
@@ -9432,7 +9731,7 @@ function initSignalRecipientAssist({
 			},
 		});
 
-		bindSignalRecipientChoiceButtons({ choiceNodes, input });
+		bindSignalRecipientChoiceButtons({ choiceNodes, input, bodyInput });
 
 		refreshSuggestionPriority();
 		input.addEventListener("input", renderRecipientHint);
@@ -9467,6 +9766,16 @@ function initSignalDraftHelpers(composeForms) {
 			renderStatus("Brouillon restauré localement. ⌘/Ctrl + Entrée envoie.");
 		}
 
+		if (receiverInput instanceof HTMLInputElement && bodyInput instanceof HTMLTextAreaElement && receiverInput.type !== "hidden") {
+			receiverInput.addEventListener("keydown", (event) => {
+				if (event.key === "Enter" && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+					event.preventDefault();
+					bodyInput.focus();
+					renderStatus("Destination retenue. Écris le message puis ⌘/Ctrl + Entrée pour transmettre.");
+				}
+			});
+		}
+
 		[subjectInput, bodyInput, receiverInput].forEach((field) => {
 			if (!(field instanceof HTMLInputElement) && !(field instanceof HTMLTextAreaElement)) {
 				return;
@@ -9488,6 +9797,54 @@ function initSignalDraftHelpers(composeForms) {
 		form.addEventListener("submit", () => {
 			clearSignalDraft(storageKey);
 			renderStatus("Transmission en cours...");
+		});
+	});
+}
+
+function initSignalHistoryNavigation({ history, composeForm }) {
+	if (!(history instanceof HTMLElement)) {
+		return;
+	}
+
+	const jumpButtons = Array.from(document.querySelectorAll("[data-signal-history-jump]"));
+	if (!jumpButtons.length) {
+		return;
+	}
+
+	const resolveTarget = (mode) => {
+		if (mode === "composer") {
+			return composeForm?.querySelector("[data-signal-history-composer]") || null;
+		}
+
+		if (mode === "first") {
+			return history.querySelector("[data-signal-history-first]") || history.querySelector("[data-signal-history-item]");
+		}
+
+		return history.querySelector("[data-signal-history-last]") || history.querySelector("[data-signal-history-item]:last-of-type");
+	};
+
+	jumpButtons.forEach((button) => {
+		if (!(button instanceof HTMLButtonElement)) {
+			return;
+		}
+
+		const mode = button.dataset.signalHistoryJump || "latest";
+		button.addEventListener("click", () => {
+			const target = resolveTarget(mode);
+			if (!(target instanceof HTMLElement)) {
+				return;
+			}
+
+			if (mode === "composer") {
+				target.focus();
+				target.scrollIntoView({ block: "center", behavior: "smooth" });
+				return;
+			}
+
+			target.scrollIntoView({
+				block: mode === "first" ? "start" : "end",
+				behavior: "smooth",
+			});
 		});
 	});
 }
@@ -9662,6 +10019,7 @@ function initSignalFlow() {
 	const contactItems = Array.from(document.querySelectorAll("[data-signal-contact-item]"));
 	const openInput = document.querySelector("[data-signal-open-input]");
 	const history = document.getElementById("signal-history");
+	const activeComposeForm = document.querySelector('[data-signal-compose][data-draft-scope^="thread:"]');
 	const liveRoot = document.querySelector("[data-message-live]");
 	const liveHistory = liveRoot?.querySelector("[data-message-live-history]");
 	const liveIndicator = liveRoot?.querySelector("[data-message-live-indicator]");
@@ -9680,6 +10038,7 @@ function initSignalFlow() {
 	const updateUnreadLabels = createSignalUnreadUpdater(unreadLabels);
 	const updateLiveIndicator = createSignalLiveIndicatorUpdater(liveIndicator);
 
+	initSignalHistoryNavigation({ history, composeForm: activeComposeForm });
 	initSignalContactFilter(filterInput, contactItems);
 	syncSignalOpenInput(openInput);
 

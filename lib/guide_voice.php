@@ -113,7 +113,7 @@ function guide_voice_upstream_state(): string
     $host = strtolower(trim((string) ($parts['host'] ?? '')));
     $agentKey = trim((string) ($config['agent_key'] ?? ''));
 
-    if ($host !== '' && str_ends_with($host, '.agents.do-ai.run') && $agentKey === '') {
+    if ($host !== '' && str_ends_with($host, '.agents.do-ai.run') && ($agentKey === '' || guide_voice_value_looks_placeholder($agentKey))) {
         return 'auth-missing';
     }
 
@@ -123,7 +123,7 @@ function guide_voice_upstream_state(): string
 function guide_voice_upstream_label(): string
 {
     return match (guide_voice_upstream_state()) {
-        'remote-ready' => 'remote prêt',
+        'remote-ready' => 'remote configuré',
         'auth-missing' => 'amont incomplet',
         default => 'local',
     };
@@ -132,10 +132,20 @@ function guide_voice_upstream_label(): string
 function guide_voice_mode_label(): string
 {
     if (guide_voice_upstream_configured()) {
-        return 'guide vocal relaye';
+        return 'guide vocal distant configuré';
     }
 
     return 'guide vocal local';
+}
+
+function guide_voice_endpoint_host(string $endpoint): string
+{
+    $parts = parse_url(trim($endpoint));
+    if (!is_array($parts)) {
+        return '';
+    }
+
+    return strtolower(trim((string) ($parts['host'] ?? '')));
 }
 
 function guide_voice_browser_state(?array $authenticatedLand = null): array
@@ -619,17 +629,22 @@ function guide_voice_attach_suggestions(array $result, ?array $authenticatedLand
 
 function guide_voice_reply(string $utterance, ?array $authenticatedLand = null): array
 {
-    $normalizedUtterance = guide_voice_normalize_text($utterance);
+    $rawUtterance = trim($utterance);
+    $normalizedUtterance = guide_voice_normalize_text($rawUtterance);
     $local = guide_voice_local_reply($normalizedUtterance, $authenticatedLand);
-    $remote = guide_voice_upstream_configured()
-        ? guide_voice_remote_reply($normalizedUtterance, $authenticatedLand, $local)
+    $remoteConfigured = guide_voice_upstream_configured();
+    $remote = $remoteConfigured
+        ? guide_voice_remote_reply($rawUtterance, $authenticatedLand, $local)
         : null;
 
     $result = is_array($remote) ? $remote : $local;
+    if (!is_array($remote) && $remoteConfigured) {
+        $result['source'] = 'unavailable';
+    }
     $result['reply'] = guide_voice_compact_reply_text((string) ($result['reply'] ?? ''));
     $result['route'] = guide_voice_normalize_route($result['route'] ?? null);
     $result['source'] = trim((string) ($result['source'] ?? 'local')) ?: 'local';
-    $result['heard'] = $normalizedUtterance;
+    $result['heard'] = $rawUtterance !== '' ? $rawUtterance : $normalizedUtterance;
     $result['ok'] = true;
     $result = guide_voice_attach_suggestions($result, $authenticatedLand);
 
@@ -641,22 +656,20 @@ function guide_voice_reply(string $utterance, ?array $authenticatedLand = null):
         }
     }
 
-    guide_voice_store_turn($normalizedUtterance, $result['reply']);
+    guide_voice_store_turn((string) $result['heard'], $result['reply']);
 
     return $result;
 }
 
-function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, array $localFallback): ?array
+function guide_voice_remote_payload(string $utterance, ?array $authenticatedLand = null): array
 {
     $config = guide_voice_config();
     $endpoint = (string) $config['endpoint'];
-    if ($endpoint === '' || guide_voice_value_looks_placeholder($endpoint)) {
-        return null;
-    }
-
+    $trimmedUtterance = trim($utterance);
     $isDoAgentEndpoint = guide_voice_is_do_agent_endpoint($endpoint);
     $history = guide_voice_recent_history();
     $messages = [];
+
     if (!$isDoAgentEndpoint) {
         $messages[] = [
             'role' => 'system',
@@ -675,7 +688,7 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
         }
     }
 
-    $messages[] = ['role' => 'user', 'content' => $utterance];
+    $messages[] = ['role' => 'user', 'content' => $trimmedUtterance];
 
     $context = [
         'origin' => site_origin(),
@@ -693,38 +706,73 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
     ];
 
     if ($config['request_mode'] === 'message') {
-        $payload = [
-            (string) $config['input_field'] => $utterance,
+        return [
+            (string) $config['input_field'] => $trimmedUtterance,
             'session_id' => session_id(),
             'history' => $history,
             'context' => $context,
             'system' => guide_voice_system_prompt(),
         ];
-    } else {
-        $payload = [
-            'session_id' => session_id(),
-            'messages' => $messages,
-            'context' => $context,
-        ];
     }
 
+    return [
+        'session_id' => session_id(),
+        'messages' => $messages,
+        'context' => $context,
+    ];
+}
+
+function guide_voice_remote_headers(array $config): array
+{
     $headers = [
         'Accept: application/json',
         'Content-Type: application/json',
-        'User-Agent: sowwwl-0wlslw0-voice/1.0',
+        'User-Agent: sowwwl-0wlslw0-voice/1.1',
     ];
 
-    if ($config['agent_key'] !== '') {
+    if (($config['agent_key'] ?? '') !== '') {
         $headers[] = $config['auth_header'] . ': ' . trim($config['auth_scheme'] . ' ' . $config['agent_key']);
     }
 
-    foreach ($config['extra_headers'] as $headerLine) {
+    foreach (($config['extra_headers'] ?? []) as $headerLine) {
+        if (!is_string($headerLine) || trim($headerLine) === '') {
+            continue;
+        }
         $headers[] = $headerLine;
     }
 
+    return $headers;
+}
+
+function guide_voice_remote_exchange(string $utterance, ?array $authenticatedLand = null): array
+{
+    $config = guide_voice_config();
+    $endpoint = (string) $config['endpoint'];
+    $endpointHost = guide_voice_endpoint_host($endpoint);
+
+    if ($endpoint === '' || guide_voice_value_looks_placeholder($endpoint)) {
+        return [
+            'ok' => false,
+            'status' => 0,
+            'error' => 'endpoint_missing',
+            'endpoint_host' => $endpointHost,
+            'raw' => null,
+            'json' => null,
+        ];
+    }
+
+    $payload = guide_voice_remote_payload($utterance, $authenticatedLand);
+    $headers = guide_voice_remote_headers($config);
     $body = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     if (!is_string($body)) {
-        return null;
+        return [
+            'ok' => false,
+            'status' => 0,
+            'error' => 'payload_encode_failed',
+            'endpoint_host' => $endpointHost,
+            'raw' => null,
+            'json' => null,
+        ];
     }
 
     $contextResource = stream_context_create([
@@ -742,23 +790,139 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
         ? (http_get_last_response_headers() ?: [])
         : ($http_response_header ?? []);
     $statusCode = guide_voice_http_status($responseHeaders);
-    if ($statusCode < 200 || $statusCode >= 300 || !is_string($raw) || trim($raw) === '') {
-        return null;
+    $decoded = is_string($raw) && trim($raw) !== ''
+        ? json_decode($raw, true)
+        : null;
+
+    if ($statusCode >= 200 && $statusCode < 300 && is_string($raw) && trim($raw) !== '') {
+        return [
+            'ok' => true,
+            'status' => $statusCode,
+            'error' => null,
+            'endpoint_host' => $endpointHost,
+            'raw' => $raw,
+            'json' => is_array($decoded) ? $decoded : null,
+        ];
     }
 
-    $decoded = json_decode($raw, true);
-    $reply = guide_voice_extract_text($decoded);
-    if ($reply === '' && is_string($raw)) {
-        $reply = guide_voice_compact_reply_text($raw);
+    $error = 'remote_failure';
+    if ($statusCode === 0) {
+        $error = 'connection_failed';
+    } elseif ($statusCode < 200 || $statusCode >= 300) {
+        $error = 'http_' . $statusCode;
+    } elseif (!is_string($raw) || trim($raw) === '') {
+        $error = 'empty_response';
+    }
+
+    return [
+        'ok' => false,
+        'status' => $statusCode,
+        'error' => $error,
+        'endpoint_host' => $endpointHost,
+        'raw' => is_string($raw) ? $raw : null,
+        'json' => is_array($decoded) ? $decoded : null,
+    ];
+}
+
+function guide_voice_log_remote_failure(array $exchange): void
+{
+    $error = trim((string) ($exchange['error'] ?? 'remote_failure')) ?: 'remote_failure';
+    $status = (int) ($exchange['status'] ?? 0);
+    $endpointHost = trim((string) ($exchange['endpoint_host'] ?? ''));
+    $raw = guide_voice_compact_reply_text((string) ($exchange['raw'] ?? ''));
+    $parts = ['[0wlslw0] remote relay unavailable', $error];
+
+    if ($status > 0) {
+        $parts[] = 'status ' . $status;
+    }
+    if ($endpointHost !== '') {
+        $parts[] = 'host ' . $endpointHost;
+    }
+    if ($raw !== '') {
+        $parts[] = $raw;
+    }
+
+    error_log(implode(' | ', $parts));
+}
+
+function guide_voice_probe_upstream(string $utterance = 'Guide-moi vers Str3m.', ?array $authenticatedLand = null): array
+{
+    $config = guide_voice_config();
+    $state = guide_voice_upstream_state();
+    $probe = [
+        'configured' => guide_voice_upstream_configured(),
+        'state' => $state,
+        'label' => guide_voice_upstream_label(),
+        'endpoint_host' => guide_voice_endpoint_host((string) ($config['endpoint'] ?? '')),
+        'request_mode' => (string) ($config['request_mode'] ?? 'chat'),
+        'input_field' => (string) ($config['input_field'] ?? 'message'),
+        'timeout' => (int) ($config['timeout'] ?? 18),
+        'auth_present' => (($agentKey = trim((string) ($config['agent_key'] ?? ''))) !== '') && !guide_voice_value_looks_placeholder($agentKey),
+    ];
+
+    if (!$probe['configured']) {
+        $probe['ok'] = false;
+        $probe['error'] = $state === 'auth-missing' ? 'auth_missing' : 'not_configured';
+        return $probe;
+    }
+
+    $exchange = guide_voice_remote_exchange($utterance, $authenticatedLand);
+    $probe['status'] = (int) ($exchange['status'] ?? 0);
+
+    if (empty($exchange['ok'])) {
+        $probe['ok'] = false;
+        $probe['error'] = (string) ($exchange['error'] ?? 'remote_failure');
+        return $probe;
+    }
+
+    $reply = guide_voice_extract_text($exchange['json'] ?? null);
+    if ($reply === '' && is_string($exchange['raw'] ?? null)) {
+        $reply = guide_voice_compact_reply_text((string) $exchange['raw']);
     }
 
     if ($reply === '') {
+        $probe['ok'] = false;
+        $probe['error'] = 'reply_missing';
+        return $probe;
+    }
+
+    $probe['ok'] = true;
+    $probe['reply_excerpt'] = guide_voice_compact_reply_text($reply);
+    $route = guide_voice_extract_route($exchange['json'] ?? null);
+    if (is_array($route)) {
+        $probe['route'] = $route;
+    }
+
+    return $probe;
+}
+
+function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, array $localFallback): ?array
+{
+    $exchange = guide_voice_remote_exchange($utterance, $authenticatedLand);
+    if (empty($exchange['ok'])) {
+        guide_voice_log_remote_failure($exchange);
+        return null;
+    }
+
+    $decoded = $exchange['json'] ?? null;
+    $reply = guide_voice_extract_text($decoded);
+    if ($reply === '' && is_string($exchange['raw'] ?? null)) {
+        $reply = guide_voice_compact_reply_text((string) $exchange['raw']);
+    }
+
+    if ($reply === '') {
+        guide_voice_log_remote_failure([
+            'error' => 'reply_missing',
+            'status' => (int) ($exchange['status'] ?? 0),
+            'endpoint_host' => (string) ($exchange['endpoint_host'] ?? ''),
+            'raw' => $exchange['raw'] ?? null,
+        ]);
         return null;
     }
 
     $route = guide_voice_extract_route($decoded);
     if ($route === null) {
-        $route = guide_voice_infer_route_from_text($reply, $utterance);
+        $route = guide_voice_infer_route_from_text($reply, guide_voice_normalize_text($utterance));
     }
     if ($route === null && !empty($localFallback['route'])) {
         $route = $localFallback['route'];

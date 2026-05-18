@@ -170,6 +170,15 @@ If you want the live app to relay to the DigitalOcean voice agent, also set thes
 - `SOWWWL_0WLSLW0_AGENT_INPUT_FIELD`
 - `SOWWWL_0WLSLW0_AGENT_EXTRA_HEADERS_JSON`
 
+Then verify the relay from inside the live app container:
+
+```bash
+docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_0wlslw0_agent.php
+docker exec sowwwl-o-app-1 php /var/www/html/scripts/check_0wlslw0_agent.php --require-remote-ok
+```
+
+`--require-remote-ok` must fail loudly if the endpoint is still a placeholder, the auth key is missing, or the remote agent answers with an unusable payload.
+
 Do not run `wrangler deploy` for `sowwwl.xyz`; Cloudflare should proxy the VPS origin instead.
 
 ## SMTP cutover checklist for Signal

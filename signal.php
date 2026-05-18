@@ -151,6 +151,25 @@ $currentDraftScope = $targetLand
 $signalLiveTarget = $targetLand ? (string) ($targetLand['slug'] ?? '') : '';
 $signalHistoryHtml = signal_render_conversation_html($conversation, $land ?? [], true, 'Aucune trace encore entre vos deux boîtes.');
 $signalHistoryHash = sha1($signalHistoryHtml);
+$activeContact = null;
+
+if ($targetLand) {
+    foreach ($contacts as $contact) {
+        if ((string) ($contact['counterpart_slug'] ?? '') === (string) ($targetLand['slug'] ?? '')) {
+            $activeContact = $contact;
+            break;
+        }
+    }
+}
+
+$activeContactPhase = (string) ($activeContact['resonance_phase'] ?? 'drift');
+$activeContactPhaseLabel = (string) ($activeContact['resonance_label'] ?? 'déphasage léger');
+$activeContactSummary = (string) ($activeContact['resonance_summary'] ?? 'Le fil est ouvert. Tu peux écrire sans perdre le contexte.');
+$activeContactLambda = (int) ($activeContact['counterpart_lambda_nm'] ?? 548);
+$activeContactGap = (int) ($activeContact['resonance_gap_nm'] ?? 0);
+$activeContactProgramLabel = (string) ($activeContact['counterpart_program_label'] ?? ($activeContact['counterpart_program'] ?? 'collectif'));
+$activeContactLastLabel = human_created_label((string) ($activeContact['last_message_at'] ?? '')) ?? '';
+$activeConversationCount = count($conversation);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -240,8 +259,8 @@ $signalHistoryHash = sha1($signalHistoryHtml);
             <section class="panel signal-col" aria-labelledby="signal-mailbox-title">
                 <div class="section-topline">
                     <div>
-                        <h2 id="signal-mailbox-title">Boîte · ouvrir un fil</h2>
-                        <p class="panel-copy">Choisis une terre, ouvre le fil, puis écris.</p>
+                        <h2 id="signal-mailbox-title">Boîte · choisir une terre</h2>
+                        <p class="panel-copy">Reprends un fil existant ou prépare la destination avant d’écrire.</p>
                     </div>
                     <span class="badge"><?= h((string) count($contacts)) ?> terre<?= count($contacts) > 1 ? 's' : '' ?></span>
                 </div>
@@ -250,7 +269,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                     <div class="signal-flow-shell">
                         <form action="<?= h($signalHref) ?>" method="get" class="land-form signal-form signal-open-form" data-signal-open-form>
                             <label>
-                                Ouvrir une liaison
+                                Trouver une terre
                                 <input
                                     type="text"
                                     name="u"
@@ -261,11 +280,33 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                                     data-signal-recipient-input
                                     data-placeholder-default="slug ou nom d’une terre"
                                 >
-                                <span class="input-hint" data-signal-recipient-hint>Tape un nom de terre, ouvre le fil, puis écris.</span>
+                                <span class="input-hint" data-signal-recipient-hint>Tape un nom ou un slug. Signal reconnaît la terre avant l’ouverture.</span>
                             </label>
                             <div class="action-row signal-flow-actions">
                                 <button type="submit">Ouvrir le fil</button>
                                 <span class="signal-flow-hint">Entrée ouvre la conversation</span>
+                            </div>
+
+                            <div
+                                class="signal-preview-card is-empty"
+                                data-signal-recipient-preview
+                                data-preview-empty-title="Aucune terre retenue"
+                                data-preview-empty-copy="Choisis une terre pour voir sa résonance, ouvrir le fil ou basculer en direct."
+                                data-preview-signal-base="<?= h($signalHref) ?>"
+                                data-preview-echo-base="<?= h($echoHref) ?>"
+                            >
+                                <p class="signal-preview-kicker" data-signal-preview-kicker>Aperçu de liaison</p>
+                                <strong data-signal-preview-title>Aucune terre retenue</strong>
+                                <p class="signal-card-meta" data-signal-preview-copy>Choisis une terre pour voir sa résonance, ouvrir le fil ou basculer en direct.</p>
+                                <div class="signal-card-spectrum" data-signal-preview-spectrum hidden>
+                                    <span class="signal-spectrum-pill" data-signal-preview-lambda></span>
+                                    <span class="signal-spectrum-pill" data-signal-preview-phase></span>
+                                    <span class="signal-spectrum-pill" data-signal-preview-gap></span>
+                                </div>
+                                <div class="signal-preview-actions" data-signal-preview-actions hidden>
+                                    <a class="ghost-link" href="<?= h($signalHref) ?>" data-signal-preview-open>Ouvrir le fil</a>
+                                    <a class="ghost-link" href="<?= h($echoHref) ?>" data-signal-preview-echo>Passer en direct</a>
+                                </div>
                             </div>
 
                             <details class="signal-advanced">
@@ -457,27 +498,27 @@ $signalHistoryHash = sha1($signalHistoryHtml);
             </section>
 
             <aside class="panel signal-col" aria-labelledby="signal-inbox-title">
-                <div class="section-topline">
-                    <div>
-                        <h2 id="signal-inbox-title"><?= $targetLand ? 'Fil de boîte' : 'Écrire dans Signal' ?></h2>
-                        <p class="panel-copy">
-                            <?php if ($targetLand): ?>
-                                Fil ouvert avec <?= h((string) $targetLand['username']) ?> via <?= h(signal_virtual_address($targetLand)) ?>. Reste ici pour garder le contexte, ou passe en Écho pour répondre en direct.
-                            <?php else: ?>
-                                Signal garde l’adresse et la mémoire. Ouvre d’abord un fil, puis écris.
-                            <?php endif; ?>
-                        </p>
-                    </div>
-                    <?php if ($targetLand): ?>
-                        <span class="badge"><?= h(signal_virtual_address($targetLand)) ?></span>
+                    <div class="section-topline">
+                        <div>
+                            <h2 id="signal-inbox-title"><?= $targetLand ? 'Fil de boîte' : 'Écrire dans Signal' ?></h2>
+                            <p class="panel-copy">
+                                <?php if ($targetLand): ?>
+                                    Fil ouvert avec <?= h((string) $targetLand['username']) ?> via <?= h(signal_virtual_address($targetLand)) ?>. Reste ici pour garder le contexte, ou passe en Écho pour répondre en direct.
+                                <?php else: ?>
+                                    Choisis une terre ici ou dans le carnet, puis écris sans quitter la page. Signal ouvrira le fil au premier envoi.
+                                <?php endif; ?>
+                            </p>
+                        </div>
+                        <?php if ($targetLand): ?>
+                            <span class="badge"><?= h(signal_virtual_address($targetLand)) ?></span>
                     <?php endif; ?>
                 </div>
 
                 <?php if (!$targetLand): ?>
                     <div class="signal-empty-state">
                         <div class="signal-compose-head">
-                            <p class="panel-copy">Une destination, un message, puis laisse le fil se former.</p>
-                            <p class="signal-compare-note">Tu veux juste toucher une terre déjà choisie sans passer par le carnet ? <a href="<?= h($echoHref) ?>">Écho va droit au direct</a>.</p>
+                            <p class="panel-copy">Une destination claire, une impulsion, puis le fil se forme.</p>
+                            <p class="signal-compare-note">Si la terre est déjà reconnue, tu peux aussi ouvrir le fil avant d’envoyer. Quand la destination est évidente, <a href="<?= h($echoHref) ?>">Écho va droit au direct</a>.</p>
                         </div>
 
                         <form action="<?= h($signalHref) ?>" method="post" class="land-form signal-form signal-compose-form" data-signal-compose data-draft-scope="new">
@@ -487,8 +528,30 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                             <label>
                                 Destination
                                 <input type="text" name="receiver_slug" list="signal-contact-options" placeholder="slug ou nom d’une terre en douceur" required data-signal-recipient-input data-placeholder-default="slug ou nom d’une terre">
-                                <span class="input-hint" data-signal-recipient-hint>Choisis une terre et commence à écrire. Les nuances viennent après.</span>
+                                <span class="input-hint" data-signal-recipient-hint>Choisis une terre puis appuie sur Entrée pour passer directement au message.</span>
                             </label>
+
+                            <div
+                                class="signal-preview-card is-empty"
+                                data-signal-recipient-preview
+                                data-preview-empty-title="Destination à préciser"
+                                data-preview-empty-copy="Dès qu’une terre est reconnue, son accord apparaît ici avec les chemins possibles."
+                                data-preview-signal-base="<?= h($signalHref) ?>"
+                                data-preview-echo-base="<?= h($echoHref) ?>"
+                            >
+                                <p class="signal-preview-kicker" data-signal-preview-kicker>Terre reconnue</p>
+                                <strong data-signal-preview-title>Destination à préciser</strong>
+                                <p class="signal-card-meta" data-signal-preview-copy>Dès qu’une terre est reconnue, son accord apparaît ici avec les chemins possibles.</p>
+                                <div class="signal-card-spectrum" data-signal-preview-spectrum hidden>
+                                    <span class="signal-spectrum-pill" data-signal-preview-lambda></span>
+                                    <span class="signal-spectrum-pill" data-signal-preview-phase></span>
+                                    <span class="signal-spectrum-pill" data-signal-preview-gap></span>
+                                </div>
+                                <div class="signal-preview-actions" data-signal-preview-actions hidden>
+                                    <a class="ghost-link" href="<?= h($signalHref) ?>" data-signal-preview-open>Ouvrir le fil</a>
+                                    <a class="ghost-link" href="<?= h($echoHref) ?>" data-signal-preview-echo>Passer en direct</a>
+                                </div>
+                            </div>
 
                             <label>
                                 Première impulsion
@@ -551,8 +614,46 @@ $signalHistoryHash = sha1($signalHistoryHtml);
                         </form>
                     </div>
                 <?php else: ?>
-                    <div class="echo-history" id="signal-history" data-message-live-history>
-                        <?= $signalHistoryHtml ?>
+                    <div class="signal-thread-context">
+                        <div class="signal-thread-head">
+                            <div>
+                                <p class="signal-preview-kicker">Fil actif</p>
+                                <h3><?= h((string) ($targetLand['username'] ?? $targetLand['slug'])) ?></h3>
+                                <p class="signal-card-meta">@<?= h((string) ($targetLand['slug'] ?? '')) ?> · <?= h($activeContactProgramLabel) ?></p>
+                            </div>
+                            <div class="signal-card-spectrum" aria-hidden="true">
+                                <span class="signal-spectrum-pill">λ <?= h((string) $activeContactLambda) ?> nm</span>
+                                <span class="signal-spectrum-pill signal-spectrum-pill--<?= h($activeContactPhase) ?>"><?= h($activeContactPhaseLabel) ?></span>
+                                <span class="signal-spectrum-pill">Δ <?= h((string) $activeContactGap) ?> nm</span>
+                            </div>
+                        </div>
+                        <p class="signal-card-copy"><?= h($activeContactSummary) ?></p>
+                        <div class="signal-thread-stats" aria-label="Contexte du fil">
+                            <span class="signal-thread-stat"><?= h((string) $activeConversationCount) ?> message<?= $activeConversationCount > 1 ? 's' : '' ?> dans ce fil</span>
+                            <?php if ($activeContactLastLabel !== ''): ?>
+                                <span class="signal-thread-stat">dernier passage <?= h($activeContactLastLabel) ?></span>
+                            <?php endif; ?>
+                            <span class="signal-thread-stat"><?= h(signal_virtual_address($targetLand)) ?></span>
+                        </div>
+                        <div class="signal-thread-actions">
+                            <a class="ghost-link" href="<?= h($signalHref) ?>">Changer de terre</a>
+                            <a class="ghost-link" href="<?= h($echoHref) ?>?u=<?= rawurlencode((string) ($targetLand['username'] ?? '')) ?>">Passer en direct dans Écho</a>
+                        </div>
+                    </div>
+
+                    <div class="signal-history-shell">
+                        <div class="signal-history-toolbar" aria-label="Navigation du fil">
+                            <span class="signal-flow-hint">Navigation du fil</span>
+                            <div class="signal-history-toolbar-actions">
+                                <button type="button" class="signal-history-jump" data-signal-history-jump="first">Premier message</button>
+                                <button type="button" class="signal-history-jump" data-signal-history-jump="latest">Dernier message</button>
+                                <button type="button" class="signal-history-jump" data-signal-history-jump="composer">Répondre</button>
+                            </div>
+                        </div>
+
+                        <div class="echo-history" id="signal-history" data-message-live-history>
+                            <?= $signalHistoryHtml ?>
+                        </div>
                     </div>
 
                     <form action="<?= h($signalHref) ?>?u=<?= rawurlencode((string) $targetLand['slug']) ?>" method="post" class="land-form signal-form" data-signal-compose data-draft-scope="<?= h($currentDraftScope) ?>">
@@ -562,7 +663,7 @@ $signalHistoryHash = sha1($signalHistoryHtml);
 
                         <label>
                             Message
-                            <textarea name="body" rows="7" required placeholder="Écrire à cette terre en cherchant l’accord..." data-signal-draft-body data-placeholder-default="Écrire à cette terre..."></textarea>
+                            <textarea name="body" rows="7" required placeholder="Écrire à cette terre en cherchant l’accord..." data-signal-draft-body data-placeholder-default="Écrire à cette terre..." data-signal-history-composer></textarea>
                         </label>
 
                         <details class="signal-advanced">

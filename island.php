@@ -537,7 +537,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                                     <p><span>Source</span><strong data-str3m-player-source><?= h($readerTitle) ?></strong></p>
                                                     <p><span>Vitesse</span><strong data-str3m-player-rate-state>1.00×</strong></p>
                                                     <p><span>EQ</span><strong data-str3m-player-summary>plat</strong></p>
-                                                    <p><span>Raccourcis</span><strong>Espace · ← →</strong></p>
+                                                    <p><span>Raccourcis</span><strong>Espace · ← → · ±</strong></p>
                                                 </div>
                                             </section>
                                         </div>

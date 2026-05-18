@@ -799,37 +799,44 @@ $pageDescription = $isLabSurface
         </article>
 
         <nav class="entry-grid editorial-nav" aria-label="Entrées principales du noyau">
+            <p class="entry-grid__prompt">Choisir en un geste. Si tu préfères la voix, dis simplement la phrase indiquée à 0wlslw0.</p>
             <?php if ($authenticatedLand): ?>
                 <a href="<?= h($homePrimaryActionHref) ?>" class="entry-card entry-card--primary">
                     <span class="summary-label">01 · terre</span>
-                    <strong>Ouvrir ma terre</strong>
+                    <strong>Rouvrir ma terre</strong>
                     <span>Revenir immédiatement à ton noyau situé.</span>
+                    <small class="entry-card__hint">Dire : « ouvre ma terre »</small>
                 </a>
                 <a href="<?= h($signalHref) ?>" class="entry-card">
                     <span class="summary-label">02 · adresse</span>
-                    <strong>Écrire</strong>
+                    <strong>Écrire maintenant</strong>
                     <span>Aller droit vers Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : '' ?>.</span>
+                    <small class="entry-card__hint">Dire : « ouvre Signal »</small>
                 </a>
                 <a href="<?= h($str3mHref) ?>" class="entry-card">
                     <span class="summary-label">03 · public</span>
-                    <strong>Entrer publiquement</strong>
+                    <strong>Relire le public</strong>
                     <span>Voir le courant avant de replonger dans ta terre.</span>
+                    <small class="entry-card__hint">Dire : « ramène-moi vers Str3m »</small>
                 </a>
             <?php else: ?>
                 <a href="<?= h($str3mHref) ?>" class="entry-card entry-card--primary">
                     <span class="summary-label">01 · public</span>
-                    <strong>Entrer publiquement</strong>
-                    <span>Lire Str3m et sentir le courant.</span>
+                    <strong>Voir d’abord</strong>
+                    <span>Entrer publiquement dans Str3m et sentir le courant.</span>
+                    <small class="entry-card__hint">Dire : « je veux visiter publiquement »</small>
                 </a>
                 <a href="<?= h($joinHref) ?>" class="entry-card">
                     <span class="summary-label">02 · terre</span>
                     <strong>Poser une terre</strong>
                     <span>Ouvrir un lieu à toi, situé, avec sa fréquence.</span>
+                    <small class="entry-card__hint">Dire : « je veux poser une terre »</small>
                 </a>
                 <a href="<?= h($guideHref) ?>" class="entry-card">
                     <span class="summary-label">03 · 0wlslw0</span>
-                    <strong>Passer par 0wlslw0</strong>
-                    <span>Clarifier vite, puis continuer.</span>
+                    <strong>Me faire guider</strong>
+                    <span>Passer par 0wlslw0 pour clarifier vite, puis continuer.</span>
+                    <small class="entry-card__hint">Dire : « aide-moi à choisir »</small>
                 </a>
             <?php endif; ?>
         </nav>

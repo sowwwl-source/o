@@ -50,7 +50,7 @@ What this script does:
   - rebuilds the live app+api images before any live mutation
   - restarts the live app+api containers from o/deploy
   - ensures Caddy is up so bind-mounted proxy config changes are applied live
-  - verifies the main public routes, sowwwl.org copy markers, and Signal readiness
+  - verifies the main public routes, sowwwl.org copy markers, Signal readiness, and the 0wlslw0 relay when configured
   - refuses lab-facing plasma overrides unless --allow-cross-origin-plasma is passed
   - can stop after a safe preflight with --preflight-only
 
@@ -389,6 +389,13 @@ signal_validation_args() {
 	fi
 }
 
+should_verify_0wlslw0_agent() {
+	local endpoint
+
+	endpoint=$(read_env_value "SOWWWL_0WLSLW0_AGENT_ENDPOINT")
+	[[ -n "$endpoint" ]]
+}
+
 echo "==> Updating production checkout"
 cd "$prod_root"
 git fetch origin
@@ -449,6 +456,12 @@ if [[ $verify -eq 0 ]]; then
 fi
 
 echo "==> Public verification"
+if should_verify_0wlslw0_agent; then
+	echo "==> Verifying 0wlslw0 remote relay"
+	docker exec "${project_name}-app-1" php /var/www/html/scripts/check_0wlslw0_agent.php --require-remote-ok
+else
+	echo "==> 0wlslw0 remote relay not configured in $env_path (local fallback remains available)"
+fi
 curl -fsSI https://sowwwl.com/
 curl -fsSI https://sowwwl.xyz/
 curl -fsSI https://sowwwl.xyz/map

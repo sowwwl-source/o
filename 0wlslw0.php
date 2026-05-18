@@ -92,12 +92,12 @@ $openLandHref = $authenticatedLand
     : o_route_path('/rejoindre');
 $openLandLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une terre';
 $guidePassageStateShort = match ($voiceUpstreamState) {
-    'remote-ready' => 'relais vocal amont actif',
+    'remote-ready' => 'relais vocal amont configuré',
     'auth-missing' => 'relais repere, autorisation incomplète',
     default => 'guidage local actif',
 };
 $guidePassageStateLong = match ($voiceUpstreamState) {
-    'remote-ready' => 'Le relais vocal répond. 0wlslw0 peut clarifier ici puis ouvrir la bonne porte.',
+    'remote-ready' => 'Le relais vocal est configuré. 0wlslw0 passe par lui quand il répond, puis revient au guidage local si besoin.',
     'auth-missing' => 'Le relais est repéré, mais l’autorisation reste incomplète. 0wlslw0 reste utilisable ici.',
     default => 'Le guidage local reste actif. Si l’amont manque, 0wlslw0 garde le seuil ouvert ici.',
 };

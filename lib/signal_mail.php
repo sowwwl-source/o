@@ -584,6 +584,26 @@ function signal_load_conversation(array $land, string $otherSlug): array
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
+function signal_message_datetime(?string $createdAt): ?DateTimeImmutable
+{
+    $createdAt = trim((string) $createdAt);
+    if ($createdAt === '') {
+        return null;
+    }
+
+    try {
+        return (new DateTimeImmutable($createdAt))->setTimezone(new DateTimeZone(DEFAULT_TIMEZONE));
+    } catch (Throwable $exception) {
+        return null;
+    }
+}
+
+function signal_message_day_label(?string $createdAt): string
+{
+    $date = signal_message_datetime($createdAt);
+    return $date ? $date->format('d.m.Y') : 'temps indéfini';
+}
+
 function signal_render_conversation_html(array $conversation, array $land, bool $showSubject = true, string $emptyMessage = 'Aucune trace encore entre vos deux boîtes.'): string
 {
     ob_start();
@@ -595,19 +615,48 @@ function signal_render_conversation_html(array $conversation, array $land, bool 
         return (string) ob_get_clean();
     }
 
-    foreach ($conversation as $entry) {
+    $lastDayKey = '';
+    $lastIndex = array_key_last($conversation);
+
+    foreach ($conversation as $index => $entry) {
         $isMine = (string) ($entry['sender_land_slug'] ?? '') === (string) ($land['slug'] ?? '');
+        $createdAt = (string) ($entry['created_at'] ?? '');
+        $createdLabel = human_created_label($createdAt) ?? 'maintenant';
+        $date = signal_message_datetime($createdAt);
+        $dayKey = $date ? $date->format('Y-m-d') : 'unknown';
+        $dayLabel = signal_message_day_label($createdAt);
+        $messageId = 'signal-message-' . (string) $index;
+
+        if ($dayKey !== $lastDayKey) {
+            ?>
+            <div class="signal-history-separator" data-signal-history-separator>
+                <span><?= h($dayLabel) ?></span>
+            </div>
+            <?php
+            $lastDayKey = $dayKey;
+        }
         ?>
-        <div class="echo-msg <?= $isMine ? 'echo-msg--sent' : 'echo-msg--received' ?>">
-            <span class="echo-msg-meta">
-                <?= h((string) ($entry['sender_land_username'] ?? 'terre')) ?>
-                · <?= h(human_created_label((string) ($entry['created_at'] ?? '')) ?? 'maintenant') ?>
-            </span>
+        <article
+            id="<?= h($messageId) ?>"
+            class="echo-msg signal-history-message <?= $isMine ? 'echo-msg--sent' : 'echo-msg--received' ?>"
+            data-signal-history-item
+            <?= $index === 0 ? 'data-signal-history-first="1"' : '' ?>
+            <?= $index === $lastIndex ? 'data-signal-history-last="1"' : '' ?>
+        >
+            <div class="signal-message-head">
+                <span class="echo-msg-meta">
+                    <?= h((string) ($entry['sender_land_username'] ?? 'terre')) ?>
+                    · <?= h($createdLabel) ?>
+                </span>
+                <time class="signal-message-stamp" datetime="<?= h($createdAt) ?>"><?= h($dayLabel) ?></time>
+            </div>
             <?php if ($showSubject && trim((string) ($entry['subject'] ?? '')) !== ''): ?>
-                <strong><?= h((string) $entry['subject']) ?></strong><br>
+                <strong class="signal-message-subject"><?= h((string) $entry['subject']) ?></strong>
             <?php endif; ?>
-            <?= nl2br(h((string) ($entry['body'] ?? ''))) ?>
-        </div>
+            <div class="signal-message-body">
+                <?= nl2br(h((string) ($entry['body'] ?? ''))) ?>
+            </div>
+        </article>
         <?php
     }
 
