@@ -4,6 +4,7 @@ set -eu
 mkdir -p \
 	/var/www/runtime/lands \
 	/var/www/runtime/rate-limit \
+	/var/www/runtime/sessions \
 	/var/www/runtime/signals/items \
 	/var/www/runtime/plasma \
 	/var/www/runtime/aza/imports \

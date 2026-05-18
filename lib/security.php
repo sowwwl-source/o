@@ -19,6 +19,17 @@ function start_secure_session(): void
         return;
     }
 
+    $sessionSavePath = sowwwl_session_save_path();
+    if ($sessionSavePath !== '') {
+        if (!is_dir($sessionSavePath)) {
+            @mkdir($sessionSavePath, 0775, true);
+        }
+
+        if (is_dir($sessionSavePath) && is_writable($sessionSavePath)) {
+            session_save_path($sessionSavePath);
+        }
+    }
+
     session_name('sowwwl_session');
     ini_set('session.gc_maxlifetime', (string) SOWWWL_AUTH_SESSION_TTL);
     session_set_cookie_params([
@@ -31,6 +42,24 @@ function start_secure_session(): void
     ]);
 
     session_start();
+}
+
+function sowwwl_session_save_path(): string
+{
+    $override = trim((string) (getenv('SOWWWL_SESSION_DIR') ?: ''));
+    if ($override !== '') {
+        return rtrim($override, DIRECTORY_SEPARATOR);
+    }
+
+    if (defined('RATE_LIMIT_DIR')) {
+        return dirname(RATE_LIMIT_DIR) . DIRECTORY_SEPARATOR . 'sessions';
+    }
+
+    if (is_dir('/var/www/runtime') || is_writable('/var/www')) {
+        return '/var/www/runtime/sessions';
+    }
+
+    return dirname(__DIR__) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'runtime' . DIRECTORY_SEPARATOR . 'sessions';
 }
 
 function request_is_secure(): bool

@@ -10,6 +10,7 @@ $brandDomain = current_brand_domain($host);
 $csrfToken = csrf_token();
 $guideHref = o_route_path('/0wlslw0');
 $homeHref = o_route_path('/');
+$joinHref = o_route_path('/rejoindre');
 $signalHref = o_route_path('/signal');
 $str3mHref = o_route_path('/str3m');
 $echoHref = o_route_path('/echo');
@@ -17,13 +18,7 @@ $signalLiveHref = o_route_path('/signal_live.php');
 $echoGuide = guide_path('echo');
 
 $land = current_authenticated_land();
-if (!$land) {
-    header('Location: ' . $homeHref . '?error=auth');
-    exit;
-}
-
-$ambientProfile = land_visual_profile($land);
-$myUsername = (string) $land['username'];
+$ambientProfile = $land ? land_visual_profile($land) : land_collective_profile('dense');
 $targetIdentifier = trim((string) ($_GET['u'] ?? ''));
 $message = '';
 $messageType = 'info';
@@ -37,7 +32,10 @@ $targetSlug = trim((string) ($targetLand['slug'] ?? ''));
 // Traitement de l'envoi d'un écho
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedToken = $_POST['csrf_token'] ?? '';
-    if (!hash_equals($csrfToken, $postedToken)) {
+    if (!$land) {
+        header('Location: ' . $echoHref . '?error=auth', true, 303);
+        exit;
+    } elseif (!hash_equals($csrfToken, $postedToken)) {
         $message = "La résonance s'est dissipée. Réessaie.";
         $messageType = 'warning';
     } elseif (!$messagingReady) {
@@ -62,9 +60,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$errorCode = trim((string) ($_GET['error'] ?? ''));
+if ($errorCode !== '') {
+    $messageType = 'warning';
+    $message = match ($errorCode) {
+        'auth' => 'Ouvre une terre pour activer Echo en direct.',
+        default => 'Echo ne peut pas ouvrir la liaison pour le moment.',
+    };
+}
+
 // Récupération des contacts (Terres existantes, excluant soi-même)
 $contacts = [];
-if ($messagingReady) {
+if ($land && $messagingReady) {
     foreach (signal_contact_candidates($land) as $contact) {
         $contacts[] = [
             'username' => trim((string) ($contact['counterpart_username'] ?? '')),
@@ -76,11 +83,11 @@ if ($messagingReady) {
 
 // Récupération de l'historique si une Terre est ciblée
 $history = [];
-if ($targetSlug !== '' && $messagingReady) {
+if ($land && $targetSlug !== '' && $messagingReady) {
     $history = signal_load_conversation($land, $targetSlug);
 }
 
-$echoHistoryHtml = signal_render_conversation_html($history, $land, false, 'Le silence règne entre vos deux terres.');
+$echoHistoryHtml = signal_render_conversation_html($history, $land ?? [], false, 'Le silence règne entre vos deux terres.');
 $echoHistoryHash = sha1($echoHistoryHtml);
 $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername);
 ?>
@@ -111,11 +118,23 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
         <p class="lead">Même trame que Signal, mais en direct.</p>
 
         <div class="land-meta">
-            <span class="meta-pill">terre liée : <?= h((string) $land['slug']) ?></span>
             <a class="meta-pill meta-pill-link" href="<?= h($signalHref) ?>">signal / boîte</a>
             <a class="meta-pill meta-pill-link" href="<?= h($guideHref) ?>">0wlslw0</a>
+            <?php if ($land): ?>
+                <span class="meta-pill">terre liée : <?= h((string) $land['slug']) ?></span>
+            <?php else: ?>
+                <span class="meta-pill">lecture de principe</span>
+            <?php endif; ?>
         </div>
     </header>
+
+    <?php if ($message !== ''): ?>
+        <section class="panel reveal">
+            <div class="flash flash-<?= h($messageType) ?>" aria-live="polite">
+                <p><?= h($message) ?></p>
+            </div>
+        </section>
+    <?php endif; ?>
 
     <section class="panel reveal signal-mode-panel" aria-labelledby="echo-mode-title">
         <div class="section-topline">
@@ -142,7 +161,15 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
         </aside>
 
         <div class="echo-conversation panel">
-            <?php if (!$messagingReady): ?>
+            <?php if (!$land): ?>
+                <div class="echo-empty-state">
+                    <p class="panel-copy">Echo a besoin d’une terre active pour ouvrir une liaison directe. Sans terre, tu peux déjà lire Signal et préparer l’entrée.</p>
+                    <div class="action-row">
+                        <a class="pill-link" href="<?= h($joinHref) ?>">Ouvrir une terre</a>
+                        <a class="ghost-link" href="<?= h($signalHref) ?>">Voir Signal</a>
+                    </div>
+                </div>
+            <?php elseif (!$messagingReady): ?>
                 <p class="panel-copy">Écho reste en veille tant que la base SQL unifiée de Signal n’est pas active.</p>
                 <p class="panel-copy"><?= h($signalSchemaHint) ?></p>
             <?php elseif ($targetSlug === '' || !$targetLand): ?>
