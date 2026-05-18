@@ -455,6 +455,13 @@ if [[ $verify -eq 0 ]]; then
 	exit 0
 fi
 
+echo "==> Verifying critical files inside app container"
+docker exec "${project_name}-app-1" test -s /var/www/html/main.js
+docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon.svg
+docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon-192.png
+docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_signal_validation.php
+docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_0wlslw0_agent.php
+
 echo "==> Public verification"
 if should_verify_0wlslw0_agent; then
 	echo "==> Verifying 0wlslw0 remote relay"
