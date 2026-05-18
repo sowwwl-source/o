@@ -26,8 +26,8 @@ default_prod_root() {
 }
 
 default_static_sites_dir() {
-	if [[ -d "/var/www/sowwwl.com/deploy/sites" ]]; then
-		printf '%s\n' "/var/www/sowwwl.com/deploy/sites"
+	if [[ -n "${compose_dir:-}" ]]; then
+		printf '%s\n' "$compose_dir/sites"
 		return
 	fi
 
@@ -120,13 +120,13 @@ if [[ ! -d "$prod_root/.git" ]]; then
 	exit 1
 fi
 
-if [[ -z "$static_sites_dir" ]]; then
-	static_sites_dir=$(default_static_sites_dir)
-fi
-
 env_path="$prod_root/$env_file"
 compose_path="$prod_root/$compose_file"
 compose_dir=$(dirname "$compose_path")
+
+if [[ -z "$static_sites_dir" ]]; then
+	static_sites_dir=$(default_static_sites_dir)
+fi
 
 compose_prod() {
 	docker compose -p "$project_name" --env-file "$env_path" -f "$compose_path" "$@"
