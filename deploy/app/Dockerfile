@@ -14,7 +14,7 @@ RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
 	&& rm composer-setup.php
 
 RUN a2enmod headers rewrite \
-	&& a2dismod alias autoindex
+	&& a2dismod -f alias autoindex
 
 COPY deploy/app/security.conf /etc/apache2/conf-enabled/zzz-sowwwl-security.conf
 COPY deploy/app/upload-limits.ini /usr/local/etc/php/conf.d/zzz-sowwwl-upload.ini
