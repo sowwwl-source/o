@@ -13,7 +13,8 @@ RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
 	&& php composer-setup.php --install-dir=/usr/local/bin --filename=composer \
 	&& rm composer-setup.php
 
-RUN a2enmod headers rewrite
+RUN a2enmod headers rewrite \
+	&& a2dismod autoindex
 
 COPY deploy/app/security.conf /etc/apache2/conf-enabled/zzz-sowwwl-security.conf
 COPY deploy/app/upload-limits.ini /usr/local/etc/php/conf.d/zzz-sowwwl-upload.ini
