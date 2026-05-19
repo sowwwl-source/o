@@ -83,6 +83,9 @@ Options -Indexes
   RewriteRule ^ingest/sensor/$ https://%{HTTP_HOST}/ingest/sensor [R=302,L,NC]
   RewriteRule ^ingest/membrane/$ https://%{HTTP_HOST}/ingest/membrane [R=302,L,NC]
   RewriteRule ^plasma/recent/$ https://%{HTTP_HOST}/plasma/recent [R=302,L,NC]
+  RewriteRule ^aza_asset\.php$ https://%{HTTP_HOST}/aza/asset [R=302,L]
+
+  RewriteRule ^storage/aza/.+\.(?:svg|svgz)$ - [F,L,NC]
 
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
@@ -106,6 +109,7 @@ Options -Indexes
   RewriteRule ^plasma/recent$ plasma_recent.php [L,NC,QSA]
   RewriteRule ^0wlslw0/voice$ 0wlslw0_voice.php [L,NC,QSA]
   RewriteRule ^0wlslw0$ 0wlslw0.php [L,NC,QSA]
+  RewriteRule ^aza/asset$ aza_asset.php [L,NC,QSA]
   RewriteRule ^aza/0*([0-9]{1,2})$ aza.php?p=$1 [L,NC,QSA]
 </IfModule>
 

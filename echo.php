@@ -65,6 +65,7 @@ if ($errorCode !== '') {
     $messageType = 'warning';
     $message = match ($errorCode) {
         'auth' => 'Ouvre une terre pour activer Echo en direct.',
+        'session' => 'La session liée à la terre a expiré ou a été interrompue. Rouvre ta terre pour reprendre Echo.',
         default => 'Echo ne peut pas ouvrir la liaison pour le moment.',
     };
 }

@@ -64,17 +64,9 @@ function sowwwl_session_save_path(): string
 
 function request_is_secure(): bool
 {
-    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
-        return true;
-    }
-
-    $forwardedProto = strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
-    if ($forwardedProto === 'https') {
-        return true;
-    }
-
-    $cfVisitor = (string) ($_SERVER['HTTP_CF_VISITOR'] ?? '');
-    return str_contains($cfVisitor, '"scheme":"https"');
+    return function_exists('sowwwl_request_is_secure')
+        ? sowwwl_request_is_secure()
+        : (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 }
 
 function send_security_headers(): void
@@ -259,25 +251,9 @@ function logout_land(): void
 
 function client_ip(): string
 {
-    $candidates = [
-        (string) ($_SERVER['HTTP_CF_CONNECTING_IP'] ?? ''),
-        (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''),
-        (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
-    ];
-
-    foreach ($candidates as $candidate) {
-        $first = trim(explode(',', $candidate)[0] ?? '');
-        if ($first === '') {
-            continue;
-        }
-
-        $sanitized = preg_replace('/[^a-fA-F0-9:\.]/', '', $first) ?? '';
-        if ($sanitized !== '') {
-            return $sanitized;
-        }
-    }
-
-    return 'unknown';
+    return function_exists('sowwwl_effective_client_ip')
+        ? sowwwl_effective_client_ip()
+        : 'unknown';
 }
 
 function ensure_rate_limit_dir(): void

@@ -4,7 +4,7 @@ declare(strict_types=1);
 function aza_ingest_format_families(): array
 {
     return [
-        'image'    => ['jpg', 'jpeg', 'png', 'gif', 'webp', 'tiff', 'tif', 'bmp', 'heic', 'avif', 'svg'],
+        'image'    => ['jpg', 'jpeg', 'png', 'gif', 'webp', 'tiff', 'tif', 'bmp', 'heic', 'avif'],
         'video'    => ['mp4', 'mov', 'avi', 'mkv', 'webm', 'mts', 'm4v', 'wmv', 'ogv'],
         'audio'    => ['mp3', 'wav', 'flac', 'ogg', 'aac', 'm4a', 'aiff', 'opus'],
         'document' => ['pdf', 'txt', 'md', 'rtf', 'docx', 'doc', 'odt', 'epub'],
@@ -48,6 +48,17 @@ function aza_ingest_allowed_extensions(): array
         }
     }
     return $exts;
+}
+
+function aza_ingest_browser_preview_extensions(): array
+{
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp'];
+}
+
+function aza_ingest_can_browser_preview(string $ext): bool
+{
+    $normalized = strtolower(trim($ext, '.'));
+    return in_array($normalized, aza_ingest_browser_preview_extensions(), true);
 }
 
 function aza_ingest_files_dir(): string

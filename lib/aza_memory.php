@@ -20,6 +20,17 @@ function aza_memory_public_href(string $path): string
     return function_exists('o_route_path') ? o_route_path($normalized) : $normalized;
 }
 
+function aza_memory_download_href(string $path): string
+{
+    $normalized = trim($path);
+    if ($normalized === '') {
+        return '';
+    }
+
+    $route = function_exists('o_route_path') ? o_route_path('/aza/asset') : '/aza/asset';
+    return $route . '?' . http_build_query(['f' => ltrim($normalized, '/')]);
+}
+
 function aza_memory_normalize_view(string $view): string
 {
     $view = strtolower(trim($view));
@@ -275,7 +286,7 @@ function aza_memory_build_items(array $archives, array $files, ?array $sources =
             'source_label' => (string) ($sources[$archive['source']] ?? ($archive['source'] ?? 'Archive')),
             'meta_label' => (string) ($sources[$archive['source']] ?? ($archive['source'] ?? 'Archive')),
             'thumbnail_url' => '',
-            'href' => aza_memory_public_href((string) ($archive['stored_file'] ?? '')),
+            'href' => aza_memory_download_href((string) ($archive['stored_file'] ?? '')),
             'search' => aza_memory_search_normalize($searchBlob),
             'raw' => $archive,
         ];
@@ -286,7 +297,8 @@ function aza_memory_build_items(array $archives, array $files, ?array $sources =
         $family = (string) ($file['format_family'] ?? 'other');
         $summary = trim((string) (($file['notes'] ?? '') ?: ($file['date_hint'] ?? '') ?: aza_ingest_family_label($family)));
         $thumbnail = trim((string) ($file['thumbnail'] ?? ''));
-        if ($thumbnail === '' && $family === 'image') {
+        $format = strtolower(trim((string) ($file['format'] ?? '')));
+        if ($thumbnail === '' && $family === 'image' && aza_ingest_can_browser_preview($format)) {
             $thumbnail = aza_memory_public_href((string) ($file['stored_file'] ?? ''));
         } elseif ($thumbnail !== '') {
             $thumbnail = aza_memory_public_href($thumbnail);
@@ -321,7 +333,7 @@ function aza_memory_build_items(array $archives, array $files, ?array $sources =
             'source_label' => 'Dépôt libre',
             'meta_label' => aza_ingest_family_label($family),
             'thumbnail_url' => $thumbnail,
-            'href' => aza_memory_public_href((string) ($file['stored_file'] ?? '')),
+            'href' => aza_memory_download_href((string) ($file['stored_file'] ?? '')),
             'search' => aza_memory_search_normalize($searchBlob),
             'raw' => $file,
         ];

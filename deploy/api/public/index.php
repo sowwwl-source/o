@@ -4,23 +4,11 @@ declare(strict_types=1);
 
 date_default_timezone_set('UTC');
 
+require_once __DIR__ . '/request_trust.php';
+
 function request_is_secure(): bool
 {
-    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
-        return true;
-    }
-
-    $forwardedProto = strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
-    if ($forwardedProto !== '') {
-        $parts = preg_split('/\s*,\s*/', $forwardedProto) ?: [];
-        $candidate = strtolower(trim((string) ($parts[0] ?? $forwardedProto)));
-        if ($candidate === 'https') {
-            return true;
-        }
-    }
-
-    $cfVisitor = (string) ($_SERVER['HTTP_CF_VISITOR'] ?? '');
-    return str_contains($cfVisitor, '"scheme":"https"');
+    return sowwwl_request_is_secure();
 }
 
 function request_public_base_url(): string
@@ -44,16 +32,7 @@ $parsedBaseHost = parse_url($baseUrl, PHP_URL_HOST);
 $serviceLabel = is_string($parsedBaseHost) && $parsedBaseHost !== ''
     ? strtolower($parsedBaseHost)
     : trim((string) ($_SERVER['HTTP_HOST'] ?? 'api.sowwwl.cloud'));
-
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Headers: Authorization, Content-Type');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('X-Content-Type-Options: nosniff');
-
-if ($method === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
 
 function json_response(int $status, array $payload): void
 {
@@ -108,6 +87,79 @@ function stub_response(string $path, string $method): void
     ]);
 }
 
+function api_allowed_origins(): array
+{
+    $configured = trim((string) (getenv('API_ALLOWED_ORIGINS') ?: ''));
+    $candidates = $configured !== ''
+        ? (preg_split('/[\s,]+/', $configured) ?: [])
+        : [
+            'https://sowwwl.com',
+            'https://www.sowwwl.com',
+            'https://sowwwl.cloud',
+            'https://www.sowwwl.cloud',
+            'https://api.sowwwl.cloud',
+            'https://lab.sowwwl.cloud',
+            'https://www.lab.sowwwl.cloud',
+            'https://api.lab.sowwwl.cloud',
+        ];
+
+    $origins = [];
+    foreach ($candidates as $candidate) {
+        $candidate = trim((string) $candidate);
+        if ($candidate === '') {
+            continue;
+        }
+
+        $parts = parse_url($candidate);
+        $scheme = strtolower(trim((string) ($parts['scheme'] ?? '')));
+        $host = strtolower(trim((string) ($parts['host'] ?? '')));
+        if ($scheme === '' || $host === '') {
+            continue;
+        }
+
+        $origin = $scheme . '://' . $host;
+        $port = isset($parts['port']) ? (int) $parts['port'] : null;
+        $defaultPort = $scheme === 'https' ? 443 : ($scheme === 'http' ? 80 : null);
+        if ($port !== null && $port > 0 && $port !== $defaultPort) {
+            $origin .= ':' . $port;
+        }
+
+        $origins[] = $origin;
+    }
+
+    return array_values(array_unique($origins));
+}
+
+function api_send_cors_headers(): bool
+{
+    header('Access-Control-Allow-Headers: Authorization, Content-Type');
+    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+
+    $origin = trim((string) ($_SERVER['HTTP_ORIGIN'] ?? ''));
+    if ($origin === '') {
+        return true;
+    }
+
+    if (!in_array($origin, api_allowed_origins(), true)) {
+        return false;
+    }
+
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Vary: Origin');
+    return true;
+}
+
+function api_bearer_token_is_configured(string $token): bool
+{
+    return $token !== '' && !str_starts_with($token, 'CHANGE_ME');
+}
+
+function api_allow_unauthenticated_stub(): bool
+{
+    $raw = strtolower(trim((string) (getenv('API_ALLOW_UNAUTHENTICATED_STUB') ?: '')));
+    return in_array($raw, ['1', 'true', 'yes', 'on'], true);
+}
+
 $publicPaths = [
     '/',
     '/healthz',
@@ -116,9 +168,30 @@ $publicPaths = [
     '/v1/status',
 ];
 
+$corsAllowed = api_send_cors_headers();
+if (!$corsAllowed) {
+    json_response(403, [
+        'ok' => false,
+        'error' => 'origin_not_allowed',
+    ]);
+}
+
+if ($method === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
 if (!in_array($path, $publicPaths, true)) {
     $token = bearer_from_request();
-    if ($bearerToken !== '' && !hash_equals($bearerToken, $token)) {
+    if (!api_bearer_token_is_configured($bearerToken) && !api_allow_unauthenticated_stub()) {
+        json_response(503, [
+            'ok' => false,
+            'error' => 'service_unavailable',
+            'message' => 'Protected stub routes are disabled until API_BEARER_TOKEN is configured.',
+        ]);
+    }
+
+    if (api_bearer_token_is_configured($bearerToken) && !hash_equals($bearerToken, $token)) {
         json_response(401, [
             'ok' => false,
             'error' => 'unauthorized',

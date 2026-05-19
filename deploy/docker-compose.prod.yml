@@ -35,6 +35,7 @@ services:
       DB_USER: ${DB_USER:-user}
       DB_PASS: ${DB_PASS:-CHANGE_ME_DB_PASSWORD}
       SOWWWL_PUBLIC_ORIGIN: ${SOWWWL_PUBLIC_ORIGIN:-https://sowwwl.com}
+      SOWWWL_TRUSTED_PROXY_CIDRS: ${SOWWWL_TRUSTED_PROXY_CIDRS:-127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7,fe80::/10}
       SOWWWL_AZA_DIRECT_ORIGIN: ${SOWWWL_AZA_DIRECT_ORIGIN:-https://upload.sowwwl.com}
       SOWWWL_MEMBRANE_BRIDGE_URL: ${SOWWWL_MEMBRANE_BRIDGE_URL:-}
       SOWWWL_PLASMA_FEED_URL: ${SOWWWL_PLASMA_FEED_URL:-}
@@ -44,6 +45,7 @@ services:
       SOWWWL_SESSION_DIR: /var/www/runtime/sessions
       SOWWWL_AZA_STORAGE_DIR: /var/www/runtime/aza
       SOWWWL_ADMIN_PIN: ${SOWWWL_ADMIN_PIN:-CHANGE_ME_ADMIN_PIN}
+      SOWWWL_ADMIN_PIN_HASH: ${SOWWWL_ADMIN_PIN_HASH:-}
       SOWWWL_ADMIN_EMAIL: ${SOWWWL_ADMIN_EMAIL:-pablo@sowwwl.com}
       SOWWWL_0WLSLW0_CHAT_URL: ${SOWWWL_0WLSLW0_CHAT_URL:-}
       SOWWWL_0WLSLW0_AGENT_ENDPOINT: ${SOWWWL_0WLSLW0_AGENT_ENDPOINT:-}
@@ -111,6 +113,8 @@ services:
     environment:
       API_BEARER_TOKEN: ${AZA_API_TOKEN:-CHANGE_ME_API_TOKEN}
       API_PUBLIC_BASE_URL: https://api.sowwwl.cloud
+      API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-https://sowwwl.com,https://www.sowwwl.com,https://sowwwl.cloud,https://www.sowwwl.cloud,https://api.sowwwl.cloud,https://lab.sowwwl.cloud,https://www.lab.sowwwl.cloud,https://api.lab.sowwwl.cloud}
+      SOWWWL_TRUSTED_PROXY_CIDRS: ${SOWWWL_TRUSTED_PROXY_CIDRS:-127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7,fe80::/10}
     expose:
       - "80"
     restart: unless-stopped

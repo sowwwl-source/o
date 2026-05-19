@@ -14,20 +14,11 @@ header('X-Frame-Options: DENY');
 header('Referrer-Policy: same-origin');
 
 require_once __DIR__ . '/../../lib/mailer.php';
+require_once __DIR__ . '/../../lib/request_trust.php';
 
 function request_is_secure(): bool
 {
-    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
-        return true;
-    }
-
-    $forwardedProto = strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
-    if ($forwardedProto === 'https') {
-        return true;
-    }
-
-    $cfVisitor = (string) ($_SERVER['HTTP_CF_VISITOR'] ?? '');
-    return str_contains($cfVisitor, '"scheme":"https"');
+    return sowwwl_request_is_secure();
 }
 
 function start_admin_session(): void
@@ -47,6 +38,23 @@ function start_admin_session(): void
     ]);
 
     session_start();
+}
+
+function admin_csrf_token(): string
+{
+    $token = (string) ($_SESSION['admin_csrf_token'] ?? '');
+    if ($token === '') {
+        $token = bin2hex(random_bytes(32));
+        $_SESSION['admin_csrf_token'] = $token;
+    }
+
+    return $token;
+}
+
+function admin_verify_csrf_token(?string $token): bool
+{
+    $sessionToken = (string) ($_SESSION['admin_csrf_token'] ?? '');
+    return $sessionToken !== '' && is_string($token) && hash_equals($sessionToken, $token);
 }
 
 function ensure_runtime_dir(string $runtimeDir): bool
@@ -69,10 +77,6 @@ function admin_log(string $event, string $email, array $context = []): void
         return;
     }
 
-    $ip = $_SERVER['HTTP_CF_CONNECTING_IP']
-        ?? $_SERVER['HTTP_X_FORWARDED_FOR']
-        ?? $_SERVER['REMOTE_ADDR']
-        ?? 'unknown';
     $uri = $_SERVER['REQUEST_URI'] ?? '/';
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
@@ -87,7 +91,7 @@ function admin_log(string $event, string $email, array $context = []): void
         date('c'),
         $event,
         $email,
-        trim(explode(',', (string) $ip)[0] ?? ''),
+        client_ip(),
         $uri,
         $userAgent,
         $contextJson
@@ -98,25 +102,7 @@ function admin_log(string $event, string $email, array $context = []): void
 
 function client_ip(): string
 {
-    $candidates = [
-        (string) ($_SERVER['HTTP_CF_CONNECTING_IP'] ?? ''),
-        (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''),
-        (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
-    ];
-
-    foreach ($candidates as $candidate) {
-        $first = trim(explode(',', $candidate)[0] ?? '');
-        if ($first === '') {
-            continue;
-        }
-
-        $sanitized = preg_replace('/[^a-fA-F0-9:\.]/', '', $first) ?? '';
-        if ($sanitized !== '') {
-            return $sanitized;
-        }
-    }
-
-    return 'unknown';
+    return sowwwl_effective_client_ip();
 }
 
 function runtime_dir(): string
@@ -325,6 +311,7 @@ function h(string $value): string
 }
 
 start_admin_session();
+$adminCsrfToken = admin_csrf_token();
 
 $adminEmail = trim((string) (getenv('SOWWWL_ADMIN_EMAIL') ?: '')) ?: 'pablo@sowwwl.com';
 $magicAllowedEmailsRaw = trim((string) (getenv('SOWWWL_MAGIC_LINK_EMAILS') ?: ''));
@@ -343,6 +330,7 @@ $magicInfo = '';
 $action = (string) ($_GET['action'] ?? '');
 $magicToken = (string) ($_GET['token'] ?? '');
 $passwordLoginEnabled = false;
+$configuredPinHash = trim((string) (getenv('SOWWWL_ADMIN_PIN_HASH') ?: ''));
 
 if ($action === 'magic_login' && $magicToken !== '') {
     try {
@@ -368,8 +356,13 @@ if ($action === 'magic_login' && $magicToken !== '') {
 }
 $configuredPin = trim((string) (getenv('SOWWWL_ADMIN_PIN') ?: ''));
 $adminPin = '';
-$passwordLoginEnabled = $configuredPin !== '' && !str_starts_with($configuredPin, 'CHANGE_ME');
-if ($passwordLoginEnabled) {
+$adminPinHash = '';
+$passwordLoginEnabled = ($configuredPinHash !== '' && !str_starts_with($configuredPinHash, 'CHANGE_ME'))
+    || ($configuredPin !== '' && !str_starts_with($configuredPin, 'CHANGE_ME'));
+if ($configuredPinHash !== '' && !str_starts_with($configuredPinHash, 'CHANGE_ME')) {
+    $adminPinHash = $configuredPinHash;
+}
+if ($configuredPin !== '' && !str_starts_with($configuredPin, 'CHANGE_ME')) {
     $adminPin = $configuredPin;
 }
 $error = '';
@@ -394,11 +387,33 @@ if (isset($_GET['logout'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
     $submittedPassword = (string) $_POST['password'];
+    $postedToken = (string) ($_POST['csrf_token'] ?? '');
 
     if (!$passwordLoginEnabled) {
         admin_log('auth.login.disabled', $adminEmail);
         $error = 'Password login is disabled on this server.';
-    } elseif (hash_equals($adminPin, $submittedPassword)) {
+    } elseif (!admin_verify_csrf_token($postedToken)) {
+        admin_log('auth.login.csrf', $adminEmail);
+        $error = 'Session expired. Reload and try again.';
+    } else {
+        try {
+            enforce_rate_limit('admin-password', 5, 900);
+        } catch (RuntimeException $exception) {
+            admin_log('auth.login.rate_limit', $adminEmail);
+            $error = 'Too many attempts. Please try again later.';
+        }
+    }
+
+    $passwordMatches = false;
+    if ($error === '') {
+        if ($adminPinHash !== '') {
+            $passwordMatches = password_verify($submittedPassword, $adminPinHash);
+        } elseif ($adminPin !== '') {
+            $passwordMatches = hash_equals($adminPin, $submittedPassword);
+        }
+    }
+
+    if ($error === '' && $passwordMatches) {
         session_regenerate_id(true);
         $_SESSION['user_email'] = $adminEmail;
         admin_log('auth.login.success', $adminEmail);
@@ -406,12 +421,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
         exit;
     }
 
-    admin_log('auth.login.failure', $adminEmail);
-    $error = 'Incorrect password.';
+    if ($error === '') {
+        admin_log('auth.login.failure', $adminEmail);
+        $error = 'Incorrect password.';
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($action === 'magic_request')) {
     try {
+        if (!admin_verify_csrf_token((string) ($_POST['csrf_token'] ?? ''))) {
+            throw new RuntimeException('Session expired. Reload and try again.');
+        }
+
         enforce_rate_limit('magic-request', 5, 600);
 
         if ($magicSecret === '' || str_starts_with($magicSecret, 'CHANGE_ME')) {
@@ -480,6 +501,7 @@ $userEmail = $isAdmin ? $sessionEmail : 'visitor';
             <p style="color:red;"><?php echo h($error); ?></p>
         <?php endif; ?>
         <form method="post">
+            <input type="hidden" name="csrf_token" value="<?php echo h($adminCsrfToken); ?>">
             <input type="password" name="password" placeholder="Admin username/password" autocomplete="current-password" required>
             <button type="submit">Login</button>
         </form>
@@ -493,6 +515,7 @@ $userEmail = $isAdmin ? $sessionEmail : 'visitor';
             <p><?php echo h($magicInfo); ?></p>
         <?php endif; ?>
         <form method="post" action="?action=magic_request">
+            <input type="hidden" name="csrf_token" value="<?php echo h($adminCsrfToken); ?>">
             <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required>
             <button type="submit">Send magic link</button>
         </form>

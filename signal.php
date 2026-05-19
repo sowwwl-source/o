@@ -100,6 +100,7 @@ if ($errorCode !== '') {
     $messageType = 'warning';
     $message = match ($errorCode) {
         'auth' => 'Ouvre une terre pour accéder à la messagerie Signal.',
+        'session' => 'La session liée à la terre a expiré ou a été interrompue. Rouvre ta terre puis reprends le fil.',
         'csrf' => 'Le jeton de session a expiré. Recharge la page et réessaie.',
         'messaging' => 'La messagerie Signal n’est pas encore prête côté base. ' . $signalSchemaHint,
         'identity-invalid' => 'Le lien de validation est invalide ou expiré.',

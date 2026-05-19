@@ -36,7 +36,8 @@ It uses one VPS, one Caddy reverse proxy, one PHP app container for the `o/` exp
 
 1. Rotate any SSH key that was previously committed to git.
 2. Copy `.env.production.example` to `.env.production`.
-3. Replace the `CHANGE_ME_*` values, especially `DB_PASS`, `DB_ROOT_PASSWORD`, `SOWWWL_ADMIN_PIN`, `SOWWWL_MAGIC_LINK_SECRET`, and SMTP credentials if Signal identity emails should be delivered.
+3. Replace the `CHANGE_ME_*` values, especially `DB_PASS`, `DB_ROOT_PASSWORD`, `AZA_API_TOKEN`, `SOWWWL_MAGIC_LINK_SECRET`, and SMTP credentials if Signal identity emails should be delivered.
+4. Prefer `SOWWWL_ADMIN_PIN_HASH` over `SOWWWL_ADMIN_PIN` when password login must stay enabled, and keep `SOWWWL_TRUSTED_PROXY_CIDRS` aligned with the real proxy path.
 4. Point DNS records at the VPS public IP.
 
 Keep `SOWWWL_MEMBRANE_BRIDGE_URL` and `SOWWWL_PLASMA_FEED_URL` empty unless you intentionally want the browser membrane/plasma flow to cross origins.

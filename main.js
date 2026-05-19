@@ -4155,8 +4155,10 @@ function initXyzCamera() {
 
 	const plasmaBridgeUrl = root.dataset.xyzPlasmaBridge || "";
 	const membraneLandSlug = root.dataset.xyzPlasmaLand || "";
+	const isAndroidSurface = /\bAndroid\b/i.test(window.navigator?.userAgent || "");
 
 	let stream = null;
+	let audioStream = null;
 	let analysisFrame = 0;
 	let audioFrame = 0;
 	let demoFrame = 0;
@@ -4206,12 +4208,15 @@ function initXyzCamera() {
 	let bridgeInFlight = false;
 	let bridgeLastSignature = "";
 	let bridgeLastAt = 0;
+	let sensorFeedbackTimer = 0;
 	let shakerNoiseBuffer = null;
 	let lastShakeAt = 0;
 	let lastMotionMagnitude = 0;
 	let lastDemoShakeBurst = 0;
 	let currentToreMode = "minor";
 	let lastQuantizedMidi = 40;
+	let orientationSignalSeen = false;
+	let motionSignalSeen = false;
 	const voiceFx = {
 			echoAmount: readXyzVoiceEchoLevel(),
 		};
@@ -4278,6 +4283,44 @@ function initXyzCamera() {
 		if (node instanceof HTMLElement) {
 			node.textContent = text;
 		}
+	};
+
+	const stopMediaTracks = (mediaStream) => {
+		if (!mediaStream || typeof mediaStream.getTracks !== "function") {
+			return;
+		}
+
+		mediaStream.getTracks().forEach((track) => track.stop());
+	};
+
+	const resetSensorFeedback = () => {
+		if (sensorFeedbackTimer) {
+			window.clearTimeout(sensorFeedbackTimer);
+			sensorFeedbackTimer = 0;
+		}
+		orientationSignalSeen = false;
+		motionSignalSeen = false;
+	};
+
+	const queueSensorFeedback = ({ orientationReady = false, motionReady = false } = {}) => {
+		resetSensorFeedback();
+		if (!orientationReady && !motionReady) {
+			return;
+		}
+
+		sensorFeedbackTimer = window.setTimeout(() => {
+			if (!isMembraneLive()) {
+				return;
+			}
+
+			if (orientationReady && !orientationSignalSeen) {
+				setSensorText(orientationNode, isAndroidSurface ? "bouge ou autorise" : "en attente du geste");
+			}
+
+			if (motionReady && !motionSignalSeen) {
+				setSensorText(motionNode, isAndroidSurface ? "bouge ou autorise" : "en attente du mouvement");
+			}
+		}, isAndroidSurface ? 1800 : 2400);
 	};
 
 	const renderVoiceEchoControls = () => {
@@ -5448,6 +5491,7 @@ function initXyzCamera() {
 				if (!isMembraneLive()) {
 					return;
 				}
+				orientationSignalSeen = true;
 				membrane.tiltX = clampNumber((Number(event.gamma) || 0) / 46, -1, 1);
 				membrane.tiltY = clampNumber((Number(event.beta) || 0) / 64, -1, 1);
 				syncMembraneReactiveState();
@@ -5459,40 +5503,52 @@ function initXyzCamera() {
 			orientationBound = true;
 		} else if ("DeviceOrientationEvent" in window) {
 			setSensorText(orientationNode, "refusée");
+		} else {
+			setSensorText(orientationNode, "absente");
 		}
 
 		if (motionReady && !motionBound) {
-				window.addEventListener("devicemotion", (event) => {
-					if (!isMembraneLive()) {
-						return;
-					}
-					const source = event.accelerationIncludingGravity || event.acceleration || {};
-					const x = Number(source.x || 0);
-					const y = Number(source.y || 0);
-					const z = Number(source.z || 0);
-					const magnitude = Math.sqrt(x * x + y * y + z * z);
-					const motionDelta = Math.abs(magnitude - lastMotionMagnitude);
-					lastMotionMagnitude = magnitude;
-					const shakeImpulse = clampNumber((motionDelta - 1.8) / 9.8, 0, 1);
-					membrane.motionSensor = clampNumber(magnitude / 24, 0, 1);
-					membrane.shake = clampNumber(Math.max(shakeImpulse, membrane.shake * 0.72), 0, 1);
-					syncMembraneReactiveState();
-					if (shakeImpulse > 0.14) {
-						void triggerShaker(0.36 + (shakeImpulse * 0.5));
-					}
-					setSensorText(
-						motionNode,
-						shakeImpulse > 0.12
-							? `${Math.round(membrane.motionSensor * 100)}% · shaker`
-							: `${Math.round(membrane.motionSensor * 100)}%`
-					);
-				});
+			window.addEventListener("devicemotion", (event) => {
+				if (!isMembraneLive()) {
+					return;
+				}
+				motionSignalSeen = true;
+				const source = event.accelerationIncludingGravity || event.acceleration || {};
+				const x = Number(source.x || 0);
+				const y = Number(source.y || 0);
+				const z = Number(source.z || 0);
+				const magnitude = Math.sqrt(x * x + y * y + z * z);
+				const motionDelta = Math.abs(magnitude - lastMotionMagnitude);
+				lastMotionMagnitude = magnitude;
+				const shakeImpulse = clampNumber((motionDelta - 1.8) / 9.8, 0, 1);
+				membrane.motionSensor = clampNumber(magnitude / 24, 0, 1);
+				membrane.shake = clampNumber(Math.max(shakeImpulse, membrane.shake * 0.72), 0, 1);
+				syncMembraneReactiveState();
+				if (shakeImpulse > 0.14) {
+					void triggerShaker(0.36 + (shakeImpulse * 0.5));
+				}
+				setSensorText(
+					motionNode,
+					shakeImpulse > 0.12
+						? `${Math.round(membrane.motionSensor * 100)}% · shaker`
+						: `${Math.round(membrane.motionSensor * 100)}%`
+				);
+			});
 			motionBound = true;
 		} else if ("DeviceMotionEvent" in window) {
 			setSensorText(motionNode, "refusé");
+		} else {
+			setSensorText(motionNode, "absent");
 		}
 
-		return orientationReady || motionReady;
+		if (orientationReady) {
+			setSensorText(orientationNode, isAndroidSurface ? "bouge le tel" : "prêt au geste");
+		}
+		if (motionReady) {
+			setSensorText(motionNode, isAndroidSurface ? "bouge le tel" : "prêt au geste");
+		}
+
+		return { orientationReady, motionReady };
 	};
 
 	const analyzeFrame = (time = 0) => {
@@ -5586,16 +5642,17 @@ function initXyzCamera() {
 		const closeMetrics = membraneMetricsSnapshot();
 		stopBridgePulse();
 		stopDemoMode();
+		resetSensorFeedback();
 		if (shouldNotifyBridge) {
 			pulseDeviceHaptics("soft");
 			void sendMembraneBridge("membrane_close", `La membrane se relâche · ${membraneBridgeCopy(closeMetrics)}`, { force: true, keepalive: true });
 		}
 		stopAnalysis();
 		stopAudio();
-		if (stream) {
-			stream.getTracks().forEach((track) => track.stop());
-			stream = null;
-		}
+		stopMediaTracks(stream);
+		stopMediaTracks(audioStream);
+		stream = null;
+		audioStream = null;
 		video.srcObject = null;
 		if (lightSensor && typeof lightSensor.stop === "function") {
 			try {
@@ -5620,13 +5677,77 @@ function initXyzCamera() {
 		);
 	};
 
-	const constraints = {
+	const sharedVideoTrackConstraints = {
+		facingMode: coarsePointer ? { ideal: "environment" } : "user",
+		width: { ideal: 1280 },
+		height: { ideal: 720 },
+	};
+
+	const fullCaptureConstraints = {
 		audio: true,
-		video: {
-			facingMode: coarsePointer ? { ideal: "environment" } : "user",
-			width: { ideal: 1280 },
-			height: { ideal: 720 },
+		video: sharedVideoTrackConstraints,
+	};
+
+	const videoConstraints = {
+		audio: false,
+		video: sharedVideoTrackConstraints,
+	};
+
+	const audioConstraints = {
+		audio: {
+			echoCancellation: true,
+			noiseSuppression: true,
+			autoGainControl: true,
 		},
+		video: false,
+	};
+
+	const startVideoCapture = async () => {
+		try {
+			stream = await navigator.mediaDevices.getUserMedia(videoConstraints);
+			video.srcObject = stream;
+			await video.play().catch(() => undefined);
+			stopAnalysis();
+			analysisFrame = window.requestAnimationFrame(analyzeFrame);
+			setSensorText(cameraNode, "ouverte");
+			return true;
+		} catch {
+			setSensorText(cameraNode, "refusée");
+			return false;
+		}
+	};
+
+	const startCombinedCapture = async () => {
+		try {
+			stream = await navigator.mediaDevices.getUserMedia(fullCaptureConstraints);
+			audioStream = stream;
+			video.srcObject = stream;
+			await video.play().catch(() => undefined);
+			const analyserReady = await ensureAudioAnalyser(stream);
+			stopAnalysis();
+			analysisFrame = window.requestAnimationFrame(analyzeFrame);
+			setSensorText(cameraNode, "ouverte");
+			setSensorText(audioNode, analyserReady ? "ouvert" : "micro ouvert");
+			return { videoReady: true, audioReady: true };
+		} catch {
+			stopMediaTracks(stream);
+			stream = null;
+			audioStream = null;
+			video.srcObject = null;
+			return null;
+		}
+	};
+
+	const startAudioCapture = async ({ optional = false } = {}) => {
+		try {
+			audioStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+			const analyserReady = await ensureAudioAnalyser(audioStream);
+			setSensorText(audioNode, analyserReady ? "ouvert" : "micro ouvert");
+			return true;
+		} catch {
+			setSensorText(audioNode, optional ? "refusé · optionnel" : "refusé");
+			return false;
+		}
 	};
 
 	startButton.addEventListener("click", async () => {
@@ -5641,11 +5762,13 @@ function initXyzCamera() {
 			return;
 		}
 
-			setUiState(
-				"loading",
-				"Le tore demande au téléphone lumière, souffle, mouvement et présence. La réaction sonore, les modes majeur/mineur et la voix accordée restent locales à ce navigateur.",
-				"Activation de la membrane…"
-			);
+		setUiState(
+			"loading",
+			isAndroidSurface
+				? "Sur Android, la membrane ouvre d’abord la caméra, puis tente le micro et les capteurs sans bloquer toute la surface si un flux manque."
+				: "Le tore demande au téléphone lumière, souffle, mouvement et présence. La réaction sonore, les modes majeur/mineur et la voix accordée restent locales à ce navigateur.",
+			"Activation de la membrane…"
+		);
 		setSensorText(orientationNode, "demande");
 		setSensorText(motionNode, "demande");
 		setSensorText(lightNode, "demande");
@@ -5653,35 +5776,45 @@ function initXyzCamera() {
 		setSensorText(cameraNode, "demande");
 		setSensorText(wakeNode, "demande");
 
-		const motionReady = await requestMotionPermissions();
+		const { orientationReady, motionReady } = await requestMotionPermissions();
+		const sensorReady = orientationReady || motionReady;
 		const lightReady = ensureAmbientLightSensor();
 		const wakeReady = await requestWakeLock();
 		await ensureMotionVoice().catch(() => false);
 		await requestDeviceOrientationLock();
+		queueSensorFeedback({ orientationReady, motionReady });
 
-		try {
-			stream = await navigator.mediaDevices.getUserMedia(constraints);
-			video.srcObject = stream;
-			await video.play().catch(() => undefined);
-			await ensureAudioAnalyser(stream);
-			stopAnalysis();
-			analysisFrame = window.requestAnimationFrame(analyzeFrame);
-			setSensorText(cameraNode, "ouverte");
-			setSensorText(audioNode, "ouvert");
-			if (!lightReady) {
-				setSensorText(lightNode, "fallback Ocam");
-			}
-			if (!motionReady && !("DeviceMotionEvent" in window) && !("DeviceOrientationEvent" in window)) {
-				setSensorText(orientationNode, "absente");
-				setSensorText(motionNode, "absent");
-			}
-				setUiState(
-					"live",
-					"La membrane est ouverte. Le tore lit maintenant lumière, souffle, inclinaison, secousse et présence, puis les convertit en thérémin local, shaker et voix accordée.",
-					"La membrane nourrit maintenant la surface."
-				);
+		let videoReady = false;
+		let audioReady = false;
+		const combinedCapture = isAndroidSurface ? null : await startCombinedCapture();
+		if (combinedCapture) {
+			videoReady = combinedCapture.videoReady;
+			audioReady = combinedCapture.audioReady;
+		} else {
+			videoReady = await startVideoCapture();
+			audioReady = await startAudioCapture({ optional: videoReady || sensorReady || lightReady || wakeReady });
+		}
+
+		if (!lightReady) {
+			setSensorText(lightNode, "fallback Ocam");
+		}
+		if (!sensorReady && !("DeviceMotionEvent" in window) && !("DeviceOrientationEvent" in window)) {
+			setSensorText(orientationNode, "absente");
+			setSensorText(motionNode, "absent");
+		}
+
+		if (videoReady) {
+			setUiState(
+				"live",
+				audioReady
+					? "La membrane est ouverte. Le tore lit maintenant lumière, souffle, inclinaison, secousse et présence, puis les convertit en thérémin local, shaker et voix accordée."
+					: "La membrane voit déjà la surface. Sur Android, le micro peut rester optionnel: lumière, inclinaison et présence suffisent déjà à faire respirer le tore.",
+				audioReady
+					? "La membrane nourrit maintenant la surface."
+					: "La membrane voit déjà la surface."
+			);
 			updateMotionVoice();
-			cueMotionVoice(1);
+			cueMotionVoice(audioReady ? 1 : 0.9);
 			pulseDeviceHaptics("medium");
 			startBridgePulse();
 			void sendMembraneBridge(
@@ -5689,34 +5822,45 @@ function initXyzCamera() {
 				`Ouverture membrane xyz · ${membraneBridgeCopy(membraneMetricsSnapshot())}`,
 				{ force: true }
 			);
-		} catch (error) {
-			setSensorText(cameraNode, "refusée");
-			setSensorText(audioNode, "refusé");
-			if (motionReady || lightReady || wakeReady) {
-					setUiState(
-						"partial",
-						"La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le thérémin du tore.",
-						"La membrane dérive en mode partiel."
-					);
-				updateMotionVoice();
-				cueMotionVoice(0.82);
-				pulseDeviceHaptics("soft");
-				startBridgePulse();
-				void sendMembraneBridge(
-					"membrane_partial",
-					`Membrane partielle xyz · ${membraneBridgeCopy(membraneMetricsSnapshot())}`,
-					{ force: true }
-				);
-				return;
-			}
-
-			stopStream();
-			setUiState(
-				"error",
-				"Permission refusée ou capteur inaccessible. La membrane revient à son rêve interne, sans captation directe.",
-				"La surface garde son rêve sans membrane."
-			);
+			return;
 		}
+
+		if (audioReady || sensorReady || lightReady || wakeReady) {
+			setUiState(
+				"partial",
+				audioReady
+					? "La membrane n’a pas encore d’image, mais le tore écoute déjà souffle, mouvement, lumière ou veille et peut rester vivant sur Android."
+					: "La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le thérémin du tore.",
+				audioReady
+					? "La membrane écoute sans image."
+					: "La membrane dérive en mode partiel."
+			);
+			updateMotionVoice();
+			cueMotionVoice(audioReady ? 0.94 : 0.82);
+			pulseDeviceHaptics("soft");
+			startBridgePulse();
+			void sendMembraneBridge(
+				"membrane_partial",
+				`Membrane partielle xyz · ${membraneBridgeCopy(membraneMetricsSnapshot())}`,
+				{ force: true }
+			);
+			return;
+		}
+
+		stopStream();
+		setSensorText(cameraNode, "refusée");
+		setSensorText(audioNode, "refusé");
+		if (!sensorReady) {
+			setSensorText(orientationNode, "refusée ou absente");
+			setSensorText(motionNode, "refusé ou absent");
+		}
+		setUiState(
+			"error",
+			isAndroidSurface
+				? "Android n’a encore laissé passer ni caméra, ni micro, ni capteur. La membrane revient à son rêve interne jusqu’à une nouvelle autorisation."
+				: "Permission refusée ou capteur inaccessible. La membrane revient à son rêve interne, sans captation directe.",
+			"La surface garde son rêve sans membrane."
+		);
 	});
 
 	stopButton.addEventListener("click", () => {
@@ -5798,6 +5942,8 @@ function initLabConsole() {
 		return;
 	}
 
+	const isAndroidSurface = /\bAndroid\b/i.test(window.navigator?.userAgent || "");
+
 	const cardByName = {
 		sensor: root.querySelector('[data-lab-card="sensor"]'),
 		pocket: root.querySelector('[data-lab-card="pocket"]'),
@@ -5822,9 +5968,13 @@ function initLabConsole() {
 		lightSensorLive: false,
 		cameraFallbackLight: false,
 		stream: null,
+		audioStream: null,
 		audioContext: null,
 		audioAnalyser: null,
 		plasmaPollTimer: 0,
+		sensorFeedbackTimer: 0,
+		orientationSeen: false,
+		motionSeen: false,
 	};
 
 	const cameraCanvas = document.createElement("canvas");
@@ -5836,6 +5986,44 @@ function initLabConsole() {
 		if (node instanceof HTMLElement) {
 			node.textContent = text;
 		}
+	};
+
+	const stopMediaTracks = (mediaStream) => {
+		if (!mediaStream || typeof mediaStream.getTracks !== "function") {
+			return;
+		}
+
+		mediaStream.getTracks().forEach((track) => track.stop());
+	};
+
+	const resetSensorFeedback = () => {
+		if (state.sensorFeedbackTimer) {
+			window.clearTimeout(state.sensorFeedbackTimer);
+			state.sensorFeedbackTimer = 0;
+		}
+		state.orientationSeen = false;
+		state.motionSeen = false;
+	};
+
+	const queueSensorFeedback = ({ orientationReady = false, motionReady = false } = {}) => {
+		resetSensorFeedback();
+		if (!orientationReady && !motionReady) {
+			return;
+		}
+
+		state.sensorFeedbackTimer = window.setTimeout(() => {
+			if (root.dataset.labReplay === "1") {
+				return;
+			}
+
+			if (orientationReady && !state.orientationSeen) {
+				setText(orientationStatus, isAndroidSurface ? "bouge ou autorise" : "en attente du geste");
+			}
+
+			if (motionReady && !state.motionSeen) {
+				setText(motionStatus, isAndroidSurface ? "bouge ou autorise" : "en attente du mouvement");
+			}
+		}, isAndroidSurface ? 1800 : 2400);
 	};
 
 	const setCardState = (name, nextState) => {
@@ -6123,42 +6311,98 @@ function initLabConsole() {
 	};
 
 	const startMediaCapture = async () => {
-		if (state.stream) {
-			return true;
+		if (state.stream || state.audioStream) {
+			return {
+				videoReady: Boolean(state.stream),
+				audioReady: Boolean(state.audioStream),
+			};
 		}
 
 		if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
 			setText(cameraStatus, "API absente");
 			setText(audioStatus, "API absente");
-			return false;
+			return { videoReady: false, audioReady: false };
 		}
 
-		try {
-			state.stream = await navigator.mediaDevices.getUserMedia({
-				audio: true,
-				video: {
-					facingMode: coarsePointer ? { ideal: "environment" } : "user",
-					width: { ideal: 1280 },
-					height: { ideal: 720 },
-				},
-			});
-			if (cameraPreview instanceof HTMLVideoElement) {
-				cameraPreview.srcObject = state.stream;
-				await cameraPreview.play().catch(() => undefined);
+		let videoReady = false;
+		let audioReady = false;
+		const sharedVideoTrackConstraints = {
+			facingMode: coarsePointer ? { ideal: "environment" } : "user",
+			width: { ideal: 1280 },
+			height: { ideal: 720 },
+		};
+
+		if (!isAndroidSurface) {
+			try {
+				state.stream = await navigator.mediaDevices.getUserMedia({
+					audio: true,
+					video: sharedVideoTrackConstraints,
+				});
+				state.audioStream = state.stream;
+				if (cameraPreview instanceof HTMLVideoElement) {
+					cameraPreview.srcObject = state.stream;
+					await cameraPreview.play().catch(() => undefined);
+				}
+				if (cameraFallback instanceof HTMLElement) {
+					cameraFallback.hidden = true;
+				}
+				const analyserReady = await ensureAudioAnalyser(state.stream);
+				stopCameraLoop();
+				state.cameraFrame = window.requestAnimationFrame(analyzeCameraFrame);
+				setText(cameraStatus, "ouverte");
+				setText(audioStatus, analyserReady ? "ouvert" : "micro ouvert");
+				videoReady = true;
+				audioReady = true;
+			} catch {
+				stopMediaTracks(state.stream);
+				state.stream = null;
+				state.audioStream = null;
 			}
-			if (cameraFallback instanceof HTMLElement) {
-				cameraFallback.hidden = true;
-			}
-			await ensureAudioAnalyser(state.stream);
-			stopCameraLoop();
-			state.cameraFrame = window.requestAnimationFrame(analyzeCameraFrame);
-			setCardState("sensor", "live");
-			return true;
-		} catch {
-			setText(cameraStatus, "permission refusée");
-			setText(audioStatus, "permission refusée");
-			return false;
 		}
+
+		if (!videoReady && !audioReady) {
+			try {
+				state.stream = await navigator.mediaDevices.getUserMedia({
+					audio: false,
+					video: sharedVideoTrackConstraints,
+				});
+				if (cameraPreview instanceof HTMLVideoElement) {
+					cameraPreview.srcObject = state.stream;
+					await cameraPreview.play().catch(() => undefined);
+				}
+				if (cameraFallback instanceof HTMLElement) {
+					cameraFallback.hidden = true;
+				}
+				stopCameraLoop();
+				state.cameraFrame = window.requestAnimationFrame(analyzeCameraFrame);
+				setText(cameraStatus, "ouverte");
+				videoReady = true;
+			} catch {
+				setText(cameraStatus, "permission refusée");
+			}
+
+			try {
+				state.audioStream = await navigator.mediaDevices.getUserMedia({
+					audio: {
+						echoCancellation: true,
+						noiseSuppression: true,
+						autoGainControl: true,
+					},
+					video: false,
+				});
+				const analyserReady = await ensureAudioAnalyser(state.audioStream);
+				setText(audioStatus, analyserReady ? "ouvert" : "micro ouvert");
+				audioReady = true;
+			} catch {
+				setText(audioStatus, videoReady ? "refusé · optionnel" : "permission refusée");
+			}
+		}
+
+		if (videoReady || audioReady) {
+			setCardState("sensor", "live");
+		}
+
+		return { videoReady, audioReady };
 	};
 
 	const bindOrientationListeners = () => {
@@ -6170,6 +6414,7 @@ function initLabConsole() {
 			if (root.dataset.labReplay === "1") {
 				return;
 			}
+			state.orientationSeen = true;
 			updateOrientation(Number(event.alpha), Number(event.beta), Number(event.gamma));
 		});
 		state.orientationBound = true;
@@ -6185,6 +6430,7 @@ function initLabConsole() {
 			if (root.dataset.labReplay === "1") {
 				return;
 			}
+			state.motionSeen = true;
 			const source = event.accelerationIncludingGravity || event.acceleration || {};
 			const x = Number(source.x || 0);
 			const y = Number(source.y || 0);
@@ -6228,12 +6474,23 @@ function initLabConsole() {
 			bindOrientationListeners();
 		} else if ("DeviceOrientationEvent" in window) {
 			setText(orientationStatus, "refusée ou absente");
+		} else {
+			setText(orientationStatus, "absente");
 		}
 
 		if (motionReady) {
 			bindMotionListeners();
 		} else if ("DeviceMotionEvent" in window) {
 			setText(motionStatus, "refusé ou absent");
+		} else {
+			setText(motionStatus, "absent");
+		}
+
+		if (orientationReady) {
+			setText(orientationStatus, isAndroidSurface ? "bouge le tel" : "prêt au geste");
+		}
+		if (motionReady) {
+			setText(motionStatus, isAndroidSurface ? "bouge le tel" : "prêt au geste");
 		}
 
 		return { orientationReady, motionReady };
@@ -6418,19 +6675,28 @@ function initLabConsole() {
 		activateButton.setAttribute("aria-busy", "true");
 		activateButton.setAttribute("disabled", "disabled");
 		stopReplay({ preserveStatus: true });
-		setActivationCopy("Ouverture du champ sensoriel…");
+		setActivationCopy(isAndroidSurface
+			? "Ouverture du champ sensoriel Android… la console tente caméra, micro puis capteurs sans tout bloquer d’un coup."
+			: "Ouverture du champ sensoriel…");
 		pulseDeviceHaptics("medium");
 
 		const { orientationReady, motionReady } = await requestSensorPermissions();
-		const mediaReady = await startMediaCapture();
+		queueSensorFeedback({ orientationReady, motionReady });
+		const { videoReady, audioReady } = await startMediaCapture();
 		const lightReady = await startAmbientLightSensor();
 		const wakeReady = await requestWakeLock();
 		await requestDeviceOrientationLock();
-		const liveCount = [orientationReady, motionReady, mediaReady, lightReady, wakeReady].filter(Boolean).length;
+		const liveCount = [orientationReady, motionReady, videoReady, audioReady, lightReady, wakeReady].filter(Boolean).length;
 
 		if (liveCount > 0) {
 			setSensorBadge(`${liveCount} flux actifs`);
-			setActivationCopy("Le lab lit maintenant ce téléphone. Bouge, parle, ouvre la caméra ou laisse le replay prendre la relève.");
+			setActivationCopy(videoReady
+				? (audioReady
+					? "Le lab lit maintenant ce téléphone. Bouge, parle, ouvre la caméra ou laisse le replay prendre la relève."
+					: "Le lab voit déjà le téléphone. Sur Android, le micro peut rester optionnel pendant que caméra et capteurs travaillent.")
+				: (audioReady
+					? "Le lab écoute déjà ce téléphone même sans image. Les capteurs et le replay peuvent continuer la passe."
+					: "Le lab n’a pas toute l’image, mais il a ouvert assez de flux pour travailler."));
 			setCardState("sensor", "live");
 			emitTrace("session", "browser", "Le tore a ouvert une session capteur locale.");
 		} else {
@@ -6483,13 +6749,14 @@ function initLabConsole() {
 			window.clearInterval(state.plasmaPollTimer);
 			state.plasmaPollTimer = 0;
 		}
+		resetSensorFeedback();
 		stopReplay({ preserveStatus: true });
 		stopCameraLoop();
 		stopAudioLoop();
-		if (state.stream) {
-			state.stream.getTracks().forEach((track) => track.stop());
-			state.stream = null;
-		}
+		stopMediaTracks(state.stream);
+		stopMediaTracks(state.audioStream);
+		state.stream = null;
+		state.audioStream = null;
 		if (state.lightSensor && typeof state.lightSensor.stop === "function") {
 			try {
 				state.lightSensor.stop();
@@ -6778,8 +7045,10 @@ function syncCornerDocks(force = false) {
 			return;
 		}
 
+		const isPrimaryDock = dock.dataset.cornerDockPriority === "primary";
+		const isGuideVoiceDock = dock.dataset.guideVoiceDock === "1";
 		registerCornerDock(dock);
-		const shouldStayOpen = dock.dataset.cornerDockActive === "1"
+		const shouldStayOpen = (!isGuideVoiceDock && dock.dataset.cornerDockActive === "1")
 			|| (dock.id && window.location.hash === `#${dock.id}`)
 			|| dock.contains(document.activeElement);
 
@@ -6791,8 +7060,6 @@ function syncCornerDocks(force = false) {
 		}
 
 		dock.dataset.cornerDockCompact = "1";
-		const isPrimaryDock = dock.dataset.cornerDockPriority === "primary";
-		const isGuideVoiceDock = dock.dataset.guideVoiceDock === "1";
 		if (force || dock.dataset.cornerDockInitialized !== "1") {
 			dock.open = shouldStayOpen || (isPrimaryDock && !isGuideVoiceDock);
 		} else if (shouldStayOpen) {
@@ -6834,7 +7101,11 @@ function initCornerDocks() {
 		}
 
 		document.querySelectorAll("[data-corner-dock]").forEach((dock) => {
-			if (!(dock instanceof HTMLDetailsElement) || !dock.open || dock.dataset.cornerDockActive === "1") {
+			if (!(dock instanceof HTMLDetailsElement) || !dock.open) {
+				return;
+			}
+
+			if (dock.dataset.cornerDockActive === "1" && dock.dataset.guideVoiceDock !== "1") {
 				return;
 			}
 
@@ -6850,10 +7121,16 @@ function initCornerDocks() {
 		}
 
 		document.querySelectorAll("[data-corner-dock]").forEach((dock) => {
-			if (dock instanceof HTMLDetailsElement && dock.dataset.cornerDockActive !== "1") {
-				const restoreFocus = dock.contains(document.activeElement);
-				closeCornerDock(dock, { restoreFocus });
+			if (!(dock instanceof HTMLDetailsElement)) {
+				return;
 			}
+
+			if (dock.dataset.cornerDockActive === "1" && dock.dataset.guideVoiceDock !== "1") {
+				return;
+			}
+
+			const restoreFocus = dock.contains(document.activeElement);
+			closeCornerDock(dock, { restoreFocus });
 		});
 	});
 }
@@ -6916,15 +7193,20 @@ function createGuideVoiceDock(config = {}) {
 	shell.dataset.voiceMuted = readGuideVoiceMutedState() ? "1" : "0";
 	shell.setAttribute("aria-label", "Dock vocal 0wlslw0");
 	shell.innerHTML = `
-		<summary class="guide-voice-dock__toggle">
-			<span class="corner-dock-toggle__kicker">0wlslw0</span>
-			<strong data-guide-voice-dock-label>voix persistante</strong>
-			<span class="corner-dock-toggle__meta" data-guide-voice-dock-state>ouvrir</span>
-		</summary>
-		<div class="guide-voice-dock-head">
-			<p class="eyebrow"><strong>0wlslw0</strong> <span>voix persistante</span></p>
-			<span class="badge">suivi</span>
-		</div>
+			<summary class="guide-voice-dock__toggle">
+				<span class="corner-dock-toggle__kicker">0wlslw0</span>
+				<strong data-guide-voice-dock-label>voix persistante</strong>
+				<span class="corner-dock-toggle__meta" data-guide-voice-dock-state>ouvrir</span>
+			</summary>
+			<div class="guide-voice-dock-head">
+				<div class="guide-voice-dock-head__copy">
+					<p class="eyebrow"><strong>0wlslw0</strong> <span>voix persistante</span></p>
+				</div>
+				<div class="guide-voice-dock-head__actions">
+					<span class="badge">suivi</span>
+					<button type="button" class="guide-voice-dock-collapse" data-guide-voice-collapse aria-label="Masquer le dock 0wlslw0">Masquer</button>
+				</div>
+			</div>
 		<div class="guide-voice-stage">
 			<div class="guide-voice-orb" aria-hidden="true">
 				<span class="guide-voice-orb-core"></span>
@@ -7507,6 +7789,7 @@ function mountGuideVoice(root) {
 	const routeLink = root.querySelector("[data-guide-voice-route]");
 	const dockLabelNode = root.querySelector("[data-guide-voice-dock-label]");
 	const dockStateNode = root.querySelector("[data-guide-voice-dock-state]");
+	const dockCollapseButton = root.querySelector("[data-guide-voice-collapse]");
 	const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 	const hasRecognition = Boolean(RecognitionCtor);
 	const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
@@ -7610,7 +7893,7 @@ function mountGuideVoice(root) {
 			return;
 		}
 
-		root.dataset.cornerDockActive = isActive ? "1" : "0";
+		root.dataset.cornerDockActive = "0";
 		if (dockLabelNode instanceof HTMLElement) {
 			dockLabelNode.textContent = isActive
 				? (hasRecognition ? "voix active" : "texte actif")
@@ -7634,10 +7917,6 @@ function mountGuideVoice(root) {
 			}
 
 			dockStateNode.textContent = compactLabel;
-		}
-
-		if (isCompactCornerDockViewport()) {
-			root.open = isActive || root.open;
 		}
 
 		syncCornerDocks();
@@ -8439,6 +8718,12 @@ function mountGuideVoice(root) {
 	stopButton.addEventListener("click", () => {
 		stopGuide("Voix coupée. Tu peux relancer quand tu veux.");
 	});
+
+	if (dockCollapseButton instanceof HTMLButtonElement) {
+		dockCollapseButton.addEventListener("click", () => {
+			closeCornerDock(root);
+		});
+	}
 
 	if (routeLink instanceof HTMLAnchorElement) {
 		routeLink.addEventListener("click", () => {
@@ -10017,6 +10302,16 @@ function createSignalLivePoller({
 	liveView,
 	state,
 }) {
+	const redirectToLiveError = (errorCode) => {
+		if (!errorCode || typeof window === "undefined") {
+			return;
+		}
+
+		const targetUrl = new URL(window.location.href);
+		targetUrl.searchParams.set("error", errorCode);
+		window.location.assign(targetUrl.toString());
+	};
+
 	return async () => {
 		const target = getSignalLiveTarget(liveRoot);
 		if (!target || state.inflight || document.hidden) {
@@ -10038,12 +10333,40 @@ function createSignalLivePoller({
 				cache: "no-store",
 			});
 
+			let payload = null;
+			try {
+				payload = await response.json();
+			} catch (parseError) {
+				payload = null;
+			}
+
 			if (!response.ok) {
+				const payloadError = typeof payload?.error === "string" ? payload.error : "";
+				if (response.status === 401 || payloadError === "auth-required") {
+					redirectToLiveError("session");
+					return;
+				}
+
+				if (response.status === 503 || payloadError === "messaging-not-ready") {
+					redirectToLiveError("messaging");
+					return;
+				}
+
 				throw new Error(`HTTP ${response.status}`);
 			}
 
-			const payload = await response.json();
 			if (!payload || payload.ok === false) {
+				const payloadError = typeof payload?.error === "string" ? payload.error : "";
+				if (payloadError === "auth-required") {
+					redirectToLiveError("session");
+					return;
+				}
+
+				if (payloadError === "messaging-not-ready") {
+					redirectToLiveError("messaging");
+					return;
+				}
+
 				throw new Error("invalid-payload");
 			}
 

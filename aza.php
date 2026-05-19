@@ -765,7 +765,7 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
                                                 </details>
                                             <?php endif; ?>
                                             <div class="card-actions aza-meta-list">
-                                                <a class="meta-pill aza-download btn-download" href="<?= h(o_route_path('/' . ltrim((string) $archive['stored_file'], '/'))) ?>" download>Extraire la trace</a>
+                                                <a class="meta-pill aza-download btn-download" href="<?= h(aza_memory_download_href((string) $archive['stored_file'])) ?>" download>Extraire la trace</a>
                                             </div>
                                         </article>
                                     <?php endforeach; ?>

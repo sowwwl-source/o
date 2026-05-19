@@ -56,8 +56,10 @@ function load_dotenv(string $path): void
 load_dotenv(dirname(__DIR__) . '/.env');
 load_dotenv(__DIR__ . '/.env');
 
+require_once __DIR__ . '/lib/request_trust.php';
+
 const SITE_DOMAIN = 'sowwwl.xyz';
-const SITE_TITLE = 'O. le réseau minimal';
+const SITE_TITLE = 'O. Le réseau minimal';
 const SITE_TAGLINE = 'Just the Three of Us';
 const DEFAULT_TIMEZONE = 'Europe/Paris';
 const CREATE_LAND_RATE_LIMIT_MAX_ATTEMPTS = 6;
@@ -308,28 +310,7 @@ function request_host(?string $host = null): string
 
 function request_scheme(): string
 {
-    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
-        return 'https';
-    }
-
-    $forwardedProto = strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
-    if ($forwardedProto !== '') {
-        $parts = preg_split('/\s*,\s*/', $forwardedProto) ?: [];
-        $candidate = strtolower(trim((string) ($parts[0] ?? $forwardedProto)));
-        if ($candidate === 'https') {
-            return 'https';
-        }
-        if ($candidate === 'http') {
-            return 'http';
-        }
-    }
-
-    $cfVisitor = (string) ($_SERVER['HTTP_CF_VISITOR'] ?? '');
-    if (str_contains($cfVisitor, '"scheme":"https"')) {
-        return 'https';
-    }
-
-    return 'http';
+    return sowwwl_effective_request_scheme();
 }
 
 function request_public_origin(?string $host = null): string
@@ -540,7 +521,7 @@ function pwa_app_catalog(): array
             'id' => o_route_path('/app/main'),
             'name' => SITE_TITLE,
             'short_name' => 'O.',
-            'description' => 'O. le réseau minimal — un espace vivant, personnel, discret. Pose ta terre et laisse la nuit coder le reste.',
+            'description' => 'O. Le réseau minimal — un espace vivant, personnel, discret. Pose ta terre et laisse la nuit coder le reste.',
             'start_url' => o_route_path('/'),
             'scope' => o_route_path('/'),
             'theme_color' => '#09090b',
@@ -792,4 +773,6 @@ function render_negative_merge_overlay(?array $visualProfile = null, string $str
 HTML;
 }
 
-bootstrap_request();
+if (!defined('SOWWWL_SKIP_BOOTSTRAP_REQUEST') || SOWWWL_SKIP_BOOTSTRAP_REQUEST !== true) {
+    bootstrap_request();
+}
