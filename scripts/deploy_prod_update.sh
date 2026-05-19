@@ -189,6 +189,18 @@ compose_prod_up_retry_conflicts() {
 	done
 }
 
+reload_live_caddy_config() {
+	local container_name="${project_name}-caddy-1"
+
+	if ! docker ps --format '{{.Names}}' | grep -qx "$container_name"; then
+		echo "Live Caddy container not running: $container_name" >&2
+		exit 1
+	fi
+
+	echo "==> Reloading live Caddy config"
+	docker exec "$container_name" caddy reload --config /etc/caddy/Caddyfile
+}
+
 resolve_dir_path() {
 	local dir=$1
 
@@ -451,6 +463,7 @@ compose_prod_up_retry_conflicts app api
 
 echo "==> Ensuring live proxy is up"
 compose_prod_up_retry_conflicts caddy
+reload_live_caddy_config
 
 echo "==> Live containers"
 compose_prod ps app api caddy
