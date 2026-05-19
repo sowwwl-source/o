@@ -384,6 +384,7 @@ signal_validation_args() {
 	magic_delivery=$(read_env_value "SOWWWL_MAGIC_LINK_DELIVERY")
 
 	printf '%s\n' "--require-schema-ready"
+	printf '%s\n' "--require-runtime-ready"
 	if [[ "${signal_delivery,,}" == "mail" || "${magic_delivery,,}" == "mail" ]]; then
 		printf '%s\n' "--require-delivery-ready"
 	fi

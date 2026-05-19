@@ -10,19 +10,45 @@ if (PHP_SAPI !== 'cli') {
     exit(1);
 }
 
-$options = getopt('', ['slug:', 'json', 'require-schema-ready', 'require-delivery-ready', 'require-land-found']);
+$options = getopt('', ['slug:', 'json', 'require-schema-ready', 'require-delivery-ready', 'require-land-found', 'require-runtime-ready']);
 $slug = trim((string) ($options['slug'] ?? ''));
 $asJson = array_key_exists('json', $options);
 $requireSchemaReady = array_key_exists('require-schema-ready', $options);
 $requireDeliveryReady = array_key_exists('require-delivery-ready', $options);
 $requireLandFound = array_key_exists('require-land-found', $options);
+$requireRuntimeReady = array_key_exists('require-runtime-ready', $options);
 
 $payload = [
     'generated_at' => gmdate(DATE_ATOM),
     'schema' => signal_mail_schema_status(),
     'delivery' => signal_identity_delivery_status(),
     'delivery_hint' => signal_identity_delivery_status_hint(),
+    'runtime_probe' => [
+        'ready' => false,
+        'issues' => [],
+    ],
 ];
+
+if (($payload['schema']['ready'] ?? false) === true) {
+    $probeLand = ['slug' => '__signal_probe__', 'username' => 'probe'];
+
+    try {
+        signal_contact_candidates($probeLand);
+        signal_load_conversation($probeLand, '__signal_probe_target__');
+        signal_unread_total($probeLand);
+        $payload['runtime_probe'] = [
+            'ready' => true,
+            'issues' => [],
+        ];
+    } catch (Throwable $exception) {
+        $payload['runtime_probe'] = [
+            'ready' => false,
+            'issues' => [
+                trim($exception->getMessage()) !== '' ? trim($exception->getMessage()) : 'Signal runtime probe failed.',
+            ],
+        ];
+    }
+}
 
 if ($slug !== '') {
     try {
@@ -87,6 +113,13 @@ if ($asJson) {
         echo 'issues            : ' . implode(', ', array_map('strval', (array) $delivery['issues'])) . "\n";
     }
 
+    echo "\nRuntime probe\n";
+    echo "-------------\n";
+    printf("runtime ready     : %s\n", ($payload['runtime_probe']['ready'] ?? false) ? 'yes' : 'no');
+    if (!empty($payload['runtime_probe']['issues'])) {
+        echo 'issues            : ' . implode(', ', array_map('strval', (array) $payload['runtime_probe']['issues'])) . "\n";
+    }
+
     if (isset($payload['land'])) {
         echo "\nLand\n";
         echo "----\n";
@@ -117,6 +150,10 @@ if ($requireDeliveryReady && !(bool) ($payload['delivery']['ready'] ?? false)) {
 
 if ($requireLandFound && (!isset($payload['land']) || !(bool) ($payload['land']['found'] ?? false))) {
     $failures[] = 'land-not-found';
+}
+
+if ($requireRuntimeReady && !(bool) ($payload['runtime_probe']['ready'] ?? false)) {
+    $failures[] = 'runtime-not-ready';
 }
 
 if ($failures !== []) {

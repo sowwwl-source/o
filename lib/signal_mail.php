@@ -11,6 +11,26 @@ const SIGNAL_IDENTITY_VERIFIED = 'verified';
 const SIGNAL_IDENTITY_TTL_SECONDS = 86400;
 const SIGNAL_IDENTITY_RESEND_SECONDS = 120;
 
+function signal_table_exists(PDO $pdo, string $table): bool
+{
+    $stmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?'
+    );
+    $stmt->execute([trim($table)]);
+
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+function signal_column_exists(PDO $pdo, string $table, string $column): bool
+{
+    $stmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
+    );
+    $stmt->execute([trim($table), trim($column)]);
+
+    return (int) $stmt->fetchColumn() > 0;
+}
+
 function signal_mail_schema_status(): array
 {
     $status = [
@@ -26,14 +46,9 @@ function signal_mail_schema_status(): array
         $pdo = get_pdo();
         $status['database_available'] = true;
 
-        $mailboxes = $pdo->query("SHOW TABLES LIKE 'signal_mailboxes'");
-        $status['signal_mailboxes'] = $mailboxes instanceof PDOStatement && $mailboxes->fetchColumn() !== false;
-
-        $messages = $pdo->query("SHOW TABLES LIKE 'signal_messages'");
-        $status['signal_messages'] = $messages instanceof PDOStatement && $messages->fetchColumn() !== false;
-
-        $column = $pdo->query("SHOW COLUMNS FROM lands LIKE 'notification_email'");
-        $status['lands_notification_email'] = $column instanceof PDOStatement && $column->fetchColumn() !== false;
+        $status['signal_mailboxes'] = signal_table_exists($pdo, 'signal_mailboxes');
+        $status['signal_messages'] = signal_table_exists($pdo, 'signal_messages');
+        $status['lands_notification_email'] = signal_column_exists($pdo, 'lands', 'notification_email');
     } catch (Throwable $exception) {
         $status['issues'][] = 'sql-unreachable';
         $status['issues'][] = trim($exception->getMessage()) !== '' ? trim($exception->getMessage()) : 'Connexion SQL indisponible.';
@@ -457,33 +472,44 @@ function signal_contact_presence(array $contact): array
 
 function signal_conversation_summaries(array $land): array
 {
-    $pdo = get_pdo();
     $slug = normalize_username((string) ($land['slug'] ?? ''));
-
-    $sql = <<<'SQL'
-SELECT
-    CASE
-            WHEN sender_land_slug = :sender_slug_case THEN receiver_land_slug
-        ELSE sender_land_slug
-    END AS counterpart_slug,
-    MAX(created_at) AS last_message_at,
-        SUM(CASE WHEN receiver_land_slug = :receiver_slug_unread AND read_at IS NULL THEN 1 ELSE 0 END) AS unread_count,
-    SUBSTRING_INDEX(GROUP_CONCAT(subject ORDER BY created_at DESC SEPARATOR '\n'), '\n', 1) AS last_subject,
-    SUBSTRING_INDEX(GROUP_CONCAT(body ORDER BY created_at DESC SEPARATOR '\n---\n'), '\n---\n', 1) AS last_body
-FROM signal_messages
-    WHERE sender_land_slug = :sender_slug_filter OR receiver_land_slug = :receiver_slug_filter
-GROUP BY counterpart_slug
-ORDER BY last_message_at DESC
-SQL;
-
-    $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-            'sender_slug_case' => $slug,
-            'receiver_slug_unread' => $slug,
-            'sender_slug_filter' => $slug,
-            'receiver_slug_filter' => $slug,
-        ]);
+    $pdo = get_pdo();
+    $stmt = $pdo->prepare(
+        'SELECT id, sender_land_slug, sender_land_username, receiver_land_slug, receiver_land_username, subject, body, read_at, created_at
+         FROM signal_messages
+         WHERE sender_land_slug = ? OR receiver_land_slug = ?
+         ORDER BY created_at DESC, id DESC'
+    );
+    $stmt->execute([$slug, $slug]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $summariesBySlug = [];
+    foreach ($rows as $row) {
+        $senderSlug = normalize_username((string) ($row['sender_land_slug'] ?? ''));
+        $receiverSlug = normalize_username((string) ($row['receiver_land_slug'] ?? ''));
+        $counterpartSlug = $senderSlug === $slug ? $receiverSlug : $senderSlug;
+        if ($counterpartSlug === '' || $counterpartSlug === $slug) {
+            continue;
+        }
+
+        if (!isset($summariesBySlug[$counterpartSlug])) {
+            $counterpartUsername = $senderSlug === $slug
+                ? trim((string) ($row['receiver_land_username'] ?? $counterpartSlug))
+                : trim((string) ($row['sender_land_username'] ?? $counterpartSlug));
+            $summariesBySlug[$counterpartSlug] = [
+                'counterpart_slug' => $counterpartSlug,
+                'counterpart_username' => $counterpartUsername !== '' ? $counterpartUsername : $counterpartSlug,
+                'unread_count' => 0,
+                'last_subject' => trim((string) ($row['subject'] ?? '')),
+                'last_body' => trim((string) ($row['body'] ?? '')),
+                'last_message_at' => trim((string) ($row['created_at'] ?? '')),
+            ];
+        }
+
+        if ($receiverSlug === $slug && trim((string) ($row['read_at'] ?? '')) === '') {
+            $summariesBySlug[$counterpartSlug]['unread_count'] += 1;
+        }
+    }
 
     $landsBySlug = [];
     foreach (land_snapshot() as $candidate) {
@@ -498,7 +524,7 @@ SQL;
         $counterpartLand = $landsBySlug[$counterpartSlug] ?? null;
         $summary = [
             'counterpart_slug' => $counterpartSlug,
-            'counterpart_username' => trim((string) ($counterpartLand['username'] ?? $counterpartSlug)),
+            'counterpart_username' => trim((string) ($counterpartLand['username'] ?? $row['counterpart_username'] ?? $counterpartSlug)),
             'unread_count' => (int) ($row['unread_count'] ?? 0),
             'last_subject' => trim((string) ($row['last_subject'] ?? '')),
             'last_body' => trim((string) ($row['last_body'] ?? '')),
@@ -508,7 +534,7 @@ SQL;
         $resonance = signal_contact_resonance($land, $counterpartLand);
 
         return [...$summary, ...$activity, ...$resonance, ...signal_contact_presence([...$summary, ...$activity, ...$resonance])];
-    }, $rows);
+    }, array_values($summariesBySlug));
 }
 
 function signal_contact_candidates(array $land): array

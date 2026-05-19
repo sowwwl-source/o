@@ -33,6 +33,18 @@ $view = trim((string) ($_GET['view'] ?? 'signal'));
 $targetIdentifier = trim((string) ($_GET['u'] ?? ''));
 
 echo json_encode(
-    signal_live_payload($land, $targetIdentifier, $view),
+    (function () use ($land, $targetIdentifier, $view) {
+        try {
+            return signal_live_payload($land, $targetIdentifier, $view);
+        } catch (Throwable $exception) {
+            error_log('[sowwwl][signal.live] ' . $exception->getMessage());
+            http_response_code(503);
+            return [
+                'ok' => false,
+                'error' => 'messaging-runtime-error',
+                'message' => 'La base Signal a répondu avec une erreur au direct.',
+            ];
+        }
+    })(),
     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
 );

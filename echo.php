@@ -56,6 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (InvalidArgumentException|RuntimeException $exception) {
             $message = $exception->getMessage();
             $messageType = 'warning';
+        } catch (Throwable $exception) {
+            error_log('[sowwwl][echo] ' . $exception->getMessage());
+            $message = 'Écho a perdu sa liaison SQL pour le moment.';
+            $messageType = 'warning';
         }
     }
 }
@@ -72,20 +76,29 @@ if ($errorCode !== '') {
 
 // Récupération des contacts (Terres existantes, excluant soi-même)
 $contacts = [];
-if ($land && $messagingReady) {
-    foreach (signal_contact_candidates($land) as $contact) {
-        $contacts[] = [
-            'username' => trim((string) ($contact['counterpart_username'] ?? '')),
-            'slug' => trim((string) ($contact['counterpart_slug'] ?? '')),
-            'unread_count' => (int) ($contact['unread_count'] ?? 0),
-        ];
-    }
-}
-
-// Récupération de l'historique si une Terre est ciblée
 $history = [];
-if ($land && $targetSlug !== '' && $messagingReady) {
-    $history = signal_load_conversation($land, $targetSlug);
+if ($land && $messagingReady) {
+    try {
+        foreach (signal_contact_candidates($land) as $contact) {
+            $contacts[] = [
+                'username' => trim((string) ($contact['counterpart_username'] ?? '')),
+                'slug' => trim((string) ($contact['counterpart_slug'] ?? '')),
+                'unread_count' => (int) ($contact['unread_count'] ?? 0),
+            ];
+        }
+
+        if ($targetSlug !== '') {
+            $history = signal_load_conversation($land, $targetSlug);
+        }
+    } catch (Throwable $exception) {
+        error_log('[sowwwl][echo.load] ' . $exception->getMessage());
+        $messagingReady = false;
+        $signalSchemaHint = 'La couche SQL de Signal/Echo a répondu avec une erreur au chargement.';
+        if ($message === '') {
+            $message = 'Écho n’a pas pu relire sa base pour le moment. ' . $signalSchemaHint;
+            $messageType = 'warning';
+        }
+    }
 }
 
 $echoHistoryHtml = signal_render_conversation_html($history, $land ?? [], false, 'Le silence règne entre vos deux terres.');

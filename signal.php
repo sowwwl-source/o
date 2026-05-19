@@ -79,6 +79,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (RuntimeException $exception) {
         header('Location: ' . $signalHref . '?error=delivery&note=' . rawurlencode($exception->getMessage()), true, 303);
         exit;
+    } catch (Throwable $exception) {
+        error_log('[sowwwl][signal] ' . $exception->getMessage());
+        header('Location: ' . $signalHref . '?error=messaging', true, 303);
+        exit;
     }
 }
 
@@ -114,21 +118,35 @@ if ($errorCode !== '') {
     }
 }
 
-$mailbox = $land && $tablesReady ? signal_mailbox_for_land($land) : [];
-$contacts = $land && $tablesReady ? signal_contact_candidates($land) : [];
-$recentContacts = array_slice($contacts, 0, 6);
-$resonantContacts = array_slice($contacts, 0, 5);
+$mailbox = [];
+$contacts = [];
+$recentContacts = [];
+$resonantContacts = [];
 $targetSlug = trim((string) ($_GET['u'] ?? ''));
 $targetLand = null;
 $conversation = [];
 $unreadTotal = 0;
 
 if ($land && $tablesReady) {
-    $unreadTotal = signal_unread_total($land);
-    if ($targetSlug !== '') {
-        $targetLand = signal_find_land_by_slug($targetSlug);
-        if ($targetLand) {
-            $conversation = signal_load_conversation($land, (string) $targetLand['slug']);
+    try {
+        $mailbox = signal_mailbox_for_land($land);
+        $contacts = signal_contact_candidates($land);
+        $recentContacts = array_slice($contacts, 0, 6);
+        $resonantContacts = array_slice($contacts, 0, 5);
+        $unreadTotal = signal_unread_total($land);
+        if ($targetSlug !== '') {
+            $targetLand = signal_find_land_by_slug($targetSlug);
+            if ($targetLand) {
+                $conversation = signal_load_conversation($land, (string) $targetLand['slug']);
+            }
+        }
+    } catch (Throwable $exception) {
+        error_log('[sowwwl][signal.load] ' . $exception->getMessage());
+        $tablesReady = false;
+        $signalSchemaHint = 'La couche SQL de Signal a répondu avec une erreur au chargement. Vérifie la base et rejoue le contrôle de schéma.';
+        if ($message === '') {
+            $messageType = 'warning';
+            $message = 'Signal n’a pas pu relire sa base pour le moment. ' . $signalSchemaHint;
         }
     }
 }
