@@ -359,8 +359,10 @@ assert_header_contains() {
 assert_body_matches() {
 	local url=${1:?Missing URL}
 	local pattern=${2:?Missing pattern}
+	local body
 
-	if ! curl -fsS "$url" | grep -qE "$pattern"; then
+	body=$(curl -fsS "$url")
+	if ! printf '%s' "$body" | grep -qE "$pattern"; then
 		echo "Expected ${url} body to match ${pattern}" >&2
 		exit 1
 	fi
@@ -369,8 +371,10 @@ assert_body_matches() {
 assert_body_absent() {
 	local url=${1:?Missing URL}
 	local pattern=${2:?Missing pattern}
+	local body
 
-	if curl -fsS "$url" | grep -qE "$pattern"; then
+	body=$(curl -fsS "$url")
+	if printf '%s' "$body" | grep -qE "$pattern"; then
 		echo "Expected ${url} body to avoid ${pattern}" >&2
 		exit 1
 	fi
