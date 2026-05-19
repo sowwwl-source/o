@@ -192,6 +192,8 @@ $guideVoiceNotes = [
         <p class="panel-copy guide-hero-note"><?= h($guidePassageStateLong) ?></p>
     </header>
 
+    <?= render_spatial_context_bar('guide', $host) ?>
+
     <section
         class="panel reveal guide-panel guide-voice-shell"
         aria-labelledby="guide-voice-title"

@@ -4,8 +4,10 @@ declare(strict_types=1);
 require __DIR__ . '/config.php';
 
 $host = request_host();
+$surfaceVariant = current_surface_variant($host);
+$isSpatialHeadsetMode = $surfaceVariant === 'io' && spatial_preview_mode($host) === 'headset';
 $brandDomain = current_brand_domain($host);
-$str3mHref = o_route_path('/str3m');
+$str3mHref = o_route_href('/str3m', [], $host);
 $pageHeadVariant = pwa_default_app_id($host);
 ?>
 <!DOCTYPE html>
@@ -18,7 +20,7 @@ $pageHeadVariant = pwa_default_app_id($host);
     <title>Map — <?= h(SITE_TITLE) ?></title>
 <?= render_o_page_head_assets($pageHeadVariant, $host) ?>
 </head>
-<body class="experience map-view">
+<body class="experience map-view<?= $surfaceVariant === 'io' ? ' io-surface-view' : '' ?><?= $isSpatialHeadsetMode ? ' io-headset-mode' : '' ?>">
 <?= render_skip_link() ?>
 <?= render_nucleus_banner('map') ?>
 <div class="noise" aria-hidden="true"></div>
@@ -36,6 +38,8 @@ $pageHeadVariant = pwa_default_app_id($host);
         </div>
     </header>
 
+    <?= render_spatial_context_bar('map', $host) ?>
+
     <div id="sowwwl-map-surface" class="map-fallback" aria-live="polite"></div>
     <section class="map-lexical-console" aria-labelledby="map-lexical-title">
         <form class="map-lexical-console__bar" data-map-lexical-form>
@@ -45,15 +49,15 @@ $pageHeadVariant = pwa_default_app_id($host);
             <button type="submit">lire</button>
         </form>
         <div class="map-lexical-console__hints" aria-label="Commandes de la console">
-            <span class="map-lexical-chip">chaud</span>
-            <span class="map-lexical-chip">terres</span>
-            <span class="map-lexical-chip">courants</span>
-            <span class="map-lexical-chip">@slug</span>
-            <span class="map-lexical-chip">aide</span>
+            <span class="map-lexical-chip" data-map-lexical-chip="chaud">chaud</span>
+            <span class="map-lexical-chip" data-map-lexical-chip="terres">terres</span>
+            <span class="map-lexical-chip" data-map-lexical-chip="courants">courants</span>
+            <span class="map-lexical-chip" data-map-lexical-chip="@slug">@slug</span>
+            <span class="map-lexical-chip" data-map-lexical-chip="aide">aide</span>
         </div>
         <div class="map-lexical-console__output" data-map-lexical-output aria-live="polite"></div>
     </section>
-    <p class="map-note" id="map-note">Chargement du tore et de ses courants…</p>
+    <p class="map-note" id="map-note" data-map-ra-note>Chargement du tore et de ses courants…</p>
 </main>
 
 </body>

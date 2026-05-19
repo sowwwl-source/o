@@ -691,6 +691,7 @@ function signal_render_conversation_html(array $conversation, array $land, bool 
 
 function signal_render_echo_contacts_html(array $contacts, string $targetUsername = ''): string
 {
+    $host = function_exists('request_host') ? request_host() : '';
     ob_start();
 
     ?>
@@ -701,8 +702,11 @@ function signal_render_echo_contacts_html(array $contacts, string $targetUsernam
         <?php
         $username = trim((string) ($contact['username'] ?? ''));
         $unreadCount = (int) ($contact['unread_count'] ?? 0);
+        $echoHref = function_exists('o_route_href')
+            ? o_route_href('/echo', ['u' => $username], $host)
+            : ((function_exists('o_route_path') ? o_route_path('/echo') : '/echo') . '?u=' . rawurlencode($username));
         ?>
-        <a href="<?= h(function_exists('o_route_path') ? o_route_path('/echo') : '/echo') ?>?u=<?= rawurlencode($username) ?>" class="echo-contact <?= $username === $targetUsername ? 'is-active' : '' ?>">
+        <a href="<?= h($echoHref) ?>" class="echo-contact <?= $username === $targetUsername ? 'is-active' : '' ?>">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <strong><?= h($username) ?></strong>
                 <?php if ($unreadCount > 0): ?>

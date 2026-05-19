@@ -333,7 +333,7 @@ function o_request_query_params(): array
     return $params;
 }
 
-function o_current_route_href(array $params = [], ?string $host = null): string
+function o_current_route_href(array $params = [], ?string $host = null, bool $preservePreview = true): string
 {
     $current = o_request_query_params();
 
@@ -357,7 +357,7 @@ function o_current_route_href(array $params = [], ?string $host = null): string
         }
     }
 
-    return o_route_href(o_request_path(), $current, $host, true);
+    return o_route_href(o_request_path(), $current, $host, $preservePreview);
 }
 
 function o_request_path(?string $uri = null): string
@@ -1004,7 +1004,7 @@ function render_skip_link(string $targetId = 'main-content', string $label = 'Al
 function render_nucleus_banner(string $currentLabel = 'surface', string $href = '/'): string
 {
     $label = htmlspecialchars(trim($currentLabel) !== '' ? trim($currentLabel) : 'surface', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-    $target = htmlspecialchars(o_route_path($href), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $target = htmlspecialchars(o_route_href($href), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $aria = htmlspecialchars(
         'Retour au noyau. Réalité traverse le plasma, se boucle en tore, puis revient au noyau. Appui long tactile puis glisse pour naviguer dans le tore. Surface actuelle : ' . $currentLabel . '.',
         ENT_QUOTES | ENT_SUBSTITUTE,
@@ -1033,6 +1033,145 @@ function render_nucleus_banner(string $currentLabel = 'surface', string $href = 
         </span>
     </a>
 HTML;
+}
+
+function render_spatial_context_bar(string $view = 'surface', ?string $host = null, ?string $note = null): string
+{
+    $resolvedHost = request_host($host);
+    if (current_surface_variant($resolvedHost) !== 'io') {
+        return '';
+    }
+
+    $viewKey = strtolower(trim($view));
+    $viewCatalog = [
+        'guide' => [
+            'label' => '0wlslw0',
+            'title' => 'Le seuil spatial reste ouvert.',
+            'copy' => 'Terre ouvre l orientation. Mine garde la relance courte avant de pousser ailleurs.',
+            'dominant' => 'terre',
+            'note' => 'Le guide garde la mémoire du basculement écran / casque pour ne pas perdre le passage.',
+        ],
+        'map' => [
+            'label' => 'map',
+            'title' => 'La carte cadre le volume actif.',
+            'copy' => 'Terre pose les repères et Mine suit les courants, les écarts et les foyers de lecture.',
+            'dominant' => 'terre',
+            'note' => 'La carte reste lente et lisible : elle prépare le regard avant la future couche native.',
+        ],
+        'signal' => [
+            'label' => 'signal',
+            'title' => 'Le fil direct tient dans la main mine.',
+            'copy' => 'Mine ouvre la conversation, Terre garde l adresse, la reprise et le retour vers la terre liée.',
+            'dominant' => 'mine',
+            'note' => 'Le fil garde son contexte pendant la bascule pour éviter de casser l écriture en route.',
+        ],
+        'echo' => [
+            'label' => 'echo',
+            'title' => 'La liaison courte reste en visée directe.',
+            'copy' => 'Mine pousse le message sans détour et Terre garde le retour vers Signal, le noyau et la terre active.',
+            'dominant' => 'mine',
+            'note' => 'Echo reste court, stable et lisible pour un casque: une cible, une réponse, un retour clair.',
+        ],
+        'str3m' => [
+            'label' => 'str3m',
+            'title' => 'Le courant public garde sa houle.',
+            'copy' => 'Terre cadre les présences visibles et Mine capte les gestes, les preuves et les bifurcations rapides.',
+            'dominant' => 'terre',
+            'note' => 'Str3m reste la grande nappe publique: lecture lente, repères clairs, bifurcation rapide vers les terres.',
+        ],
+        'surface' => [
+            'label' => 'surface',
+            'title' => 'La surface spatiale garde son axe.',
+            'copy' => 'Terre tient l orientation générale et Mine relance les gestes courts, les fils et les détours.',
+            'dominant' => 'terre',
+            'note' => 'Le mode casque web reste une maquette stable avant le vrai client spatial.',
+        ],
+    ];
+
+    $viewConfig = $viewCatalog[$viewKey] ?? $viewCatalog['surface'];
+    $isHeadsetMode = spatial_preview_mode($resolvedHost) === 'headset';
+    $modeLabel = $isHeadsetMode ? 'mode casque web' : 'projection ecran';
+    $modeCopy = $isHeadsetMode
+        ? 'focus large, lecture stable et routes visibles avant regard + pinch natifs'
+        : 'preview souple pour cadrer, écrire et régler le parcours avant le casque';
+    $resolvedNote = trim($note ?? '') !== '' ? trim((string) $note) : (string) $viewConfig['note'];
+    $dominantHand = (string) ($viewConfig['dominant'] ?? 'terre');
+    $surfaceLabel = surface_brand_label($resolvedHost);
+    $modeScreenHref = o_current_route_href(['spatial' => null], $resolvedHost, false);
+    $modeHeadsetHref = o_current_route_href(['spatial' => 'headset'], $resolvedHost, false);
+    $homeHref = o_route_href('/', [], $resolvedHost);
+
+    $routeGroups = [
+        'terre' => [
+            'title' => 'main terre',
+            'copy' => 'ouvrir, cadrer, porter',
+            'links' => [
+                ['key' => 'guide', 'label' => '0wlslw0', 'href' => o_route_href('/0wlslw0', [], $resolvedHost)],
+                ['key' => 'map', 'label' => 'Map', 'href' => o_route_href('/map', [], $resolvedHost)],
+            ],
+        ],
+        'mine' => [
+            'title' => 'main mine',
+            'copy' => 'inciser, relancer, ecrire',
+            'links' => [
+                ['key' => 'signal', 'label' => 'Signal', 'href' => o_route_href('/signal', [], $resolvedHost)],
+                ['key' => 'str3m', 'label' => 'Str3m', 'href' => o_route_href('/str3m', [], $resolvedHost)],
+            ],
+        ],
+    ];
+
+    ob_start();
+    ?>
+    <section class="spatial-context reveal" data-spatial-context data-spatial-view="<?= h($viewKey) ?>" data-spatial-dominant="<?= h($dominantHand) ?>" aria-label="Contexte spatial de sowwwl.io">
+        <div class="spatial-context__head">
+            <p class="spatial-context__eyebrow"><strong><?= h($surfaceLabel) ?></strong> <span><?= h($modeLabel) ?></span></p>
+            <h2 class="spatial-context__title"><?= h((string) $viewConfig['title']) ?></h2>
+            <p class="spatial-context__copy"><?= h((string) $viewConfig['copy']) ?></p>
+        </div>
+        <div class="spatial-context__grid">
+            <article class="spatial-context__panel spatial-context__panel--mode" data-spatial-panel="mode">
+                <span class="spatial-context__tag">mode spatial</span>
+                <strong><?= h($modeLabel) ?></strong>
+                <p><?= h($modeCopy) ?></p>
+                <div class="xyz-surface-route-links xyz-surface-route-links--mode" aria-label="Basculer le mode spatial">
+                    <a class="ghost-link" data-spatial-link href="<?= h($modeScreenHref) ?>"<?= $isHeadsetMode ? '' : ' aria-current="page"' ?>>Projection écran</a>
+                    <a class="ghost-link" data-spatial-link href="<?= h($modeHeadsetHref) ?>"<?= $isHeadsetMode ? ' aria-current="page"' : '' ?>>Mode casque web</a>
+                    <a class="ghost-link" data-spatial-link href="<?= h($homeHref) ?>">Noyau</a>
+                </div>
+                <p class="spatial-context__ra" data-spatial-ra-note>Le tore garde ici le dernier régime utile, même quand tu quittes la membrane.</p>
+                <div class="xyz-surface-route-links spatial-context__ra-actions" data-spatial-ra-actions aria-label="Prises recommandées par la modulation" hidden>
+                    <a class="ghost-link" data-spatial-ra-primary href="<?= h($homeHref) ?>">Revenir au noyau</a>
+                    <a class="ghost-link" data-spatial-ra-secondary href="<?= h($homeHref) ?>">Revenir au noyau</a>
+                </div>
+                <div class="spatial-context__world" data-spatial-world>
+                    <div class="spatial-context__world-grid" aria-label="Mémoire du monde instrument">
+                        <p><span>vue</span><strong data-spatial-world-view>mémoire calme</strong></p>
+                        <p><span>focus</span><strong data-spatial-world-focus>aucune prise récente</strong></p>
+                        <p><span>corps</span><strong data-spatial-world-body>corps en réserve</strong></p>
+                        <p><span>mains</span><strong data-spatial-world-hands>terre et mine au repos</strong></p>
+                        <p><span>lumière</span><strong data-spatial-world-light>lueur en mémoire</strong></p>
+                    </div>
+                    <p class="spatial-context__world-copy" data-spatial-world-copy>Le dernier monde instrument rejouable se posera ici quand la membrane aura parlé.</p>
+                </div>
+            </article>
+            <?php foreach ($routeGroups as $hand => $group): ?>
+                <article class="spatial-context__panel spatial-context__panel--hand" data-spatial-panel="<?= h($hand) ?>" data-spatial-hand="<?= h($hand) ?>">
+                    <span class="spatial-context__tag"><?= h((string) $group['title']) ?></span>
+                    <strong><?= h((string) $group['copy']) ?></strong>
+                    <div class="xyz-surface-route-links" aria-label="<?= h('Routes ' . (string) $group['title']) ?>">
+                        <?php foreach ($group['links'] as $link): ?>
+                            <a class="ghost-link" data-spatial-link data-spatial-link-key="<?= h((string) $link['key']) ?>" href="<?= h((string) $link['href']) ?>"<?= $viewKey === (string) $link['key'] ? ' aria-current="page"' : '' ?>><?= h((string) $link['label']) ?></a>
+                        <?php endforeach; ?>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+        <p class="spatial-context__note"><?= h($resolvedNote) ?></p>
+        <p class="spatial-context__hint">Mode casque web : fleches pour circuler, 1 2 3 pour viser un panneau, Entree pour ouvrir.</p>
+    </section>
+    <?php
+
+    return trim((string) ob_get_clean());
 }
 
 function main_landmark_attrs(string $id = 'main-content'): string

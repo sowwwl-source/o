@@ -5,16 +5,20 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/signal_mail.php';
 
 $host = request_host();
+$surfaceVariant = current_surface_variant($host);
+$isSpatialHeadsetMode = $surfaceVariant === 'io' && spatial_preview_mode($host) === 'headset';
 
 $brandDomain = current_brand_domain($host);
 $csrfToken = csrf_token();
-$guideHref = o_route_path('/0wlslw0');
-$homeHref = o_route_path('/');
-$joinHref = o_route_path('/rejoindre');
-$signalHref = o_route_path('/signal');
-$str3mHref = o_route_path('/str3m');
-$echoHref = o_route_path('/echo');
-$signalLiveHref = o_route_path('/signal_live.php');
+$guideHref = o_route_href('/0wlslw0', [], $host);
+$homeHref = o_route_href('/', [], $host);
+$joinHref = o_route_href('/rejoindre', [], $host);
+$signalHref = o_route_href('/signal', [], $host);
+$str3mHref = o_route_href('/str3m', [], $host);
+$echoHref = o_route_href('/echo', [], $host);
+$signalLiveHref = o_route_href('/signal_live.php', [], $host);
+$echoThreadHref = static fn (string $username): string => o_route_href('/echo', ['u' => trim($username)], $host);
+$signalThreadHref = static fn (string $slug): string => o_route_href('/signal', ['u' => trim($slug)], $host);
 $echoGuide = guide_path('echo');
 
 $land = current_authenticated_land();
@@ -33,7 +37,7 @@ $targetSlug = trim((string) ($targetLand['slug'] ?? ''));
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedToken = $_POST['csrf_token'] ?? '';
     if (!$land) {
-        header('Location: ' . $echoHref . '?error=auth', true, 303);
+        header('Location: ' . o_route_href('/echo', ['error' => 'auth'], $host), true, 303);
         exit;
     } elseif (!hash_equals($csrfToken, $postedToken)) {
         $message = "La résonance s'est dissipée. Réessaie.";
@@ -50,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 signal_send_message($land, $receiver, '', $body);
                 $receiverLand = signal_find_land_by_identifier($receiver);
                 $receiverUsername = trim((string) ($receiverLand['username'] ?? $receiver));
-                header('Location: ' . $echoHref . '?u=' . urlencode($receiverUsername));
+                header('Location: ' . $echoThreadHref($receiverUsername));
                 exit;
             }
         } catch (InvalidArgumentException|RuntimeException $exception) {
@@ -115,7 +119,7 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
     <title>Écho — <?= h(SITE_TITLE) ?></title>
 <?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
-<body class="experience signal-view">
+<body class="experience signal-view<?= $surfaceVariant === 'io' ? ' io-surface-view' : '' ?><?= $isSpatialHeadsetMode ? ' io-headset-mode' : '' ?>">
 <?= render_skip_link() ?>
 <?= render_nucleus_banner('echo') ?>
 <div class="noise" aria-hidden="true"></div>
@@ -142,6 +146,8 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
         </div>
     </header>
 
+    <?= render_spatial_context_bar('echo', $host) ?>
+
     <?php if ($message !== ''): ?>
         <section class="panel reveal">
             <div class="flash flash-<?= h($messageType) ?>" aria-live="polite">
@@ -154,9 +160,21 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
         <div class="section-topline">
             <div>
                 <h2 id="echo-mode-title">Direct, mais pas séparé</h2>
-                <p class="panel-copy"><?= h((string) ($echoGuide['copy'] ?? 'Relier deux terres sans passer par le bruit public.')) ?></p>
+                <p class="panel-copy" data-echo-ra-note><?= h((string) ($echoGuide['copy'] ?? 'Relier deux terres sans passer par le bruit public.')) ?></p>
             </div>
             <a class="ghost-link" href="<?= h($signalHref) ?>">Revenir à Signal</a>
+        </div>
+        <div class="signal-mode-grid">
+            <article class="signal-mode-card" data-echo-ra-card="signal">
+                <p class="signal-mode-kicker">Signal · mémoire</p>
+                <h3>Relire, cadrer, laisser formuler</h3>
+                <p class="panel-copy">Quand la liaison doit encore se préciser, Signal garde la couture et l’adresse.</p>
+            </article>
+            <article class="signal-mode-card signal-mode-card--primary" data-echo-ra-card="echo">
+                <p class="signal-mode-kicker">Écho · prise directe</p>
+                <h3>Toucher la terre sans détour</h3>
+                <p class="panel-copy">Quand la prise est claire, Écho coupe court et relance la même terre.</p>
+            </article>
         </div>
     </section>
 
@@ -170,14 +188,14 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
         data-live-hash="<?= h($echoHistoryHash) ?>"
         data-live-message-count="<?= h((string) count($history)) ?>"
     >
-        <aside class="echo-contacts" data-echo-contacts-list>
+        <aside class="echo-contacts" data-echo-contacts-list data-echo-ra-zone="contacts">
             <?= $echoContactsHtml ?>
         </aside>
 
-        <div class="echo-conversation panel">
+        <div class="echo-conversation panel" data-echo-ra-zone="direct">
             <?php if (!$land): ?>
                 <div class="echo-empty-state">
-                    <p class="panel-copy">Echo a besoin d’une terre active pour ouvrir une liaison directe. Sans terre, tu peux déjà lire Signal et préparer l’entrée.</p>
+                    <p class="panel-copy" data-echo-ra-empty-note>Echo a besoin d’une terre active pour ouvrir une liaison directe. Sans terre, tu peux déjà lire Signal et préparer l’entrée.</p>
                     <div class="action-row">
                         <a class="pill-link" href="<?= h($joinHref) ?>">Ouvrir une terre</a>
                         <a class="ghost-link" href="<?= h($signalHref) ?>">Voir Signal</a>
@@ -188,7 +206,7 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
                 <p class="panel-copy"><?= h($signalSchemaHint) ?></p>
             <?php elseif ($targetSlug === '' || !$targetLand): ?>
                 <div class="echo-empty-state">
-                    <p class="panel-copy">Choisis une terre à gauche pour ouvrir la liaison directe. Si tu préfères l’adresse et le carnet, passe par Signal.</p>
+                    <p class="panel-copy" data-echo-ra-empty-note>Choisis une terre à gauche pour ouvrir la liaison directe. Si tu préfères l’adresse et le carnet, passe par Signal.</p>
                     <div class="action-row">
                         <a class="pill-link" href="<?= h($signalHref) ?>">Ouvrir Signal</a>
                         <a class="ghost-link" href="<?= h($str3mHref) ?>">Retour au public</a>
@@ -198,7 +216,7 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
                 <div class="section-topline">
                     <div>
                         <h2>Liaison avec <?= h($targetUsername) ?></h2>
-                        <p class="panel-copy">Direct, sur la même trame que Signal. Reviens à la boîte si tu veux plus de contexte.</p>
+                        <p class="panel-copy" data-echo-ra-thread-note>Direct, sur la même trame que Signal. Reviens à la boîte si tu veux plus de contexte.</p>
                     </div>
                     <span class="badge"><?= h(signal_virtual_address($targetLand)) ?></span>
                     <span class="meta-pill" data-message-live-indicator role="status" aria-live="polite" aria-atomic="true">direct · veille</span>
@@ -208,19 +226,21 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
                     <?= $echoHistoryHtml ?>
                 </div>
 
-                <form action="<?= h($echoHref) ?>?u=<?= rawurlencode($targetUsername) ?>" method="post" class="land-form echo-form">
+                <form action="<?= h($echoThreadHref($targetUsername)) ?>" method="post" class="land-form echo-form">
                     <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
                     <input type="hidden" name="receiver_username" value="<?= h($targetUsername) ?>">
                     <input type="hidden" name="receiver_slug" value="<?= h($targetSlug) ?>">
+
+                    <p class="panel-copy echo-compose-note" data-echo-ra-compose-note>Transmission courte, directe, sans détour inutile.</p>
                     
                     <label>
                         Transmission
-                        <textarea name="body" required placeholder="Écrire à cette terre, simplement..."></textarea>
+                        <textarea name="body" required placeholder="Écrire à cette terre, simplement..." data-echo-ra-textarea></textarea>
                     </label>
                     
                     <div class="action-row">
                         <button type="submit">Transmettre</button>
-                        <a class="ghost-link" href="<?= h($signalHref) ?>?u=<?= rawurlencode($targetSlug) ?>">Ouvrir la même liaison dans Signal</a>
+                        <a class="ghost-link" href="<?= h($signalThreadHref($targetSlug)) ?>">Ouvrir la même liaison dans Signal</a>
                     </div>
                 </form>
             <?php endif; ?>

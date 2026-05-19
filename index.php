@@ -286,8 +286,8 @@ $torusAriaLabel = $isSowwwlIo
         ? 'Torus ambiant : tabulation, flèches, focus large et clic gardent la dérive stable en mode casque web. 0wlslw0 reste au centre comme porte rapide.'
         : 'Torus ambiant : pointe ou glisse pour prendre un repère en mode écran, puis flèches pour dériver au clavier. 0wlslw0 reste au centre comme porte rapide.')
     : 'Torus ambiant : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Sur mobile, un appui long puis une glisse permettent aussi de naviguer. Swipe gauche vers Signal, haut vers Str3m, droite vers aZa, bas vers le noyau. Le centre ou un geste en O ouvrent aussi 0wlslw0.';
-$spatialModeScreenHref = $isSowwwlIo ? o_current_route_href(['spatial' => null]) : '';
-$spatialModeHeadsetHref = $isSowwwlIo ? o_current_route_href(['spatial' => 'headset']) : '';
+$spatialModeScreenHref = $isSowwwlIo ? o_current_route_href(['spatial' => null], $host, false) : '';
+$spatialModeHeadsetHref = $isSowwwlIo ? o_current_route_href(['spatial' => 'headset'], $host, false) : '';
 $spatialModeTitle = $isSowwwlIo
     ? ($isSpatialHeadsetMode ? 'Mode casque web actif.' : 'Mode écran actif.')
     : '';
@@ -556,6 +556,7 @@ $pageDescription = $isLabSurface
                         <strong class="mapping-chorus__title" data-mapping-active-label>Réalité</strong>
                         <p class="mapping-chorus__whisper" data-mapping-active-whisper>Rue, souffle, corps, lumière : le monde avant sa traduction.</p>
                         <p class="mapping-chorus__summary" data-mapping-active-summary>La réalité contient les phénomènes, les gestes, les traces et les intensités qui n’ont pas encore trouvé leur forme navigable.</p>
+                        <p class="mapping-chorus__ra" data-mapping-ra-note>Quand la membrane s ouvre, la couche dominante peut reprendre la main ici pour garder la lecture située.</p>
                         <p class="mapping-chorus__hint" id="mapping-keys">Tab pour parcourir chaque plan. Entrée ou clic pour l activer. En mode casque web, les flèches, Home et End gardent aussi la dérive.</p>
                         <div class="mapping-chorus__meter" aria-hidden="true">
                             <span></span>
@@ -610,6 +611,30 @@ $pageDescription = $isLabSurface
                         </div>
                         <p class="panel-copy device-bridge-note" data-device-native-note><?= h($spatialDeviceNote) ?></p>
                     </div>
+                    <div class="xyz-world-instrument" data-xyz-instrument-root>
+                        <div class="xyz-world-instrument__head">
+                            <span class="summary-label">monde instrument</span>
+                            <div class="xyz-world-instrument__camera-switch" role="group" aria-label="Perspective caméra">
+                                <button type="button" class="ghost-link xyz-world-instrument__camera-button" data-xyz-camera-facing-button="user" aria-pressed="false">visage</button>
+                                <button type="button" class="ghost-link xyz-world-instrument__camera-button" data-xyz-camera-facing-button="environment" aria-pressed="false">paysage</button>
+                            </div>
+                        </div>
+                        <div class="xyz-world-instrument__grid" aria-label="État du monde comme instrument">
+                            <p><span>vue</span><strong data-xyz-instrument-view>visage</strong></p>
+                            <p><span>focus</span><strong data-xyz-instrument-focus>souffle proche</strong></p>
+                            <p><span>corps</span><strong data-xyz-instrument-body>corps tenu</strong></p>
+                            <p><span>mains</span><strong data-xyz-instrument-touch>aucune prise</strong></p>
+                            <p><span>lumière</span><strong data-xyz-instrument-light>lueur mixte</strong></p>
+                        </div>
+                        <div class="xyz-world-instrument__stage" data-xyz-instrument-stage tabindex="0" aria-label="Surface de jeu Terre et Mine, jouable au doigt, au pointeur et au clavier">
+                            <span class="xyz-world-instrument__axis xyz-world-instrument__axis--x" aria-hidden="true"></span>
+                            <span class="xyz-world-instrument__axis xyz-world-instrument__axis--y" aria-hidden="true"></span>
+                            <span class="xyz-world-instrument__orb xyz-world-instrument__orb--terre" data-xyz-instrument-terre aria-hidden="true"></span>
+                            <span class="xyz-world-instrument__orb xyz-world-instrument__orb--mine" data-xyz-instrument-mine aria-hidden="true"></span>
+                            <p class="xyz-world-instrument__hint" data-xyz-instrument-stage-copy>Glisse une ou deux mains ici. Terre porte le fond, Mine taille la note. WASD et flèches fonctionnent aussi. Bascule en paysage pour faire jouer le dehors.</p>
+                        </div>
+                        <p class="panel-copy xyz-world-instrument__copy" data-xyz-world-copy>Le monde reste un instrument: visage, corps, lumière, paysage et toucher peuvent tous nourrir le tore.</p>
+                    </div>
                     <div class="xyz-music-guide" data-xyz-music-guide-root>
                         <span class="summary-label">atelier</span>
                         <div class="xyz-music-guide__grid" aria-label="Lecture musicale du tore">
@@ -634,6 +659,54 @@ $pageDescription = $isLabSurface
                         <p class="xyz-music-guide__duet-state" data-xyz-duet-state>Terre porte le seuil, Mine y ouvre un trajet.</p>
                         <p class="panel-copy" data-xyz-music-guide>La lumière ouvre le majeur, l’ombre garde le mineur, l’inclinaison tient la note, la voix s’y accroche et la secousse déclenche un shaker.</p>
                     </div>
+                </article>
+
+                <article class="xyz-surface-note xyz-surface-note--modulation" data-xyz-ar-modulation data-xyz-ar-mode="<?= h($isSowwwlIo ? 'anchor' : 'weave') ?>">
+                    <span class="summary-label">modulation RA</span>
+                    <strong data-xyz-ar-title>Le tore se pose sur le monde.</strong>
+                    <p class="panel-copy" data-xyz-ar-status>La réalité garde encore la main. Active la membrane pour laisser les trois couches se répartir.</p>
+                    <div class="xyz-ar-mode-switch" aria-label="Mode de modulation en réalité augmentée">
+                        <button type="button" class="ghost-link xyz-ar-mode-button" data-xyz-ar-mode-button="anchor" aria-pressed="true">Ancrer</button>
+                        <button type="button" class="ghost-link xyz-ar-mode-button" data-xyz-ar-mode-button="translate" aria-pressed="false">Traduire</button>
+                        <button type="button" class="ghost-link xyz-ar-mode-button" data-xyz-ar-mode-button="loop" aria-pressed="false">Boucler</button>
+                        <button type="button" class="ghost-link xyz-ar-mode-button" data-xyz-ar-mode-button="weave" aria-pressed="false">Tresser</button>
+                    </div>
+                    <div class="xyz-ar-layer-grid" aria-label="Poids des trois couches">
+                        <article class="xyz-ar-layer xyz-ar-layer--real" data-xyz-ar-layer="real">
+                            <div class="xyz-ar-layer__head">
+                                <span>réalité</span>
+                                <strong data-xyz-ar-real-value>34%</strong>
+                            </div>
+                            <div class="xyz-ar-layer__meter" aria-hidden="true"><span data-xyz-ar-real-meter></span></div>
+                            <p data-xyz-ar-real-copy>Plans, bords, souffle, lumière, obstacles: ce qui ancre le monde avant l inscription.</p>
+                        </article>
+                        <article class="xyz-ar-layer xyz-ar-layer--plasma" data-xyz-ar-layer="plasma">
+                            <div class="xyz-ar-layer__head">
+                                <span>plasma</span>
+                                <strong data-xyz-ar-plasma-value>33%</strong>
+                            </div>
+                            <div class="xyz-ar-layer__meter" aria-hidden="true"><span data-xyz-ar-plasma-meter></span></div>
+                            <p data-xyz-ar-plasma-copy>Flux, mémoire, météo, voix, signes et calcul: la couche qui traduit sans éteindre.</p>
+                        </article>
+                        <article class="xyz-ar-layer xyz-ar-layer--torus" data-xyz-ar-layer="torus">
+                            <div class="xyz-ar-layer__head">
+                                <span>tore</span>
+                                <strong data-xyz-ar-torus-value>33%</strong>
+                            </div>
+                            <div class="xyz-ar-layer__meter" aria-hidden="true"><span data-xyz-ar-torus-meter></span></div>
+                            <p data-xyz-ar-torus-copy>Seuils, routes, prises, zones et dérive: la peau qui boucle l espace en interface.</p>
+                        </article>
+                    </div>
+                    <p class="xyz-ar-directive" data-xyz-ar-directive>Directive: garder les plans du monde lisibles, laisser le plasma annoter, puis ouvrir le tore seulement là où il doit prendre.</p>
+                    <div class="xyz-ar-pilot" data-xyz-ar-pilot>
+                        <p class="xyz-ar-pilot__title" data-xyz-ar-pilot-title>Prise active: cadrer le volume.</p>
+                        <p class="xyz-ar-pilot__copy" data-xyz-ar-pilot-copy>Commence par la carte pour tenir les plans, puis repasse par 0wlslw0 si tu dois réorienter la lecture située.</p>
+                        <div class="xyz-surface-route-links xyz-surface-route-links--ar" aria-label="Routes conseillées en réalité augmentée">
+                            <a class="ghost-link" href="<?= h($mapHref) ?>" data-xyz-ar-primary-link>Ouvrir Map</a>
+                            <a class="ghost-link" href="<?= h($guideHref) ?>" data-xyz-ar-secondary-link>Passer par 0wlslw0</a>
+                        </div>
+                    </div>
+                    <p class="xyz-ar-usage" data-xyz-ar-usage>Raccourcis: R ancre, P traduit, T boucle, M tresse. En mode casque web, le tore peut changer de régime sans perdre la lecture située.</p>
                 </article>
 
                 <article class="xyz-surface-note">
