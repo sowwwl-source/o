@@ -257,6 +257,109 @@ function o_route_path(string $path = '/'): string
     return $candidate === '/' ? $prefix . '/' : $prefix . $candidate;
 }
 
+function o_route_href(string $path = '/', array $params = [], ?string $host = null, bool $preservePreview = true): string
+{
+    $candidate = o_route_path($path);
+    if (preg_match('~^(?:[a-z][a-z0-9+.-]*:|//)~i', $candidate) === 1) {
+        return $candidate;
+    }
+
+    $hash = '';
+    $hashIndex = strpos($candidate, '#');
+    if ($hashIndex !== false) {
+        $hash = substr($candidate, $hashIndex);
+        $candidate = substr($candidate, 0, $hashIndex);
+    }
+
+    $query = '';
+    $queryIndex = strpos($candidate, '?');
+    if ($queryIndex !== false) {
+        $query = substr($candidate, $queryIndex + 1);
+        $candidate = substr($candidate, 0, $queryIndex);
+    }
+
+    $resolvedParams = [];
+    if ($query !== '') {
+        parse_str($query, $resolvedParams);
+    }
+
+    if ($preservePreview) {
+        $resolvedParams = array_merge($resolvedParams, preview_context_query_params($host));
+    }
+
+    foreach ($params as $key => $value) {
+        if (!is_string($key) || $key === '') {
+            continue;
+        }
+
+        if ($value === null || $value === '') {
+            unset($resolvedParams[$key]);
+            continue;
+        }
+
+        if (is_bool($value)) {
+            $resolvedParams[$key] = $value ? '1' : '0';
+            continue;
+        }
+
+        if (is_scalar($value)) {
+            $resolvedParams[$key] = (string) $value;
+        }
+    }
+
+    $encodedQuery = http_build_query($resolvedParams, '', '&', PHP_QUERY_RFC3986);
+
+    return $candidate . ($encodedQuery !== '' ? '?' . $encodedQuery : '') . $hash;
+}
+
+function o_request_query_params(): array
+{
+    $params = [];
+
+    foreach ($_GET as $key => $value) {
+        if (!is_string($key) || $key === '') {
+            continue;
+        }
+
+        if ($value === null) {
+            continue;
+        }
+
+        if (is_scalar($value)) {
+            $params[$key] = (string) $value;
+        }
+    }
+
+    return $params;
+}
+
+function o_current_route_href(array $params = [], ?string $host = null): string
+{
+    $current = o_request_query_params();
+
+    foreach ($params as $key => $value) {
+        if (!is_string($key) || $key === '') {
+            continue;
+        }
+
+        if ($value === null || $value === '') {
+            unset($current[$key]);
+            continue;
+        }
+
+        if (is_bool($value)) {
+            $current[$key] = $value ? '1' : '0';
+            continue;
+        }
+
+        if (is_scalar($value)) {
+            $current[$key] = (string) $value;
+        }
+    }
+
+    return o_route_href(o_request_path(), $current, $host, true);
+}
+
 function o_request_path(?string $uri = null): string
 {
     $path = parse_url((string) ($uri ?? ($_SERVER['REQUEST_URI'] ?? '/')), PHP_URL_PATH);
@@ -395,6 +498,193 @@ function sowwwl_runtime_url(string $envKey, string $defaultPath): string
     return request_public_origin() . o_route_path($defaultPath);
 }
 
+function is_local_preview_host(?string $host = null): bool
+{
+    return in_array(request_host($host), ['127.0.0.1', 'localhost', '[::1]'], true);
+}
+
+function sowwwl_is_private_ipv4_host(string $host): bool
+{
+    if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
+        return false;
+    }
+
+    $long = ip2long($host);
+    if ($long === false) {
+        return false;
+    }
+
+    $ranges = [
+        ['10.0.0.0', '10.255.255.255'],
+        ['172.16.0.0', '172.31.255.255'],
+        ['192.168.0.0', '192.168.255.255'],
+        ['169.254.0.0', '169.254.255.255'],
+    ];
+
+    foreach ($ranges as [$start, $end]) {
+        $startLong = ip2long($start);
+        $endLong = ip2long($end);
+        if ($startLong !== false && $endLong !== false && $long >= $startLong && $long <= $endLong) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function sowwwl_is_preview_ipv6_host(string $host): bool
+{
+    if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) === false) {
+        return false;
+    }
+
+    $normalized = strtolower($host);
+
+    return $normalized === '::1'
+        || str_starts_with($normalized, 'fc')
+        || str_starts_with($normalized, 'fd')
+        || str_starts_with($normalized, 'fe80:');
+}
+
+function surface_preview_capable_host(?string $host = null): bool
+{
+    $resolvedHost = request_host($host);
+    if ($resolvedHost === '') {
+        return false;
+    }
+
+    if (is_local_preview_host($resolvedHost)) {
+        return true;
+    }
+
+    if (sowwwl_is_private_ipv4_host($resolvedHost) || sowwwl_is_preview_ipv6_host($resolvedHost)) {
+        return true;
+    }
+
+    return preg_match('/(?:^|\.)(?:local|localhost|test|internal|lan|home|invalid)$/i', $resolvedHost) === 1;
+}
+
+function sowwwl_preview_cookie_name(string $suffix): string
+{
+    return 'o_preview_' . preg_replace('/[^a-z0-9_]+/i', '_', strtolower($suffix));
+}
+
+function sowwwl_sync_preview_cookie(string $suffix, ?string $value): void
+{
+    static $synced = [];
+
+    $cookieName = sowwwl_preview_cookie_name($suffix);
+    $cacheKey = $cookieName . '|' . ($value ?? '__clear__');
+    if (isset($synced[$cacheKey])) {
+        return;
+    }
+    $synced[$cacheKey] = true;
+
+    if (headers_sent()) {
+        if ($value === null) {
+            unset($_COOKIE[$cookieName]);
+        } else {
+            $_COOKIE[$cookieName] = $value;
+        }
+        return;
+    }
+
+    $options = [
+        'expires' => $value === null ? time() - 3600 : time() + (60 * 60 * 24 * 30),
+        'path' => '/',
+        'secure' => request_scheme() === 'https',
+        'httponly' => false,
+        'samesite' => 'Lax',
+    ];
+
+    setcookie($cookieName, $value ?? '', $options);
+
+    if ($value === null) {
+        unset($_COOKIE[$cookieName]);
+    } else {
+        $_COOKIE[$cookieName] = $value;
+    }
+}
+
+function surface_preview_variant(?string $host = null): ?string
+{
+    if (!surface_preview_capable_host($host)) {
+        return null;
+    }
+
+    $surface = strtolower(trim((string) ($_GET['surface'] ?? '')));
+    if (in_array($surface, ['xyz', 'io', 'lab'], true)) {
+        sowwwl_sync_preview_cookie('surface', $surface);
+        return $surface;
+    }
+
+    $cookieValue = strtolower(trim((string) ($_COOKIE[sowwwl_preview_cookie_name('surface')] ?? '')));
+
+    return in_array($cookieValue, ['xyz', 'io', 'lab'], true) ? $cookieValue : null;
+}
+
+function current_surface_variant(?string $host = null): ?string
+{
+    $previewVariant = surface_preview_variant($host);
+    if ($previewVariant !== null) {
+        return $previewVariant;
+    }
+
+    return match (request_host($host)) {
+        'sowwwl.xyz', 'www.sowwwl.xyz' => 'xyz',
+        'sowwwl.io', 'www.sowwwl.io' => 'io',
+        'lab.sowwwl.cloud', 'www.lab.sowwwl.cloud' => 'lab',
+        default => null,
+    };
+}
+
+function surface_is_mapping_host(?string $host = null): bool
+{
+    return in_array(current_surface_variant($host), ['xyz', 'io'], true);
+}
+
+function surface_brand_label(?string $host = null): string
+{
+    return match (current_surface_variant($host)) {
+        'xyz' => 'sowwwl.xyz',
+        'io' => 'sowwwl.io',
+        'lab' => 'lab.sowwwl.cloud',
+        default => current_brand_domain($host),
+    };
+}
+
+function spatial_preview_mode(?string $host = null): string
+{
+    if (current_surface_variant($host) !== 'io') {
+        return 'screen';
+    }
+
+    $queryMode = strtolower(trim((string) ($_GET['spatial'] ?? '')));
+    if (in_array($queryMode, ['screen', 'headset'], true)) {
+        sowwwl_sync_preview_cookie('spatial', $queryMode);
+        return $queryMode;
+    }
+
+    $cookieValue = strtolower(trim((string) ($_COOKIE[sowwwl_preview_cookie_name('spatial')] ?? '')));
+
+    return in_array($cookieValue, ['screen', 'headset'], true) ? $cookieValue : 'screen';
+}
+
+function preview_context_query_params(?string $host = null): array
+{
+    $params = [];
+    $previewVariant = surface_preview_variant($host);
+    if ($previewVariant !== null) {
+        $params['surface'] = $previewVariant;
+    }
+
+    if (current_surface_variant($host) === 'io' && spatial_preview_mode($host) === 'headset') {
+        $params['spatial'] = 'headset';
+    }
+
+    return $params;
+}
+
 function plasma_bridge_url(): string
 {
     return sowwwl_runtime_url('SOWWWL_MEMBRANE_BRIDGE_URL', '/ingest/membrane');
@@ -413,7 +703,8 @@ function plasma_configured_allowed_origins(): array
 function plasma_connect_src_origins(?string $host = null): array
 {
     $resolvedHost = request_host($host);
-    if (!in_array($resolvedHost, ['sowwwl.xyz', 'www.sowwwl.xyz', 'lab.sowwwl.cloud', 'www.lab.sowwwl.cloud'], true)) {
+    $surfaceVariant = current_surface_variant($resolvedHost);
+    if (!in_array($surfaceVariant, ['xyz', 'io', 'lab'], true)) {
         return [];
     }
 
@@ -427,7 +718,7 @@ function plasma_connect_src_origins(?string $host = null): array
         }
     }
 
-    if (in_array($resolvedHost, ['lab.sowwwl.cloud', 'www.lab.sowwwl.cloud'], true)) {
+    if ($surfaceVariant === 'lab') {
         $origins[] = 'https://api.lab.sowwwl.cloud';
     }
 
@@ -522,14 +813,14 @@ function pwa_app_catalog(): array
             'name' => SITE_TITLE,
             'short_name' => 'O.',
             'description' => 'O. Le réseau minimal — un espace vivant, personnel, discret. Pose ta terre et laisse la nuit coder le reste.',
-            'start_url' => o_route_path('/'),
+            'start_url' => o_route_href('/'),
             'scope' => o_route_path('/'),
             'theme_color' => '#09090b',
             'background_color' => '#09090b',
             'shortcuts' => [
-                ['name' => 'Signal', 'short_name' => 'Signal', 'url' => o_route_path('/signal')],
-                ['name' => 'Str3m', 'short_name' => 'Str3m', 'url' => o_route_path('/str3m')],
-                ['name' => '0wlslw0', 'short_name' => '0wlslw0', 'url' => o_route_path('/0wlslw0')],
+                ['name' => 'Signal', 'short_name' => 'Signal', 'url' => o_route_href('/signal')],
+                ['name' => 'Str3m', 'short_name' => 'Str3m', 'url' => o_route_href('/str3m')],
+                ['name' => '0wlslw0', 'short_name' => '0wlslw0', 'url' => o_route_href('/0wlslw0')],
             ],
         ],
         'owl' => [
@@ -537,14 +828,14 @@ function pwa_app_catalog(): array
             'name' => '0wlslw0',
             'short_name' => '0wlslw0',
             'description' => '0wlslw0 — guide d entree pour comprendre O. et trouver la bonne porte sans se perdre.',
-            'start_url' => o_route_path('/0wlslw0'),
+            'start_url' => o_route_href('/0wlslw0'),
             'scope' => o_route_path('/0wlslw0'),
             'theme_color' => '#09090b',
             'background_color' => '#09090b',
             'shortcuts' => [
-                ['name' => 'Retour au noyau', 'short_name' => 'Noyau', 'url' => o_route_path('/')],
-                ['name' => 'Ouvrir Str3m', 'short_name' => 'Str3m', 'url' => o_route_path('/str3m')],
-                ['name' => 'Poser une terre', 'short_name' => 'Terre', 'url' => o_route_path('/rejoindre')],
+                ['name' => 'Retour au noyau', 'short_name' => 'Noyau', 'url' => o_route_href('/')],
+                ['name' => 'Ouvrir Str3m', 'short_name' => 'Str3m', 'url' => o_route_href('/str3m')],
+                ['name' => 'Poser une terre', 'short_name' => 'Terre', 'url' => o_route_href('/rejoindre')],
             ],
         ],
         'xyz' => [
@@ -552,14 +843,30 @@ function pwa_app_catalog(): array
             'name' => 'SOWWWL XYZ',
             'short_name' => 'XYZ',
             'description' => 'SOWWWL XYZ — surface torique, carte sensible et seuil d entree dans le tore.',
-            'start_url' => o_route_path('/'),
+            'start_url' => o_route_href('/'),
             'scope' => o_route_path('/'),
             'theme_color' => '#09090b',
             'background_color' => '#09090b',
             'shortcuts' => [
-                ['name' => 'Ouvrir 0wlslw0', 'short_name' => '0wlslw0', 'url' => o_route_path('/0wlslw0')],
-                ['name' => 'Lire Str3m', 'short_name' => 'Str3m', 'url' => o_route_path('/str3m')],
-                ['name' => 'Revenir au noyau', 'short_name' => 'Noyau', 'url' => o_route_path('/')],
+                ['name' => 'Ouvrir 0wlslw0', 'short_name' => '0wlslw0', 'url' => o_route_href('/0wlslw0')],
+                ['name' => 'Lire Str3m', 'short_name' => 'Str3m', 'url' => o_route_href('/str3m')],
+                ['name' => 'Revenir au noyau', 'short_name' => 'Noyau', 'url' => o_route_href('/')],
+            ],
+        ],
+        'io' => [
+            'id' => o_route_path('/app/io'),
+            'name' => 'SOWWWL IO',
+            'short_name' => 'IO',
+            'description' => 'SOWWWL IO — surface spatiale pour visionOS, casques XR et tore situe dans l espace.',
+            'start_url' => o_route_href('/'),
+            'scope' => o_route_path('/'),
+            'theme_color' => '#09090b',
+            'background_color' => '#09090b',
+            'orientation' => 'any',
+            'shortcuts' => [
+                ['name' => 'Ouvrir 0wlslw0', 'short_name' => '0wlslw0', 'url' => o_route_href('/0wlslw0')],
+                ['name' => 'Lire Str3m', 'short_name' => 'Str3m', 'url' => o_route_href('/str3m')],
+                ['name' => 'Voir la carte', 'short_name' => 'Carte', 'url' => o_route_href('/map')],
             ],
         ],
         'lab' => [
@@ -567,23 +874,25 @@ function pwa_app_catalog(): array
             'name' => 'O. Lab',
             'short_name' => 'Lab',
             'description' => 'O. Lab — atelier mobile du tore pour capteurs, pocket, plasma et livraison differee.',
-            'start_url' => o_route_path('/'),
+            'start_url' => o_route_href('/'),
             'scope' => o_route_path('/'),
             'theme_color' => '#09090b',
             'background_color' => '#09090b',
             'shortcuts' => [
-                ['name' => 'Activer les capteurs', 'short_name' => 'Capteurs', 'url' => o_route_path('/') . '#atelier'],
-                ['name' => 'QA island', 'short_name' => 'QA', 'url' => o_route_path('/island') . '?u=qa-multimatiere'],
-                ['name' => '0wlslw0', 'short_name' => '0wlslw0', 'url' => o_route_path('/0wlslw0')],
+                ['name' => 'Activer les capteurs', 'short_name' => 'Capteurs', 'url' => o_route_href('/#atelier')],
+                ['name' => 'QA island', 'short_name' => 'QA', 'url' => o_route_href('/island', ['u' => 'qa-multimatiere'])],
+                ['name' => '0wlslw0', 'short_name' => '0wlslw0', 'url' => o_route_href('/0wlslw0')],
             ],
         ],
     ];
 
     foreach ($catalog as $appId => $config) {
-        $catalog[$appId]['lang'] = 'fr';
-        $catalog[$appId]['display'] = 'standalone';
-        $catalog[$appId]['display_override'] = ['window-controls-overlay', 'standalone', 'browser'];
-        $catalog[$appId]['orientation'] = 'portrait';
+        $catalog[$appId]['lang'] = (string) ($config['lang'] ?? 'fr');
+        $catalog[$appId]['display'] = (string) ($config['display'] ?? 'standalone');
+        $catalog[$appId]['display_override'] = is_array($config['display_override'] ?? null)
+            ? $config['display_override']
+            : ['window-controls-overlay', 'standalone', 'browser'];
+        $catalog[$appId]['orientation'] = (string) ($config['orientation'] ?? 'portrait');
         $catalog[$appId]['icons'] = $icons;
     }
 
@@ -594,10 +903,14 @@ function pwa_default_app_id(?string $host = null): string
 {
     $resolvedHost = request_host($host);
 
-    return match ($resolvedHost) {
-        '0wlslw0.com', 'www.0wlslw0.com' => 'owl',
-        'sowwwl.xyz', 'www.sowwwl.xyz' => 'xyz',
-        'lab.sowwwl.cloud', 'www.lab.sowwwl.cloud' => 'lab',
+    if (in_array($resolvedHost, ['0wlslw0.com', 'www.0wlslw0.com'], true)) {
+        return 'owl';
+    }
+
+    return match (current_surface_variant($resolvedHost)) {
+        'xyz' => 'xyz',
+        'io' => 'io',
+        'lab' => 'lab',
         default => 'main',
     };
 }
@@ -634,9 +947,12 @@ function pwa_manifest_href(?string $preferred = null, ?string $host = null): str
         ? $preferred
         : pwa_default_app_id($host);
 
-    return o_public_href('manifest.php')
-        . '?app=' . rawurlencode($appId)
-        . '&v=' . rawurlencode(pwa_manifest_version());
+    $params = array_merge(
+        ['app' => $appId, 'v' => pwa_manifest_version()],
+        preview_context_query_params($host)
+    );
+
+    return o_public_href('manifest.php') . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 }
 
 function render_pwa_head_tags(?string $preferred = null, ?string $host = null): string

@@ -67,12 +67,18 @@ $host = request_host();
 
 $requestPath = o_request_path('/0wlslw0');
 if ($requestPath === '/0wlslw0.php') {
-    header('Location: ' . o_route_path('/0wlslw0'), true, 302);
+    header('Location: ' . o_route_href('/0wlslw0'), true, 302);
     exit;
 }
 
-$brandDomain = current_brand_domain($host);
-$isSpatialMappingHost = ($brandDomain === 'sowwwl.xyz');
+$surfaceVariant = current_surface_variant($host);
+$isSpatialMappingHost = surface_is_mapping_host($host);
+$isSpatialHeadsetMode = $surfaceVariant === 'io' && spatial_preview_mode($host) === 'headset';
+$spatialGuideHostLabel = surface_brand_label($host);
+$spatialGuideHostCopy = $surfaceVariant === 'io' ? 'espace / vision / tore actif' : 'monde reel / tore actif';
+$spatialGuideSchemaCopy = $surfaceVariant === 'io'
+    ? 'Le tore sort du plan. Le plasma traduit. La surface spatiale devient navigable.'
+    : 'Le tore lit le monde réel. Le plasma traduit. La surface devient navigable.';
 $authenticatedLand = current_authenticated_land();
 $ambientProfile = $authenticatedLand ? land_visual_profile($authenticatedLand) : land_collective_profile('calm');
 $ambientTokens = visual_profile_tokens($ambientProfile, 'calm');
@@ -86,10 +92,10 @@ $voiceUpstreamState = trim((string) ($voiceState['upstream_state'] ?? guide_voic
 $voiceUpstreamLabel = trim((string) ($voiceState['upstream_label'] ?? guide_voice_upstream_label()));
 $guideMode = guide_voice_mode_label();
 $siteTitle = defined('SITE_TITLE') ? (string) constant('SITE_TITLE') : 'O. Le réseau minimal';
-$guideHref = o_route_path('/0wlslw0');
+$guideHref = o_route_href('/0wlslw0');
 $openLandHref = $authenticatedLand
-    ? o_route_path('/land') . '?u=' . rawurlencode((string) $authenticatedLand['slug'])
-    : o_route_path('/rejoindre');
+    ? o_route_href('/land', ['u' => (string) $authenticatedLand['slug']])
+    : o_route_href('/rejoindre');
 $openLandLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une terre';
 $guidePassageStateShort = match ($voiceUpstreamState) {
     'remote-ready' => 'relais vocal amont configuré',
@@ -113,7 +119,7 @@ $owlDoors = [
         'label' => '02 · public',
         'title' => 'Voir le courant',
         'copy' => 'Lire le public avant de choisir une terre.',
-        'href' => o_route_path('/str3m'),
+        'href' => o_route_href('/str3m'),
         'cta' => 'Ouvrir Str3m',
     ],
     [
@@ -150,7 +156,7 @@ $guideVoiceNotes = [
 <?= render_o_page_head_assets('owl') ?>
 </head>
 <body
-    class="experience guide-view<?= $isSpatialMappingHost ? ' mapping-host-view' : '' ?>"
+    class="experience guide-view<?= $isSpatialMappingHost ? ' mapping-host-view' : '' ?><?= $surfaceVariant === 'io' ? ' io-surface-view' : '' ?><?= $isSpatialHeadsetMode ? ' io-headset-mode' : '' ?>"
     data-land-program="<?= h($guideLandProgram) ?>"
     data-land-label="<?= h($guideLandLabel) ?>"
     data-land-lambda="<?= h((string) $guideLandLambda) ?>"
@@ -310,17 +316,17 @@ $guideVoiceNotes = [
         <div class="section-topline mapping-panel__topline">
             <div>
                 <p class="eyebrow mapping-panel__eyebrow">
-                    <strong><?= $isSpatialMappingHost ? 'sowwwl.xyz' : 'surface sensible' ?></strong>
-                    <span><?= $isSpatialMappingHost ? 'monde reel / tore actif' : 'projection / transit / lecture' ?></span>
+                    <strong><?= h($isSpatialMappingHost ? $spatialGuideHostLabel : 'surface sensible') ?></strong>
+                    <span><?= h($isSpatialMappingHost ? $spatialGuideHostCopy : 'projection / transit / lecture') ?></span>
                 </p>
                 <h2 id="mapping-title">Le projet en un schéma</h2>
                 <p class="panel-copy mapping-panel__copy">
                     <?= $isSpatialMappingHost
-                        ? 'Le tore lit le monde réel. Le plasma traduit. La surface devient navigable.'
+                        ? h($spatialGuideSchemaCopy)
                         : 'Réalité, plasma, tore : trois couches pour lire, filtrer, rendre navigable.' ?>
                 </p>
             </div>
-            <span class="badge mapping-panel__badge"><?= $isSpatialMappingHost ? 'real-world map' : 'genie view' ?></span>
+            <span class="badge mapping-panel__badge"><?= h($isSpatialMappingHost ? ($surfaceVariant === 'io' ? 'spatial map' : 'real-world map') : 'genie view') ?></span>
         </div>
 
         <div class="mapping-panel__scene">

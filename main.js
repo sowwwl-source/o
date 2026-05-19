@@ -19,6 +19,14 @@ const bootline = document.getElementById("bootline");
 const copyButtons = Array.from(document.querySelectorAll("[data-copy-link]"));
 const torusCanvases = Array.from(document.querySelectorAll("[data-torus-cloud]"));
 
+function isIoSurfaceView() {
+	return document.body.classList.contains("io-surface-view");
+}
+
+function prefersSpatialHeadsetMode() {
+	return document.body.classList.contains("io-headset-mode");
+}
+
 function readRuntimeMeta(name, fallback = "") {
 	const meta = document.querySelector(`meta[name="${name}"]`);
 	if (!(meta instanceof HTMLMetaElement)) {
@@ -3807,6 +3815,7 @@ function initMappingGenie() {
 		return;
 	}
 
+	const headsetMode = prefersSpatialHeadsetMode();
 	const cards = Array.from(root.querySelectorAll("[data-mapping-card]"));
 	const activeLabel = root.querySelector("[data-mapping-active-label]");
 	const activeWhisper = root.querySelector("[data-mapping-active-whisper]");
@@ -3817,6 +3826,9 @@ function initMappingGenie() {
 
 	let cycleTimer = 0;
 	let cycleIndex = 0;
+	let dwellTimer = 0;
+
+	root.dataset.mappingNavMode = headsetMode ? "headset" : (coarsePointer ? "touch" : "hover");
 
 	const updateChorus = (card) => {
 		if (!(card instanceof HTMLElement)) {
@@ -3840,6 +3852,14 @@ function initMappingGenie() {
 		}
 	};
 
+	const clearDwell = () => {
+		if (!dwellTimer) {
+			return;
+		}
+		window.clearTimeout(dwellTimer);
+		dwellTimer = 0;
+	};
+
 	const stopCycle = () => {
 		if (!cycleTimer) {
 			return;
@@ -3849,7 +3869,7 @@ function initMappingGenie() {
 	};
 
 	const startCycle = () => {
-		if (coarsePointer || cards.length < 2 || cycleTimer) {
+		if (coarsePointer || headsetMode || cards.length < 2 || cycleTimer) {
 			return;
 		}
 
@@ -3859,28 +3879,58 @@ function initMappingGenie() {
 		}, 4200);
 	};
 
-	const setActiveCard = (nextCard, { collapseOnSecondTap = false } = {}) => {
-		let chosenCard = nextCard;
-		cards.forEach((card) => {
-			const isActive = card === nextCard;
-			if (collapseOnSecondTap && isActive && card.classList.contains("is-active")) {
-				card.classList.remove("is-active");
-				card.setAttribute("aria-expanded", "false");
-				chosenCard = null;
-				return;
+		const setActiveCard = (nextCard, { collapseOnSecondTap = false } = {}) => {
+			let shouldCollapse = collapseOnSecondTap && !headsetMode;
+			let chosenCard = nextCard;
+			cards.forEach((card) => {
+				const isActive = card === nextCard;
+				if (shouldCollapse && isActive && card.classList.contains("is-active")) {
+					card.classList.remove("is-active");
+					card.setAttribute("aria-expanded", "false");
+					card.setAttribute("aria-pressed", "false");
+					chosenCard = null;
+					return;
+				}
+
+				card.classList.toggle("is-active", isActive);
+				card.setAttribute("aria-expanded", isActive ? "true" : "false");
+				card.setAttribute("aria-pressed", isActive ? "true" : "false");
+			});
+
+			if (!chosenCard) {
+				if (headsetMode && cards[0]) {
+					chosenCard = cards[0];
+				shouldCollapse = false;
+					cards.forEach((card) => {
+						const isActive = card === chosenCard;
+						card.classList.toggle("is-active", isActive);
+						card.setAttribute("aria-expanded", isActive ? "true" : "false");
+						card.setAttribute("aria-pressed", isActive ? "true" : "false");
+					});
+				} else {
+					root.dataset.mappingTheme = "real";
+					return;
+				}
 			}
-
-			card.classList.toggle("is-active", isActive);
-			card.setAttribute("aria-expanded", isActive ? "true" : "false");
-		});
-
-		if (!chosenCard) {
-			root.dataset.mappingTheme = "real";
-			return;
-		}
 
 		cycleIndex = Math.max(0, cards.indexOf(chosenCard));
 		updateChorus(chosenCard);
+	};
+
+	const scheduleActivation = (card, source = "hover") => {
+		if (!(card instanceof HTMLElement)) {
+			return;
+		}
+
+		clearDwell();
+		if (!headsetMode || source === "click") {
+			setActiveCard(card, { collapseOnSecondTap: coarsePointer && !headsetMode });
+			return;
+		}
+
+		dwellTimer = window.setTimeout(() => {
+			setActiveCard(card);
+		}, source === "focus" ? 120 : 260);
 	};
 
 	const activeCard = cards.find((card) => card.classList.contains("is-active")) || cards[0] || null;
@@ -3890,59 +3940,110 @@ function initMappingGenie() {
 
 	cards.forEach((card) => {
 		card.addEventListener("pointerenter", () => {
-			if (coarsePointer) {
+			if (coarsePointer && !headsetMode) {
 				return;
 			}
 			stopCycle();
-			setActiveCard(card);
+			scheduleActivation(card);
 		});
 
 		card.addEventListener("focus", () => {
 			stopCycle();
-			setActiveCard(card);
+			scheduleActivation(card, "focus");
 		});
 
 		card.addEventListener("click", () => {
 			stopCycle();
-			setActiveCard(card, { collapseOnSecondTap: coarsePointer });
+			clearDwell();
+			setActiveCard(card, { collapseOnSecondTap: coarsePointer && !headsetMode });
+			card.focus({ preventScroll: true });
 		});
+
+		card.addEventListener("pointerleave", clearDwell);
+		card.addEventListener("blur", clearDwell);
 	});
 
 	root.addEventListener("pointerleave", () => {
+		clearDwell();
 		startCycle();
 	});
 
 	root.addEventListener("keydown", (event) => {
-		if (event.key !== "Escape") {
+		const activeIndex = Math.max(0, cards.findIndex((card) => card.classList.contains("is-active")));
+
+		if (event.key === "Escape") {
+			clearDwell();
+			if (cards[0]) {
+				setActiveCard(cards[0]);
+				cards[0].focus({ preventScroll: true });
+			}
 			return;
 		}
 
-		cards.forEach((card) => {
-			card.classList.remove("is-active");
-			card.setAttribute("aria-expanded", "false");
-		});
-		root.dataset.mappingTheme = "real";
+		if (!headsetMode) {
+			return;
+		}
+
+		if (["ArrowRight", "ArrowDown"].includes(event.key)) {
+			event.preventDefault();
+			const nextIndex = (activeIndex + 1) % cards.length;
+			setActiveCard(cards[nextIndex]);
+			cards[nextIndex].focus({ preventScroll: true });
+			return;
+		}
+
+		if (["ArrowLeft", "ArrowUp"].includes(event.key)) {
+			event.preventDefault();
+			const nextIndex = (activeIndex - 1 + cards.length) % cards.length;
+			setActiveCard(cards[nextIndex]);
+			cards[nextIndex].focus({ preventScroll: true });
+			return;
+		}
+
+		if (event.key === "Home") {
+			event.preventDefault();
+			setActiveCard(cards[0]);
+			cards[0].focus({ preventScroll: true });
+			return;
+		}
+
+		if (event.key === "End") {
+			event.preventDefault();
+			const lastCard = cards[cards.length - 1];
+			setActiveCard(lastCard);
+			lastCard.focus({ preventScroll: true });
+			return;
+		}
+
+		if (event.key === " " || event.key === "Enter") {
+			event.preventDefault();
+			if (cards[activeIndex]) {
+				setActiveCard(cards[activeIndex]);
+			}
+		}
 	});
 
-	document.addEventListener("pointerdown", (event) => {
-		if (!coarsePointer) {
-			return;
-		}
+		document.addEventListener("pointerdown", (event) => {
+			if (!coarsePointer || headsetMode) {
+				return;
+			}
 
 		if (!(event.target instanceof Element) || event.target.closest("[data-mapping-genie]")) {
 			return;
 		}
 
-		cards.forEach((card) => {
-			card.classList.remove("is-active");
-			card.setAttribute("aria-expanded", "false");
-		});
-		if (cards[0]) {
-			cards[0].classList.add("is-active");
-			cards[0].setAttribute("aria-expanded", "true");
-			updateChorus(cards[0]);
-		}
-	}, true);
+			cards.forEach((card) => {
+				card.classList.remove("is-active");
+				card.setAttribute("aria-expanded", "false");
+				card.setAttribute("aria-pressed", "false");
+			});
+			if (cards[0]) {
+				cards[0].classList.add("is-active");
+				cards[0].setAttribute("aria-expanded", "true");
+				cards[0].setAttribute("aria-pressed", "true");
+				updateChorus(cards[0]);
+			}
+		}, true);
 
 	startCycle();
 }
@@ -3994,6 +4095,7 @@ function initDeviceBridgePanels() {
 				return;
 			}
 
+			const spatialHeadsetMode = prefersSpatialHeadsetMode() && panel.context === "xyz";
 			const silenceLabel = state.nativeSilenceMode === "silent"
 				? "silence natif"
 				: (state.silenceIntent ? "silence web" : (state.nativeSilenceMode === "vibrate" ? "vibreur natif" : "web sonore"));
@@ -4009,14 +4111,18 @@ function initDeviceBridgePanels() {
 			const standaloneLabel = state.standalone ? "installée" : (state.installAvailable ? "installable" : "navigateur");
 			const nativeLabel = state.nativeAudioTrusted || state.nativeVolume !== null
 				? `${state.nativeSource}${state.nativeRoute ? ` · ${state.nativeRoute}` : ""}`
-				: "web seul";
+				: (spatialHeadsetMode ? "preview web" : "web seul");
 			const note = state.nativeAudioTrusted
 				? `Pont natif reçu: ${state.nativeSource}${state.nativeRoute ? ` · ${state.nativeRoute}` : ""}. Le thérémin local garde le niveau O. (${webVolumeLabel}) et le téléphone signale en plus un volume système à ${nativeVolumeLabel || "?"}.`
 				: (state.nativeVolume !== null
 					? "Le navigateur a reçu une valeur de volume isolée, mais elle n'est pas assez fiable pour couper le thérémin local. Le niveau O. garde donc la main."
-					: (state.standalone
+					: (spatialHeadsetMode
+						? (state.standalone
+							? "Cette surface tourne comme une app installée. Le web garde ici partage, lecture et niveau O., puis attend un client spatial natif pour l ancrage, le silence système et le vrai passthrough."
+							: "Le web pilote ici partage, lecture et niveau O. Le vrai silence système, l ancrage spatial et le passthrough viendront avec le client natif visionOS ou Quest.")
+						: (state.standalone
 						? "Cette surface tourne comme une app installée. Le web garde ici veille, haptique, partage et niveau O., puis attend un pont natif pour le vrai silence système."
-						: "Le web pilote ici silence, niveau, haptique, partage et mode app. Un wrapper natif pourra ensuite donner le silence et le volume réels du téléphone."));
+						: "Le web pilote ici silence, niveau, haptique, partage et mode app. Un wrapper natif pourra ensuite donner le silence et le volume réels du téléphone.")));
 
 			setNodeText(panel.silenceStatus, silenceLabel);
 			setNodeText(panel.volumeStatus, volumeLabel);
@@ -4092,6 +4198,9 @@ function initXyzSurface() {
 		return;
 	}
 
+	const headsetMode = prefersSpatialHeadsetMode();
+	root.dataset.xyzInteractionMode = headsetMode ? "headset" : (coarsePointer ? "touch" : "pointer");
+
 	const applyDrift = (clientX, clientY) => {
 		const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1;
 		const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 1;
@@ -4106,7 +4215,7 @@ function initXyzSurface() {
 		root.style.setProperty("--xyz-drift-y", "0px");
 	};
 
-	if (!reducedMotion && !coarsePointer) {
+	if (!reducedMotion && !coarsePointer && !headsetMode) {
 		window.addEventListener("pointermove", (event) => {
 			if ((event.pointerType || "") === "touch") {
 				return;
@@ -4117,7 +4226,7 @@ function initXyzSurface() {
 		window.addEventListener("pointerleave", resetDrift);
 	}
 
-	if (reducedMotion || coarsePointer) {
+	if (reducedMotion || coarsePointer || headsetMode) {
 		resetDrift();
 	}
 }
@@ -4141,6 +4250,13 @@ function initXyzCamera() {
 	const musicModeNode = document.querySelector("[data-xyz-music-mode]");
 	const musicNoteNode = document.querySelector("[data-xyz-music-note]");
 	const musicRhythmNode = document.querySelector("[data-xyz-music-rhythm]");
+	const handTerreStateNode = document.querySelector("[data-xyz-hand-terre-state]");
+	const handMineStateNode = document.querySelector("[data-xyz-hand-mine-state]");
+	const handTerreTitleNode = document.querySelector("[data-xyz-hand-terre-title]");
+	const handMineTitleNode = document.querySelector("[data-xyz-hand-mine-title]");
+	const handTerreCopyNode = document.querySelector("[data-xyz-hand-terre-copy]");
+	const handMineCopyNode = document.querySelector("[data-xyz-hand-mine-copy]");
+	const duetStateNode = document.querySelector("[data-xyz-duet-state]");
 	const musicGuideNode = document.querySelector("[data-xyz-music-guide]");
 
 	if (
@@ -4156,6 +4272,7 @@ function initXyzCamera() {
 	const plasmaBridgeUrl = root.dataset.xyzPlasmaBridge || "";
 	const membraneLandSlug = root.dataset.xyzPlasmaLand || "";
 	const isAndroidSurface = /\bAndroid\b/i.test(window.navigator?.userAgent || "");
+	const isSpatialHeadsetSurface = prefersSpatialHeadsetMode();
 
 	let stream = null;
 	let audioStream = null;
@@ -4252,29 +4369,29 @@ function initXyzCamera() {
 			{
 				until: 0.24,
 				key: "velvet",
-				title: "Terre & Mine creuse une nuit douce.",
-				message: "Le tore commence bas, velours, presque minéral. Le mode reste mineur, la note tient longuement, comme si la matière cherchait encore sa respiration.",
+				title: "Terre tient, Mine écoute.",
+				message: "Le tore commence bas, velours, presque minéral. Terre installe le fond mineur pendant que Mine attend encore son incision.",
 				haptic: "soft",
 			},
 			{
 				until: 0.52,
 				key: "gloss",
-				title: "Terre & Mine laisse entrer le jour.",
-				message: "La lumière synthétique ouvre le champ et pousse vers le majeur. La matière s’éclaircit, la note devient plus claire, presque solaire.",
+				title: "Terre ouvre, Mine taille.",
+				message: "La lumière synthétique ouvre le champ et pousse vers le majeur. Terre élargit la pièce, Mine affine déjà une note plus claire.",
 				haptic: "soft",
 			},
 			{
 				until: 0.8,
 				key: "pulse",
-				title: "Terre & Mine prend le rythme de face.",
-				message: "Inclinaison, secousse et souffle s’épaississent. Les impulsions ouvrent le shaker et la démo passe du halo à une vraie montée de corps.",
+				title: "Terre tient, Mine frappe.",
+				message: "Inclinaison, secousse et souffle s’épaississent. Terre garde le socle pendant que Mine ouvre le shaker et impose le rythme.",
 				haptic: "medium",
 			},
 			{
 				until: 1,
 				key: "sap",
-				title: "Terre & Mine chante à plein tore.",
-				message: "Dernière montée: lumière, voix, shaker et mouvement se nouent. La surface devient presque animale, puis recommence son cycle.",
+				title: "Terre porte, Mine chante.",
+				message: "Dernière montée: lumière, voix, shaker et mouvement se nouent. La surface devient presque animale, comme si les deux mains jouaient enfin ensemble.",
 				haptic: "deep",
 			},
 		];
@@ -4409,22 +4526,86 @@ function initXyzCamera() {
 				: (safeMovement > 0.38
 					? "pulsation mobile"
 					: (isMembraneDemo() ? "mine lente" : "drone stable"));
+			const terreState = mode === "major"
+				? (safeLight > 0.66 ? "ouvre / éclaire" : "garde l ouverture")
+				: (safeAmbient > 0.22 ? "tient / assombrit" : "veille / retient");
+			const mineState = safeShake > 0.56
+				? "frappe / relance"
+				: (safeMovement > 0.38
+					? "cherche / incline"
+					: (isMembraneDemo() ? "creuse / répète" : "trace / tient"));
+			let terreTitle = "Elle porte.";
+			let mineTitle = "Elle creuse.";
+			let terreCopy = "Elle stabilise le mode, ouvre ou ferme la lumière, puis garde le drone respirable.";
+			let mineCopy = "Elle tient la note, déclenche l accent, cherche la voix et relance le shaker.";
+			let duetCopy = "Terre porte le seuil, Mine y ouvre un trajet.";
+			let duetPhase = "hold";
+			let duetDominant = "terre";
 			let guideText = "Incline pour tenir une note, parle pour que la voix se cale dessus, puis secoue par impulsions courtes pour marquer le shaker.";
 			if (!isMembraneAudible()) {
 				guideText = "Ouvre la membrane ou Terre & Mine pour installer un drone stable, puis construis avec la lumière, la voix accordée et la secousse.";
+				terreTitle = "Elle prépare.";
+				mineTitle = "Elle attend.";
+				terreCopy = "Terre pose un fond stable avant l entrée des flux. Elle décide du sol, pas encore de l accent.";
+				mineCopy = "Mine reste suspendue tant qu il n y a ni note tenue, ni secousse, ni voix accrochée.";
+				duetCopy = "Terre prépare le champ, Mine n a pas encore mordu dedans.";
+				duetPhase = "prepare";
+				duetDominant = "terre";
 			} else if (safeShake > 0.56) {
 				guideText = "Le shaker est ouvert: garde des secousses courtes et régulières, puis stabilise la main pour laisser la voix accordée respirer au-dessus.";
+				terreTitle = "Elle tient le socle.";
+				mineTitle = "Elle frappe.";
+				terreCopy = "Terre garde la matière compacte pour éviter que le shaker casse la lecture du tore.";
+				mineCopy = "Mine marque la surface par impulsions courtes, relance le rythme et ouvre l accent.";
+				duetCopy = "Terre tient, Mine frappe, puis la voix peut passer entre les deux.";
+				duetPhase = "strike";
+				duetDominant = "mine";
 			} else if (mode === "major") {
 				guideText = safeLight > 0.66
 					? "La lumière pousse vers le majeur. Tiens l’inclinaison pour garder la note claire, puis parle pour accrocher ta voix à l’accord."
 					: "Le majeur est là mais encore fragile. Ouvre un peu plus la lumière ou lève le téléphone pour élargir la couleur.";
+				terreTitle = "Elle ouvre.";
+				mineTitle = "Elle taille clair.";
+				terreCopy = "Terre élargit le champ, éclaire le mode et garde la base en majeur sans l aplatir.";
+				mineCopy = "Mine affine la note, cherche une ligne plus nette et laisse la voix se poser sans dureté.";
+				duetCopy = "Terre ouvre la pièce, Mine taille dedans une forme plus claire.";
+				duetPhase = "open";
+				duetDominant = "terre";
 			} else if (safeAmbient > 0.22) {
 				guideText = "Le mineur tient le terrain. Parle, souffle ou fais grésiller la pièce pour verrouiller la voix sur la note avant d’ajouter le shaker.";
+				terreTitle = "Elle retient.";
+				mineTitle = "Elle creuse plus bas.";
+				terreCopy = "Terre ferme un peu la lumière, garde le mode mineur et donne au tore une densité plus grave.";
+				mineCopy = "Mine insiste sur la note, fait naître une veine plus sombre et attend la voix avant l accent.";
+				duetCopy = "Terre retient la lumière, Mine creuse un passage plus grave.";
+				duetPhase = "grave";
+				duetDominant = "mine";
+			} else if (isMembraneDemo()) {
+				terreTitle = "Elle rejoue.";
+				mineTitle = "Elle répète.";
+				terreCopy = "Terre garde le cycle lisible pendant que la démo alterne ouverture, ombre et montée.";
+				mineCopy = "Mine rejoue l accent, la note et la secousse pour faire sentir la partition sans capteurs.";
+				duetCopy = "Terre montre la forme, Mine la répète jusqu à ce qu elle devienne évidente.";
+				duetPhase = "repeat";
+				duetDominant = "mine";
 			}
 			document.body.dataset.musicalMode = mode;
+			document.body.dataset.duetPhase = duetPhase;
+			document.body.dataset.duetDominant = duetDominant;
+			if (musicGuideNode instanceof HTMLElement) {
+				musicGuideNode.dataset.duetPhase = duetPhase;
+				musicGuideNode.dataset.duetDominant = duetDominant;
+			}
 			setSensorText(musicModeNode, toreModeLabels[mode] || toreModeLabels.minor);
 			setSensorText(musicNoteNode, noteLabel);
 			setSensorText(musicRhythmNode, rhythmLabel);
+			setSensorText(handTerreStateNode, terreState);
+			setSensorText(handMineStateNode, mineState);
+			setSensorText(handTerreTitleNode, terreTitle);
+			setSensorText(handMineTitleNode, mineTitle);
+			setSensorText(handTerreCopyNode, terreCopy);
+			setSensorText(handMineCopyNode, mineCopy);
+			setSensorText(duetStateNode, duetCopy);
 			setSensorText(musicGuideNode, guideText);
 		};
 	const ensureShakerNoiseBuffer = (context) => {
@@ -5309,8 +5490,8 @@ function initXyzCamera() {
 			stopDemoMode();
 			setUiState(
 				"demo",
-				"Terre & Mine ouvre un atelier local: le tore y répète un thérémin synthétique, alterne majeur et mineur selon la lumière, et transforme les secousses en shaker.",
-				"Terre & Mine ouvre la matière du tore."
+				"Terre et Mine ouvrent un atelier local a deux mains: Terre porte le champ, Mine y creuse note, accent et voix, puis le tore les rejoue sans capteurs.",
+				"Terre et Mine ouvrent la matière du tore."
 			);
 			setReactiveCssState(0.28, 0.14, [112, 122, 196], "velvet");
 			membrane.audioLevel = 0.08;
@@ -5764,9 +5945,11 @@ function initXyzCamera() {
 
 		setUiState(
 			"loading",
-			isAndroidSurface
+			isSpatialHeadsetSurface
+				? "La couche spatiale ouvre d abord ce que le navigateur autorise ici. Le but est de stabiliser voix, focus et présence avant la future passe native."
+				: (isAndroidSurface
 				? "Sur Android, la membrane ouvre d’abord la caméra, puis tente le micro et les capteurs sans bloquer toute la surface si un flux manque."
-				: "Le tore demande au téléphone lumière, souffle, mouvement et présence. La réaction sonore, les modes majeur/mineur et la voix accordée restent locales à ce navigateur.",
+				: "Le tore demande au téléphone lumière, souffle, mouvement et présence. La réaction sonore, les modes majeur/mineur et la voix accordée restent locales à ce navigateur."),
 			"Activation de la membrane…"
 		);
 		setSensorText(orientationNode, "demande");
@@ -5806,12 +5989,20 @@ function initXyzCamera() {
 		if (videoReady) {
 			setUiState(
 				"live",
-				audioReady
+				isSpatialHeadsetSurface
+					? (audioReady
+						? "La couche spatiale est ouverte. Le tore lit déjà voix, image éventuelle et présence locale, puis les convertit en lecture stable pour le casque."
+						: "La couche spatiale voit déjà la surface. La voix et les capteurs plus fins pourront venir ensuite sans casser la lecture.")
+					: (audioReady
 					? "La membrane est ouverte. Le tore lit maintenant lumière, souffle, inclinaison, secousse et présence, puis les convertit en thérémin local, shaker et voix accordée."
-					: "La membrane voit déjà la surface. Sur Android, le micro peut rester optionnel: lumière, inclinaison et présence suffisent déjà à faire respirer le tore.",
-				audioReady
+					: "La membrane voit déjà la surface. Sur Android, le micro peut rester optionnel: lumière, inclinaison et présence suffisent déjà à faire respirer le tore."),
+				isSpatialHeadsetSurface
+					? (audioReady
+						? "La couche spatiale nourrit maintenant la surface."
+						: "La couche spatiale voit déjà la surface.")
+					: (audioReady
 					? "La membrane nourrit maintenant la surface."
-					: "La membrane voit déjà la surface."
+					: "La membrane voit déjà la surface.")
 			);
 			updateMotionVoice();
 			cueMotionVoice(audioReady ? 1 : 0.9);
@@ -5828,12 +6019,20 @@ function initXyzCamera() {
 		if (audioReady || sensorReady || lightReady || wakeReady) {
 			setUiState(
 				"partial",
-				audioReady
+				isSpatialHeadsetSurface
+					? (audioReady
+						? "La couche spatiale n a pas encore toute l image, mais la voix et la présence locale suffisent déjà pour régler le rythme du tore."
+						: "La couche spatiale reste partielle ici. On garde une lecture stable sans promettre encore le vrai volume natif.")
+					: (audioReady
 					? "La membrane n’a pas encore d’image, mais le tore écoute déjà souffle, mouvement, lumière ou veille et peut rester vivant sur Android."
-					: "La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le thérémin du tore.",
-				audioReady
+					: "La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le thérémin du tore."),
+				isSpatialHeadsetSurface
+					? (audioReady
+						? "La couche spatiale écoute sans image complète."
+						: "La couche spatiale dérive en mode partiel.")
+					: (audioReady
 					? "La membrane écoute sans image."
-					: "La membrane dérive en mode partiel."
+					: "La membrane dérive en mode partiel.")
 			);
 			updateMotionVoice();
 			cueMotionVoice(audioReady ? 0.94 : 0.82);
@@ -5856,10 +6055,12 @@ function initXyzCamera() {
 		}
 		setUiState(
 			"error",
-			isAndroidSurface
+			isSpatialHeadsetSurface
+				? "Cette surface n a encore ouvert ni voix, ni image, ni présence exploitable. Le tore revient donc à une lecture locale plus simple en attendant le client natif."
+				: (isAndroidSurface
 				? "Android n’a encore laissé passer ni caméra, ni micro, ni capteur. La membrane revient à son rêve interne jusqu’à une nouvelle autorisation."
-				: "Permission refusée ou capteur inaccessible. La membrane revient à son rêve interne, sans captation directe.",
-			"La surface garde son rêve sans membrane."
+				: "Permission refusée ou capteur inaccessible. La membrane revient à son rêve interne, sans captation directe."),
+			isSpatialHeadsetSurface ? "La surface spatiale reste en preview." : "La surface garde son rêve sans membrane."
 		);
 	});
 
@@ -5892,11 +6093,11 @@ function initXyzCamera() {
 		updateMotionVoice(document.hidden);
 	});
 
-	setSensorText(orientationNode, "prête");
-	setSensorText(motionNode, "prêt");
+	setSensorText(orientationNode, isSpatialHeadsetSurface ? "geste a venir" : "prête");
+	setSensorText(motionNode, isSpatialHeadsetSurface ? "presence a venir" : "prêt");
 	setSensorText(lightNode, "capteur ou Ocam");
-	setSensorText(audioNode, "prêt");
-	setSensorText(cameraNode, "prête");
+	setSensorText(audioNode, isSpatialHeadsetSurface ? "voix locale" : "prêt");
+	setSensorText(cameraNode, isSpatialHeadsetSurface ? "preview locale" : "prête");
 	setSensorText(wakeNode, "sur demande");
 	resetMembraneReactiveState();
 

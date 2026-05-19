@@ -34,24 +34,17 @@ function signup_portal_steps(): array
 }
 
 $host = request_host();
-$isSowwwlXyz = ($host === 'sowwwl.xyz' || $host === 'www.sowwwl.xyz');
-$isLabSurface = ($host === 'lab.sowwwl.cloud' || $host === 'www.lab.sowwwl.cloud');
-$surfaceOverride = strtolower(trim((string) ($_GET['surface'] ?? '')));
-$isLocalPreviewHost = in_array($host, ['127.0.0.1', 'localhost', '[::1]'], true);
-if ($isLocalPreviewHost) {
-    if ($surfaceOverride === 'xyz') {
-        $isSowwwlXyz = true;
-        $isLabSurface = false;
-    } elseif ($surfaceOverride === 'lab') {
-        $isSowwwlXyz = false;
-        $isLabSurface = true;
-    }
-}
-// sowwwl.xyz and lab.sowwwl.cloud keep their own local surfaces here.
+$surfaceVariant = current_surface_variant($host);
+$isSowwwlXyz = $surfaceVariant === 'xyz';
+$isSowwwlIo = $surfaceVariant === 'io';
+$isLabSurface = $surfaceVariant === 'lab';
+$isSpatialSurface = $isSowwwlXyz || $isSowwwlIo;
+$isSpatialHeadsetMode = $isSowwwlIo && spatial_preview_mode($host) === 'headset';
+// Spatial surfaces keep their own local preview via ?surface=xyz|io|lab on localhost.
 
 $requestPath = o_request_path('/');
 if (($host === '0wlslw0.com' || $host === 'www.0wlslw0.com') && ($requestPath === '/' || $requestPath === '/index.php')) {
-    header('Location: ' . o_route_path('/0wlslw0'), true, 302);
+    header('Location: ' . o_route_href('/0wlslw0'), true, 302);
     exit;
 }
 
@@ -102,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 login_land($land);
-                header('Location: ' . o_route_path('/land') . '?u=' . urlencode((string) $land['slug']) . '&session=1', true, 303);
+                header('Location: ' . o_route_href('/land', ['u' => (string) $land['slug'], 'session' => '1']), true, 303);
                 exit;
             } catch (InvalidArgumentException | RuntimeException $exception) {
                 $message = $exception->getMessage();
@@ -124,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $form['lambda_nm'] !== '' ? (int) $form['lambda_nm'] : null
                 );
                 login_land($land);
-                header('Location: ' . o_route_path('/land') . '?u=' . urlencode((string) $land['slug']) . '&created=1&session=1', true, 303);
+                header('Location: ' . o_route_href('/land', ['u' => (string) $land['slug'], 'created' => '1', 'session' => '1']), true, 303);
                 exit;
             } catch (InvalidArgumentException $exception) {
                 $message = $exception->getMessage();
@@ -169,7 +162,7 @@ $selectedSignupLambda = $defaultSignupLambda;
 
 $selectedSignupLabel = (string) ($selectedSignupDefinition['label'] ?? $selectedSignupProgram);
 $selectedSignupTone = (string) ($selectedSignupDefinition['tone'] ?? '');
-$homeVisualOnly = $isSowwwlXyz || $isLabSurface;
+$homeVisualOnly = $isSpatialSurface || $isLabSurface;
 $dailyStream = str3m_build_daily_stream(null);
 $dailyTextItem = is_array($dailyStream['items']['text'] ?? null) ? $dailyStream['items']['text'] : null;
 $dailyImageItem = is_array($dailyStream['items']['image'] ?? null) ? $dailyStream['items']['image'] : null;
@@ -236,18 +229,16 @@ $homeLead = $authenticatedLand
     ? 'Le tore suit la fréquence de ta terre. Ouvrir, écrire, dériver.'
     : 'Trois portes : public, terre, 0wlslw0.';
 $homePrimaryActionHref = $authenticatedLand
-    ? o_route_path('/land') . '?u=' . rawurlencode($activeLandSlug)
-    : o_route_path('/rejoindre');
-$guideHref = o_route_path('/0wlslw0');
-$homeHref = o_route_path('/');
-$landHref = o_route_path('/land');
-$signalHref = o_route_path('/signal');
-$str3mHref = o_route_path('/str3m');
-$mapHref = o_route_path('/map');
-$azaHref = o_route_path('/aza');
-$echoHref = o_route_path('/echo');
-$joinHref = o_route_path('/rejoindre');
-$logoutHref = o_route_path('/logout.php');
+    ? o_route_href('/land', ['u' => $activeLandSlug])
+    : o_route_href('/rejoindre');
+$guideHref = o_route_href('/0wlslw0');
+$homeHref = o_route_href('/');
+$signalHref = o_route_href('/signal');
+$str3mHref = o_route_href('/str3m');
+$mapHref = o_route_href('/map');
+$azaHref = o_route_href('/aza');
+$joinHref = o_route_href('/rejoindre');
+$logoutHref = o_route_href('/logout.php');
 $promptSeeds = guide_prompt_seeds();
 $homeHeroLineOne = $authenticatedLand ? 'Ta terre' : 'Le tore';
 $homeHeroLineTwo = $authenticatedLand ? 'module le tore.' : 'écoute le monde réel.';
@@ -255,18 +246,62 @@ $homeThresholdHint = $authenticatedLand
     ? 'Le noyau reste simple : terre, adresse, courant.'
     : 'Comprendre sans quitter l’entrée.';
 $membraneBridgeHref = plasma_bridge_url();
-$labSensorEndpointHref = o_route_path('/ingest/sensor');
+$labSensorEndpointHref = o_route_href('/ingest/sensor');
 $labPublicPlasmaFeedHref = plasma_feed_url();
-$labQaIslandHref = o_route_path('/island') . '?u=qa-multimatiere';
+$labQaIslandHref = o_route_href('/island', ['u' => 'qa-multimatiere']);
 $labPocketHref = 'https://pocket.lab.sowwwl.cloud/';
 $labApiHealthHref = 'https://api.lab.sowwwl.cloud/healthz';
 $labSensorConfigured = trim((string) (getenv('SOWWWL_PI_TOKEN') ?: '')) !== '';
 $labRecentPlasmaEvents = $isLabSurface ? plasma_recent_events(6) : [];
 $labPlasmaWeather = plasma_weather_from_events($labRecentPlasmaEvents);
-$pageHeadVariant = $isSowwwlXyz ? 'xyz' : ($isLabSurface ? 'lab' : 'main');
+$spatialSurfaceHostLabel = surface_brand_label($host);
+$spatialSurfaceEyebrow = $isSowwwlIo ? 'surface spatiale / vision / casque' : 'surface torique / monde reel';
+$spatialSurfaceTitle = $isSowwwlIo ? 'Le tore s ouvre dans l espace.' : 'Le tore écoute le monde réel.';
+$spatialSurfaceLead = $isSowwwlIo
+    ? 'Ici, la surface devient volume. Regard, geste, voix, lumière et orientation préparent un client spatial pour casque.'
+    : 'Ici, la surface devient membrane. Mouvement, souffle, lumière et grain entrent, puis le tore les rend lisibles.';
+$spatialMappingModeLabel = $isSowwwlIo ? 'espace / plasma / tore' : 'réalité / plasma / tore';
+$spatialMappingTitle = $isSowwwlIo ? 'Le volume filtre ce qu il reçoit.' : 'La peau filtre ce qu’elle reçoit.';
+$spatialMappingCopy = $isSowwwlIo
+    ? 'Le geste touche, le plasma traduit, le tore ouvre une lecture spatiale.'
+    : 'Le réel touche, le plasma traduit, le tore ouvre la lecture.';
+$spatialMappingBadge = $isSowwwlIo ? 'spatial preview' : 'real-world map';
+$spatialCameraTitle = $isSowwwlIo ? 'La couche spatiale attend un geste.' : 'La membrane attend un geste.';
+$spatialCameraStatus = $isSowwwlIo
+    ? 'Active la couche pour ouvrir mouvement, voix, lumière, caméra et veille active, puis préparer une lecture spatiale du tore. Terre et Mine permet aussi de tester la montée sans capteurs. Aucune image brute n est envoyée. Si le pont plasma est actif, seuls des signaux synthétiques quittent cette couche.'
+    : 'Active la membrane pour ouvrir mouvement, voix, lumière, caméra et veille active, puis laisser le téléphone jouer un thérémin local et accorder légèrement la voix. Terre et Mine permet aussi de tester la montée sans capteurs. Aucune image brute n est envoyée. Si le pont plasma est actif, seuls des signaux synthétiques quittent cette couche.';
+$spatialDeviceNote = $isSowwwlIo
+    ? 'Le web pilote ici silence, niveau, haptique, partage et mode app. Un client visionOS ou Quest pourra ensuite relier le tore à des permissions spatiales natives plus fines.'
+    : 'Le web pilote ici silence, niveau, haptique, partage et mode app. Un wrapper natif pourra ensuite donner le silence et le volume réels du téléphone.';
+$spatialGestureTitle = $isSowwwlIo
+    ? 'Traverse, puis laisse regard, geste et appareil infléchir le tore.'
+    : 'Traverse, puis laisse le téléphone infléchir le tore.';
+$spatialGestureCopy = $isSowwwlIo
+    ? ($isSpatialHeadsetMode
+        ? 'Mode casque web: Tab, flèches, focus large et clic gardent la lecture stable. Le regard, le pinch et l ancrage spatial viendront avec le client natif.'
+        : 'Mode écran: glisse ou pointe pour pivoter, puis ouvre les routes avant de basculer en mode casque web. Le centre et le geste en O ouvrent toujours 0wlslw0.')
+    : 'Glisse pour pivoter. Sur mobile, l orientation et le mouvement déplacent aussi la peau. Le centre et le geste en O ouvrent toujours 0wlslw0.';
+$torusAriaLabel = $isSowwwlIo
+    ? ($isSpatialHeadsetMode
+        ? 'Torus ambiant : tabulation, flèches, focus large et clic gardent la dérive stable en mode casque web. 0wlslw0 reste au centre comme porte rapide.'
+        : 'Torus ambiant : pointe ou glisse pour prendre un repère en mode écran, puis flèches pour dériver au clavier. 0wlslw0 reste au centre comme porte rapide.')
+    : 'Torus ambiant : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Sur mobile, un appui long puis une glisse permettent aussi de naviguer. Swipe gauche vers Signal, haut vers Str3m, droite vers aZa, bas vers le noyau. Le centre ou un geste en O ouvrent aussi 0wlslw0.';
+$spatialModeScreenHref = $isSowwwlIo ? o_current_route_href(['spatial' => null]) : '';
+$spatialModeHeadsetHref = $isSowwwlIo ? o_current_route_href(['spatial' => 'headset']) : '';
+$spatialModeTitle = $isSowwwlIo
+    ? ($isSpatialHeadsetMode ? 'Mode casque web actif.' : 'Mode écran actif.')
+    : '';
+$spatialModeCopy = $isSowwwlIo
+    ? ($isSpatialHeadsetMode
+        ? 'Cette passe privilégie le focus large, le clavier et les actions franches pour tester un casque dès maintenant, sans promettre encore le vrai passthrough ni les gestes natifs.'
+        : 'Cette passe garde une lecture écran plus souple pour maquetter, puis permet de basculer explicitement en mode casque quand on veut tester le parcours spatial.')
+    : '';
+$pageHeadVariant = $isSowwwlIo ? 'io' : ($isSowwwlXyz ? 'xyz' : ($isLabSurface ? 'lab' : 'main'));
 $pageDescription = $isLabSurface
     ? 'O. Lab — atelier mobile du tore pour capteurs, pocket, plasma et livraison différée.'
-    : (SITE_TITLE . ' — entrer publiquement, poser une terre, ou passer par 0wlslw0.');
+    : ($isSowwwlIo
+        ? 'SOWWWL IO — surface spatiale du tore pour Vision Pro, casques XR et lecture située.'
+        : (SITE_TITLE . ' — entrer publiquement, poser une terre, ou passer par 0wlslw0.'));
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -279,7 +314,7 @@ $pageDescription = $isLabSurface
 <?= render_o_page_head_assets($pageHeadVariant) ?>
 </head>
 <body
-    class="experience home<?= $isSowwwlXyz ? ' xyz-surface-view' : '' ?><?= $isLabSurface ? ' lab-console-view' : '' ?>"
+    class="experience home<?= $isSpatialSurface ? ' xyz-surface-view' : '' ?><?= $isSowwwlIo ? ' io-surface-view' : '' ?><?= $isSpatialHeadsetMode ? ' io-headset-mode' : '' ?><?= $isLabSurface ? ' lab-console-view' : '' ?>"
     data-land-program="<?= h($activeLandProgram) ?>"
     data-land-label="<?= h($activeLandLabel) ?>"
     data-land-lambda="<?= h((string) $activeLambda) ?>"
@@ -323,7 +358,7 @@ $pageDescription = $isLabSurface
         <?php if ($authenticatedLand): ?>
             <p class="connection-meter__copy">λ <?= h((string) $activeLambda) ?> nm · <?= h($activeLandUsername) ?></p>
             <div class="connection-meter__actions">
-                <a class="pill-link" href="<?= h($landHref) ?>?u=<?= rawurlencode($activeLandSlug) ?>">ouvrir</a>
+                <a class="pill-link" href="<?= h(o_route_href('/land', ['u' => $activeLandSlug])) ?>">ouvrir</a>
                 <a class="ghost-link" href="<?= h($logoutHref) ?>">retirer</a>
             </div>
         <?php else: ?>
@@ -359,7 +394,7 @@ $pageDescription = $isLabSurface
 </details>
 
 <div class="world-container" aria-hidden="true">
-    <?php if ($isSowwwlXyz): ?>
+    <?php if ($isSpatialSurface): ?>
     <div
         class="xyz-camera-layer"
         data-xyz-camera-root
@@ -387,12 +422,12 @@ $pageDescription = $isLabSurface
         data-stream-mood="<?= h((string) ($dailyStream['mood'] ?? 'calm')) ?>"
         tabindex="0"
         role="img"
-        aria-label="Torus ambiant : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Sur mobile, un appui long puis une glisse permettent aussi de naviguer. Swipe gauche vers Signal, haut vers Str3m, droite vers aZa, bas vers le noyau. Le centre ou un geste en O ouvrent aussi 0wlslw0."
+        aria-label="<?= h($torusAriaLabel) ?>"
     ></canvas>
 </div>
 
 <main <?= main_landmark_attrs() ?> class="layout ui-overlay">
-    <?php if ($isSowwwlXyz): ?>
+    <?php if ($isSpatialSurface): ?>
     <section class="xyz-surface-shell reveal" data-xyz-surface>
         <div class="xyz-surface-shell__veil" aria-hidden="true">
             <span class="xyz-surface-shell__ring xyz-surface-shell__ring--outer"></span>
@@ -401,9 +436,9 @@ $pageDescription = $isLabSurface
         </div>
 
         <header class="xyz-surface-head">
-            <p class="eyebrow xyz-surface-head__eyebrow"><strong>sowwwl.xyz</strong> <span>surface torique / monde reel</span></p>
-            <h1 class="xyz-surface-head__title">Le tore écoute le monde réel.</h1>
-            <p class="lead xyz-surface-head__lead">Ici, la surface devient membrane. Mouvement, souffle, lumière et grain entrent, puis le tore les rend lisibles.</p>
+            <p class="eyebrow xyz-surface-head__eyebrow"><strong><?= h($spatialSurfaceHostLabel) ?></strong> <span><?= h($spatialSurfaceEyebrow) ?></span></p>
+            <h1 class="xyz-surface-head__title"><?= h($spatialSurfaceTitle) ?></h1>
+            <p class="lead xyz-surface-head__lead"><?= h($spatialSurfaceLead) ?></p>
 
             <div class="xyz-surface-actions">
                 <button type="button" class="pill-link xyz-camera-toggle" data-xyz-camera-start>Activer la membrane</button>
@@ -431,13 +466,13 @@ $pageDescription = $isLabSurface
                 <div class="section-topline mapping-panel__topline">
                     <div>
                         <p class="eyebrow mapping-panel__eyebrow">
-                            <strong>sowwwl.xyz</strong>
-                            <span>réalité / plasma / tore</span>
+                            <strong><?= h($spatialSurfaceHostLabel) ?></strong>
+                            <span><?= h($spatialMappingModeLabel) ?></span>
                         </p>
-                        <h2 id="mapping-title">La peau filtre ce qu’elle reçoit.</h2>
-                        <p class="panel-copy mapping-panel__copy">Le réel touche, le plasma traduit, le tore ouvre la lecture.</p>
+                        <h2 id="mapping-title"><?= h($spatialMappingTitle) ?></h2>
+                        <p class="panel-copy mapping-panel__copy"><?= h($spatialMappingCopy) ?></p>
                     </div>
-                    <span class="badge mapping-panel__badge">real-world map</span>
+                    <span class="badge mapping-panel__badge"><?= h($spatialMappingBadge) ?></span>
                 </div>
 
                 <div class="mapping-panel__scene">
@@ -451,6 +486,8 @@ $pageDescription = $isLabSurface
                             data-mapping-whisper="Rue, souffle, corps, lumière : le monde avant sa traduction."
                             data-mapping-summary="La réalité contient les phénomènes, les gestes, les traces et les intensités qui n’ont pas encore trouvé leur forme navigable."
                             aria-expanded="true"
+                            aria-pressed="true"
+                            aria-describedby="mapping-keys"
                         >
                             <span class="mapping-genie-card__mist" aria-hidden="true"></span>
                             <span class="mapping-genie-card__sigil" aria-hidden="true">🌍</span>
@@ -475,6 +512,8 @@ $pageDescription = $isLabSurface
                             data-mapping-whisper="Le flux garde, transforme, relie."
                             data-mapping-summary="Le plasma est la couche de calcul, de mémoire et de circulation. Il transporte le réel jusqu’à la surface sous forme de signes, de données et de rythme."
                             aria-expanded="false"
+                            aria-pressed="false"
+                            aria-describedby="mapping-keys"
                         >
                             <span class="mapping-genie-card__mist" aria-hidden="true"></span>
                             <span class="mapping-genie-card__sigil" aria-hidden="true">💧</span>
@@ -499,6 +538,8 @@ $pageDescription = $isLabSurface
                             data-mapping-whisper="La surface devient seuil, navigation, orientation."
                             data-mapping-summary="Le tore est la peau visible de Sowwwl. Il accueille la projection du réel et permet d’entrer dans le réseau par dérive, lecture et résonance."
                             aria-expanded="false"
+                            aria-pressed="false"
+                            aria-describedby="mapping-keys"
                         >
                             <span class="mapping-genie-card__mist" aria-hidden="true"></span>
                             <span class="mapping-genie-card__sigil" aria-hidden="true">🌀</span>
@@ -515,6 +556,7 @@ $pageDescription = $isLabSurface
                         <strong class="mapping-chorus__title" data-mapping-active-label>Réalité</strong>
                         <p class="mapping-chorus__whisper" data-mapping-active-whisper>Rue, souffle, corps, lumière : le monde avant sa traduction.</p>
                         <p class="mapping-chorus__summary" data-mapping-active-summary>La réalité contient les phénomènes, les gestes, les traces et les intensités qui n’ont pas encore trouvé leur forme navigable.</p>
+                        <p class="mapping-chorus__hint" id="mapping-keys">Tab pour parcourir chaque plan. Entrée ou clic pour l activer. En mode casque web, les flèches, Home et End gardent aussi la dérive.</p>
                         <div class="mapping-chorus__meter" aria-hidden="true">
                             <span></span>
                             <span></span>
@@ -529,8 +571,8 @@ $pageDescription = $isLabSurface
             <aside class="xyz-surface-aside reveal">
                 <article class="xyz-surface-note xyz-surface-note--camera" data-xyz-camera-panel>
                     <span class="summary-label">rituel</span>
-                    <strong data-xyz-camera-title>La membrane attend un geste.</strong>
-                    <p class="panel-copy" data-xyz-camera-status>Active la membrane pour ouvrir mouvement, voix, lumière, caméra et veille active, puis laisser le téléphone jouer un thérémin local et accorder légèrement la voix. Terre &amp; Mine permet aussi de tester la montée sans capteurs. Aucune image brute n’est envoyée. Si le pont plasma est actif, seuls des signaux synthétiques quittent cette couche.</p>
+                    <strong data-xyz-camera-title><?= h($spatialCameraTitle) ?></strong>
+                    <p class="panel-copy" data-xyz-camera-status><?= h($spatialCameraStatus) ?></p>
                     <div class="xyz-surface-sensor-grid" aria-label="État direct de la membrane">
                         <p><span>orientation</span><strong data-xyz-sensor-orientation>en attente</strong></p>
                         <p><span>mouvement</span><strong data-xyz-sensor-motion>en attente</strong></p>
@@ -566,7 +608,7 @@ $pageDescription = $isLabSurface
                                 <button type="button" class="ghost-link" data-device-share>Partager</button>
                             </div>
                         </div>
-                        <p class="panel-copy device-bridge-note" data-device-native-note>Le web pilote ici silence, niveau, haptique, partage et mode app. Un wrapper natif pourra ensuite donner le silence et le volume réels du téléphone.</p>
+                        <p class="panel-copy device-bridge-note" data-device-native-note><?= h($spatialDeviceNote) ?></p>
                     </div>
                     <div class="xyz-music-guide" data-xyz-music-guide-root>
                         <span class="summary-label">atelier</span>
@@ -574,16 +616,64 @@ $pageDescription = $isLabSurface
                             <p><span>mode</span><strong data-xyz-music-mode>Mi mineur</strong></p>
                             <p><span>note</span><strong data-xyz-music-note>Mi2</strong></p>
                             <p><span>rythme</span><strong data-xyz-music-rhythm>drone stable</strong></p>
+                            <p><span>terre</span><strong data-xyz-hand-terre-state>porte le champ</strong></p>
+                            <p><span>mine</span><strong data-xyz-hand-mine-state>creuse la note</strong></p>
                         </div>
+                        <div class="xyz-music-guide__duet" aria-label="Partition Terre et Mine">
+                            <article class="xyz-music-guide__hand xyz-music-guide__hand--terre">
+                                <span class="summary-label">main terre</span>
+                                <strong data-xyz-hand-terre-title>Elle porte.</strong>
+                                <p data-xyz-hand-terre-copy>Elle stabilise le mode, ouvre ou ferme la lumière, puis garde le drone respirable.</p>
+                            </article>
+                            <article class="xyz-music-guide__hand xyz-music-guide__hand--mine">
+                                <span class="summary-label">main mine</span>
+                                <strong data-xyz-hand-mine-title>Elle creuse.</strong>
+                                <p data-xyz-hand-mine-copy>Elle tient la note, déclenche l’accent, cherche la voix et relance le shaker.</p>
+                            </article>
+                        </div>
+                        <p class="xyz-music-guide__duet-state" data-xyz-duet-state>Terre porte le seuil, Mine y ouvre un trajet.</p>
                         <p class="panel-copy" data-xyz-music-guide>La lumière ouvre le majeur, l’ombre garde le mineur, l’inclinaison tient la note, la voix s’y accroche et la secousse déclenche un shaker.</p>
                     </div>
                 </article>
 
                 <article class="xyz-surface-note">
                     <span class="summary-label">gestes</span>
-                    <strong>Traverse, puis laisse le téléphone infléchir le tore.</strong>
-                    <p class="panel-copy">Glisse pour pivoter. Sur mobile, l’orientation et le mouvement déplacent aussi la peau. Le centre et le geste en O ouvrent toujours 0wlslw0.</p>
+                    <strong><?= h($spatialGestureTitle) ?></strong>
+                    <p class="panel-copy"><?= h($spatialGestureCopy) ?></p>
                 </article>
+
+                <?php if ($isSowwwlIo): ?>
+                <article class="xyz-surface-note xyz-surface-note--spatial">
+                    <span class="summary-label">mode casque</span>
+                    <strong><?= h($spatialModeTitle) ?></strong>
+                    <p class="panel-copy"><?= h($spatialModeCopy) ?></p>
+                    <div class="xyz-surface-route-links xyz-surface-route-links--mode" aria-label="Basculer le mode spatial">
+                        <a class="ghost-link" href="<?= h($spatialModeScreenHref) ?>"<?= $isSpatialHeadsetMode ? '' : ' aria-current="page"' ?>>Projection écran</a>
+                        <a class="ghost-link" href="<?= h($spatialModeHeadsetHref) ?>"<?= $isSpatialHeadsetMode ? ' aria-current="page"' : '' ?>>Mode casque web</a>
+                    </div>
+                    <div class="xyz-spatial-duet-routes" aria-label="Routes Terre et Mine">
+                        <article class="xyz-spatial-duet-routes__group" data-xyz-route-hand="terre">
+                            <span class="summary-label">main terre</span>
+                            <strong>Porte et oriente</strong>
+                            <p>Ouvrir le seuil, lire le terrain, garder une vue large avant d inciser.</p>
+                            <div class="xyz-surface-route-links xyz-surface-route-links--spatial">
+                                <a class="ghost-link" href="<?= h($guideHref) ?>">0wlslw0</a>
+                                <a class="ghost-link" href="<?= h($mapHref) ?>">Carte</a>
+                            </div>
+                        </article>
+                        <article class="xyz-spatial-duet-routes__group" data-xyz-route-hand="mine">
+                            <span class="summary-label">main mine</span>
+                            <strong>Incise et relance</strong>
+                            <p>Entrer dans une liaison, prendre le courant de face, faire vibrer le détail.</p>
+                            <div class="xyz-surface-route-links xyz-surface-route-links--spatial">
+                                <a class="ghost-link" href="<?= h($signalHref) ?>">Signal</a>
+                                <a class="ghost-link" href="<?= h($str3mHref) ?>">Str3m</a>
+                            </div>
+                        </article>
+                    </div>
+                    <p class="panel-copy xyz-spatial-duet-routes__hint">La main dominante du moment éclaire la colonne correspondante. Terre tient l orientation. Mine pousse le passage.</p>
+                </article>
+                <?php endif; ?>
 
                 <article class="xyz-surface-note">
                     <span class="summary-label">autres dérives</span>
@@ -897,7 +987,7 @@ $pageDescription = $isLabSurface
             </section>
             <?php if ($authenticatedLand): ?>
                 <div class="action-row auth-action-row">
-                    <a class="pill-link" href="<?= h($landHref) ?>?u=<?= rawurlencode($activeLandSlug) ?>">Ouvrir la terre</a>
+                    <a class="pill-link" href="<?= h(o_route_href('/land', ['u' => $activeLandSlug])) ?>">Ouvrir la terre</a>
                     <a class="ghost-link" href="<?= h($logoutHref) ?>">Retirer sa présence</a>
                 </div>
             <?php endif; ?>

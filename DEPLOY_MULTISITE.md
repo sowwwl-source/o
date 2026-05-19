@@ -46,6 +46,8 @@ Point these hosts to the VPS:
 
 - `sowwwl.xyz`
 - `www.sowwwl.xyz`
+- `sowwwl.io`
+- `www.sowwwl.io`
 - `sowwwl.cloud`
 - `www.sowwwl.cloud`
 - `api.sowwwl.cloud`
@@ -62,12 +64,13 @@ Point these hosts to the VPS:
 1. Make sure the origin is reachable on ports `80` and `443`.
 2. Let Caddy issue certificates on the origin.
 3. Set Cloudflare SSL mode to `Full (strict)`.
-4. If `sowwwl.xyz` returns `525`, the origin handshake is still wrong: verify the host exists in Caddy, port `443` is open, and the origin certificate covers `sowwwl.xyz`.
-5. If `0wlslw0.com` or `sowwwl.cloud` returns `526`, the origin certificate or routing is still wrong.
+4. If `sowwwl.xyz` or `sowwwl.io` returns `525`, the origin handshake is still wrong: verify the host exists in Caddy, port `443` is open, and the origin certificate covers that domain.
+5. If `0wlslw0.com`, `sowwwl.cloud`, or `sowwwl.io` returns `526`, the origin certificate or routing is still wrong.
 
 ## Result
 
 - `sowwwl.xyz` resolves to the PHP ingress app
+- `sowwwl.io` resolves to the spatial ingress app surface
 - `sowwwl.cloud` gets a real home page
 - `api.sowwwl.cloud` resolves and responds
 - `0.user.o.sowwwl.cloud` gets SPA fallback routing

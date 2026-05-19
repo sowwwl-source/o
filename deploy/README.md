@@ -3,6 +3,7 @@
 This directory adds a production-oriented stack for:
 
 - `sowwwl.xyz`
+- `sowwwl.io`
 - `sowwwl.cloud`
 - `api.sowwwl.cloud`
 - `0.user.o.sowwwl.cloud`
@@ -14,6 +15,7 @@ This directory adds a production-oriented stack for:
 It uses one VPS, one Caddy reverse proxy, one PHP app container for the `o/` experience, one MySQL service for messaging/state, static domain sites, and one minimal API compatibility container.
 
 `sowwwl.xyz` is no longer deployed through Cloudflare Workers or Wrangler.
+`sowwwl.io` should follow the same VPS path when you are ready to expose the spatial surface publicly.
 
 ## Domain promotion model
 
@@ -49,6 +51,7 @@ The production deploy helper refuses lab-facing plasma overrides unless you pass
 Required apex records:
 
 - `sowwwl.xyz`
+- `sowwwl.io`
 - `sowwwl.cloud`
 - `sowwwl.org`
 - `0wlslw0.com`
@@ -58,6 +61,7 @@ Required apex records:
 Required subdomain records:
 
 - `www.sowwwl.xyz`
+- `www.sowwwl.io`
 - `www.sowwwl.cloud`
 - `www.sowwwl.org`
 - `www.0wlslw0.com`
@@ -125,6 +129,7 @@ After deploy, verify at least:
 - `https://sowwwl.com/str3m`
 - `https://sowwwl.com/echo.php`
 - `https://sowwwl.xyz/` and confirm the membrane bridge stays on `sowwwl.xyz`
+- `https://sowwwl.io/` and confirm the spatial surface answers from the same app
 - `https://sowwwl.xyz/map`
 - `https://api.sowwwl.cloud/healthz`
 - `https://api.sowwwl.cloud/v1/status`
@@ -134,6 +139,7 @@ For the bridge specifically, the live HTML on `sowwwl.xyz` should expose a same-
 ```bash
 curl -sL https://sowwwl.xyz/ | grep -E 'data-xyz-plasma-bridge="https://sowwwl\.xyz(/o)?/ingest/membrane"'
 curl -sL https://sowwwl.xyz/ | grep -E 'data-xyz-plasma-bridge="https://lab\.sowwwl\.cloud' && false || true
+curl -I https://sowwwl.io/
 curl -sL https://sowwwl.xyz/map | grep -E 'Le tore des terres actives|Console lexicale de la map|courants actifs'
 curl -sL https://api.sowwwl.cloud/v1/status | grep -E '"service": ?"api.sowwwl.cloud"|AzA_v0.7_openapi.min.yaml'
 ```
@@ -159,6 +165,7 @@ Expected behavior:
 - `Signal` uses the land virtual email and can send an identity verification email
 - `Écho` still works and lists contacts from JSON lands, even if SQL `lands` rows are absent
 - `sowwwl.xyz` exposes the membrane surface and keeps its plasma bridge on `sowwwl.xyz`, unless you intentionally override it
+- `sowwwl.io` exposes the spatial surface from the same app with camera/microphone permissions available through the `permissions_surface` host block
 - `sowwwl.xyz/map` responds from the same O. app instead of redirecting back to `sowwwl.com`
 
 If you want the live app to relay to the DigitalOcean voice agent, also set these variables in `.env.production`:
@@ -214,7 +221,8 @@ If Cloudflare is enabled:
 2. For the first certificate issuance, use DNS-only mode if needed.
 3. Once Caddy has valid origin certificates, switch SSL mode to `Full (strict)`.
 4. If `sowwwl.xyz` shows a `525`, the origin handshake is still failing. Verify the host exists in Caddy, the origin is reachable on `443`, and the origin certificate matches the domain.
-5. If you previously had a `526` on `0wlslw0.com` or `sowwwl.cloud`, that error should disappear once the origin is serving a valid certificate and Cloudflare is in `Full (strict)`.
+5. Apply the same rule to `sowwwl.io`: `A @ -> 161.35.157.37`, `CNAME www -> @`, proxied in Cloudflare once the origin certificate is live.
+6. If you previously had a `526` on `0wlslw0.com`, `sowwwl.cloud`, or `sowwwl.io`, that error should disappear once the origin is serving a valid certificate and Cloudflare is in `Full (strict)`.
 
 ## What the API stub does
 

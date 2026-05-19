@@ -44,6 +44,16 @@ www.sowwwl.xyz {
 	redir https://sowwwl.xyz{uri} 308
 }
 
+sowwwl.io {
+	import common_headers
+	import permissions_surface
+	reverse_proxy app:80
+}
+
+www.sowwwl.io {
+	redir https://sowwwl.io{uri} 308
+}
+
 sowwwl.cloud {
 	import common_headers
 	import permissions_static
