@@ -24,6 +24,24 @@ const XYZ_MUSIC_PATTERN_RATCHET_OPTIONS = [1, 2, 3, 4];
 const XYZ_MUSIC_SCENE_KEYS = ["scene-a", "scene-b", "scene-c", "scene-d"];
 const XYZ_MUSIC_ARRANGEMENT_BAR_OPTIONS = [1, 2, 4, 8];
 const XYZ_MUSIC_ARRANGEMENT_STEP_COUNT = 6;
+const XYZ_MUSIC_FX_PRESET_META = {
+	bare: {
+		label: "nu proche",
+		fx: { space: 0.18, echo: 0.12, dirt: 0.09, air: 0.54 },
+	},
+	mist: {
+		label: "brume lente",
+		fx: { space: 0.56, echo: 0.24, dirt: 0.08, air: 0.62 },
+	},
+	glass: {
+		label: "verriere claire",
+		fx: { space: 0.34, echo: 0.42, dirt: 0.05, air: 0.86 },
+	},
+	ember: {
+		label: "braise dense",
+		fx: { space: 0.28, echo: 0.18, dirt: 0.48, air: 0.34 },
+	},
+};
 const XYZ_MUSIC_SCENE_META = {
 	"scene-a": { shortLabel: "A", label: "aube" },
 	"scene-b": { shortLabel: "B", label: "seuil" },
@@ -1402,6 +1420,17 @@ function normalizeXyzMusicPattern(raw) {
 	return pattern;
 }
 
+function normalizeXyzMusicFx(raw) {
+	const source = raw && typeof raw === "object" ? raw : {};
+	const fallback = XYZ_MUSIC_FX_PRESET_META.bare.fx;
+	return {
+		space: clampNumber(Number(source.space ?? fallback.space), 0, 1),
+		echo: clampNumber(Number(source.echo ?? fallback.echo), 0, 1),
+		dirt: clampNumber(Number(source.dirt ?? fallback.dirt), 0, 1),
+		air: clampNumber(Number(source.air ?? fallback.air), 0, 1),
+	};
+}
+
 function normalizeXyzMusicDawCore(raw) {
 	const source = raw && typeof raw === "object" ? raw : {};
 	return {
@@ -1413,6 +1442,7 @@ function normalizeXyzMusicDawCore(raw) {
 		quantize: ["1/4", "1/8", "1/16"].includes(source.quantize) ? source.quantize : "1/8",
 		countInBars: [0, 1, 2].includes(Number(source.countInBars)) ? Number(source.countInBars) : 1,
 		masterVolume: clampNumber(Number(source.masterVolume) || 0.98, 0, 1),
+		fx: normalizeXyzMusicFx(source.fx),
 		tracks: normalizeXyzMusicTrackSet(source.tracks),
 		pattern: normalizeXyzMusicPattern(source.pattern),
 	};
@@ -5981,7 +6011,6 @@ function initXyzSurface() {
 function initXyzCamera() {
 	const root = document.querySelector("[data-xyz-camera-root]");
 	const video = document.querySelector("[data-xyz-camera-video]");
-	const cameraFallback = document.querySelector("[data-xyz-camera-fallback]");
 	const startButton = document.querySelector("[data-xyz-camera-start]");
 	const demoButton = document.querySelector("[data-xyz-camera-demo]");
 	const stopButton = document.querySelector("[data-xyz-camera-stop]");
@@ -6022,6 +6051,17 @@ function initXyzCamera() {
 	const musicDawHumanizeReadout = document.querySelector("[data-xyz-daw-humanize-readout]");
 	const musicDawMicrotimingInput = document.querySelector("[data-xyz-daw-microtiming-input]");
 	const musicDawMicrotimingReadout = document.querySelector("[data-xyz-daw-microtiming-readout]");
+	const musicDawFxStateNode = document.querySelector("[data-xyz-daw-fx-state]");
+	const musicDawFxCopyNode = document.querySelector("[data-xyz-daw-fx-copy]");
+	const musicDawFxSpaceInput = document.querySelector("[data-xyz-daw-fx-space-input]");
+	const musicDawFxSpaceReadout = document.querySelector("[data-xyz-daw-fx-space-readout]");
+	const musicDawFxEchoInput = document.querySelector("[data-xyz-daw-fx-echo-input]");
+	const musicDawFxEchoReadout = document.querySelector("[data-xyz-daw-fx-echo-readout]");
+	const musicDawFxDirtInput = document.querySelector("[data-xyz-daw-fx-dirt-input]");
+	const musicDawFxDirtReadout = document.querySelector("[data-xyz-daw-fx-dirt-readout]");
+	const musicDawFxAirInput = document.querySelector("[data-xyz-daw-fx-air-input]");
+	const musicDawFxAirReadout = document.querySelector("[data-xyz-daw-fx-air-readout]");
+	const musicDawFxPresetButtons = Array.from(document.querySelectorAll("[data-xyz-daw-fx-preset]"));
 	const musicDawLoopSelect = document.querySelector("[data-xyz-daw-loop-select]");
 	const musicDawQuantizeSelect = document.querySelector("[data-xyz-daw-quantize-select]");
 	const musicDawCountInSelect = document.querySelector("[data-xyz-daw-countin-select]");
@@ -6219,7 +6259,21 @@ function initXyzCamera() {
 	let motionVoicePanner = null;
 	let motionVoiceLfo = null;
 	let motionVoiceLfoGain = null;
+	let musicMixGain = null;
 	let musicMasterGain = null;
+	let musicMasterAirFilter = null;
+	let musicMasterDriveInputGain = null;
+	let musicMasterDriveShaper = null;
+	let musicMasterDriveOutputGain = null;
+	let musicSpaceSendGain = null;
+	let musicSpaceConvolver = null;
+	let musicSpaceReturnGain = null;
+	let musicSpaceImpulseBuffer = null;
+	let musicEchoSendGain = null;
+	let musicEchoDelay = null;
+	let musicEchoFeedbackGain = null;
+	let musicEchoFilter = null;
+	let musicEchoReturnGain = null;
 	let musicPercussionGain = null;
 	let musicRecorderDestination = null;
 	let musicStemTrackDestinations = {};
@@ -6906,6 +6960,28 @@ function initXyzCamera() {
 	const persistMusicDawState = () => {
 		writeXyzMusicDawState(musicDawState);
 	};
+	const patchMusicFxState = (patch = {}) => {
+		musicDawState.fx = normalizeXyzMusicFx({
+			...getMusicFxState(),
+			...patch,
+		});
+		persistMusicDawState();
+		applyMusicMixState();
+		renderMusicDesk();
+		return musicDawState.fx;
+	};
+	const applyMusicFxPreset = (presetKey) => {
+		const preset = XYZ_MUSIC_FX_PRESET_META[presetKey];
+		if (!preset) {
+			return false;
+		}
+		musicDawState.fx = normalizeXyzMusicFx(preset.fx);
+		persistMusicDawState();
+		applyMusicMixState();
+		renderMusicDesk();
+		pulseDeviceHaptics("soft");
+		return true;
+	};
 
 	const getMusicTrackState = (key) => musicDawState.tracks[key] || normalizeXyzMusicDawState().tracks[key];
 	const hasSoloMusicTracks = () => XYZ_MUSIC_TRACK_KEYS.some((key) => getMusicTrackState(key).solo);
@@ -6924,6 +7000,23 @@ function initXyzCamera() {
 	const getMusicSwingRatio = () => clampNumber((Number(musicDawState.swing) || 0) / 100, 0, 0.4);
 	const getMusicHumanizeRatio = () => clampNumber((Number(musicDawState.humanize) || 0) / 100, 0, 0.36);
 	const getMusicMicrotimingSeconds = () => clampNumber(Number(musicDawState.microtimingMs) || 0, 0, 24) / 1000;
+	const getMusicFxState = () => normalizeXyzMusicFx(musicDawState.fx);
+	const inferMusicFxPresetKey = (fxState = getMusicFxState()) => {
+		for (const [presetKey, presetMeta] of Object.entries(XYZ_MUSIC_FX_PRESET_META)) {
+			const presetFx = presetMeta.fx;
+			const matches = ["space", "echo", "dirt", "air"].every((key) => Math.abs(Number(fxState[key]) - Number(presetFx[key])) <= 0.015);
+			if (matches) {
+				return presetKey;
+			}
+		}
+		return "custom";
+	};
+	const formatMusicFxLabel = (fxState = getMusicFxState()) => {
+		const presetKey = inferMusicFxPresetKey(fxState);
+		return presetKey === "custom"
+			? "matiere libre"
+			: (XYZ_MUSIC_FX_PRESET_META[presetKey]?.label || "matiere libre");
+	};
 	const formatMusicPercent = (value) => `${Math.round(clampNumber(value, 0, 1) * 100)}%`;
 	const cloneMusicDawCoreSnapshot = () => ({
 		bpm: musicDawState.bpm,
@@ -6934,6 +7027,7 @@ function initXyzCamera() {
 		quantize: musicDawState.quantize,
 		countInBars: musicDawState.countInBars,
 		masterVolume: musicDawState.masterVolume,
+		fx: normalizeXyzMusicFx(musicDawState.fx),
 		tracks: normalizeXyzMusicTrackSet(musicDawState.tracks),
 		pattern: normalizeXyzMusicPattern(musicDawState.pattern),
 	});
@@ -7342,6 +7436,7 @@ function initXyzCamera() {
 		musicDawState.quantize = normalized.quantize;
 		musicDawState.countInBars = normalized.countInBars;
 		musicDawState.masterVolume = normalized.masterVolume;
+		musicDawState.fx = normalized.fx;
 		musicDawState.tracks = normalized.tracks;
 		musicDawState.pattern = normalized.pattern;
 	};
@@ -7882,6 +7977,57 @@ function initXyzCamera() {
 			musicDawMicrotimingInput.value = String(musicDawState.microtimingMs);
 		}
 		setSensorText(musicDawMicrotimingReadout, `${musicDawState.microtimingMs} ms`);
+		const fxState = getMusicFxState();
+		const fxPresetKey = inferMusicFxPresetKey(fxState);
+		musicDawFxPresetButtons.forEach((button) => {
+			if (button instanceof HTMLElement) {
+				button.setAttribute("aria-pressed", button.dataset.xyzDawFxPreset === fxPresetKey ? "true" : "false");
+			}
+		});
+		if (musicDawFxSpaceInput instanceof HTMLInputElement) {
+			musicDawFxSpaceInput.value = String(Math.round(fxState.space * 100));
+		}
+		setSensorText(musicDawFxSpaceReadout, formatMusicPercent(fxState.space));
+		if (musicDawFxEchoInput instanceof HTMLInputElement) {
+			musicDawFxEchoInput.value = String(Math.round(fxState.echo * 100));
+		}
+		setSensorText(musicDawFxEchoReadout, formatMusicPercent(fxState.echo));
+		if (musicDawFxDirtInput instanceof HTMLInputElement) {
+			musicDawFxDirtInput.value = String(Math.round(fxState.dirt * 100));
+		}
+		setSensorText(musicDawFxDirtReadout, formatMusicPercent(fxState.dirt));
+		if (musicDawFxAirInput instanceof HTMLInputElement) {
+			musicDawFxAirInput.value = String(Math.round(fxState.air * 100));
+		}
+		setSensorText(musicDawFxAirReadout, formatMusicPercent(fxState.air));
+		setSensorText(musicDawFxStateNode, formatMusicFxLabel(fxState));
+		document.body.dataset.musicFx = fxPresetKey;
+		if (fxPresetKey === "bare") {
+			setSensorText(
+				musicDawFxCopyNode,
+				"Le master reste proche et lisible. Un peu d espace, peu d echo, juste assez de grain et d air pour garder la peau de la membrane au premier plan."
+			);
+		} else if (fxPresetKey === "mist") {
+			setSensorText(
+				musicDawFxCopyNode,
+				"La membrane flotte plus loin. L espace s ouvre, l echo respire entre les pas et l air laisse les aigus passer comme une brume claire."
+			);
+		} else if (fxPresetKey === "glass") {
+			setSensorText(
+				musicDawFxCopyNode,
+				"Le champ devient plus vitre. Les repetitions se lisent, l air monte et le tore prend un relief plus net, presque architectural."
+			);
+		} else if (fxPresetKey === "ember") {
+			setSensorText(
+				musicDawFxCopyNode,
+				"La matière se densifie. Le grain chauffe, l espace se resserre et le master devient plus charnel, plus braise que brouillard."
+			);
+		} else {
+			setSensorText(
+				musicDawFxCopyNode,
+				`Matiere libre: espace ${formatMusicPercent(fxState.space)}, echo ${formatMusicPercent(fxState.echo)}, grain ${formatMusicPercent(fxState.dirt)}, air ${formatMusicPercent(fxState.air)}. Le master suit maintenant ta propre coupe.`
+			);
+		}
 		if (musicDawLoopSelect instanceof HTMLSelectElement) {
 			musicDawLoopSelect.value = String(musicDawState.loopBars);
 		}
@@ -8360,6 +8506,39 @@ function initXyzCamera() {
 			renderMusicDesk();
 		});
 	}
+	if (musicDawFxSpaceInput instanceof HTMLInputElement && musicDawFxSpaceInput.dataset.bound !== "1") {
+		musicDawFxSpaceInput.dataset.bound = "1";
+		musicDawFxSpaceInput.addEventListener("input", () => {
+			patchMusicFxState({ space: (Number(musicDawFxSpaceInput.value) || 0) / 100 });
+		});
+	}
+	if (musicDawFxEchoInput instanceof HTMLInputElement && musicDawFxEchoInput.dataset.bound !== "1") {
+		musicDawFxEchoInput.dataset.bound = "1";
+		musicDawFxEchoInput.addEventListener("input", () => {
+			patchMusicFxState({ echo: (Number(musicDawFxEchoInput.value) || 0) / 100 });
+		});
+	}
+	if (musicDawFxDirtInput instanceof HTMLInputElement && musicDawFxDirtInput.dataset.bound !== "1") {
+		musicDawFxDirtInput.dataset.bound = "1";
+		musicDawFxDirtInput.addEventListener("input", () => {
+			patchMusicFxState({ dirt: (Number(musicDawFxDirtInput.value) || 0) / 100 });
+		});
+	}
+	if (musicDawFxAirInput instanceof HTMLInputElement && musicDawFxAirInput.dataset.bound !== "1") {
+		musicDawFxAirInput.dataset.bound = "1";
+		musicDawFxAirInput.addEventListener("input", () => {
+			patchMusicFxState({ air: (Number(musicDawFxAirInput.value) || 0) / 100 });
+		});
+	}
+	musicDawFxPresetButtons.forEach((button) => {
+		if (!(button instanceof HTMLElement) || button.dataset.bound === "1") {
+			return;
+		}
+		button.dataset.bound = "1";
+		button.addEventListener("click", () => {
+			applyMusicFxPreset(button.dataset.xyzDawFxPreset || "");
+		});
+	});
 	if (musicDawLoopSelect instanceof HTMLSelectElement && musicDawLoopSelect.dataset.bound !== "1") {
 		musicDawLoopSelect.dataset.bound = "1";
 		musicDawLoopSelect.addEventListener("change", () => {
@@ -9112,6 +9291,89 @@ function initXyzCamera() {
 		musicStemTrackOutputs[key] = output;
 		return output;
 	};
+	const buildMusicDriveCurve = (amount = 0) => {
+		const safeAmount = clampNumber(Number(amount) || 0, 0, 1);
+		const samples = 2048;
+		const curve = new Float32Array(samples);
+		if (safeAmount <= 0.01) {
+			for (let index = 0; index < samples; index += 1) {
+				curve[index] = (index * 2 / (samples - 1)) - 1;
+			}
+			return curve;
+		}
+		const k = 8 + (safeAmount * 72);
+		const deg = Math.PI / 180;
+		for (let index = 0; index < samples; index += 1) {
+			const x = (index * 2 / (samples - 1)) - 1;
+			curve[index] = ((3 + k) * x * 20 * deg) / (Math.PI + (k * Math.abs(x)));
+		}
+		return curve;
+	};
+	const ensureMusicSpaceImpulseBuffer = (context) => {
+		if (musicSpaceImpulseBuffer && musicSpaceImpulseBuffer.sampleRate === context.sampleRate) {
+			return musicSpaceImpulseBuffer;
+		}
+		const durationSeconds = 2.8;
+		const frameCount = Math.max(1, Math.round(context.sampleRate * durationSeconds));
+		const buffer = context.createBuffer(2, frameCount, context.sampleRate);
+		for (let channelIndex = 0; channelIndex < buffer.numberOfChannels; channelIndex += 1) {
+			const channel = buffer.getChannelData(channelIndex);
+			for (let index = 0; index < frameCount; index += 1) {
+				const progress = index / frameCount;
+				const decay = Math.pow(1 - progress, 2.6);
+				const bloom = 0.65 + (Math.sin(progress * Math.PI * (channelIndex === 0 ? 9 : 11)) * 0.18);
+				channel[index] = ((Math.random() * 2) - 1) * decay * bloom;
+			}
+		}
+		musicSpaceImpulseBuffer = buffer;
+		return musicSpaceImpulseBuffer;
+	};
+	const applyMusicFxState = (now = audioContext?.currentTime || 0) => {
+		const fxState = getMusicFxState();
+		if (musicMasterAirFilter) {
+			musicMasterAirFilter.type = "highshelf";
+			musicMasterAirFilter.frequency.setTargetAtTime(1400 + (fxState.air * 4200), now, 0.12);
+			musicMasterAirFilter.gain.setTargetAtTime(-5 + (fxState.air * 12), now, 0.12);
+		}
+		if (musicMasterDriveInputGain) {
+			musicMasterDriveInputGain.gain.setTargetAtTime(1 + (fxState.dirt * 5.6), now, 0.12);
+		}
+		if (musicMasterDriveShaper) {
+			musicMasterDriveShaper.curve = buildMusicDriveCurve(fxState.dirt);
+			musicMasterDriveShaper.oversample = fxState.dirt > 0.16 ? "4x" : "2x";
+		}
+		if (musicMasterDriveOutputGain) {
+			musicMasterDriveOutputGain.gain.setTargetAtTime(clampNumber(0.98 - (fxState.dirt * 0.18), 0.72, 1), now, 0.12);
+		}
+		if (musicSpaceSendGain) {
+			musicSpaceSendGain.gain.setTargetAtTime(fxState.space * 0.46, now, 0.12);
+		}
+		if (musicSpaceReturnGain) {
+			musicSpaceReturnGain.gain.setTargetAtTime(fxState.space * 0.38, now, 0.14);
+		}
+		const beatSeconds = getMusicBeatDurationMs() / 1000;
+		if (musicEchoSendGain) {
+			musicEchoSendGain.gain.setTargetAtTime(fxState.echo * 0.34, now, 0.12);
+		}
+		if (musicEchoDelay) {
+			musicEchoDelay.delayTime.setTargetAtTime(
+				clampNumber(beatSeconds * (0.375 + (fxState.echo * 0.875)), 0.12, 1.2),
+				now,
+				0.12
+			);
+		}
+		if (musicEchoFeedbackGain) {
+			musicEchoFeedbackGain.gain.setTargetAtTime(clampNumber(0.08 + (fxState.echo * 0.58), 0.08, 0.74), now, 0.14);
+		}
+		if (musicEchoFilter) {
+			musicEchoFilter.type = "lowpass";
+			musicEchoFilter.frequency.setTargetAtTime(1000 + (fxState.air * 4200) + (fxState.echo * 900), now, 0.12);
+			musicEchoFilter.Q.setTargetAtTime(0.28 + (fxState.echo * 0.84), now, 0.14);
+		}
+		if (musicEchoReturnGain) {
+			musicEchoReturnGain.gain.setTargetAtTime(fxState.echo * 0.32, now, 0.14);
+		}
+	};
 	const ensureMusicMasterBus = (context) => {
 		if (!musicMasterGain) {
 			musicMasterGain = context.createGain();
@@ -9122,17 +9384,53 @@ function initXyzCamera() {
 				musicMasterGain.connect(musicRecorderDestination);
 			}
 		}
+		if (!musicMixGain) {
+			musicMixGain = context.createGain();
+			musicMixGain.gain.value = 1;
+			musicMasterAirFilter = context.createBiquadFilter();
+			musicMasterDriveInputGain = context.createGain();
+			musicMasterDriveShaper = context.createWaveShaper();
+			musicMasterDriveOutputGain = context.createGain();
+			musicSpaceSendGain = context.createGain();
+			musicSpaceConvolver = context.createConvolver();
+			musicSpaceReturnGain = context.createGain();
+			musicEchoSendGain = context.createGain();
+			musicEchoDelay = context.createDelay(1.4);
+			musicEchoFeedbackGain = context.createGain();
+			musicEchoFilter = context.createBiquadFilter();
+			musicEchoReturnGain = context.createGain();
+
+			musicSpaceConvolver.buffer = ensureMusicSpaceImpulseBuffer(context);
+			musicMixGain.connect(musicMasterAirFilter);
+			musicMasterAirFilter.connect(musicMasterDriveInputGain);
+			musicMasterDriveInputGain.connect(musicMasterDriveShaper);
+			musicMasterDriveShaper.connect(musicMasterDriveOutputGain);
+			musicMasterDriveOutputGain.connect(musicMasterGain);
+
+			musicMixGain.connect(musicSpaceSendGain);
+			musicSpaceSendGain.connect(musicSpaceConvolver);
+			musicSpaceConvolver.connect(musicSpaceReturnGain);
+			musicSpaceReturnGain.connect(musicMasterGain);
+
+			musicMixGain.connect(musicEchoSendGain);
+			musicEchoSendGain.connect(musicEchoDelay);
+			musicEchoDelay.connect(musicEchoReturnGain);
+			musicEchoReturnGain.connect(musicMasterGain);
+			musicEchoDelay.connect(musicEchoFeedbackGain);
+			musicEchoFeedbackGain.connect(musicEchoFilter);
+			musicEchoFilter.connect(musicEchoDelay);
+		}
 		if (!musicPercussionGain) {
 			musicPercussionGain = context.createGain();
 			musicPercussionGain.gain.value = getMusicTrackMix("percu");
-			musicPercussionGain.connect(musicMasterGain);
+			musicPercussionGain.connect(musicMixGain || musicMasterGain);
 			const percussionStemDestination = ensureMusicStemDestination(context, "percu");
 			if (percussionStemDestination) {
 				musicPercussionGain.connect(percussionStemDestination);
 			}
 		}
 		applyMusicMixState(context.currentTime);
-		return musicMasterGain;
+		return musicMixGain || musicMasterGain;
 	};
 	const applyMusicMixState = (now = audioContext?.currentTime || 0) => {
 		if (musicMasterGain) {
@@ -9166,6 +9464,7 @@ function initXyzCamera() {
 				panner.pan.setTargetAtTime(clampNumber(motionVoicePanner.pan.value || 0, -1, 1), now, 0.14);
 			}
 		});
+		applyMusicFxState(now);
 	};
 	const resolveMediaRecorderMimeType = (candidates = []) => {
 		if (typeof window.MediaRecorder !== "function") {
@@ -9409,7 +9708,7 @@ function initXyzCamera() {
 		context.font = '500 20px "Helvetica Neue", Arial, sans-serif';
 		context.fillStyle = "rgba(238, 244, 255, 0.72)";
 		context.fillText(
-			`${currentScaleProfile().shortLabel} · ${currentInstrumentProfile().label} · ${cameraFacingLabel()}`,
+			`${currentScaleProfile().shortLabel} · ${currentInstrumentProfile().label} · ${formatMusicFxLabel()} · ${cameraFacingLabel()}`,
 			58,
 			116
 		);
@@ -9847,7 +10146,7 @@ function initXyzCamera() {
 	};
 	const exportMusicProjectSnapshot = () => {
 		const snapshot = {
-			version: 5,
+			version: 6,
 			exported_at: new Date().toISOString(),
 			surface: isIoSurfaceView() ? "io" : "xyz",
 			camera_facing: cameraFacingMode,
@@ -10450,7 +10749,21 @@ function initXyzCamera() {
 		motionVoicePanner = null;
 		motionVoiceLfo = null;
 		motionVoiceLfoGain = null;
+		musicMixGain = null;
 		musicMasterGain = null;
+		musicMasterAirFilter = null;
+		musicMasterDriveInputGain = null;
+		musicMasterDriveShaper = null;
+		musicMasterDriveOutputGain = null;
+		musicSpaceSendGain = null;
+		musicSpaceConvolver = null;
+		musicSpaceReturnGain = null;
+		musicSpaceImpulseBuffer = null;
+		musicEchoSendGain = null;
+		musicEchoDelay = null;
+		musicEchoFeedbackGain = null;
+		musicEchoFilter = null;
+		musicEchoReturnGain = null;
 		musicPercussionGain = null;
 		musicRecorderDestination = null;
 		musicStemTrackDestinations = {};
