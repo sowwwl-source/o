@@ -1407,6 +1407,8 @@ function normalizeXyzMusicDawCore(raw) {
 	return {
 		bpm: clampNumber(Math.round(Number(source.bpm) || 96), 60, 168),
 		swing: clampNumber(Math.round(Number(source.swing) || 12), 0, 40),
+		humanize: clampNumber(Math.round(Number(source.humanize) || 14), 0, 36),
+		microtimingMs: clampNumber(Math.round(Number(source.microtimingMs) || 9), 0, 24),
 		loopBars: [2, 4, 8, 16].includes(Number(source.loopBars)) ? Number(source.loopBars) : 4,
 		quantize: ["1/4", "1/8", "1/16"].includes(source.quantize) ? source.quantize : "1/8",
 		countInBars: [0, 1, 2].includes(Number(source.countInBars)) ? Number(source.countInBars) : 1,
@@ -5979,6 +5981,7 @@ function initXyzSurface() {
 function initXyzCamera() {
 	const root = document.querySelector("[data-xyz-camera-root]");
 	const video = document.querySelector("[data-xyz-camera-video]");
+	const cameraFallback = document.querySelector("[data-xyz-camera-fallback]");
 	const startButton = document.querySelector("[data-xyz-camera-start]");
 	const demoButton = document.querySelector("[data-xyz-camera-demo]");
 	const stopButton = document.querySelector("[data-xyz-camera-stop]");
@@ -6008,11 +6011,17 @@ function initXyzCamera() {
 	const musicDawPlayButton = document.querySelector("[data-xyz-daw-play]");
 	const musicDawStopButton = document.querySelector("[data-xyz-daw-stop]");
 	const musicDawRecordButton = document.querySelector("[data-xyz-daw-record]");
+	const musicDawPerformanceButton = document.querySelector("[data-xyz-daw-record-performance]");
+	const musicDawStemExportButton = document.querySelector("[data-xyz-daw-export-stems]");
 	const musicDawExportButton = document.querySelector("[data-xyz-daw-export-project]");
 	const musicDawBpmInput = document.querySelector("[data-xyz-daw-bpm-input]");
 	const musicDawBpmReadout = document.querySelector("[data-xyz-daw-bpm-readout]");
 	const musicDawSwingInput = document.querySelector("[data-xyz-daw-swing-input]");
 	const musicDawSwingReadout = document.querySelector("[data-xyz-daw-swing-readout]");
+	const musicDawHumanizeInput = document.querySelector("[data-xyz-daw-humanize-input]");
+	const musicDawHumanizeReadout = document.querySelector("[data-xyz-daw-humanize-readout]");
+	const musicDawMicrotimingInput = document.querySelector("[data-xyz-daw-microtiming-input]");
+	const musicDawMicrotimingReadout = document.querySelector("[data-xyz-daw-microtiming-readout]");
 	const musicDawLoopSelect = document.querySelector("[data-xyz-daw-loop-select]");
 	const musicDawQuantizeSelect = document.querySelector("[data-xyz-daw-quantize-select]");
 	const musicDawCountInSelect = document.querySelector("[data-xyz-daw-countin-select]");
@@ -6081,6 +6090,7 @@ function initXyzCamera() {
 				.sort((left, right) => Number(left.dataset.xyzDawPatternIndex || 0) - Number(right.dataset.xyzDawPatternIndex || 0)),
 		])
 	);
+	const torusCanvas = document.getElementById("torus-ambient");
 	const instrumentRoot = document.querySelector("[data-xyz-instrument-root]");
 	const instrumentViewNode = document.querySelector("[data-xyz-instrument-view]");
 	const instrumentFocusNode = document.querySelector("[data-xyz-instrument-focus]");
@@ -6212,9 +6222,28 @@ function initXyzCamera() {
 	let musicMasterGain = null;
 	let musicPercussionGain = null;
 	let musicRecorderDestination = null;
+	let musicStemTrackDestinations = {};
+	let musicStemTrackOutputs = {};
+	let musicStemTrackFilters = {};
+	let musicStemTrackPanners = {};
+	let musicStemExportState = "idle";
+	let musicStemExportStartedAt = 0;
+	let musicStemExportDurationMs = 0;
+	let musicStemExportTimeout = 0;
+	let musicStemRecorders = [];
 	let musicRecorder = null;
 	let musicRecorderMimeType = "";
 	let musicRecorderChunks = [];
+	let musicPerformanceRecorder = null;
+	let musicPerformanceRecorderMimeType = "";
+	let musicPerformanceRecorderChunks = [];
+	let musicPerformanceCaptureState = "idle";
+	let musicPerformanceCaptureStartedAt = 0;
+	let musicPerformanceCanvas = null;
+	let musicPerformanceCanvasContext = null;
+	let musicPerformanceCompositeStream = null;
+	let musicPerformanceOwnedTracks = [];
+	let musicPerformanceRenderFrame = 0;
 	let musicTransportTimer = 0;
 	let musicPlaybackStartedAt = 0;
 	let musicRecordingState = "idle";
@@ -6893,10 +6922,14 @@ function initXyzCamera() {
 	const getMusicBeatDurationMs = () => 60000 / clampNumber(Number(musicDawState.bpm) || 96, 60, 168);
 	const getMusicLoopDurationMs = () => getMusicBeatDurationMs() * 4 * musicDawState.loopBars;
 	const getMusicSwingRatio = () => clampNumber((Number(musicDawState.swing) || 0) / 100, 0, 0.4);
+	const getMusicHumanizeRatio = () => clampNumber((Number(musicDawState.humanize) || 0) / 100, 0, 0.36);
+	const getMusicMicrotimingSeconds = () => clampNumber(Number(musicDawState.microtimingMs) || 0, 0, 24) / 1000;
 	const formatMusicPercent = (value) => `${Math.round(clampNumber(value, 0, 1) * 100)}%`;
 	const cloneMusicDawCoreSnapshot = () => ({
 		bpm: musicDawState.bpm,
 		swing: musicDawState.swing,
+		humanize: musicDawState.humanize,
+		microtimingMs: musicDawState.microtimingMs,
 		loopBars: musicDawState.loopBars,
 		quantize: musicDawState.quantize,
 		countInBars: musicDawState.countInBars,
@@ -6938,6 +6971,12 @@ function initXyzCamera() {
 		return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
 	};
 	const extensionFromMimeType = (mimeType) => {
+		if (mimeType.includes("video/webm")) {
+			return "webm";
+		}
+		if (mimeType.includes("video/mp4")) {
+			return "mp4";
+		}
 		if (mimeType.includes("audio/webm")) {
 			return "webm";
 		}
@@ -7171,6 +7210,8 @@ function initXyzCamera() {
 		const normalizedStepIndex = ((stepIndex % XYZ_MUSIC_PATTERN_STEP_COUNT) + XYZ_MUSIC_PATTERN_STEP_COUNT) % XYZ_MUSIC_PATTERN_STEP_COUNT;
 		const baseAccent = normalizedStepIndex % 4 === 0 ? 0.84 : ((normalizedStepIndex % 2) === 0 ? 0.6 : 0.48);
 		const stepDurationSeconds = (getMusicBeatDurationMs() / 1000) / 4;
+		const humanizeRatio = getMusicHumanizeRatio();
+		const microtimingSeconds = getMusicMicrotimingSeconds();
 		const scheduleTrackStep = (trackKey, triggerFn, intensityMultiplier = 1) => {
 			if (!musicSettings.percussion[trackKey] || !pattern.steps?.[trackKey]?.[normalizedStepIndex]) {
 				return false;
@@ -7183,9 +7224,18 @@ function initXyzCamera() {
 			const accentBoost = pattern.accents?.[trackKey]?.[normalizedStepIndex] ? 1.22 : 1;
 			let scheduled = false;
 			for (let repeatIndex = 0; repeatIndex < ratchet; repeatIndex += 1) {
-				const repeatTime = startAt + ((stepDurationSeconds / ratchet) * repeatIndex);
+				const baseRepeatTime = startAt + ((stepDurationSeconds / ratchet) * repeatIndex);
+				const timeSpread = (stepDurationSeconds * humanizeRatio * (trackKey === "hihat" ? 0.22 : 0.16))
+					+ microtimingSeconds * (trackKey === "kick" ? 0.56 : (trackKey === "snare" ? 0.82 : 1));
+				const timeJitter = (Math.random() * 2 - 1) * timeSpread;
+				const repeatTime = Math.max(baseRepeatTime + timeJitter, context.currentTime + 0.001);
 				const repeatDecay = repeatIndex === 0 ? 1 : Math.max(0.58, 1 - (repeatIndex * 0.14));
-				const intensity = clampNumber(baseAccent * accentBoost * intensityMultiplier * repeatDecay, 0.18, 1);
+				const velocityJitter = 1 + ((Math.random() * 2 - 1) * humanizeRatio * 0.38);
+				const intensity = clampNumber(
+					baseAccent * accentBoost * intensityMultiplier * repeatDecay * velocityJitter,
+					0.18,
+					1
+				);
 				scheduled = triggerFn(context, deviceProfile, intensity, repeatTime, { bypassGap: true }) || scheduled;
 			}
 			return scheduled;
@@ -7286,6 +7336,8 @@ function initXyzCamera() {
 		const normalized = normalizeXyzMusicDawCore(snapshot);
 		musicDawState.bpm = normalized.bpm;
 		musicDawState.swing = normalized.swing;
+		musicDawState.humanize = normalized.humanize;
+		musicDawState.microtimingMs = normalized.microtimingMs;
 		musicDawState.loopBars = normalized.loopBars;
 		musicDawState.quantize = normalized.quantize;
 		musicDawState.countInBars = normalized.countInBars;
@@ -7587,7 +7639,13 @@ function initXyzCamera() {
 		if (!(musicDawTakesNode instanceof HTMLElement)) {
 			return;
 		}
-		const signature = musicTakes.map((take) => `${take.id}:${take.bytes}:${Math.round(take.durationMs)}`).join("|");
+		const signature = musicTakes.map((take) => [
+			take.id,
+			take.kind || "audio",
+			take.bytes,
+			Math.round(take.durationMs),
+			Array.isArray(take.assets) ? take.assets.map((asset) => `${asset.key}:${asset.bytes}`).join(",") : "",
+		].join(":")).join("|");
 		if (signature === musicTakesRenderSignature) {
 			return;
 		}
@@ -7604,6 +7662,7 @@ function initXyzCamera() {
 		musicTakes.slice().reverse().forEach((take) => {
 			const item = document.createElement("li");
 			item.className = "xyz-music-desk__take";
+			item.dataset.takeKind = take.kind || "audio";
 			const head = document.createElement("div");
 			head.className = "xyz-music-desk__take-head";
 			const title = document.createElement("strong");
@@ -7615,20 +7674,49 @@ function initXyzCamera() {
 
 			const actions = document.createElement("div");
 			actions.className = "xyz-music-desk__take-actions";
-			const downloadLink = document.createElement("a");
-			downloadLink.className = "ghost-link xyz-music-desk__take-link";
-			downloadLink.href = take.url;
-			downloadLink.download = take.filename;
-			downloadLink.textContent = "telecharger";
-			actions.appendChild(downloadLink);
+			if (take.url) {
+				const downloadLink = document.createElement("a");
+				downloadLink.className = "ghost-link xyz-music-desk__take-link";
+				downloadLink.href = take.url;
+				downloadLink.download = take.filename;
+				downloadLink.textContent = "telecharger";
+				actions.appendChild(downloadLink);
+			}
+			if (take.kind === "stems" && Array.isArray(take.assets)) {
+				const scope = document.createElement("span");
+				scope.className = "xyz-music-desk__take-meta xyz-music-desk__take-chip";
+				scope.textContent = `${take.assets.length} pistes · ${take.scope || "boucle"}`;
+				actions.appendChild(scope);
+			}
 
-			const player = document.createElement("audio");
-			player.className = "xyz-music-desk__take-audio";
-			player.controls = true;
-			player.preload = "metadata";
-			player.src = take.url;
-
-			item.append(head, actions, player);
+			item.append(head, actions);
+			if (take.kind === "video" && take.url) {
+				const player = document.createElement("video");
+				player.className = "xyz-music-desk__take-media xyz-music-desk__take-video";
+				player.controls = true;
+				player.preload = "metadata";
+				player.src = take.url;
+				item.appendChild(player);
+			} else if (take.kind === "stems" && Array.isArray(take.assets)) {
+				const assetList = document.createElement("div");
+				assetList.className = "xyz-music-desk__take-assets";
+				take.assets.forEach((asset) => {
+					const assetLink = document.createElement("a");
+					assetLink.className = "ghost-link xyz-music-desk__take-link xyz-music-desk__take-link--asset";
+					assetLink.href = asset.url;
+					assetLink.download = asset.filename;
+					assetLink.textContent = asset.label || asset.key || "stem";
+					assetList.appendChild(assetLink);
+				});
+				item.appendChild(assetList);
+			} else if (take.url) {
+				const player = document.createElement("audio");
+				player.className = "xyz-music-desk__take-media xyz-music-desk__take-audio";
+				player.controls = true;
+				player.preload = "metadata";
+				player.src = take.url;
+				item.appendChild(player);
+			}
 			musicDawTakesNode.appendChild(item);
 		});
 	};
@@ -7664,7 +7752,11 @@ function initXyzCamera() {
 		}
 	};
 	const syncMusicTransportLoop = () => {
-		const needsLoop = isMembraneAudible() || musicRecordingState !== "idle" || musicArrangementMode === "playing";
+		const needsLoop = isMembraneAudible()
+			|| musicRecordingState !== "idle"
+			|| musicPerformanceCaptureState === "recording"
+			|| musicStemExportState === "recording"
+			|| musicArrangementMode === "playing";
 		if (needsLoop && !musicTransportTimer) {
 			void syncMusicPatternScheduler();
 			musicTransportTimer = window.setInterval(() => {
@@ -7684,17 +7776,31 @@ function initXyzCamera() {
 		const transport = getMusicTransportSnapshot();
 		const arrangementSnapshot = getMusicArrangementRuntimeSnapshot();
 		const mediaRecorderSupported = typeof window.MediaRecorder === "function";
+		const performanceRecorderSupported = mediaRecorderSupported
+			&& typeof HTMLCanvasElement !== "undefined"
+			&& typeof HTMLCanvasElement.prototype.captureStream === "function";
 		const storedGestureLoop = getStoredMusicGestureLoop();
 		const hasArrangementSteps = arrangementSnapshot.steps.length > 0;
 		const hasPlayableArrangementSteps = arrangementSnapshot.steps.some((step) => step.scene);
 		const recordingElapsedMs = musicRecordingState === "recording" && musicRecordingStartedAt
 			? Math.max(0, performance.now() - musicRecordingStartedAt)
 			: 0;
+		const performanceElapsedMs = musicPerformanceCaptureState === "recording" && musicPerformanceCaptureStartedAt
+			? Math.max(0, performance.now() - musicPerformanceCaptureStartedAt)
+			: 0;
+		const stemExportElapsedMs = musicStemExportState === "recording" && musicStemExportStartedAt
+			? Math.max(0, performance.now() - musicStemExportStartedAt)
+			: 0;
 		const countInProgress = musicRecordingState === "count-in" && musicRecordingCountInTotalBeats > 0
 			? `${Math.min(musicRecordingCountInBeatIndex + 1, musicRecordingCountInTotalBeats)}/${musicRecordingCountInTotalBeats}`
 			: "";
+		const captureBusy = musicRecordingState !== "idle" || musicPerformanceCaptureState === "recording" || musicStemExportState === "recording";
 		let sessionStatus = "prête";
-		if (musicRecordingState === "recording") {
+		if (musicPerformanceCaptureState === "recording") {
+			sessionStatus = `perf ${formatMusicDuration(performanceElapsedMs)}`;
+		} else if (musicStemExportState === "recording") {
+			sessionStatus = `stems ${formatMusicDuration(stemExportElapsedMs)}`;
+		} else if (musicRecordingState === "recording") {
 			sessionStatus = `rec ${formatMusicDuration(recordingElapsedMs)}`;
 		} else if (musicRecordingState === "count-in") {
 			sessionStatus = countInProgress ? `count-in ${countInProgress}` : "count-in";
@@ -7711,15 +7817,25 @@ function initXyzCamera() {
 			musicDawPlayButton.textContent = isMembraneAudible() ? "relancer l elan" : "lecture locale";
 		}
 		if (musicDawStopButton instanceof HTMLElement) {
-			musicDawStopButton.textContent = isMembraneAudible() || musicRecordingState !== "idle" ? "stop" : "relachee";
-			musicDawStopButton.toggleAttribute("disabled", !isMembraneAudible() && musicRecordingState === "idle");
+			musicDawStopButton.textContent = isMembraneAudible() || captureBusy ? "stop" : "relachee";
+			musicDawStopButton.toggleAttribute("disabled", !isMembraneAudible() && !captureBusy);
 		}
 		if (musicDawRecordButton instanceof HTMLElement) {
 			musicDawRecordButton.setAttribute("aria-pressed", musicRecordingState === "idle" ? "false" : "true");
 			musicDawRecordButton.textContent = musicRecordingState === "recording"
 				? "stop rec"
 				: (musicRecordingState === "count-in" ? "annuler rec" : "rec audio");
-			musicDawRecordButton.toggleAttribute("disabled", !mediaRecorderSupported);
+			musicDawRecordButton.toggleAttribute("disabled", !mediaRecorderSupported || musicPerformanceCaptureState === "recording" || musicStemExportState === "recording");
+		}
+		if (musicDawPerformanceButton instanceof HTMLElement) {
+			musicDawPerformanceButton.setAttribute("aria-pressed", musicPerformanceCaptureState === "recording" ? "true" : "false");
+			musicDawPerformanceButton.textContent = musicPerformanceCaptureState === "recording" ? "stop perf" : "rec perf";
+			musicDawPerformanceButton.toggleAttribute("disabled", !performanceRecorderSupported || musicRecordingState !== "idle" || musicStemExportState === "recording");
+		}
+		if (musicDawStemExportButton instanceof HTMLElement) {
+			musicDawStemExportButton.setAttribute("aria-pressed", musicStemExportState === "recording" ? "true" : "false");
+			musicDawStemExportButton.textContent = musicStemExportState === "recording" ? "bouncing" : "export stems";
+			musicDawStemExportButton.toggleAttribute("disabled", !mediaRecorderSupported || musicRecordingState !== "idle" || musicPerformanceCaptureState === "recording");
 		}
 		if (musicDawExportButton instanceof HTMLElement) {
 			musicDawExportButton.toggleAttribute("disabled", false);
@@ -7758,6 +7874,14 @@ function initXyzCamera() {
 			musicDawSwingInput.value = String(musicDawState.swing);
 		}
 		setSensorText(musicDawSwingReadout, `${musicDawState.swing}%`);
+		if (musicDawHumanizeInput instanceof HTMLInputElement) {
+			musicDawHumanizeInput.value = String(musicDawState.humanize);
+		}
+		setSensorText(musicDawHumanizeReadout, `${musicDawState.humanize}%`);
+		if (musicDawMicrotimingInput instanceof HTMLInputElement) {
+			musicDawMicrotimingInput.value = String(musicDawState.microtimingMs);
+		}
+		setSensorText(musicDawMicrotimingReadout, `${musicDawState.microtimingMs} ms`);
 		if (musicDawLoopSelect instanceof HTMLSelectElement) {
 			musicDawLoopSelect.value = String(musicDawState.loopBars);
 		}
@@ -7770,7 +7894,11 @@ function initXyzCamera() {
 		if (musicDawClockNode instanceof HTMLElement) {
 			const baseClock = `tempo ${musicDawState.bpm} bpm · boucle ${musicDawState.loopBars} mesures`;
 			if (transport.active) {
-				const recordingChunk = musicRecordingState === "recording" ? ` · rec ${formatMusicDuration(recordingElapsedMs)}` : "";
+				const recordingChunk = musicPerformanceCaptureState === "recording"
+					? ` · perf ${formatMusicDuration(performanceElapsedMs)}`
+					: (musicStemExportState === "recording"
+						? ` · stems ${formatMusicDuration(stemExportElapsedMs)}/${formatMusicDuration(musicStemExportDurationMs)}`
+						: (musicRecordingState === "recording" ? ` · rec ${formatMusicDuration(recordingElapsedMs)}` : ""));
 				const arrangementChunk = musicArrangementMode === "playing" && arrangementSnapshot.step
 					? ` · voyage ${arrangementSnapshot.stepIndex + 1}/${arrangementSnapshot.steps.length}`
 					: "";
@@ -7991,20 +8119,35 @@ function initXyzCamera() {
 				"Enchaîne des scènes mémorisées sur plusieurs mesures pour transformer la membrane en forme jouable et enregistrable."
 			);
 		}
-		if (musicRecordingState === "count-in") {
+		if (musicPerformanceCaptureState === "recording") {
+			setSensorText(musicDawRecordingStateNode, `performance en cours · ${formatMusicDuration(performanceElapsedMs)}`);
+			setSensorText(
+				musicDawRecordingCopyNode,
+				"La membrane compose maintenant une video de performance avec le tore, le champ camera et le master audio. Stoppe quand la prise a la bonne densite."
+			);
+		} else if (musicStemExportState === "recording") {
+			setSensorText(
+				musicDawRecordingStateNode,
+				`stems en cours · ${formatMusicDuration(stemExportElapsedMs)}/${formatMusicDuration(musicStemExportDurationMs)}`
+			);
+			setSensorText(
+				musicDawRecordingCopyNode,
+				"Chaque piste part vers son propre fichier. La boucle ou le voyage est en train d etre rejoue en temps reel pour sortir terre, mine, basse et percu separement."
+			);
+		} else if (musicRecordingState === "count-in") {
 			setSensorText(
 				musicDawRecordingStateNode,
 				countInProgress ? `count-in ${countInProgress}` : "count-in"
 			);
 			setSensorText(
 				musicDawRecordingCopyNode,
-				`La prise s ouvre apres ${musicDawState.countInBars} mesure${musicDawState.countInBars > 1 ? "s" : ""}. Le hh suit maintenant le swing de ${musicDawState.swing}%.`
+				`La prise s ouvre apres ${musicDawState.countInBars} mesure${musicDawState.countInBars > 1 ? "s" : ""}. Le hh suit maintenant le swing de ${musicDawState.swing}% avec ${musicDawState.humanize}% d air et ${musicDawState.microtimingMs} ms de derive.`
 			);
 		} else if (musicRecordingState === "recording") {
 			setSensorText(musicDawRecordingStateNode, `prise en cours · ${formatMusicDuration(recordingElapsedMs)}`);
 			setSensorText(
 				musicDawRecordingCopyNode,
-				"Le master sort en direct vers une prise locale. Coupe ou relance des pistes sans perdre la couleur de la membrane."
+				"Le master sort en direct vers une prise locale. Coupe ou relance des pistes sans perdre la couleur de la membrane, son humanize et sa derive."
 			);
 		} else if (!mediaRecorderSupported) {
 			setSensorText(musicDawRecordingStateNode, "enregistrement indisponible");
@@ -8014,16 +8157,19 @@ function initXyzCamera() {
 			);
 		} else if (musicTakes.length) {
 			const lastTake = musicTakes[musicTakes.length - 1];
+			const lastTakeLabel = lastTake.kind === "video"
+				? "Derniere performance"
+				: (lastTake.kind === "stems" ? "Dernier bundle stems" : "Derniere prise");
 			setSensorText(musicDawRecordingStateNode, `${musicTakes.length} prise${musicTakes.length > 1 ? "s" : ""}`);
 			setSensorText(
 				musicDawRecordingCopyNode,
-				`Derniere prise: ${lastTake.name}, ${formatMusicDuration(lastTake.durationMs)}. Elle peut deja etre relue ou telechargee.`
+				`${lastTakeLabel}: ${lastTake.name}, ${formatMusicDuration(lastTake.durationMs)}. ${lastTake.kind === "stems" ? "Chaque piste peut deja etre telechargee." : "Elle peut deja etre relue ou telechargee."}`
 			);
 		} else {
 			setSensorText(musicDawRecordingStateNode, "aucune prise");
 			setSensorText(
 				musicDawRecordingCopyNode,
-				"Le master peut etre enregistre directement dans l app, puis extrait comme audio ou rejoue plus tard dans une terre."
+				"Le master peut etre enregistre directement dans l app, la performance peut partir en video, et les pistes peuvent maintenant sortir en stems separes."
 			);
 		}
 		renderMusicTakes();
@@ -8082,6 +8228,14 @@ function initXyzCamera() {
 	if (musicDawStopButton instanceof HTMLElement && musicDawStopButton.dataset.bound !== "1") {
 		musicDawStopButton.dataset.bound = "1";
 		musicDawStopButton.addEventListener("click", () => {
+			if (musicPerformanceCaptureState === "recording") {
+				stopMusicPerformanceCapture();
+				return;
+			}
+			if (musicStemExportState === "recording") {
+				stopMusicStemExport();
+				return;
+			}
 			if (musicRecordingState !== "idle") {
 				stopMusicRecording();
 				return;
@@ -8098,6 +8252,26 @@ function initXyzCamera() {
 				return;
 			}
 			void armMusicRecording();
+		});
+	}
+	if (musicDawPerformanceButton instanceof HTMLElement && musicDawPerformanceButton.dataset.bound !== "1") {
+		musicDawPerformanceButton.dataset.bound = "1";
+		musicDawPerformanceButton.addEventListener("click", () => {
+			if (musicPerformanceCaptureState === "recording") {
+				stopMusicPerformanceCapture();
+				return;
+			}
+			void startMusicPerformanceCapture();
+		});
+	}
+	if (musicDawStemExportButton instanceof HTMLElement && musicDawStemExportButton.dataset.bound !== "1") {
+		musicDawStemExportButton.dataset.bound = "1";
+		musicDawStemExportButton.addEventListener("click", () => {
+			if (musicStemExportState === "recording") {
+				stopMusicStemExport();
+				return;
+			}
+			void exportMusicStems();
 		});
 	}
 	if (musicDawExportButton instanceof HTMLElement && musicDawExportButton.dataset.bound !== "1") {
@@ -8166,6 +8340,22 @@ function initXyzCamera() {
 		musicDawSwingInput.dataset.bound = "1";
 		musicDawSwingInput.addEventListener("input", () => {
 			musicDawState.swing = clampNumber(Math.round(Number(musicDawSwingInput.value) || 0), 0, 40);
+			persistMusicDawState();
+			renderMusicDesk();
+		});
+	}
+	if (musicDawHumanizeInput instanceof HTMLInputElement && musicDawHumanizeInput.dataset.bound !== "1") {
+		musicDawHumanizeInput.dataset.bound = "1";
+		musicDawHumanizeInput.addEventListener("input", () => {
+			musicDawState.humanize = clampNumber(Math.round(Number(musicDawHumanizeInput.value) || 0), 0, 36);
+			persistMusicDawState();
+			renderMusicDesk();
+		});
+	}
+	if (musicDawMicrotimingInput instanceof HTMLInputElement && musicDawMicrotimingInput.dataset.bound !== "1") {
+		musicDawMicrotimingInput.dataset.bound = "1";
+		musicDawMicrotimingInput.addEventListener("input", () => {
+			musicDawState.microtimingMs = clampNumber(Math.round(Number(musicDawMicrotimingInput.value) || 0), 0, 24);
 			persistMusicDawState();
 			renderMusicDesk();
 		});
@@ -8883,6 +9073,45 @@ function initXyzCamera() {
 			shakerNoiseBuffer = buffer;
 			return shakerNoiseBuffer;
 		};
+	const ensureMusicStemDestination = (context, key) => {
+		if (typeof context.createMediaStreamDestination !== "function") {
+			return null;
+		}
+		if (!musicStemTrackDestinations[key]) {
+			musicStemTrackDestinations[key] = context.createMediaStreamDestination();
+		}
+		return musicStemTrackDestinations[key];
+	};
+	const ensureMusicStemVoiceTap = (context, key, sourceNode) => {
+		if (!sourceNode || musicStemTrackOutputs[key]) {
+			return musicStemTrackOutputs[key] || null;
+		}
+		const destination = ensureMusicStemDestination(context, key);
+		if (!destination) {
+			return null;
+		}
+		const filter = context.createBiquadFilter();
+		filter.type = motionVoiceFilter?.type || "lowpass";
+		filter.frequency.value = motionVoiceFilter?.frequency?.value || 360;
+		filter.Q.value = motionVoiceFilter?.Q?.value || 1.2;
+		const panner = typeof context.createStereoPanner === "function" ? context.createStereoPanner() : null;
+		const output = context.createGain();
+		output.gain.value = motionVoiceGain?.gain?.value || 0;
+		sourceNode.connect(filter);
+		if (panner) {
+			filter.connect(panner);
+			panner.connect(output);
+		} else {
+			filter.connect(output);
+		}
+		output.connect(destination);
+		musicStemTrackFilters[key] = filter;
+		if (panner) {
+			musicStemTrackPanners[key] = panner;
+		}
+		musicStemTrackOutputs[key] = output;
+		return output;
+	};
 	const ensureMusicMasterBus = (context) => {
 		if (!musicMasterGain) {
 			musicMasterGain = context.createGain();
@@ -8897,6 +9126,10 @@ function initXyzCamera() {
 			musicPercussionGain = context.createGain();
 			musicPercussionGain.gain.value = getMusicTrackMix("percu");
 			musicPercussionGain.connect(musicMasterGain);
+			const percussionStemDestination = ensureMusicStemDestination(context, "percu");
+			if (percussionStemDestination) {
+				musicPercussionGain.connect(percussionStemDestination);
+			}
 		}
 		applyMusicMixState(context.currentTime);
 		return musicMasterGain;
@@ -8908,22 +9141,58 @@ function initXyzCamera() {
 		if (musicPercussionGain) {
 			musicPercussionGain.gain.setTargetAtTime(getMusicTrackMix("percu"), now, 0.05);
 		}
+		Object.values(musicStemTrackOutputs).forEach((output) => {
+			if (output?.gain) {
+				output.gain.setTargetAtTime(clampNumber(motionVoiceGain?.gain?.value || 0, 0, 1), now, 0.08);
+			}
+		});
+		Object.values(musicStemTrackFilters).forEach((filter) => {
+			if (filter && motionVoiceFilter) {
+				filter.frequency.setTargetAtTime(
+					clampNumber(motionVoiceFilter.frequency.value || 360, 180, 4800),
+					now,
+					0.12
+				);
+				filter.Q.setTargetAtTime(
+					clampNumber(motionVoiceFilter.Q.value || 1.2, 0.1, 12),
+					now,
+					0.12
+				);
+				filter.type = motionVoiceFilter.type || "lowpass";
+			}
+		});
+		Object.values(musicStemTrackPanners).forEach((panner) => {
+			if (panner && motionVoicePanner?.pan) {
+				panner.pan.setTargetAtTime(clampNumber(motionVoicePanner.pan.value || 0, -1, 1), now, 0.14);
+			}
+		});
 	};
-	const resolveMusicRecorderMimeType = () => {
+	const resolveMediaRecorderMimeType = (candidates = []) => {
 		if (typeof window.MediaRecorder !== "function") {
 			return "";
 		}
-		const candidates = [
+		const list = Array.isArray(candidates) ? candidates.filter(Boolean) : [];
+		if (!list.length) {
+			return "";
+		}
+		if (typeof window.MediaRecorder.isTypeSupported !== "function") {
+			return list[0];
+		}
+		return list.find((candidate) => window.MediaRecorder.isTypeSupported(candidate)) || "";
+	};
+	const resolveMusicRecorderMimeType = () => {
+		return resolveMediaRecorderMimeType([
 			"audio/webm;codecs=opus",
 			"audio/webm",
 			"audio/ogg;codecs=opus",
 			"audio/mp4",
-		];
-		if (typeof window.MediaRecorder.isTypeSupported !== "function") {
-			return candidates[0];
-		}
-		return candidates.find((candidate) => window.MediaRecorder.isTypeSupported(candidate)) || "";
+		]);
 	};
+	const resolveMusicPerformanceRecorderMimeType = () => resolveMediaRecorderMimeType([
+		"video/webm;codecs=vp9,opus",
+		"video/webm;codecs=vp8,opus",
+		"video/webm",
+	]);
 	const cancelMusicCountIn = ({ resetState = true } = {}) => {
 		if (musicRecordingCountInTimer) {
 			window.clearTimeout(musicRecordingCountInTimer);
@@ -8966,14 +9235,31 @@ function initXyzCamera() {
 		tone.stop(now + (accentBeat ? 0.18 : 0.1));
 		cueMotionVoice(0.74);
 	};
-	const finalizeMusicTake = (blob, { mimeType = "audio/webm", durationMs = 0, createdAt = Date.now() } = {}) => {
+	const nextMusicTakeSerial = () => {
 		const serial = musicTakeSerial + 1;
 		musicTakeSerial = serial;
+		return serial;
+	};
+	const registerMusicTake = (take) => {
+		musicTakes = [...musicTakes, take];
+		renderMusicDesk();
+		return take;
+	};
+	const finalizeMusicTake = (blob, {
+		mimeType = "audio/webm",
+		durationMs = 0,
+		createdAt = Date.now(),
+		kind = "audio",
+		name = "",
+		filenamePrefix = "membrane-take",
+	} = {}) => {
+		const serial = nextMusicTakeSerial();
 		const extension = extensionFromMimeType(mimeType);
-		const filename = `membrane-take-${String(serial).padStart(2, "0")}-${buildMusicFileStamp(createdAt)}.${extension}`;
+		const filename = `${filenamePrefix}-${String(serial).padStart(2, "0")}-${buildMusicFileStamp(createdAt)}.${extension}`;
 		const take = {
 			id: `take-${serial}`,
-			name: `prise ${String(serial).padStart(2, "0")}`,
+			kind,
+			name: name || `${kind === "video" ? "perf" : "prise"} ${String(serial).padStart(2, "0")}`,
 			filename,
 			url: URL.createObjectURL(blob),
 			bytes: blob.size,
@@ -8981,8 +9267,431 @@ function initXyzCamera() {
 			mimeType,
 			createdAt,
 		};
-		musicTakes = [...musicTakes, take];
+		return registerMusicTake(take);
+	};
+	const finalizeMusicStemBundleTake = (assets, {
+		durationMs = 0,
+		createdAt = Date.now(),
+		scope = "boucle",
+	} = {}) => {
+		const normalizedAssets = Array.isArray(assets)
+			? assets.filter((asset) => asset && asset.url && asset.filename)
+			: [];
+		if (!normalizedAssets.length) {
+			renderMusicDesk();
+			return null;
+		}
+		const serial = nextMusicTakeSerial();
+		return registerMusicTake({
+			id: `take-${serial}`,
+			kind: "stems",
+			name: `stems ${String(serial).padStart(2, "0")}`,
+			filename: "",
+			url: "",
+			bytes: normalizedAssets.reduce((sum, asset) => sum + (Number(asset.bytes) || 0), 0),
+			durationMs,
+			mimeType: "application/stems+json",
+			createdAt,
+			scope,
+			assets: normalizedAssets,
+		});
+	};
+	const clearMusicStemExportTimer = () => {
+		if (musicStemExportTimeout) {
+			window.clearTimeout(musicStemExportTimeout);
+			musicStemExportTimeout = 0;
+		}
+	};
+	const stopMusicPerformanceRender = () => {
+		if (musicPerformanceRenderFrame) {
+			window.cancelAnimationFrame(musicPerformanceRenderFrame);
+			musicPerformanceRenderFrame = 0;
+		}
+	};
+	const cleanupMusicPerformanceCapture = () => {
+		stopMusicPerformanceRender();
+		musicPerformanceOwnedTracks.forEach((track) => {
+			try {
+				track.stop();
+			} catch {
+				// Ignore track stop failures.
+			}
+		});
+		musicPerformanceOwnedTracks = [];
+		musicPerformanceCompositeStream = null;
+		musicPerformanceRecorder = null;
+		musicPerformanceRecorderMimeType = "";
+		musicPerformanceRecorderChunks = [];
+		musicPerformanceCaptureState = "idle";
+		musicPerformanceCaptureStartedAt = 0;
+	};
+	const drawMusicPerformanceFrame = () => {
+		if (
+			musicPerformanceCaptureState !== "recording"
+			|| !(musicPerformanceCanvas instanceof HTMLCanvasElement)
+			|| !musicPerformanceCanvasContext
+		) {
+			return;
+		}
+		const width = clampNumber(
+			Math.round(
+				(torusCanvas instanceof HTMLCanvasElement ? (torusCanvas.width || torusCanvas.clientWidth) : 0)
+				|| Math.max(window.innerWidth || 1080, 720)
+			),
+			720,
+			1600
+		);
+		const height = clampNumber(
+			Math.round(
+				(torusCanvas instanceof HTMLCanvasElement ? (torusCanvas.height || torusCanvas.clientHeight) : 0)
+				|| Math.max(window.innerHeight || 1440, 900)
+			),
+			900,
+			2000
+		);
+		if (musicPerformanceCanvas.width !== width || musicPerformanceCanvas.height !== height) {
+			musicPerformanceCanvas.width = width;
+			musicPerformanceCanvas.height = height;
+		}
+		const context = musicPerformanceCanvasContext;
+		const drawCover = (source) => {
+			const sourceWidth = Number(source.videoWidth || source.width || 0);
+			const sourceHeight = Number(source.videoHeight || source.height || 0);
+			if (sourceWidth <= 0 || sourceHeight <= 0) {
+				return;
+			}
+			const sourceRatio = sourceWidth / sourceHeight;
+			const targetRatio = width / height;
+			let drawWidth = width;
+			let drawHeight = height;
+			let drawX = 0;
+			let drawY = 0;
+			if (sourceRatio > targetRatio) {
+				drawWidth = height * sourceRatio;
+				drawX = (width - drawWidth) / 2;
+			} else {
+				drawHeight = width / sourceRatio;
+				drawY = (height - drawHeight) / 2;
+			}
+			context.drawImage(source, drawX, drawY, drawWidth, drawHeight);
+		};
+		context.clearRect(0, 0, width, height);
+		context.fillStyle = cameraFacingMode === "environment" ? "#061118" : "#140812";
+		context.fillRect(0, 0, width, height);
+		if (video instanceof HTMLVideoElement && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+			context.save();
+			context.globalAlpha = 0.88;
+			drawCover(video);
+			context.restore();
+		} else {
+			const fallbackGradient = context.createLinearGradient(0, 0, width, height);
+			fallbackGradient.addColorStop(0, "rgba(18, 32, 44, 1)");
+			fallbackGradient.addColorStop(1, "rgba(38, 11, 32, 1)");
+			context.fillStyle = fallbackGradient;
+			context.fillRect(0, 0, width, height);
+		}
+		context.fillStyle = "rgba(5, 11, 18, 0.22)";
+		context.fillRect(0, 0, width, height);
+		if (torusCanvas instanceof HTMLCanvasElement) {
+			context.save();
+			context.globalAlpha = 0.96;
+			context.drawImage(torusCanvas, 0, 0, width, height);
+			context.restore();
+		}
+		context.save();
+		context.fillStyle = "rgba(7, 14, 24, 0.54)";
+		context.fillRect(34, 34, Math.min(width - 68, 520), 146);
+		context.strokeStyle = "rgba(255,255,255,0.09)";
+		context.strokeRect(34.5, 34.5, Math.min(width - 69, 519), 145);
+		context.fillStyle = "rgba(238, 244, 255, 0.92)";
+		context.font = '600 34px "Georgia", "Times New Roman", serif';
+		context.fillText("membrane performance", 58, 82);
+		context.font = '500 20px "Helvetica Neue", Arial, sans-serif';
+		context.fillStyle = "rgba(238, 244, 255, 0.72)";
+		context.fillText(
+			`${currentScaleProfile().shortLabel} · ${currentInstrumentProfile().label} · ${cameraFacingLabel()}`,
+			58,
+			116
+		);
+		context.fillText(
+			`${musicDawState.bpm} bpm · swing ${musicDawState.swing}% · humanize ${musicDawState.humanize}% · micro ${musicDawState.microtimingMs} ms`,
+			58,
+			146
+		);
+		context.restore();
+		if (musicPerformanceCaptureState === "recording") {
+			musicPerformanceRenderFrame = window.requestAnimationFrame(drawMusicPerformanceFrame);
+		}
+	};
+	const stopMusicPerformanceCapture = () => {
+		if (musicPerformanceRecorder && musicPerformanceRecorder.state !== "inactive") {
+			try {
+				musicPerformanceRecorder.stop();
+				return;
+			} catch {
+				// Fall through to cleanup.
+			}
+		}
+		cleanupMusicPerformanceCapture();
 		renderMusicDesk();
+		syncMusicTransportLoop();
+	};
+	const startMusicPerformanceCapture = async () => {
+		if (musicPerformanceCaptureState === "recording" || musicRecordingState !== "idle" || musicStemExportState === "recording") {
+			renderMusicDesk();
+			return false;
+		}
+		if (!isMembraneAudible()) {
+			await startDemoMembrane();
+		} else {
+			await ensureMotionVoice().catch(() => false);
+		}
+		const context = await ensureReactiveAudioContext();
+		if (!context) {
+			return false;
+		}
+		ensureMusicMasterBus(context);
+		if (
+			typeof window.MediaRecorder !== "function"
+			|| typeof HTMLCanvasElement === "undefined"
+			|| typeof HTMLCanvasElement.prototype.captureStream !== "function"
+			|| !musicRecorderDestination
+		) {
+			renderMusicDesk();
+			return false;
+		}
+		musicPerformanceCanvas = musicPerformanceCanvas instanceof HTMLCanvasElement
+			? musicPerformanceCanvas
+			: document.createElement("canvas");
+		musicPerformanceCanvasContext = musicPerformanceCanvas.getContext("2d");
+		if (!musicPerformanceCanvasContext) {
+			renderMusicDesk();
+			return false;
+		}
+		stopMusicPerformanceRender();
+		const captureStream = musicPerformanceCanvas.captureStream(30);
+		const compositeStream = new MediaStream();
+		musicPerformanceOwnedTracks = [];
+		captureStream.getVideoTracks().forEach((track) => {
+			compositeStream.addTrack(track);
+			musicPerformanceOwnedTracks.push(track);
+		});
+		musicRecorderDestination.stream.getAudioTracks().forEach((track) => {
+			const audioTrack = typeof track.clone === "function" ? track.clone() : track;
+			compositeStream.addTrack(audioTrack);
+			if (audioTrack !== track) {
+				musicPerformanceOwnedTracks.push(audioTrack);
+			}
+		});
+		musicPerformanceCompositeStream = compositeStream;
+		musicPerformanceRecorderMimeType = resolveMusicPerformanceRecorderMimeType();
+		musicPerformanceRecorderChunks = [];
+		const startedAt = Date.now();
+		const startedPerfAt = performance.now();
+		try {
+			musicPerformanceRecorder = musicPerformanceRecorderMimeType
+				? new MediaRecorder(compositeStream, { mimeType: musicPerformanceRecorderMimeType })
+				: new MediaRecorder(compositeStream);
+		} catch {
+			try {
+				musicPerformanceRecorder = new MediaRecorder(compositeStream);
+			} catch {
+				cleanupMusicPerformanceCapture();
+				renderMusicDesk();
+				return false;
+			}
+		}
+		const recorder = musicPerformanceRecorder;
+		if (!recorder) {
+			return false;
+		}
+		musicPerformanceCaptureState = "recording";
+		musicPerformanceCaptureStartedAt = startedPerfAt;
+		drawMusicPerformanceFrame();
+		syncMusicTransportLoop();
+		renderMusicDesk();
+		recorder.addEventListener("dataavailable", (event) => {
+			if (event.data && event.data.size > 0) {
+				musicPerformanceRecorderChunks.push(event.data);
+			}
+		});
+		recorder.addEventListener("stop", () => {
+			const durationMs = Math.max(0, performance.now() - startedPerfAt);
+			const mimeType = recorder.mimeType || musicPerformanceRecorderMimeType || "video/webm";
+			const chunks = musicPerformanceRecorderChunks.slice();
+			cleanupMusicPerformanceCapture();
+			if (chunks.length) {
+				finalizeMusicTake(new Blob(chunks, { type: mimeType }), {
+					mimeType,
+					durationMs,
+					createdAt: startedAt,
+					kind: "video",
+					name: `performance ${String((musicTakeSerial || 0) + 1).padStart(2, "0")}`,
+					filenamePrefix: "membrane-performance",
+				});
+			} else {
+				renderMusicDesk();
+			}
+			syncMusicTransportLoop();
+		}, { once: true });
+		try {
+			recorder.start();
+		} catch {
+			cleanupMusicPerformanceCapture();
+			renderMusicDesk();
+			syncMusicTransportLoop();
+			return false;
+		}
+		return true;
+	};
+	const stopMusicStemExport = () => {
+		clearMusicStemExportTimer();
+		musicStemRecorders.forEach((recorder) => {
+			if (recorder && recorder.state !== "inactive") {
+				try {
+					recorder.stop();
+				} catch {
+					// Ignore recorder stop failures.
+				}
+			}
+		});
+		musicStemRecorders = [];
+		if (musicStemExportState !== "recording") {
+			musicStemExportState = "idle";
+			musicStemExportStartedAt = 0;
+			musicStemExportDurationMs = 0;
+			renderMusicDesk();
+			syncMusicTransportLoop();
+		}
+	};
+	const exportMusicStems = async () => {
+		if (musicStemExportState === "recording" || musicRecordingState !== "idle" || musicPerformanceCaptureState === "recording") {
+			renderMusicDesk();
+			return false;
+		}
+		const arrangementSnapshot = getMusicArrangementRuntimeSnapshot();
+		const stemScope = arrangementSnapshot.ready && arrangementSnapshot.steps.some((step) => step.scene)
+			? {
+				label: "voyage",
+				durationMs: arrangementSnapshot.totalDurationMs,
+				prime: async () => {
+					await startMusicArrangementPlayback();
+				},
+			}
+			: {
+				label: "boucle",
+				durationMs: getMusicLoopDurationMs(),
+				prime: async () => {
+					await startMusicPlaybackFromDesk();
+				},
+			};
+		if (!isMembraneAudible()) {
+			await startDemoMembrane();
+		}
+		await stemScope.prime();
+		const context = await ensureReactiveAudioContext();
+		if (!context || typeof window.MediaRecorder !== "function") {
+			renderMusicDesk();
+			return false;
+		}
+		ensureMusicMasterBus(context);
+		await ensureMotionVoice().catch(() => false);
+		const trackOrder = ["terre", "mine", "bass", "percu"];
+		const destinations = trackOrder
+			.map((key) => [key, ensureMusicStemDestination(context, key)])
+			.filter(([, destination]) => destination && typeof destination.stream?.getTracks === "function");
+		if (!destinations.length) {
+			renderMusicDesk();
+			return false;
+		}
+		const mimeType = resolveMusicRecorderMimeType();
+		const startedAt = Date.now();
+		const startedPerfAt = performance.now();
+		const chunkMap = new Map(destinations.map(([key]) => [key, []]));
+		const assetMap = new Map();
+		let stoppedCount = 0;
+		const finalizeBundle = () => {
+			if (stoppedCount < destinations.length) {
+				return;
+			}
+			musicStemRecorders = [];
+			musicStemExportState = "idle";
+			musicStemExportStartedAt = 0;
+			musicStemExportDurationMs = 0;
+			const assets = trackOrder
+				.map((key) => assetMap.get(key))
+				.filter(Boolean);
+			if (assets.length) {
+				finalizeMusicStemBundleTake(assets, {
+					durationMs: Math.max(0, performance.now() - startedPerfAt),
+					createdAt: startedAt,
+					scope: stemScope.label,
+				});
+			} else {
+				renderMusicDesk();
+			}
+			syncMusicTransportLoop();
+		};
+		try {
+			musicStemRecorders = destinations.map(([key, destination]) => {
+				let recorder = null;
+				try {
+					recorder = mimeType
+						? new MediaRecorder(destination.stream, { mimeType })
+						: new MediaRecorder(destination.stream);
+				} catch {
+					recorder = new MediaRecorder(destination.stream);
+				}
+				recorder.addEventListener("dataavailable", (event) => {
+					if (event.data && event.data.size > 0) {
+						chunkMap.get(key).push(event.data);
+					}
+				});
+				recorder.addEventListener("stop", () => {
+					const trackChunks = chunkMap.get(key) || [];
+					const trackMimeType = recorder.mimeType || mimeType || "audio/webm";
+					if (trackChunks.length) {
+						const blob = new Blob(trackChunks, { type: trackMimeType });
+						assetMap.set(key, {
+							key,
+							label: key === "bass" ? "basse" : key,
+							filename: `membrane-stem-${String((musicTakeSerial || 0) + 1).padStart(2, "0")}-${key}-${buildMusicFileStamp(startedAt)}.${extensionFromMimeType(trackMimeType)}`,
+							url: URL.createObjectURL(blob),
+							bytes: blob.size,
+							mimeType: trackMimeType,
+						});
+					}
+					stoppedCount += 1;
+					finalizeBundle();
+				}, { once: true });
+				return recorder;
+			});
+		} catch {
+			musicStemRecorders = [];
+			musicStemExportState = "idle";
+			musicStemExportStartedAt = 0;
+			musicStemExportDurationMs = 0;
+			renderMusicDesk();
+			syncMusicTransportLoop();
+			return false;
+		}
+		musicStemExportState = "recording";
+		musicStemExportStartedAt = startedPerfAt;
+		musicStemExportDurationMs = Math.max(1200, Math.round(stemScope.durationMs || getMusicLoopDurationMs()));
+		clearMusicStemExportTimer();
+		try {
+			musicStemRecorders.forEach((recorder) => recorder.start());
+		} catch {
+			stopMusicStemExport();
+			renderMusicDesk();
+			return false;
+		}
+		musicStemExportTimeout = window.setTimeout(() => {
+			stopMusicStemExport();
+		}, musicStemExportDurationMs + 120);
+		syncMusicTransportLoop();
+		renderMusicDesk();
+		return true;
 	};
 	const stopMusicRecording = () => {
 		if (musicRecordingState === "count-in") {
@@ -9003,6 +9712,10 @@ function initXyzCamera() {
 		}
 	};
 	const startMusicRecorderNow = async () => {
+		if (musicPerformanceCaptureState === "recording" || musicStemExportState === "recording") {
+			renderMusicDesk();
+			return false;
+		}
 		const context = await ensureReactiveAudioContext();
 		if (!context) {
 			return false;
@@ -9074,7 +9787,7 @@ function initXyzCamera() {
 		return true;
 	};
 	const armMusicRecording = async () => {
-		if (typeof window.MediaRecorder !== "function") {
+		if (typeof window.MediaRecorder !== "function" || musicPerformanceCaptureState === "recording" || musicStemExportState === "recording") {
 			renderMusicDesk();
 			return false;
 		}
@@ -9134,7 +9847,7 @@ function initXyzCamera() {
 	};
 	const exportMusicProjectSnapshot = () => {
 		const snapshot = {
-			version: 4,
+			version: 5,
 			exported_at: new Date().toISOString(),
 			surface: isIoSurfaceView() ? "io" : "xyz",
 			camera_facing: cameraFacingMode,
@@ -9188,12 +9901,23 @@ function initXyzCamera() {
 			} : null,
 			takes: musicTakes.map((take) => ({
 				id: take.id,
+				kind: take.kind || "audio",
 				name: take.name,
 				filename: take.filename,
 				created_at: new Date(take.createdAt).toISOString(),
 				duration_ms: Math.round(take.durationMs),
 				bytes: take.bytes,
 				mime_type: take.mimeType,
+				scope: typeof take.scope === "string" ? take.scope : "",
+				assets: Array.isArray(take.assets)
+					? take.assets.map((asset) => ({
+						key: asset.key,
+						label: asset.label,
+						filename: asset.filename,
+						bytes: asset.bytes,
+						mime_type: asset.mimeType,
+					}))
+					: [],
 			})),
 		};
 		const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" });
@@ -9216,6 +9940,11 @@ function initXyzCamera() {
 		if (motionVoiceLfo) {
 			motionVoiceLfo.type = profile.filterType === "bandpass" ? "triangle" : "sine";
 		}
+		Object.values(musicStemTrackFilters).forEach((filter) => {
+			if (filter) {
+				filter.type = profile.filterType;
+			}
+		});
 	};
 	const canTriggerPercussion = (key, minGap = 120) => {
 		const nowStamp = performance.now();
@@ -9676,6 +10405,7 @@ function initXyzCamera() {
 	};
 
 	const stopAudio = () => {
+		const performanceWasRecording = musicPerformanceCaptureState === "recording";
 		if (musicGestureMode === "recording") {
 			finalizeMusicGestureRecording();
 		} else {
@@ -9685,6 +10415,12 @@ function initXyzCamera() {
 		stopMusicGesturePlayback();
 		if (musicRecordingState === "count-in") {
 			cancelMusicCountIn();
+		}
+		if (musicPerformanceCaptureState === "recording") {
+			stopMusicPerformanceCapture();
+		}
+		if (musicStemExportState === "recording") {
+			stopMusicStemExport();
 		}
 		if (musicRecorder && musicRecorder.state === "recording") {
 			try {
@@ -9717,6 +10453,18 @@ function initXyzCamera() {
 		musicMasterGain = null;
 		musicPercussionGain = null;
 		musicRecorderDestination = null;
+		musicStemTrackDestinations = {};
+		musicStemTrackOutputs = {};
+		musicStemTrackFilters = {};
+		musicStemTrackPanners = {};
+		musicStemExportState = "idle";
+		musicStemExportStartedAt = 0;
+		musicStemExportDurationMs = 0;
+		clearMusicStemExportTimer();
+		musicStemRecorders = [];
+		if (!performanceWasRecording) {
+			cleanupMusicPerformanceCapture();
+		}
 		if (audioContext && typeof audioContext.close === "function") {
 			audioContext.close().catch(() => {});
 		}
@@ -9923,16 +10671,32 @@ function initXyzCamera() {
 		if (motionVoiceSubGain) {
 			motionVoiceSubGain.gain.setTargetAtTime(targetSubGain, now, audible ? 0.08 : 0.02);
 		}
+		Object.values(musicStemTrackOutputs).forEach((output) => {
+			if (output?.gain) {
+				output.gain.setTargetAtTime(targetGain, now, audible ? 0.06 : 0.02);
+			}
+		});
 		applyMusicMixState(now);
 
 		if (motionVoiceFilter) {
 			motionVoiceFilter.frequency.setTargetAtTime(targetFilterFrequency, now, 0.12);
 			motionVoiceFilter.Q.setTargetAtTime(targetFilterQ, now, 0.12);
 		}
+		Object.values(musicStemTrackFilters).forEach((filter) => {
+			if (filter) {
+				filter.frequency.setTargetAtTime(targetFilterFrequency, now, 0.12);
+				filter.Q.setTargetAtTime(targetFilterQ, now, 0.12);
+			}
+		});
 
 		if (motionVoicePanner) {
 			motionVoicePanner.pan.setTargetAtTime(targetPan, now, 0.14);
 		}
+		Object.values(musicStemTrackPanners).forEach((panner) => {
+			if (panner) {
+				panner.pan.setTargetAtTime(targetPan, now, 0.14);
+			}
+		});
 
 		if (motionVoiceLfo) {
 			motionVoiceLfo.frequency.setTargetAtTime(targetLfoFrequency, now, 0.18);
@@ -9993,6 +10757,9 @@ function initXyzCamera() {
 		motionVoiceHarmonicGain.connect(motionVoiceFilter);
 		motionVoiceSubOscillator.connect(motionVoiceSubGain);
 		motionVoiceSubGain.connect(motionVoiceFilter);
+		ensureMusicStemVoiceTap(context, "terre", motionVoiceMainGain);
+		ensureMusicStemVoiceTap(context, "mine", motionVoiceHarmonicGain);
+		ensureMusicStemVoiceTap(context, "bass", motionVoiceSubGain);
 		if (motionVoicePanner) {
 			motionVoiceFilter.connect(motionVoicePanner);
 			motionVoicePanner.connect(motionVoiceGain);
@@ -10034,6 +10801,15 @@ function initXyzCamera() {
 		motionVoiceGain.gain.setValueAtTime(Math.max(motionVoiceGain.gain.value, 0.002), now);
 		motionVoiceGain.gain.linearRampToValueAtTime(peak, now + 0.06);
 		motionVoiceGain.gain.exponentialRampToValueAtTime(sustain, now + 0.42);
+		Object.values(musicStemTrackOutputs).forEach((output) => {
+			if (!output?.gain) {
+				return;
+			}
+			output.gain.cancelScheduledValues(now);
+			output.gain.setValueAtTime(Math.max(output.gain.value, 0.002), now);
+			output.gain.linearRampToValueAtTime(peak, now + 0.06);
+			output.gain.exponentialRampToValueAtTime(sustain, now + 0.42);
+		});
 		if (motionVoiceMainGain) {
 			const mainPeak = clampNumber((0.56 + intensity * 0.14) * terreTrackMix, 0, 1);
 			motionVoiceMainGain.gain.cancelScheduledValues(now);

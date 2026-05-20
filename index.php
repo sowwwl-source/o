@@ -682,6 +682,8 @@ $pageDescription = $isLabSurface
                                     <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-play>lecture locale</button>
                                     <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-stop>stop</button>
                                     <button type="button" class="ghost-link xyz-music-desk__transport-button xyz-music-desk__transport-button--record" data-xyz-daw-record>rec audio</button>
+                                    <button type="button" class="ghost-link xyz-music-desk__transport-button xyz-music-desk__transport-button--performance" data-xyz-daw-record-performance>rec perf</button>
+                                    <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-export-stems>export stems</button>
                                     <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-export-project>export projet</button>
                                 </div>
                                 <div class="xyz-music-desk__transport-grid">
@@ -694,6 +696,16 @@ $pageDescription = $isLabSurface
                                         <span>swing</span>
                                         <input type="range" min="0" max="40" step="1" value="12" data-xyz-daw-swing-input>
                                         <strong data-xyz-daw-swing-readout>12%</strong>
+                                    </label>
+                                    <label class="xyz-music-desk__field">
+                                        <span>humanize</span>
+                                        <input type="range" min="0" max="36" step="1" value="14" data-xyz-daw-humanize-input>
+                                        <strong data-xyz-daw-humanize-readout>14%</strong>
+                                    </label>
+                                    <label class="xyz-music-desk__field">
+                                        <span>microtiming</span>
+                                        <input type="range" min="0" max="24" step="1" value="9" data-xyz-daw-microtiming-input>
+                                        <strong data-xyz-daw-microtiming-readout>9 ms</strong>
                                     </label>
                                     <label class="xyz-music-desk__field">
                                         <span>boucle</span>
