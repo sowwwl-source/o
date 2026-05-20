@@ -455,6 +455,8 @@ $pageDescription = $isLabSurface
             </div>
         </header>
 
+        <?= render_spatial_context_bar('surface', $host) ?>
+
         <div class="xyz-surface-grid">
             <section class="panel reveal mapping-panel mapping-panel--genie xyz-surface-mapping" id="mapping" aria-labelledby="mapping-title" data-mapping-genie data-mapping-theme="real">
                 <div class="mapping-panel__veil" aria-hidden="true">
