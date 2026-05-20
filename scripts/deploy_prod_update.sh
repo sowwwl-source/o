@@ -543,9 +543,9 @@ curl -fsSI https://sowwwl.org/
 curl -fsSI https://api.sowwwl.cloud/healthz
 curl -fsSI https://api.sowwwl.cloud/v1/status
 assert_body_matches https://sowwwl.com/ 'Trois portes : public, terre, 0wlslw0|Passer par 0wlslw0|commande noyau'
-assert_body_matches "$main_js_url" 'runPageInit\("xyzCamera", initXyzCamera\);'
-assert_body_matches "$main_js_url" 'runPageInit\("guideVoice", initGuideVoice\);'
-assert_body_matches "$main_js_url" 'const hasRecognition = Boolean\(RecognitionCtor\);'
+assert_body_matches "$main_js_url" 'runPageInit\("xyzCamera",[[:space:]]*initXyzCamera\);?'
+assert_body_matches "$main_js_url" 'runPageInit\("guideVoice",[[:space:]]*initGuideVoice\);?'
+assert_body_matches "$main_js_url" 'const[[:space:]]+hasRecognition[[:space:]]*=[[:space:]]*Boolean\(RecognitionCtor\);?'
 assert_body_matches https://sowwwl.com/str3m 'data-str3m-player-engine|data-str3m-player-source-state|ouvrir la source'
 assert_body_matches 'https://sowwwl.com/island?u=pablo-espallergues' 'data-island-reader-shell|data-str3m-player-engine|ouvrir la source'
 assert_body_matches https://sowwwl.io/ 'monde instrument|Surface de jeu Terre et Mine|Mode casque web'
