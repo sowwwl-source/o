@@ -5969,6 +5969,282 @@ function initDeviceBridgePanels() {
 	});
 }
 
+function initXyzArchiborescence(root) {
+	if (!(root instanceof HTMLElement) || root.dataset.xyzArchiBooted === "1") {
+		return;
+	}
+
+	root.dataset.xyzArchiBooted = "1";
+	initCornerDocks();
+
+	const dock = document.querySelector("[data-xyz-archi-dock]");
+	const currentNode = document.querySelector("[data-xyz-archi-current]");
+	const expandButton = document.querySelector("[data-xyz-archi-expand]");
+	const collapseButton = document.querySelector("[data-xyz-archi-collapse]");
+	const navButtons = Array.from(document.querySelectorAll("[data-xyz-archi-nav]"));
+	const panels = Array.from(document.querySelectorAll("[data-xyz-archi-panel]"))
+		.filter((panel) => panel instanceof HTMLDetailsElement);
+	const sections = Array.from(document.querySelectorAll("[data-xyz-archi-section]"))
+		.filter((section) => section instanceof HTMLElement);
+	const isCompactArchiViewport = () => window.matchMedia("(max-width: 900px)").matches;
+	let compactViewport = isCompactArchiViewport();
+	let syncFrame = 0;
+	let bulkArchiToggle = false;
+	let bulkArchiTimer = 0;
+
+	const sectionId = (section) => section instanceof HTMLElement ? section.id || "" : "";
+	const sectionLabel = (section) => {
+		if (!(section instanceof HTMLElement)) {
+			return "surface";
+		}
+
+		return section.dataset.xyzArchiLabel || sectionId(section) || "surface";
+	};
+	const panelDefaultOpen = (panel) => panel instanceof HTMLElement && panel.dataset.xyzArchiDefaultOpen === "1";
+
+	const openPanelChain = (target) => {
+		let current = target instanceof HTMLElement ? target : null;
+		while (current) {
+			if (current instanceof HTMLDetailsElement) {
+				current.open = true;
+			}
+			current = current.parentElement ? current.parentElement.closest("[data-xyz-archi-panel]") : null;
+		}
+	};
+
+	const focusArchiTarget = (target) => {
+		if (!(target instanceof HTMLElement)) {
+			return;
+		}
+
+		const focusTarget = target instanceof HTMLDetailsElement
+			? target.querySelector("summary")
+			: target;
+		if (focusTarget instanceof HTMLElement) {
+			window.requestAnimationFrame(() => {
+				focusElementWithoutScroll(focusTarget);
+			});
+		}
+	};
+
+	const closeCompactSiblingPanels = (panel) => {
+		if (!(panel instanceof HTMLDetailsElement) || !panel.open || !compactViewport || bulkArchiToggle) {
+			return;
+		}
+
+		const group = panel.dataset.xyzArchiGroup || "";
+		if (!group) {
+			return;
+		}
+
+		panels.forEach((candidate) => {
+			if (!(candidate instanceof HTMLDetailsElement) || candidate === panel) {
+				return;
+			}
+			if ((candidate.dataset.xyzArchiGroup || "") !== group) {
+				return;
+			}
+			candidate.open = false;
+		});
+	};
+
+	const runBulkArchiMutation = (mutate) => {
+		if (typeof mutate !== "function") {
+			return;
+		}
+
+		if (bulkArchiTimer) {
+			window.clearTimeout(bulkArchiTimer);
+			bulkArchiTimer = 0;
+		}
+
+		bulkArchiToggle = true;
+		try {
+			mutate();
+		} finally {
+			bulkArchiTimer = window.setTimeout(() => {
+				bulkArchiToggle = false;
+				bulkArchiTimer = 0;
+				requestCurrentSectionSync();
+			}, 180);
+		}
+		requestCurrentSectionSync();
+	};
+
+	const applyCompactArchiDefaults = () => {
+		if (!compactViewport) {
+			return;
+		}
+
+		runBulkArchiMutation(() => {
+			const openGroups = new Set();
+			panels.forEach((panel) => {
+				const group = panel.dataset.xyzArchiGroup || "";
+				if (!group) {
+					panel.open = panelDefaultOpen(panel);
+					return;
+				}
+
+				if (panelDefaultOpen(panel) && !openGroups.has(group)) {
+					panel.open = true;
+					openGroups.add(group);
+					return;
+				}
+
+				panel.open = false;
+			});
+		});
+	};
+
+	const restoreArchiDefaults = () => {
+		if (compactViewport) {
+			applyCompactArchiDefaults();
+			return;
+		}
+
+		runBulkArchiMutation(() => {
+			panels.forEach((panel) => {
+				panel.open = panelDefaultOpen(panel);
+			});
+		});
+	};
+
+	const expandArchiPanels = () => {
+		runBulkArchiMutation(() => {
+			panels.forEach((panel) => {
+				panel.open = true;
+			});
+		});
+	};
+
+	const updateCurrentSection = () => {
+		syncFrame = 0;
+		if (!sections.length) {
+			return;
+		}
+
+		const anchorY = compactViewport ? 112 : 148;
+		let activeSection = null;
+		let bestScore = Number.POSITIVE_INFINITY;
+
+		sections.forEach((section) => {
+			const rect = section.getBoundingClientRect();
+			if (rect.bottom <= 0) {
+				return;
+			}
+
+			let score = Math.abs(rect.top - anchorY);
+			if (rect.top <= anchorY && rect.bottom >= anchorY) {
+				score -= 120;
+			}
+
+			if (score < bestScore) {
+				bestScore = score;
+				activeSection = section;
+			}
+		});
+
+		if (!(activeSection instanceof HTMLElement)) {
+			activeSection = sections[0];
+		}
+
+		const activeId = sectionId(activeSection);
+		const activeLabel = sectionLabel(activeSection);
+		if (currentNode instanceof HTMLElement) {
+			currentNode.textContent = activeLabel;
+		}
+
+		navButtons.forEach((button) => {
+			if (!(button instanceof HTMLElement)) {
+				return;
+			}
+			button.setAttribute("aria-current", button.dataset.xyzArchiNav === activeId ? "true" : "false");
+		});
+	};
+
+	function requestCurrentSectionSync() {
+		if (syncFrame) {
+			window.cancelAnimationFrame(syncFrame);
+		}
+		syncFrame = window.requestAnimationFrame(updateCurrentSection);
+	}
+
+	panels.forEach((panel) => {
+		panel.addEventListener("toggle", () => {
+			closeCompactSiblingPanels(panel);
+			requestCurrentSectionSync();
+		});
+	});
+
+	navButtons.forEach((button) => {
+		if (!(button instanceof HTMLElement)) {
+			return;
+		}
+
+		button.addEventListener("click", () => {
+			const targetId = button.dataset.xyzArchiNav || "";
+			if (!targetId) {
+				return;
+			}
+
+			const target = document.getElementById(targetId);
+			if (!(target instanceof HTMLElement)) {
+				return;
+			}
+
+			openPanelChain(target);
+			target.scrollIntoView({
+				behavior: reducedMotion ? "auto" : "smooth",
+				block: "start",
+			});
+			focusArchiTarget(target);
+			requestCurrentSectionSync();
+
+			if (dock instanceof HTMLDetailsElement && isCompactCornerDockViewport()) {
+				closeCornerDock(dock);
+			}
+		});
+	});
+
+	if (expandButton instanceof HTMLElement) {
+		expandButton.addEventListener("click", expandArchiPanels);
+	}
+
+	if (collapseButton instanceof HTMLElement) {
+		collapseButton.addEventListener("click", restoreArchiDefaults);
+	}
+
+	const hashTarget = window.location.hash ? document.getElementById(window.location.hash.slice(1)) : null;
+	if (hashTarget instanceof HTMLElement) {
+		openPanelChain(hashTarget);
+	}
+
+	if (compactViewport) {
+		applyCompactArchiDefaults();
+	}
+
+	window.addEventListener("scroll", requestCurrentSectionSync, { passive: true });
+	window.addEventListener("hashchange", () => {
+		const target = window.location.hash ? document.getElementById(window.location.hash.slice(1)) : null;
+		if (target instanceof HTMLElement) {
+			openPanelChain(target);
+			requestCurrentSectionSync();
+		}
+	});
+	window.addEventListener("resize", () => {
+		const nextCompact = isCompactArchiViewport();
+		if (nextCompact !== compactViewport) {
+			compactViewport = nextCompact;
+			if (compactViewport) {
+				applyCompactArchiDefaults();
+			}
+		}
+		requestCurrentSectionSync();
+	});
+
+	requestCurrentSectionSync();
+}
+
 function initXyzSurface() {
 	const root = document.querySelector("[data-xyz-surface]");
 	if (!(root instanceof HTMLElement)) {
@@ -5977,6 +6253,7 @@ function initXyzSurface() {
 
 	const headsetMode = prefersSpatialHeadsetMode();
 	root.dataset.xyzInteractionMode = headsetMode ? "headset" : (coarsePointer ? "touch" : "pointer");
+	initXyzArchiborescence(root);
 
 	const applyDrift = (clientX, clientY) => {
 		const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1;
@@ -13057,6 +13334,9 @@ function runPageInit(label, init) {
 	}
 }
 
+let pageAccessibilityBooted = false;
+let cornerDocksBooted = false;
+
 runPageInit("mappingGenie", initMappingGenie);
 runPageInit("deviceBridgePanels", initDeviceBridgePanels);
 runPageInit("labConsole", initLabConsole);
@@ -13157,9 +13437,6 @@ function normalizeGuideVoiceHistory(entries) {
 		.filter(Boolean)
 		.slice(-GUIDE_VOICE_HISTORY_LIMIT);
 }
-
-let pageAccessibilityBooted = false;
-let cornerDocksBooted = false;
 
 function focusElementWithoutScroll(element) {
 	if (!(element instanceof HTMLElement)) {
