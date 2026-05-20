@@ -411,6 +411,58 @@ body.xyz-surface-view .layout.ui-overlay {
 	padding-bottom: 2.4rem;
 }
 
+@media (hover: none), (any-pointer: coarse) {
+	body.home:not(.lab-console-view) .layout.ui-overlay,
+	body.home:not(.lab-console-view) .layout.ui-overlay :where(
+		section,
+		article,
+		header,
+		div,
+		p,
+		h1,
+		h2,
+		h3,
+		h4,
+		h5,
+		h6,
+		ul,
+		ol,
+		li,
+		span,
+		strong,
+		em,
+		small,
+		figure,
+		figcaption,
+		blockquote
+	) {
+		pointer-events: none;
+	}
+
+	body.home:not(.lab-console-view) .layout.ui-overlay :where(
+		a,
+		button,
+		input,
+		textarea,
+		select,
+		option,
+		label,
+		summary,
+		details,
+		form,
+		audio,
+		video,
+		canvas,
+		iframe,
+		[role="button"],
+		[role="link"],
+		[contenteditable="true"],
+		[tabindex]:not([tabindex="-1"])
+	) {
+		pointer-events: auto;
+	}
+}
+
 @supports (height: 100dvh) {
 	body.home .layout.ui-overlay,
 	body.xyz-surface-view .layout.ui-overlay {
