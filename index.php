@@ -790,6 +790,245 @@ $pageDescription = $isLabSurface
                                     </div>
                                 </div>
                             </div>
+                            <div class="xyz-music-desk__arrangement" aria-label="Voyage de scènes">
+                                <div class="xyz-music-arrangement">
+                                    <div class="xyz-music-arrangement__head">
+                                        <span class="summary-label">voyage</span>
+                                        <strong data-xyz-daw-arrangement-state>aucun voyage</strong>
+                                    </div>
+                                    <p class="xyz-music-arrangement__copy" data-xyz-daw-arrangement-copy>Enchaîne des scènes mémorisées sur plusieurs mesures pour transformer la membrane en forme jouable et enregistrable.</p>
+                                    <div class="xyz-music-arrangement__actions" role="group" aria-label="Transport du voyage">
+                                        <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-arrangement-play>jouer voyage</button>
+                                        <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-arrangement-build>charger A B C D</button>
+                                        <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-arrangement-clear>effacer</button>
+                                        <label class="xyz-music-arrangement__loop">
+                                            <input type="checkbox" data-xyz-daw-arrangement-loop checked>
+                                            <span>boucle voyage</span>
+                                        </label>
+                                    </div>
+                                    <div class="xyz-music-arrangement__grid">
+                                        <article class="xyz-music-arrangement-step" data-xyz-daw-arrangement-card="0">
+                                            <div class="xyz-music-arrangement-step__head">
+                                                <span class="summary-label">01</span>
+                                                <strong data-xyz-daw-arrangement-step-state="0">libre</strong>
+                                            </div>
+                                            <label class="xyz-music-arrangement-step__field">
+                                                <span>scene</span>
+                                                <select data-xyz-daw-arrangement-scene="0">
+                                                    <option value="">libre</option>
+                                                    <option value="scene-a">A · aube</option>
+                                                    <option value="scene-b">B · seuil</option>
+                                                    <option value="scene-c">C · marche</option>
+                                                    <option value="scene-d">D · sève</option>
+                                                </select>
+                                            </label>
+                                            <label class="xyz-music-arrangement-step__field">
+                                                <span>mesures</span>
+                                                <select data-xyz-daw-arrangement-bars="0">
+                                                    <option value="1">1</option>
+                                                    <option value="2" selected>2</option>
+                                                    <option value="4">4</option>
+                                                    <option value="8">8</option>
+                                                </select>
+                                            </label>
+                                        </article>
+                                        <article class="xyz-music-arrangement-step" data-xyz-daw-arrangement-card="1">
+                                            <div class="xyz-music-arrangement-step__head">
+                                                <span class="summary-label">02</span>
+                                                <strong data-xyz-daw-arrangement-step-state="1">libre</strong>
+                                            </div>
+                                            <label class="xyz-music-arrangement-step__field">
+                                                <span>scene</span>
+                                                <select data-xyz-daw-arrangement-scene="1">
+                                                    <option value="">libre</option>
+                                                    <option value="scene-a">A · aube</option>
+                                                    <option value="scene-b">B · seuil</option>
+                                                    <option value="scene-c">C · marche</option>
+                                                    <option value="scene-d">D · sève</option>
+                                                </select>
+                                            </label>
+                                            <label class="xyz-music-arrangement-step__field">
+                                                <span>mesures</span>
+                                                <select data-xyz-daw-arrangement-bars="1">
+                                                    <option value="1">1</option>
+                                                    <option value="2" selected>2</option>
+                                                    <option value="4">4</option>
+                                                    <option value="8">8</option>
+                                                </select>
+                                            </label>
+                                        </article>
+                                        <article class="xyz-music-arrangement-step" data-xyz-daw-arrangement-card="2">
+                                            <div class="xyz-music-arrangement-step__head">
+                                                <span class="summary-label">03</span>
+                                                <strong data-xyz-daw-arrangement-step-state="2">libre</strong>
+                                            </div>
+                                            <label class="xyz-music-arrangement-step__field">
+                                                <span>scene</span>
+                                                <select data-xyz-daw-arrangement-scene="2">
+                                                    <option value="">libre</option>
+                                                    <option value="scene-a">A · aube</option>
+                                                    <option value="scene-b">B · seuil</option>
+                                                    <option value="scene-c">C · marche</option>
+                                                    <option value="scene-d">D · sève</option>
+                                                </select>
+                                            </label>
+                                            <label class="xyz-music-arrangement-step__field">
+                                                <span>mesures</span>
+                                                <select data-xyz-daw-arrangement-bars="2">
+                                                    <option value="1">1</option>
+                                                    <option value="2" selected>2</option>
+                                                    <option value="4">4</option>
+                                                    <option value="8">8</option>
+                                                </select>
+                                            </label>
+                                        </article>
+                                        <article class="xyz-music-arrangement-step" data-xyz-daw-arrangement-card="3">
+                                            <div class="xyz-music-arrangement-step__head">
+                                                <span class="summary-label">04</span>
+                                                <strong data-xyz-daw-arrangement-step-state="3">libre</strong>
+                                            </div>
+                                            <label class="xyz-music-arrangement-step__field">
+                                                <span>scene</span>
+                                                <select data-xyz-daw-arrangement-scene="3">
+                                                    <option value="">libre</option>
+                                                    <option value="scene-a">A · aube</option>
+                                                    <option value="scene-b">B · seuil</option>
+                                                    <option value="scene-c">C · marche</option>
+                                                    <option value="scene-d">D · sève</option>
+                                                </select>
+                                            </label>
+                                            <label class="xyz-music-arrangement-step__field">
+                                                <span>mesures</span>
+                                                <select data-xyz-daw-arrangement-bars="3">
+                                                    <option value="1">1</option>
+                                                    <option value="2" selected>2</option>
+                                                    <option value="4">4</option>
+                                                    <option value="8">8</option>
+                                                </select>
+                                            </label>
+                                        </article>
+                                        <article class="xyz-music-arrangement-step" data-xyz-daw-arrangement-card="4">
+                                            <div class="xyz-music-arrangement-step__head">
+                                                <span class="summary-label">05</span>
+                                                <strong data-xyz-daw-arrangement-step-state="4">libre</strong>
+                                            </div>
+                                            <label class="xyz-music-arrangement-step__field">
+                                                <span>scene</span>
+                                                <select data-xyz-daw-arrangement-scene="4">
+                                                    <option value="">libre</option>
+                                                    <option value="scene-a">A · aube</option>
+                                                    <option value="scene-b">B · seuil</option>
+                                                    <option value="scene-c">C · marche</option>
+                                                    <option value="scene-d">D · sève</option>
+                                                </select>
+                                            </label>
+                                            <label class="xyz-music-arrangement-step__field">
+                                                <span>mesures</span>
+                                                <select data-xyz-daw-arrangement-bars="4">
+                                                    <option value="1">1</option>
+                                                    <option value="2" selected>2</option>
+                                                    <option value="4">4</option>
+                                                    <option value="8">8</option>
+                                                </select>
+                                            </label>
+                                        </article>
+                                        <article class="xyz-music-arrangement-step" data-xyz-daw-arrangement-card="5">
+                                            <div class="xyz-music-arrangement-step__head">
+                                                <span class="summary-label">06</span>
+                                                <strong data-xyz-daw-arrangement-step-state="5">libre</strong>
+                                            </div>
+                                            <label class="xyz-music-arrangement-step__field">
+                                                <span>scene</span>
+                                                <select data-xyz-daw-arrangement-scene="5">
+                                                    <option value="">libre</option>
+                                                    <option value="scene-a">A · aube</option>
+                                                    <option value="scene-b">B · seuil</option>
+                                                    <option value="scene-c">C · marche</option>
+                                                    <option value="scene-d">D · sève</option>
+                                                </select>
+                                            </label>
+                                            <label class="xyz-music-arrangement-step__field">
+                                                <span>mesures</span>
+                                                <select data-xyz-daw-arrangement-bars="5">
+                                                    <option value="1">1</option>
+                                                    <option value="2" selected>2</option>
+                                                    <option value="4">4</option>
+                                                    <option value="8">8</option>
+                                                </select>
+                                            </label>
+                                        </article>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="xyz-music-desk__pattern" aria-label="Séquence rythmique">
+                                <div class="xyz-music-pattern">
+                                    <div class="xyz-music-pattern__head">
+                                        <span class="summary-label">motif</span>
+                                        <strong data-xyz-daw-pattern-state>aucun motif</strong>
+                                    </div>
+                                    <p class="xyz-music-pattern__copy" data-xyz-daw-pattern-copy>Écris un pas de kick, snare et hh, puis laisse le swing et la boucle faire respirer la marche. Alt accentue, Ctrl change la proba, Shift ouvre le ratchet.</p>
+                                    <div class="xyz-music-pattern__presets" role="group" aria-label="Presets rythmiques">
+                                        <button type="button" class="ghost-link xyz-music-pattern__preset" data-xyz-daw-pattern-preset="pulse">pouls</button>
+                                        <button type="button" class="ghost-link xyz-music-pattern__preset" data-xyz-daw-pattern-preset="stride">marche</button>
+                                        <button type="button" class="ghost-link xyz-music-pattern__preset" data-xyz-daw-pattern-preset="drizzle">bruine</button>
+                                        <button type="button" class="ghost-link xyz-music-pattern__preset" data-xyz-daw-pattern-preset="storm">orage</button>
+                                        <button type="button" class="ghost-link xyz-music-pattern__preset" data-xyz-daw-pattern-preset="clear">effacer</button>
+                                    </div>
+                                    <div class="xyz-music-pattern__editor" aria-label="Edition du pas">
+                                        <div class="xyz-music-pattern__editor-head">
+                                            <span class="summary-label">pas cible</span>
+                                            <strong data-xyz-daw-pattern-editor-state>kick · pas 1</strong>
+                                        </div>
+                                        <p class="xyz-music-pattern__editor-copy" data-xyz-daw-pattern-editor-copy>Choisis un pas puis sculpte son accent, sa probabilité et son ratchet. Les raccourcis Alt / Ctrl / Shift-clique font la même chose directement dans la grille.</p>
+                                        <div class="xyz-music-pattern__editor-controls">
+                                            <button type="button" class="ghost-link xyz-music-pattern__editor-toggle" data-xyz-daw-pattern-accent aria-pressed="false">accent</button>
+                                            <label class="xyz-music-pattern__editor-field">
+                                                <span>proba</span>
+                                                <select data-xyz-daw-pattern-probability>
+                                                    <option value="1">100%</option>
+                                                    <option value="0.75">75%</option>
+                                                    <option value="0.5">50%</option>
+                                                    <option value="0.25">25%</option>
+                                                </select>
+                                            </label>
+                                            <label class="xyz-music-pattern__editor-field">
+                                                <span>ratchet</span>
+                                                <select data-xyz-daw-pattern-ratchet>
+                                                    <option value="1">1x</option>
+                                                    <option value="2">2x</option>
+                                                    <option value="3">3x</option>
+                                                    <option value="4">4x</option>
+                                                </select>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <?php $patternTracks = ['kick' => 'kick', 'snare' => 'snare', 'hihat' => 'hh']; ?>
+                                    <?php foreach ($patternTracks as $patternTrackKey => $patternTrackLabel): ?>
+                                        <article class="xyz-music-pattern__lane" data-xyz-daw-pattern-row="<?= h($patternTrackKey) ?>">
+                                            <div class="xyz-music-pattern__lane-head">
+                                                <span class="summary-label"><?= h($patternTrackLabel) ?></span>
+                                                <strong><?= h($patternTrackKey === 'hihat' ? 'temps fins' : ($patternTrackKey === 'snare' ? 'contre-champ' : 'ancrage')) ?></strong>
+                                            </div>
+                                            <div class="xyz-music-pattern__row-shell">
+                                                <div class="xyz-music-pattern__steps" role="group" aria-label="Pas <?= h($patternTrackLabel) ?>">
+                                                    <?php for ($patternStep = 0; $patternStep < 16; $patternStep += 1): ?>
+                                                        <?php $stepBeatLabel = ($patternStep % 4) === 0 ? (string) (((int) floor($patternStep / 4)) + 1) : '·'; ?>
+                                                        <button
+                                                            type="button"
+                                                            class="ghost-link xyz-music-pattern__step"
+                                                            data-xyz-daw-pattern-step="<?= h($patternTrackKey) ?>:<?= $patternStep ?>"
+                                                            data-xyz-daw-pattern-track="<?= h($patternTrackKey) ?>"
+                                                            data-xyz-daw-pattern-index="<?= $patternStep ?>"
+                                                            aria-pressed="false"
+                                                            aria-label="<?= h($patternTrackLabel) ?> pas <?= $patternStep + 1 ?>"
+                                                        ><?= h($stepBeatLabel) ?></button>
+                                                    <?php endfor; ?>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
                             <div class="xyz-music-desk__mixer" aria-label="Mixer membrane">
                                 <article class="xyz-music-track" data-xyz-track-card="terre">
                                     <div class="xyz-music-track__head">
@@ -863,8 +1102,8 @@ $pageDescription = $isLabSurface
                                     <p class="xyz-music-track__copy">Le bus final de la membrane, celui qui part vers l oreille et les prises.</p>
                                     <label class="xyz-music-track__level">
                                         <span>niveau</span>
-                                        <input type="range" min="0" max="100" step="1" value="94" data-xyz-daw-master-input>
-                                        <strong data-xyz-daw-master-readout>94%</strong>
+                                        <input type="range" min="0" max="100" step="1" value="98" data-xyz-daw-master-input>
+                                        <strong data-xyz-daw-master-readout>98%</strong>
                                     </label>
                                 </article>
                             </div>

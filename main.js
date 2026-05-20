@@ -8,7 +8,7 @@ const DEVICE_VOLUME_LEVEL_KEY = "o-device-volume-level-v1";
 const XYZ_VOICE_ECHO_KEY = "o-xyz-voice-echo-v1";
 const XYZ_MUSIC_SETTINGS_KEY = "o-xyz-music-settings-v1";
 const XYZ_MUSIC_DAW_KEY = "o-xyz-music-daw-v1";
-const AUDIO_DEFAULTS_VERSION_KEY = "o-audio-defaults-v3";
+const AUDIO_DEFAULTS_VERSION_KEY = "o-audio-defaults-v4";
 const RA_MODULATION_SESSION_KEY = "o-ra-modulation-v1";
 const WORLD_INSTRUMENT_SESSION_KEY = "o-world-instrument-v1";
 const RA_MODULATION_SESSION_TTL = 6 * 60 * 60 * 1000;
@@ -17,12 +17,129 @@ const XYZ_MUSIC_SCALE_KEYS = ["auto", "aeolian", "dorian", "lydian", "pentatonic
 const XYZ_MUSIC_INSTRUMENT_KEYS = ["membrane", "glass", "reed", "bronze"];
 const XYZ_MUSIC_PERCUSSION_KEYS = ["kick", "snare", "hihat"];
 const XYZ_MUSIC_TRACK_KEYS = ["terre", "mine", "bass", "percu"];
+const XYZ_MUSIC_PATTERN_KEYS = ["kick", "snare", "hihat"];
+const XYZ_MUSIC_PATTERN_STEP_COUNT = 16;
+const XYZ_MUSIC_PATTERN_PROBABILITY_OPTIONS = [1, 0.75, 0.5, 0.25];
+const XYZ_MUSIC_PATTERN_RATCHET_OPTIONS = [1, 2, 3, 4];
 const XYZ_MUSIC_SCENE_KEYS = ["scene-a", "scene-b", "scene-c", "scene-d"];
+const XYZ_MUSIC_ARRANGEMENT_BAR_OPTIONS = [1, 2, 4, 8];
+const XYZ_MUSIC_ARRANGEMENT_STEP_COUNT = 6;
 const XYZ_MUSIC_SCENE_META = {
 	"scene-a": { shortLabel: "A", label: "aube" },
 	"scene-b": { shortLabel: "B", label: "seuil" },
 	"scene-c": { shortLabel: "C", label: "marche" },
 	"scene-d": { shortLabel: "D", label: "sève" },
+};
+const XYZ_MUSIC_PATTERN_PRESET_META = {
+	clear: {
+		label: "silence",
+		steps: {
+			kick: [],
+			snare: [],
+			hihat: [],
+		},
+	},
+	pulse: {
+		label: "pouls",
+		steps: {
+			kick: [0, 4, 8, 12],
+			snare: [4, 12],
+			hihat: [0, 2, 4, 6, 8, 10, 12, 14],
+		},
+		accents: {
+			kick: [0, 8],
+			snare: [4, 12],
+			hihat: [0, 4, 8, 12],
+		},
+	},
+	stride: {
+		label: "marche",
+		steps: {
+			kick: [0, 3, 8, 11],
+			snare: [4, 12],
+			hihat: [0, 2, 3, 6, 8, 10, 11, 14],
+		},
+		accents: {
+			kick: [0, 8],
+			snare: [12],
+			hihat: [0, 6, 8, 14],
+		},
+		probability: {
+			hihat: {
+				3: 0.75,
+				11: 0.75,
+				14: 0.75,
+			},
+		},
+	},
+	drizzle: {
+		label: "bruine",
+		steps: {
+			kick: [0, 10],
+			snare: [12],
+			hihat: [0, 2, 5, 6, 8, 10, 13, 14],
+		},
+		probability: {
+			hihat: {
+				2: 0.75,
+				5: 0.5,
+				6: 0.75,
+				10: 0.75,
+				13: 0.5,
+				14: 0.75,
+			},
+			kick: {
+				10: 0.75,
+			},
+		},
+		ratchet: {
+			hihat: {
+				5: 2,
+				13: 2,
+			},
+		},
+	},
+	storm: {
+		label: "orage",
+		steps: {
+			kick: [0, 2, 4, 8, 10, 12],
+			snare: [4, 7, 12, 15],
+			hihat: Array.from({ length: XYZ_MUSIC_PATTERN_STEP_COUNT }, (_, index) => index),
+		},
+		accents: {
+			kick: [0, 4, 8, 12],
+			snare: [4, 12, 15],
+			hihat: [0, 4, 8, 12],
+		},
+		probability: {
+			kick: {
+				2: 0.75,
+				10: 0.75,
+			},
+			hihat: {
+				1: 0.75,
+				3: 0.75,
+				5: 0.75,
+				7: 0.75,
+				9: 0.75,
+				11: 0.75,
+				13: 0.75,
+				15: 0.75,
+			},
+		},
+		ratchet: {
+			snare: {
+				7: 2,
+				15: 2,
+			},
+			hihat: {
+				3: 2,
+				7: 2,
+				11: 2,
+				15: 3,
+			},
+		},
+	},
 };
 
 const reveals = Array.from(document.querySelectorAll(".reveal"));
@@ -1091,8 +1208,8 @@ function writeDeviceSilenceIntent(isSilent) {
 }
 
 function readDeviceVolumeLevel() {
-	const raw = Number(window.localStorage.getItem(DEVICE_VOLUME_LEVEL_KEY) || "0.94");
-	return clampNumber(Number.isFinite(raw) ? raw : 0.94, 0, 1);
+	const raw = Number(window.localStorage.getItem(DEVICE_VOLUME_LEVEL_KEY) || "0.98");
+	return clampNumber(Number.isFinite(raw) ? raw : 0.98, 0, 1);
 }
 
 function writeDeviceVolumeLevel(level) {
@@ -1152,6 +1269,139 @@ function normalizeXyzMusicTrackSet(raw) {
 	};
 }
 
+function buildMusicPatternTrack(indices = []) {
+	const activeIndices = new Set(
+		Array.isArray(indices)
+			? indices.map((value) => Math.max(0, Math.min(XYZ_MUSIC_PATTERN_STEP_COUNT - 1, Math.round(Number(value) || 0))))
+			: []
+	);
+	return Array.from({ length: XYZ_MUSIC_PATTERN_STEP_COUNT }, (_, index) => activeIndices.has(index));
+}
+
+function buildMusicPatternValueTrack(defaultValue = 1, overrides = {}) {
+	const source = overrides && typeof overrides === "object" ? overrides : {};
+	return Array.from({ length: XYZ_MUSIC_PATTERN_STEP_COUNT }, (_, index) => {
+		const nextValue = source[index];
+		return Number.isFinite(Number(nextValue)) ? Number(nextValue) : defaultValue;
+	});
+}
+
+function buildMusicPatternPreset(presetKey = "clear") {
+	const meta = XYZ_MUSIC_PATTERN_PRESET_META[presetKey] || XYZ_MUSIC_PATTERN_PRESET_META.clear;
+	return {
+		preset: presetKey in XYZ_MUSIC_PATTERN_PRESET_META ? presetKey : "clear",
+		steps: Object.fromEntries(
+			XYZ_MUSIC_PATTERN_KEYS.map((key) => [key, buildMusicPatternTrack(meta.steps[key])])
+		),
+		accents: Object.fromEntries(
+			XYZ_MUSIC_PATTERN_KEYS.map((key) => [key, buildMusicPatternTrack(meta.accents?.[key])])
+		),
+		probability: Object.fromEntries(
+			XYZ_MUSIC_PATTERN_KEYS.map((key) => [key, buildMusicPatternValueTrack(1, meta.probability?.[key])])
+		),
+		ratchet: Object.fromEntries(
+			XYZ_MUSIC_PATTERN_KEYS.map((key) => [key, buildMusicPatternValueTrack(1, meta.ratchet?.[key])])
+		),
+	};
+}
+
+function normalizeXyzMusicPatternTrack(raw, fallback = []) {
+	const source = Array.isArray(raw) ? raw : fallback;
+	return Array.from({ length: XYZ_MUSIC_PATTERN_STEP_COUNT }, (_, index) => Boolean(source[index]));
+}
+
+function normalizeXyzMusicPatternProbabilityTrack(raw, fallback = []) {
+	const source = Array.isArray(raw) ? raw : fallback;
+	return Array.from({ length: XYZ_MUSIC_PATTERN_STEP_COUNT }, (_, index) => {
+		const value = Number(source[index]);
+		return XYZ_MUSIC_PATTERN_PROBABILITY_OPTIONS.includes(value) ? value : 1;
+	});
+}
+
+function normalizeXyzMusicPatternRatchetTrack(raw, fallback = []) {
+	const source = Array.isArray(raw) ? raw : fallback;
+	return Array.from({ length: XYZ_MUSIC_PATTERN_STEP_COUNT }, (_, index) => {
+		const value = Math.round(Number(source[index]) || 1);
+		return XYZ_MUSIC_PATTERN_RATCHET_OPTIONS.includes(value) ? value : 1;
+	});
+}
+
+function inferXyzMusicPatternPresetKey(pattern) {
+	const normalized = pattern && typeof pattern === "object" ? pattern : buildMusicPatternPreset("clear");
+	const hasAnyStep = XYZ_MUSIC_PATTERN_KEYS.some((key) => Array.isArray(normalized.steps?.[key]) && normalized.steps[key].some(Boolean));
+	if (!hasAnyStep) {
+		return "clear";
+	}
+	for (const [presetKey, meta] of Object.entries(XYZ_MUSIC_PATTERN_PRESET_META)) {
+		if (presetKey === "clear") {
+			continue;
+		}
+		const preset = buildMusicPatternPreset(presetKey);
+		const matches = XYZ_MUSIC_PATTERN_KEYS.every((key) => {
+			const stepLeft = normalized.steps?.[key] || [];
+			const stepRight = preset.steps[key] || [];
+			const accentLeft = normalized.accents?.[key] || [];
+			const accentRight = preset.accents[key] || [];
+			const probabilityLeft = normalized.probability?.[key] || [];
+			const probabilityRight = preset.probability[key] || [];
+			const ratchetLeft = normalized.ratchet?.[key] || [];
+			const ratchetRight = preset.ratchet[key] || [];
+			return (
+				stepLeft.length === stepRight.length
+				&& stepLeft.every((value, index) => Boolean(value) === Boolean(stepRight[index]))
+				&& accentLeft.length === accentRight.length
+				&& accentLeft.every((value, index) => Boolean(value) === Boolean(accentRight[index]))
+				&& probabilityLeft.length === probabilityRight.length
+				&& probabilityLeft.every((value, index) => Number(value) === Number(probabilityRight[index]))
+				&& ratchetLeft.length === ratchetRight.length
+				&& ratchetLeft.every((value, index) => Number(value) === Number(ratchetRight[index]))
+			);
+		});
+		if (matches) {
+			return presetKey;
+		}
+	}
+	return "custom";
+}
+
+function normalizeXyzMusicPattern(raw) {
+	const source = raw && typeof raw === "object" ? raw : {};
+	const fallback = buildMusicPatternPreset("clear");
+	const stepsSource = source.steps && typeof source.steps === "object" ? source.steps : source;
+	const accentsSource = source.accents && typeof source.accents === "object" ? source.accents : {};
+	const probabilitySource = source.probability && typeof source.probability === "object" ? source.probability : {};
+	const ratchetSource = source.ratchet && typeof source.ratchet === "object" ? source.ratchet : {};
+	const pattern = {
+		preset: typeof source.preset === "string" ? source.preset.slice(0, 24) : fallback.preset,
+		steps: Object.fromEntries(
+			XYZ_MUSIC_PATTERN_KEYS.map((key) => [
+				key,
+				normalizeXyzMusicPatternTrack(stepsSource[key], fallback.steps[key]),
+			])
+		),
+		accents: Object.fromEntries(
+			XYZ_MUSIC_PATTERN_KEYS.map((key) => [
+				key,
+				normalizeXyzMusicPatternTrack(accentsSource[key], fallback.accents[key]),
+			])
+		),
+		probability: Object.fromEntries(
+			XYZ_MUSIC_PATTERN_KEYS.map((key) => [
+				key,
+				normalizeXyzMusicPatternProbabilityTrack(probabilitySource[key], fallback.probability[key]),
+			])
+		),
+		ratchet: Object.fromEntries(
+			XYZ_MUSIC_PATTERN_KEYS.map((key) => [
+				key,
+				normalizeXyzMusicPatternRatchetTrack(ratchetSource[key], fallback.ratchet[key]),
+			])
+		),
+	};
+	pattern.preset = inferXyzMusicPatternPresetKey(pattern);
+	return pattern;
+}
+
 function normalizeXyzMusicDawCore(raw) {
 	const source = raw && typeof raw === "object" ? raw : {};
 	return {
@@ -1160,8 +1410,9 @@ function normalizeXyzMusicDawCore(raw) {
 		loopBars: [2, 4, 8, 16].includes(Number(source.loopBars)) ? Number(source.loopBars) : 4,
 		quantize: ["1/4", "1/8", "1/16"].includes(source.quantize) ? source.quantize : "1/8",
 		countInBars: [0, 1, 2].includes(Number(source.countInBars)) ? Number(source.countInBars) : 1,
-		masterVolume: clampNumber(Number(source.masterVolume) || 0.94, 0, 1),
+		masterVolume: clampNumber(Number(source.masterVolume) || 0.98, 0, 1),
 		tracks: normalizeXyzMusicTrackSet(source.tracks),
+		pattern: normalizeXyzMusicPattern(source.pattern),
 	};
 }
 
@@ -1243,6 +1494,25 @@ function normalizeXyzMusicGestureLoop(raw) {
 	};
 }
 
+function normalizeXyzMusicArrangementStep(raw) {
+	const source = raw && typeof raw === "object" ? raw : {};
+	return {
+		sceneKey: XYZ_MUSIC_SCENE_KEYS.includes(source.sceneKey) ? source.sceneKey : "",
+		bars: XYZ_MUSIC_ARRANGEMENT_BAR_OPTIONS.includes(Number(source.bars)) ? Number(source.bars) : 2,
+	};
+}
+
+function normalizeXyzMusicArrangement(raw) {
+	const source = raw && typeof raw === "object" ? raw : {};
+	const rawSteps = Array.isArray(source.steps)
+		? source.steps
+		: (source.steps && typeof source.steps === "object" ? Object.values(source.steps) : []);
+	return {
+		loop: source.loop !== false,
+		steps: Array.from({ length: XYZ_MUSIC_ARRANGEMENT_STEP_COUNT }, (_, index) => normalizeXyzMusicArrangementStep(rawSteps[index])),
+	};
+}
+
 function normalizeXyzMusicDawState(raw) {
 	const source = raw && typeof raw === "object" ? raw : {};
 	const scenesSource = source.scenes && typeof source.scenes === "object" ? source.scenes : {};
@@ -1252,6 +1522,7 @@ function normalizeXyzMusicDawState(raw) {
 			XYZ_MUSIC_SCENE_KEYS.map((key) => [key, normalizeXyzMusicScene(scenesSource[key])])
 		),
 		gestureLoop: normalizeXyzMusicGestureLoop(source.gestureLoop),
+		arrangement: normalizeXyzMusicArrangement(source.arrangement),
 	};
 }
 
@@ -1276,13 +1547,13 @@ function writeXyzMusicDawState(state) {
 
 function migrateAudioDefaults() {
 	try {
-		if (window.localStorage.getItem(AUDIO_DEFAULTS_VERSION_KEY) === "3") {
+		if (window.localStorage.getItem(AUDIO_DEFAULTS_VERSION_KEY) === "4") {
 			return;
 		}
 
 		const storedVolume = Number(window.localStorage.getItem(DEVICE_VOLUME_LEVEL_KEY) || "");
-		if (!Number.isFinite(storedVolume) || storedVolume <= 0.82) {
-			window.localStorage.setItem(DEVICE_VOLUME_LEVEL_KEY, "0.94");
+		if (!Number.isFinite(storedVolume) || storedVolume <= 0.82 || Math.abs(storedVolume - 0.94) < 0.001) {
+			window.localStorage.setItem(DEVICE_VOLUME_LEVEL_KEY, "0.98");
 		}
 
 		if (!window.localStorage.getItem(XYZ_MUSIC_SETTINGS_KEY)) {
@@ -1296,10 +1567,25 @@ function migrateAudioDefaults() {
 				XYZ_MUSIC_DAW_KEY,
 				JSON.stringify(normalizeXyzMusicDawState())
 			);
+		} else {
+			try {
+				const parsedDaw = JSON.parse(window.localStorage.getItem(XYZ_MUSIC_DAW_KEY) || "{}");
+				const masterVolume = Number(parsedDaw?.masterVolume);
+				if (!Number.isFinite(masterVolume) || Math.abs(masterVolume - 0.94) < 0.001) {
+					const migratedDaw = normalizeXyzMusicDawState(parsedDaw);
+					migratedDaw.masterVolume = 0.98;
+					window.localStorage.setItem(XYZ_MUSIC_DAW_KEY, JSON.stringify(migratedDaw));
+				}
+			} catch {
+				window.localStorage.setItem(
+					XYZ_MUSIC_DAW_KEY,
+					JSON.stringify(normalizeXyzMusicDawState())
+				);
+			}
 		}
 		window.localStorage.removeItem(XYZ_VOICE_ECHO_KEY);
 
-		window.localStorage.setItem(AUDIO_DEFAULTS_VERSION_KEY, "3");
+		window.localStorage.setItem(AUDIO_DEFAULTS_VERSION_KEY, "4");
 	} catch {
 		// Ignore storage migration failures.
 	}
@@ -5741,6 +6027,21 @@ function initXyzCamera() {
 	const musicDawGestureRecordButton = document.querySelector("[data-xyz-daw-gesture-record]");
 	const musicDawGesturePlayButton = document.querySelector("[data-xyz-daw-gesture-play]");
 	const musicDawGestureClearButton = document.querySelector("[data-xyz-daw-gesture-clear]");
+	const musicDawArrangementStateNode = document.querySelector("[data-xyz-daw-arrangement-state]");
+	const musicDawArrangementCopyNode = document.querySelector("[data-xyz-daw-arrangement-copy]");
+	const musicDawArrangementPlayButton = document.querySelector("[data-xyz-daw-arrangement-play]");
+	const musicDawArrangementBuildButton = document.querySelector("[data-xyz-daw-arrangement-build]");
+	const musicDawArrangementClearButton = document.querySelector("[data-xyz-daw-arrangement-clear]");
+	const musicDawArrangementLoopInput = document.querySelector("[data-xyz-daw-arrangement-loop]");
+	const musicDawPatternStateNode = document.querySelector("[data-xyz-daw-pattern-state]");
+	const musicDawPatternCopyNode = document.querySelector("[data-xyz-daw-pattern-copy]");
+	const musicDawPatternEditorStateNode = document.querySelector("[data-xyz-daw-pattern-editor-state]");
+	const musicDawPatternEditorCopyNode = document.querySelector("[data-xyz-daw-pattern-editor-copy]");
+	const musicDawPatternAccentButton = document.querySelector("[data-xyz-daw-pattern-accent]");
+	const musicDawPatternProbabilitySelect = document.querySelector("[data-xyz-daw-pattern-probability]");
+	const musicDawPatternRatchetSelect = document.querySelector("[data-xyz-daw-pattern-ratchet]");
+	const musicPatternPresetButtons = Array.from(document.querySelectorAll("[data-xyz-daw-pattern-preset]"));
+	const musicPatternStepButtons = Array.from(document.querySelectorAll("[data-xyz-daw-pattern-step]"));
 	const musicTrackCards = Object.fromEntries(
 		XYZ_MUSIC_TRACK_KEYS.map((key) => [key, document.querySelector(`[data-xyz-track-card="${key}"]`)])
 	);
@@ -5767,6 +6068,18 @@ function initXyzCamera() {
 	);
 	const musicSceneStoreButtons = Object.fromEntries(
 		XYZ_MUSIC_SCENE_KEYS.map((key) => [key, document.querySelector(`[data-xyz-daw-scene-store="${key}"]`)])
+	);
+	const musicArrangementCards = Array.from({ length: XYZ_MUSIC_ARRANGEMENT_STEP_COUNT }, (_, index) => document.querySelector(`[data-xyz-daw-arrangement-card="${index}"]`));
+	const musicArrangementStateNodes = Array.from({ length: XYZ_MUSIC_ARRANGEMENT_STEP_COUNT }, (_, index) => document.querySelector(`[data-xyz-daw-arrangement-step-state="${index}"]`));
+	const musicArrangementSceneSelects = Array.from({ length: XYZ_MUSIC_ARRANGEMENT_STEP_COUNT }, (_, index) => document.querySelector(`[data-xyz-daw-arrangement-scene="${index}"]`));
+	const musicArrangementBarsSelects = Array.from({ length: XYZ_MUSIC_ARRANGEMENT_STEP_COUNT }, (_, index) => document.querySelector(`[data-xyz-daw-arrangement-bars="${index}"]`));
+	const musicPatternStepButtonsByTrack = Object.fromEntries(
+		XYZ_MUSIC_PATTERN_KEYS.map((key) => [
+			key,
+			musicPatternStepButtons
+				.filter((button) => button instanceof HTMLElement && button.dataset.xyzDawPatternTrack === key)
+				.sort((left, right) => Number(left.dataset.xyzDawPatternIndex || 0) - Number(right.dataset.xyzDawPatternIndex || 0)),
+		])
 	);
 	const instrumentRoot = document.querySelector("[data-xyz-instrument-root]");
 	const instrumentViewNode = document.querySelector("[data-xyz-instrument-view]");
@@ -5922,6 +6235,16 @@ function initXyzCamera() {
 	let musicGesturePlaybackFrame = 0;
 	let musicGestureDraftPoints = [];
 	let musicActiveSceneKey = "";
+	let musicArrangementMode = "idle";
+	let musicArrangementStartedAt = 0;
+	let musicArrangementLastStepIndex = -1;
+	let musicArrangementLastCycleIndex = -1;
+	let musicArrangementSyncInFlight = false;
+	let musicPatternSchedulerTimer = 0;
+	let musicPatternNextStepTime = 0;
+	let musicPatternNextStepIndex = 0;
+	let musicPatternCurrentStepIndex = -1;
+	let musicPatternSelection = { trackKey: "kick", stepIndex: 0 };
 	let wakeLock = null;
 	let lightSensor = null;
 	let orientationBound = false;
@@ -6038,8 +6361,8 @@ function initXyzCamera() {
 			? "clair ouvert"
 			: (lightTone < 0.32 ? "ombre douce" : "lueur mixte");
 		const stageCopy = cameraFacingMode === "environment"
-			? "Retourne la caméra et laisse le dehors jouer. Terre tient l horizon, Mine taille un détail, une route ou un reflet. Flèches ou glisse pour garder la prise. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle."
-			: "Approche visage, mains ou torse. Terre pose le fond, Mine ouvre l accent, puis l air et la lumière prennent le relais. WASD ou glisse si tu veux jouer sans quitter l écran. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle.";
+			? "Retourne la caméra et laisse le dehors jouer. Terre tient l horizon, Mine taille un détail, une route ou un reflet. Flèches ou glisse pour garder la prise. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage."
+			: "Approche visage, mains ou torse. Terre pose le fond, Mine ouvre l accent, puis l air et la lumière prennent le relais. WASD ou glisse si tu veux jouer sans quitter l écran. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage.";
 		let worldCopy = "Le monde reste un instrument: visage, corps, lumière, paysage et toucher peuvent tous nourrir le tore.";
 		if (cameraFacingMode === "environment") {
 			worldCopy = touchEnergy > 0.24
@@ -6131,6 +6454,7 @@ function initXyzCamera() {
 		if (!(instrumentStage instanceof HTMLElement)) {
 			return;
 		}
+		releaseMusicArrangementControl();
 		if (musicGestureMode === "playing") {
 			stopMusicGesturePlayback();
 		}
@@ -6163,6 +6487,7 @@ function initXyzCamera() {
 	};
 
 	const pulseInstrumentKeyboard = (hand, deltaX = 0, deltaY = 0) => {
+		releaseMusicArrangementControl();
 		if (musicGestureMode === "playing") {
 			stopMusicGesturePlayback();
 		}
@@ -6454,6 +6779,80 @@ function initXyzCamera() {
 		});
 		return active.length ? active.join(" + ") : "drone nu";
 	};
+	const getMusicPatternState = () => musicDawState.pattern || normalizeXyzMusicDawState().pattern;
+	const normalizeMusicPatternSelection = (selection = musicPatternSelection) => {
+		const trackKey = XYZ_MUSIC_PATTERN_KEYS.includes(selection?.trackKey) ? selection.trackKey : "kick";
+		const stepIndex = clampNumber(Math.round(Number(selection?.stepIndex) || 0), 0, XYZ_MUSIC_PATTERN_STEP_COUNT - 1);
+		return { trackKey, stepIndex };
+	};
+	const setMusicPatternSelection = (trackKey, stepIndex) => {
+		musicPatternSelection = normalizeMusicPatternSelection({ trackKey, stepIndex });
+		return musicPatternSelection;
+	};
+	const resolveSelectedMusicPatternStep = () => {
+		const pattern = getMusicPatternState();
+		const selection = normalizeMusicPatternSelection(musicPatternSelection);
+		const selectedTrackSteps = Array.isArray(pattern.steps?.[selection.trackKey]) ? pattern.steps[selection.trackKey] : [];
+		if (selectedTrackSteps[selection.stepIndex] !== undefined) {
+			musicPatternSelection = selection;
+			return selection;
+		}
+		for (const trackKey of XYZ_MUSIC_PATTERN_KEYS) {
+			const steps = Array.isArray(pattern.steps?.[trackKey]) ? pattern.steps[trackKey] : [];
+			const activeIndex = steps.findIndex(Boolean);
+			if (activeIndex >= 0) {
+				musicPatternSelection = { trackKey, stepIndex: activeIndex };
+				return musicPatternSelection;
+			}
+		}
+		musicPatternSelection = { trackKey: "kick", stepIndex: 0 };
+		return musicPatternSelection;
+	};
+	const readMusicPatternStepMeta = (trackKey, stepIndex, pattern = getMusicPatternState()) => {
+		const normalizedTrackKey = XYZ_MUSIC_PATTERN_KEYS.includes(trackKey) ? trackKey : "kick";
+		const normalizedStepIndex = clampNumber(Math.round(Number(stepIndex) || 0), 0, XYZ_MUSIC_PATTERN_STEP_COUNT - 1);
+		return {
+			trackKey: normalizedTrackKey,
+			stepIndex: normalizedStepIndex,
+			enabled: Boolean(pattern.steps?.[normalizedTrackKey]?.[normalizedStepIndex]),
+			accent: Boolean(pattern.accents?.[normalizedTrackKey]?.[normalizedStepIndex]),
+			probability: Number(pattern.probability?.[normalizedTrackKey]?.[normalizedStepIndex]) || 1,
+			ratchet: Math.round(Number(pattern.ratchet?.[normalizedTrackKey]?.[normalizedStepIndex]) || 1),
+		};
+	};
+	const patchMusicPatternStepMeta = (trackKey, stepIndex, patch = {}) => {
+		const pattern = normalizeXyzMusicPattern(musicDawState.pattern);
+		const selection = normalizeMusicPatternSelection({ trackKey, stepIndex });
+		const stepMeta = readMusicPatternStepMeta(selection.trackKey, selection.stepIndex, pattern);
+		const nextEnabled = patch.enabled === undefined ? stepMeta.enabled : Boolean(patch.enabled);
+		pattern.steps[selection.trackKey][selection.stepIndex] = nextEnabled;
+		pattern.accents[selection.trackKey][selection.stepIndex] = patch.accent === undefined ? stepMeta.accent : Boolean(patch.accent);
+		const nextProbability = Number(patch.probability === undefined ? stepMeta.probability : patch.probability);
+		pattern.probability[selection.trackKey][selection.stepIndex] = XYZ_MUSIC_PATTERN_PROBABILITY_OPTIONS.includes(nextProbability) ? nextProbability : 1;
+		const nextRatchet = Math.round(Number(patch.ratchet === undefined ? stepMeta.ratchet : patch.ratchet));
+		pattern.ratchet[selection.trackKey][selection.stepIndex] = XYZ_MUSIC_PATTERN_RATCHET_OPTIONS.includes(nextRatchet) ? nextRatchet : 1;
+		pattern.preset = inferXyzMusicPatternPresetKey(pattern);
+		musicDawState.pattern = pattern;
+		musicPatternSelection = selection;
+		persistMusicDawState();
+		resetMusicPatternSequencer(audioContext);
+		renderMusicDesk();
+		updateMotionVoice();
+		return true;
+	};
+	const countMusicPatternSteps = (pattern = getMusicPatternState()) => XYZ_MUSIC_PATTERN_KEYS.reduce(
+		(sum, key) => sum + ((pattern.steps?.[key] || []).filter(Boolean).length),
+		0
+	);
+	const hasActiveMusicPattern = (pattern = getMusicPatternState()) => countMusicPatternSteps(pattern) > 0;
+	const formatMusicPatternLabel = (pattern = getMusicPatternState()) => {
+		const presetKey = inferXyzMusicPatternPresetKey(pattern);
+		if (presetKey === "custom") {
+			return "motif libre";
+		}
+		const meta = XYZ_MUSIC_PATTERN_PRESET_META[presetKey] || XYZ_MUSIC_PATTERN_PRESET_META.clear;
+		return presetKey === "clear" ? "aucun motif" : meta.label;
+	};
 	const renderMusicControls = () => {
 		if (musicScaleSelect instanceof HTMLSelectElement) {
 			musicScaleSelect.value = musicSettings.scale;
@@ -6472,6 +6871,7 @@ function initXyzCamera() {
 		setSensorText(musicPercussionNode, formatPercussionLabel());
 		document.body.dataset.musicInstrument = musicSettings.instrument;
 		document.body.dataset.musicPercussion = activePercussionKeys().length ? activePercussionKeys().join("-") : "none";
+		document.body.dataset.musicPattern = inferXyzMusicPatternPresetKey(getMusicPatternState());
 	};
 
 	const persistMusicDawState = () => {
@@ -6502,6 +6902,7 @@ function initXyzCamera() {
 		countInBars: musicDawState.countInBars,
 		masterVolume: musicDawState.masterVolume,
 		tracks: normalizeXyzMusicTrackSet(musicDawState.tracks),
+		pattern: normalizeXyzMusicPattern(musicDawState.pattern),
 	});
 	const formatMusicDuration = (valueMs) => {
 		if (!Number.isFinite(valueMs) || valueMs <= 0) {
@@ -6567,6 +6968,286 @@ function initXyzCamera() {
 		const loop = musicDawState.gestureLoop;
 		return loop && Array.isArray(loop.points) && loop.points.length >= 2 ? loop : null;
 	};
+	const getMusicArrangementState = () => musicDawState.arrangement || normalizeXyzMusicDawState().arrangement;
+	const getMusicArrangementSteps = () => {
+		const arrangement = getMusicArrangementState();
+		return Array.isArray(arrangement.steps) ? arrangement.steps : [];
+	};
+	const getFilledMusicArrangementSteps = () => getMusicArrangementSteps()
+		.map((step, index) => {
+			const normalized = normalizeXyzMusicArrangementStep(step);
+			return {
+				...normalized,
+				index,
+				scene: normalized.sceneKey ? musicDawState.scenes[normalized.sceneKey] : null,
+			};
+		})
+		.filter((step) => step.sceneKey);
+	const stopMusicArrangementPlayback = ({ render = true } = {}) => {
+		musicArrangementMode = "idle";
+		musicArrangementStartedAt = 0;
+		musicArrangementLastStepIndex = -1;
+		musicArrangementLastCycleIndex = -1;
+		musicArrangementSyncInFlight = false;
+		if (render) {
+			renderMusicDesk();
+		}
+	};
+	const releaseMusicArrangementControl = () => {
+		if (musicArrangementMode !== "playing") {
+			return false;
+		}
+		stopMusicArrangementPlayback();
+		return true;
+	};
+	const buildDefaultMusicArrangement = () => {
+		const preferredSceneKeys = XYZ_MUSIC_SCENE_KEYS.filter((sceneKey) => musicDawState.scenes[sceneKey]);
+		const sequence = preferredSceneKeys.length ? preferredSceneKeys : XYZ_MUSIC_SCENE_KEYS;
+		const steps = Array.from({ length: XYZ_MUSIC_ARRANGEMENT_STEP_COUNT }, (_, index) => {
+			const sceneKey = sequence[index] || "";
+			return normalizeXyzMusicArrangementStep({
+				sceneKey,
+				bars: index < Math.min(sequence.length, 4) ? 4 : 2,
+			});
+		});
+		musicDawState.arrangement = normalizeXyzMusicArrangement({
+			loop: true,
+			steps,
+		});
+		persistMusicDawState();
+		renderMusicDesk();
+		pulseDeviceHaptics("soft");
+		return musicDawState.arrangement;
+	};
+	const clearMusicArrangement = () => {
+		stopMusicArrangementPlayback({ render: false });
+		musicDawState.arrangement = normalizeXyzMusicArrangement();
+		persistMusicDawState();
+		renderMusicDesk();
+	};
+	const getMusicArrangementRuntimeSnapshot = () => {
+		const arrangement = getMusicArrangementState();
+		const steps = getFilledMusicArrangementSteps();
+		const totalBars = steps.reduce((sum, step) => sum + step.bars, 0);
+		const totalDurationMs = totalBars * 4 * getMusicBeatDurationMs();
+		if (!steps.length || totalDurationMs <= 0) {
+			return {
+				ready: false,
+				active: false,
+				loop: arrangement.loop !== false,
+				steps,
+				totalBars,
+				totalDurationMs,
+				stepIndex: -1,
+				step: null,
+				stepProgressMs: 0,
+				stepDurationMs: 0,
+				cycle: 0,
+				complete: false,
+			};
+		}
+		if (musicArrangementMode !== "playing" || !musicArrangementStartedAt) {
+			return {
+				ready: true,
+				active: false,
+				loop: arrangement.loop !== false,
+				steps,
+				totalBars,
+				totalDurationMs,
+				stepIndex: -1,
+				step: null,
+				stepProgressMs: 0,
+				stepDurationMs: steps[0].bars * 4 * getMusicBeatDurationMs(),
+				cycle: 0,
+				complete: false,
+			};
+		}
+		const elapsedMs = Math.max(0, performance.now() - musicArrangementStartedAt);
+		const loopEnabled = arrangement.loop !== false;
+		const complete = !loopEnabled && elapsedMs >= totalDurationMs;
+		const boundedElapsedMs = complete
+			? Math.max(0, totalDurationMs - 1)
+			: (loopEnabled ? (elapsedMs % totalDurationMs) : Math.min(elapsedMs, Math.max(0, totalDurationMs - 1)));
+		const cycle = totalDurationMs > 0 ? Math.floor(elapsedMs / totalDurationMs) : 0;
+		let cursorMs = 0;
+		let stepIndex = 0;
+		for (let index = 0; index < steps.length; index += 1) {
+			const stepDurationMs = steps[index].bars * 4 * getMusicBeatDurationMs();
+			if (boundedElapsedMs < cursorMs + stepDurationMs || index === steps.length - 1) {
+				stepIndex = index;
+				break;
+			}
+			cursorMs += stepDurationMs;
+		}
+		const step = steps[stepIndex] || null;
+		const stepDurationMs = step ? step.bars * 4 * getMusicBeatDurationMs() : 0;
+		return {
+			ready: true,
+			active: true,
+			loop: loopEnabled,
+			steps,
+			totalBars,
+			totalDurationMs,
+			stepIndex,
+			step,
+			stepProgressMs: Math.max(0, boundedElapsedMs - cursorMs),
+			stepDurationMs,
+			cycle,
+			complete,
+		};
+	};
+	const stopMusicPatternScheduler = () => {
+		if (musicPatternSchedulerTimer) {
+			window.clearInterval(musicPatternSchedulerTimer);
+			musicPatternSchedulerTimer = 0;
+		}
+		musicPatternNextStepTime = 0;
+		musicPatternNextStepIndex = 0;
+		musicPatternCurrentStepIndex = -1;
+	};
+	const resetMusicPatternSequencer = (context = audioContext) => {
+		if (!context) {
+			musicPatternNextStepTime = 0;
+			musicPatternNextStepIndex = 0;
+			musicPatternCurrentStepIndex = -1;
+			return;
+		}
+		musicPatternNextStepTime = context.currentTime + 0.045;
+		musicPatternNextStepIndex = 0;
+		musicPatternCurrentStepIndex = -1;
+	};
+	const applyMusicPatternPreset = (presetKey) => {
+		musicDawState.pattern = buildMusicPatternPreset(presetKey);
+		resolveSelectedMusicPatternStep();
+		persistMusicDawState();
+		resetMusicPatternSequencer(audioContext);
+		renderMusicDesk();
+		updateMotionVoice();
+	};
+	const clearMusicPattern = () => {
+		applyMusicPatternPreset("clear");
+	};
+	const toggleMusicPatternStep = (trackKey, stepIndex) => {
+		if (!XYZ_MUSIC_PATTERN_KEYS.includes(trackKey)) {
+			return false;
+		}
+		const stepMeta = readMusicPatternStepMeta(trackKey, stepIndex);
+		return patchMusicPatternStepMeta(trackKey, stepIndex, { enabled: !stepMeta.enabled });
+	};
+	const toggleMusicPatternAccent = (trackKey, stepIndex) => {
+		const stepMeta = readMusicPatternStepMeta(trackKey, stepIndex);
+		return patchMusicPatternStepMeta(trackKey, stepIndex, {
+			enabled: true,
+			accent: !stepMeta.accent,
+		});
+	};
+	const cycleMusicPatternProbability = (trackKey, stepIndex, direction = 1) => {
+		const stepMeta = readMusicPatternStepMeta(trackKey, stepIndex);
+		const currentIndex = Math.max(0, XYZ_MUSIC_PATTERN_PROBABILITY_OPTIONS.indexOf(stepMeta.probability));
+		const nextIndex = (currentIndex + direction + XYZ_MUSIC_PATTERN_PROBABILITY_OPTIONS.length) % XYZ_MUSIC_PATTERN_PROBABILITY_OPTIONS.length;
+		return patchMusicPatternStepMeta(trackKey, stepIndex, {
+			enabled: true,
+			probability: XYZ_MUSIC_PATTERN_PROBABILITY_OPTIONS[nextIndex],
+		});
+	};
+	const cycleMusicPatternRatchet = (trackKey, stepIndex, direction = 1) => {
+		const stepMeta = readMusicPatternStepMeta(trackKey, stepIndex);
+		const currentIndex = Math.max(0, XYZ_MUSIC_PATTERN_RATCHET_OPTIONS.indexOf(stepMeta.ratchet));
+		const nextIndex = (currentIndex + direction + XYZ_MUSIC_PATTERN_RATCHET_OPTIONS.length) % XYZ_MUSIC_PATTERN_RATCHET_OPTIONS.length;
+		return patchMusicPatternStepMeta(trackKey, stepIndex, {
+			enabled: true,
+			ratchet: XYZ_MUSIC_PATTERN_RATCHET_OPTIONS[nextIndex],
+		});
+	};
+	const scheduleMusicPatternStep = (context, stepIndex, startAt) => {
+		const pattern = getMusicPatternState();
+		if (!hasActiveMusicPattern(pattern) || getMusicTrackMix("percu") <= 0 || document.hidden) {
+			return false;
+		}
+		const deviceProfile = readDeviceAudioProfile();
+		if (deviceProfile.muted || !isMembraneAudible()) {
+			return false;
+		}
+		const normalizedStepIndex = ((stepIndex % XYZ_MUSIC_PATTERN_STEP_COUNT) + XYZ_MUSIC_PATTERN_STEP_COUNT) % XYZ_MUSIC_PATTERN_STEP_COUNT;
+		const baseAccent = normalizedStepIndex % 4 === 0 ? 0.84 : ((normalizedStepIndex % 2) === 0 ? 0.6 : 0.48);
+		const stepDurationSeconds = (getMusicBeatDurationMs() / 1000) / 4;
+		const scheduleTrackStep = (trackKey, triggerFn, intensityMultiplier = 1) => {
+			if (!musicSettings.percussion[trackKey] || !pattern.steps?.[trackKey]?.[normalizedStepIndex]) {
+				return false;
+			}
+			const probability = Number(pattern.probability?.[trackKey]?.[normalizedStepIndex]) || 1;
+			if (Math.random() > clampNumber(probability, 0, 1)) {
+				return false;
+			}
+			const ratchet = Math.max(1, Math.round(Number(pattern.ratchet?.[trackKey]?.[normalizedStepIndex]) || 1));
+			const accentBoost = pattern.accents?.[trackKey]?.[normalizedStepIndex] ? 1.22 : 1;
+			let scheduled = false;
+			for (let repeatIndex = 0; repeatIndex < ratchet; repeatIndex += 1) {
+				const repeatTime = startAt + ((stepDurationSeconds / ratchet) * repeatIndex);
+				const repeatDecay = repeatIndex === 0 ? 1 : Math.max(0.58, 1 - (repeatIndex * 0.14));
+				const intensity = clampNumber(baseAccent * accentBoost * intensityMultiplier * repeatDecay, 0.18, 1);
+				scheduled = triggerFn(context, deviceProfile, intensity, repeatTime, { bypassGap: true }) || scheduled;
+			}
+			return scheduled;
+		};
+		let played = false;
+		played = scheduleTrackStep("kick", triggerKick, 1) || played;
+		played = scheduleTrackStep("snare", triggerSnare, 0.92) || played;
+		played = scheduleTrackStep("hihat", triggerHiHat, 0.78) || played;
+		return played;
+	};
+	const advanceMusicPatternScheduler = (context) => {
+		musicPatternCurrentStepIndex = musicPatternNextStepIndex % XYZ_MUSIC_PATTERN_STEP_COUNT;
+		const stepDurationSeconds = (getMusicBeatDurationMs() / 1000) / 4;
+		const stepInBeat = musicPatternNextStepIndex % 4;
+		const swingOffset = (stepInBeat === 1 || stepInBeat === 3)
+			? stepDurationSeconds * getMusicSwingRatio() * 0.36
+			: 0;
+		const startAt = musicPatternNextStepTime + swingOffset;
+		scheduleMusicPatternStep(context, musicPatternNextStepIndex, startAt);
+		musicPatternNextStepTime += stepDurationSeconds;
+		musicPatternNextStepIndex = (musicPatternNextStepIndex + 1) % XYZ_MUSIC_PATTERN_STEP_COUNT;
+	};
+	const syncMusicPatternScheduler = async () => {
+		const pattern = getMusicPatternState();
+		const shouldRun = isMembraneAudible()
+			&& hasActiveMusicPattern(pattern)
+			&& activePercussionKeys().length > 0
+			&& getMusicTrackMix("percu") > 0;
+		if (!shouldRun) {
+			stopMusicPatternScheduler();
+			renderMusicDesk();
+			return false;
+		}
+		const context = await ensureReactiveAudioContext();
+		if (!context) {
+			return false;
+		}
+		ensureMusicMasterBus(context);
+		if (!musicPatternNextStepTime) {
+			resetMusicPatternSequencer(context);
+		}
+		while (musicPatternNextStepTime && musicPatternNextStepTime < context.currentTime + 0.11) {
+			advanceMusicPatternScheduler(context);
+		}
+		if (!musicPatternSchedulerTimer) {
+			musicPatternSchedulerTimer = window.setInterval(() => {
+				if (!audioContext) {
+					stopMusicPatternScheduler();
+					return;
+				}
+				if (!isMembraneAudible() || !hasActiveMusicPattern(getMusicPatternState()) || getMusicTrackMix("percu") <= 0) {
+					stopMusicPatternScheduler();
+					renderMusicDesk();
+					return;
+				}
+				while (musicPatternNextStepTime && musicPatternNextStepTime < audioContext.currentTime + 0.11) {
+					advanceMusicPatternScheduler(audioContext);
+				}
+			}, 36);
+		}
+		return true;
+	};
 	const clearMusicGestureTimer = () => {
 		if (musicGestureRecordTimer) {
 			window.clearInterval(musicGestureRecordTimer);
@@ -6610,6 +7291,7 @@ function initXyzCamera() {
 		musicDawState.countInBars = normalized.countInBars;
 		musicDawState.masterVolume = normalized.masterVolume;
 		musicDawState.tracks = normalized.tracks;
+		musicDawState.pattern = normalized.pattern;
 	};
 	const captureCurrentMusicSceneSnapshot = (sceneKey) => {
 		const meta = XYZ_MUSIC_SCENE_META[sceneKey] || { label: sceneKey };
@@ -6786,7 +7468,77 @@ function initXyzCamera() {
 		}
 		await startMusicGesturePlayback();
 	};
-	const recallMusicScene = async (sceneKey) => {
+	const syncMusicArrangementPlayback = async ({ force = false } = {}) => {
+		if (musicArrangementMode !== "playing" || musicArrangementSyncInFlight) {
+			return false;
+		}
+		const snapshot = getMusicArrangementRuntimeSnapshot();
+		if (!snapshot.ready) {
+			stopMusicArrangementPlayback();
+			return false;
+		}
+		if (
+			!force
+			&& snapshot.stepIndex === musicArrangementLastStepIndex
+			&& snapshot.cycle === musicArrangementLastCycleIndex
+		) {
+			if (snapshot.complete && !snapshot.loop) {
+				stopMusicArrangementPlayback();
+			}
+			return true;
+		}
+		musicArrangementLastStepIndex = snapshot.stepIndex;
+		musicArrangementLastCycleIndex = snapshot.cycle;
+		musicArrangementSyncInFlight = true;
+		try {
+			if (snapshot.step?.sceneKey && snapshot.step.scene) {
+				await recallMusicScene(snapshot.step.sceneKey, {
+					stopGesture: true,
+					emitHaptics: false,
+				});
+			}
+		} finally {
+			musicArrangementSyncInFlight = false;
+		}
+		if (snapshot.complete && !snapshot.loop) {
+			stopMusicArrangementPlayback();
+		} else {
+			renderMusicDesk();
+		}
+		return true;
+	};
+	const startMusicArrangementPlayback = async () => {
+		const snapshot = getMusicArrangementRuntimeSnapshot();
+		const playableSteps = snapshot.steps.filter((step) => step.sceneKey && step.scene);
+		if (!playableSteps.length) {
+			renderMusicDesk();
+			return false;
+		}
+		if (!isMembraneAudible()) {
+			await startDemoMembrane();
+		} else {
+			await ensureMotionVoice().catch(() => false);
+		}
+		stopMusicGesturePlayback();
+		musicArrangementMode = "playing";
+		musicArrangementStartedAt = performance.now();
+		musicArrangementLastStepIndex = -1;
+		musicArrangementLastCycleIndex = -1;
+		musicPlaybackStartedAt = musicArrangementStartedAt;
+		syncMusicTransportLoop();
+		await syncMusicArrangementPlayback({ force: true });
+		renderMusicDesk();
+		pulseDeviceHaptics("medium");
+		return true;
+	};
+	const toggleMusicArrangementPlayback = async () => {
+		if (musicArrangementMode === "playing") {
+			stopMusicArrangementPlayback();
+			return;
+		}
+		await startMusicArrangementPlayback();
+	};
+	const recallMusicScene = async (sceneKey, { stopGesture = true, emitHaptics = true } = {}) => {
 		const scene = musicDawState.scenes[sceneKey];
 		if (!scene) {
 			return false;
@@ -6794,7 +7546,9 @@ function initXyzCamera() {
 		if (!isMembraneAudible()) {
 			await startDemoMembrane();
 		}
-		stopMusicGesturePlayback();
+		if (stopGesture) {
+			stopMusicGesturePlayback();
+		}
 		musicActiveSceneKey = sceneKey;
 		musicSettings.scale = scene.music.scale;
 		musicSettings.instrument = scene.music.instrument;
@@ -6818,11 +7572,15 @@ function initXyzCamera() {
 		renderMusicControls();
 		applyMotionInstrumentProfile();
 		applyMusicMixState();
+		resetMusicPatternSequencer(audioContext);
+		void syncMusicPatternScheduler();
 		renderMusicDesk();
 		syncMembraneReactiveState();
 		updateMotionVoice();
 		cueMotionVoice(1.08);
-		pulseDeviceHaptics("medium");
+		if (emitHaptics) {
+			pulseDeviceHaptics("medium");
+		}
 		return true;
 	};
 	const renderMusicTakes = () => {
@@ -6906,9 +7664,12 @@ function initXyzCamera() {
 		}
 	};
 	const syncMusicTransportLoop = () => {
-		const needsLoop = isMembraneAudible() || musicRecordingState !== "idle";
+		const needsLoop = isMembraneAudible() || musicRecordingState !== "idle" || musicArrangementMode === "playing";
 		if (needsLoop && !musicTransportTimer) {
+			void syncMusicPatternScheduler();
 			musicTransportTimer = window.setInterval(() => {
+				void syncMusicArrangementPlayback();
+				void syncMusicPatternScheduler();
 				renderMusicDesk();
 			}, 140);
 		}
@@ -6921,8 +7682,11 @@ function initXyzCamera() {
 			return;
 		}
 		const transport = getMusicTransportSnapshot();
+		const arrangementSnapshot = getMusicArrangementRuntimeSnapshot();
 		const mediaRecorderSupported = typeof window.MediaRecorder === "function";
 		const storedGestureLoop = getStoredMusicGestureLoop();
+		const hasArrangementSteps = arrangementSnapshot.steps.length > 0;
+		const hasPlayableArrangementSteps = arrangementSnapshot.steps.some((step) => step.scene);
 		const recordingElapsedMs = musicRecordingState === "recording" && musicRecordingStartedAt
 			? Math.max(0, performance.now() - musicRecordingStartedAt)
 			: 0;
@@ -6934,6 +7698,8 @@ function initXyzCamera() {
 			sessionStatus = `rec ${formatMusicDuration(recordingElapsedMs)}`;
 		} else if (musicRecordingState === "count-in") {
 			sessionStatus = countInProgress ? `count-in ${countInProgress}` : "count-in";
+		} else if (musicArrangementMode === "playing" && arrangementSnapshot.step) {
+			sessionStatus = `voyage ${arrangementSnapshot.stepIndex + 1}/${arrangementSnapshot.steps.length}`;
 		} else if (isMembraneDemo()) {
 			sessionStatus = "atelier local";
 		} else if (isMembraneLive()) {
@@ -6970,6 +7736,20 @@ function initXyzCamera() {
 		if (musicDawGestureClearButton instanceof HTMLElement) {
 			musicDawGestureClearButton.toggleAttribute("disabled", !storedGestureLoop && musicGestureMode !== "recording");
 		}
+		if (musicDawArrangementPlayButton instanceof HTMLElement) {
+			musicDawArrangementPlayButton.setAttribute("aria-pressed", musicArrangementMode === "playing" ? "true" : "false");
+			musicDawArrangementPlayButton.textContent = musicArrangementMode === "playing" ? "stop voyage" : "jouer voyage";
+			musicDawArrangementPlayButton.toggleAttribute("disabled", !hasPlayableArrangementSteps);
+		}
+		if (musicDawArrangementBuildButton instanceof HTMLElement) {
+			musicDawArrangementBuildButton.toggleAttribute("disabled", false);
+		}
+		if (musicDawArrangementClearButton instanceof HTMLElement) {
+			musicDawArrangementClearButton.toggleAttribute("disabled", !hasArrangementSteps);
+		}
+		if (musicDawArrangementLoopInput instanceof HTMLInputElement) {
+			musicDawArrangementLoopInput.checked = arrangementSnapshot.loop;
+		}
 		if (musicDawBpmInput instanceof HTMLInputElement) {
 			musicDawBpmInput.value = String(musicDawState.bpm);
 		}
@@ -6991,7 +7771,10 @@ function initXyzCamera() {
 			const baseClock = `tempo ${musicDawState.bpm} bpm · boucle ${musicDawState.loopBars} mesures`;
 			if (transport.active) {
 				const recordingChunk = musicRecordingState === "recording" ? ` · rec ${formatMusicDuration(recordingElapsedMs)}` : "";
-				musicDawClockNode.textContent = `${baseClock} · mesure ${transport.measure} · temps ${transport.beat}${recordingChunk}`;
+				const arrangementChunk = musicArrangementMode === "playing" && arrangementSnapshot.step
+					? ` · voyage ${arrangementSnapshot.stepIndex + 1}/${arrangementSnapshot.steps.length}`
+					: "";
+				musicDawClockNode.textContent = `${baseClock} · mesure ${transport.measure} · temps ${transport.beat}${arrangementChunk}${recordingChunk}`;
 			} else {
 				musicDawClockNode.textContent = `${baseClock} · mesure 1 · temps 1`;
 			}
@@ -7056,6 +7839,105 @@ function initXyzCamera() {
 				setSensorText(musicSceneStateNodes[key], "vide");
 			}
 		});
+		getMusicArrangementSteps().forEach((step, index) => {
+			const normalized = normalizeXyzMusicArrangementStep(step);
+			const scene = normalized.sceneKey ? musicDawState.scenes[normalized.sceneKey] : null;
+			const card = musicArrangementCards[index];
+			const stateNode = musicArrangementStateNodes[index];
+			const sceneSelect = musicArrangementSceneSelects[index];
+			const barsSelect = musicArrangementBarsSelects[index];
+			if (card instanceof HTMLElement) {
+				card.dataset.stepFilled = normalized.sceneKey ? "true" : "false";
+				card.dataset.stepActive = arrangementSnapshot.active && arrangementSnapshot.step?.index === index ? "true" : "false";
+			}
+			if (sceneSelect instanceof HTMLSelectElement) {
+				sceneSelect.value = normalized.sceneKey;
+			}
+			if (barsSelect instanceof HTMLSelectElement) {
+				barsSelect.value = String(normalized.bars);
+			}
+			if (normalized.sceneKey) {
+				const meta = XYZ_MUSIC_SCENE_META[normalized.sceneKey] || { shortLabel: normalized.sceneKey };
+				const stateText = scene
+					? `${meta.shortLabel} · ${normalized.bars} mesure${normalized.bars > 1 ? "s" : ""}`
+					: `${meta.shortLabel} · a memoriser`;
+				setSensorText(stateNode, stateText);
+			} else {
+				setSensorText(stateNode, "libre");
+			}
+		});
+		const pattern = getMusicPatternState();
+		const patternPresetKey = inferXyzMusicPatternPresetKey(pattern);
+		const patternStepCount = countMusicPatternSteps(pattern);
+		const patternSelection = resolveSelectedMusicPatternStep();
+		const selectedStepMeta = readMusicPatternStepMeta(patternSelection.trackKey, patternSelection.stepIndex, pattern);
+		musicPatternPresetButtons.forEach((button) => {
+			if (!(button instanceof HTMLElement)) {
+				return;
+			}
+			button.setAttribute("aria-pressed", button.dataset.xyzDawPatternPreset === patternPresetKey ? "true" : "false");
+		});
+		XYZ_MUSIC_PATTERN_KEYS.forEach((trackKey) => {
+			const trackButtons = musicPatternStepButtonsByTrack[trackKey] || [];
+			const trackSteps = Array.isArray(pattern.steps?.[trackKey]) ? pattern.steps[trackKey] : [];
+			trackButtons.forEach((button, index) => {
+				if (!(button instanceof HTMLElement)) {
+					return;
+				}
+				const enabled = Boolean(trackSteps[index]);
+				const accent = Boolean(pattern.accents?.[trackKey]?.[index]);
+				const probability = Number(pattern.probability?.[trackKey]?.[index]) || 1;
+				const ratchet = Math.max(1, Math.round(Number(pattern.ratchet?.[trackKey]?.[index]) || 1));
+				button.setAttribute("aria-pressed", enabled ? "true" : "false");
+				button.dataset.stepCurrent = musicPatternCurrentStepIndex === index ? "true" : "false";
+				button.dataset.stepSelected = patternSelection.trackKey === trackKey && patternSelection.stepIndex === index ? "true" : "false";
+				button.dataset.stepAccent = accent ? "true" : "false";
+				button.dataset.stepProbabilityTier = String(Math.round(clampNumber(probability, 0.25, 1) * 100));
+				button.dataset.stepRatchet = String(ratchet);
+				button.setAttribute(
+					"aria-label",
+					`${trackKey} pas ${index + 1} · ${enabled ? "actif" : "muet"} · ${accent ? "accent" : "simple"} · ${Math.round(probability * 100)}% · ratchet ${ratchet}x`
+				);
+			});
+		});
+		if (musicDawPatternAccentButton instanceof HTMLElement) {
+			musicDawPatternAccentButton.setAttribute("aria-pressed", selectedStepMeta.accent ? "true" : "false");
+			musicDawPatternAccentButton.textContent = selectedStepMeta.accent ? "accent actif" : "accent";
+		}
+		if (musicDawPatternProbabilitySelect instanceof HTMLSelectElement) {
+			musicDawPatternProbabilitySelect.value = String(selectedStepMeta.probability);
+		}
+		if (musicDawPatternRatchetSelect instanceof HTMLSelectElement) {
+			musicDawPatternRatchetSelect.value = String(selectedStepMeta.ratchet);
+		}
+		setSensorText(
+			musicDawPatternEditorStateNode,
+			`${selectedStepMeta.trackKey} · pas ${selectedStepMeta.stepIndex + 1}`
+		);
+		setSensorText(
+			musicDawPatternEditorCopyNode,
+			selectedStepMeta.enabled
+				? `${selectedStepMeta.accent ? "Accent ouvert" : "Accent neutre"} · ${Math.round(selectedStepMeta.probability * 100)}% de chance · ratchet ${selectedStepMeta.ratchet}x. Alt / Ctrl / Shift-clique permettent de tordre ce pas directement dans la grille.`
+				: "Ce pas est muet. Active-le ou sculpte-le directement: l édition le rallumera. Alt / Ctrl / Shift-clique marchent aussi depuis la grille."
+		);
+		if (patternStepCount > 0) {
+			setSensorText(
+				musicDawPatternStateNode,
+				`${formatMusicPatternLabel(pattern)} · ${patternStepCount} pas`
+			);
+			setSensorText(
+				musicDawPatternCopyNode,
+				patternPresetKey === "custom"
+					? "Le motif est maintenant libre. Il suivra le tempo, le swing et les scènes rappelées sans perdre sa propre coupe. Alt accentue, Ctrl baisse la proba, Shift ouvre le ratchet."
+					: `Le preset ${formatMusicPatternLabel(pattern)} tient la batterie en ${patternStepCount} pas. Tu peux le tordre case par case, ou directement avec Alt / Ctrl / Shift-clique.`
+			);
+		} else {
+			setSensorText(musicDawPatternStateNode, "aucun motif");
+			setSensorText(
+				musicDawPatternCopyNode,
+				"Écris un pas de kick, snare et hh, puis laisse le swing et la boucle faire respirer la marche. Alt accentue, Ctrl change la proba, Shift ouvre le ratchet."
+			);
+		}
 		if (musicGestureMode === "recording") {
 			const durationMs = Math.max(0, performance.now() - musicGestureRecordStartedAt);
 			setSensorText(musicDawGestureStateNode, `capture ${formatMusicDuration(durationMs)}`);
@@ -7080,6 +7962,33 @@ function initXyzCamera() {
 			setSensorText(
 				musicDawGestureCopyNode,
 				"Capture un trajet Terre/Mine sur une boucle, puis rejoue-le comme une automation vivante de l instrument."
+			);
+		}
+		if (musicArrangementMode === "playing" && arrangementSnapshot.step) {
+			const stepNumber = arrangementSnapshot.stepIndex + 1;
+			const totalSteps = arrangementSnapshot.steps.length;
+			const sceneMeta = XYZ_MUSIC_SCENE_META[arrangementSnapshot.step.sceneKey] || { label: arrangementSnapshot.step.sceneKey };
+			setSensorText(musicDawArrangementStateNode, `voyage ${stepNumber}/${totalSteps}`);
+			setSensorText(
+				musicDawArrangementCopyNode,
+				`${sceneMeta.label} tient ${arrangementSnapshot.step.bars} mesure${arrangementSnapshot.step.bars > 1 ? "s" : ""} avant le prochain basculement.${arrangementSnapshot.loop ? " Le voyage boucle." : " Le voyage s arrêtera à la fin."}`
+			);
+		} else if (hasArrangementSteps) {
+			setSensorText(
+				musicDawArrangementStateNode,
+				`${arrangementSnapshot.steps.length} etape${arrangementSnapshot.steps.length > 1 ? "s" : ""} · ${arrangementSnapshot.totalBars} mesures`
+			);
+			setSensorText(
+				musicDawArrangementCopyNode,
+				hasPlayableArrangementSteps
+					? "Le voyage est prêt. Il peut dérouler une forme entière, puis repartir en boucle ou s arrêter à la fin."
+					: "Le voyage existe, mais il attend encore au moins une scène mémorisée pour devenir jouable."
+			);
+		} else {
+			setSensorText(musicDawArrangementStateNode, "aucun voyage");
+			setSensorText(
+				musicDawArrangementCopyNode,
+				"Enchaîne des scènes mémorisées sur plusieurs mesures pour transformer la membrane en forme jouable et enregistrable."
 			);
 		}
 		if (musicRecordingState === "count-in") {
@@ -7120,6 +8029,7 @@ function initXyzCamera() {
 		renderMusicTakes();
 		document.body.dataset.musicRecordingState = musicRecordingState;
 		document.body.dataset.musicGestureMode = musicGestureMode;
+		document.body.dataset.musicArrangementMode = musicArrangementMode;
 		document.body.dataset.musicActiveScene = musicActiveSceneKey || "none";
 	};
 
@@ -7160,6 +8070,7 @@ function initXyzCamera() {
 			writeXyzMusicSettings(musicSettings);
 			renderMusicControls();
 			renderToreGuide();
+			void syncMusicPatternScheduler();
 		});
 	});
 	if (musicDawPlayButton instanceof HTMLElement && musicDawPlayButton.dataset.bound !== "1") {
@@ -7198,19 +8109,48 @@ function initXyzCamera() {
 	if (musicDawGestureRecordButton instanceof HTMLElement && musicDawGestureRecordButton.dataset.bound !== "1") {
 		musicDawGestureRecordButton.dataset.bound = "1";
 		musicDawGestureRecordButton.addEventListener("click", () => {
+			releaseMusicArrangementControl();
 			void toggleMusicGestureRecording();
 		});
 	}
 	if (musicDawGesturePlayButton instanceof HTMLElement && musicDawGesturePlayButton.dataset.bound !== "1") {
 		musicDawGesturePlayButton.dataset.bound = "1";
 		musicDawGesturePlayButton.addEventListener("click", () => {
+			releaseMusicArrangementControl();
 			void toggleMusicGesturePlayback();
 		});
 	}
 	if (musicDawGestureClearButton instanceof HTMLElement && musicDawGestureClearButton.dataset.bound !== "1") {
 		musicDawGestureClearButton.dataset.bound = "1";
 		musicDawGestureClearButton.addEventListener("click", () => {
+			releaseMusicArrangementControl();
 			clearMusicGestureLoop();
+		});
+	}
+	if (musicDawArrangementPlayButton instanceof HTMLElement && musicDawArrangementPlayButton.dataset.bound !== "1") {
+		musicDawArrangementPlayButton.dataset.bound = "1";
+		musicDawArrangementPlayButton.addEventListener("click", () => {
+			void toggleMusicArrangementPlayback();
+		});
+	}
+	if (musicDawArrangementBuildButton instanceof HTMLElement && musicDawArrangementBuildButton.dataset.bound !== "1") {
+		musicDawArrangementBuildButton.dataset.bound = "1";
+		musicDawArrangementBuildButton.addEventListener("click", () => {
+			buildDefaultMusicArrangement();
+		});
+	}
+	if (musicDawArrangementClearButton instanceof HTMLElement && musicDawArrangementClearButton.dataset.bound !== "1") {
+		musicDawArrangementClearButton.dataset.bound = "1";
+		musicDawArrangementClearButton.addEventListener("click", () => {
+			clearMusicArrangement();
+		});
+	}
+	if (musicDawArrangementLoopInput instanceof HTMLInputElement && musicDawArrangementLoopInput.dataset.bound !== "1") {
+		musicDawArrangementLoopInput.dataset.bound = "1";
+		musicDawArrangementLoopInput.addEventListener("change", () => {
+			getMusicArrangementState().loop = musicDawArrangementLoopInput.checked;
+			persistMusicDawState();
+			renderMusicDesk();
 		});
 	}
 	if (musicDawBpmInput instanceof HTMLInputElement && musicDawBpmInput.dataset.bound !== "1") {
@@ -7277,6 +8217,7 @@ function initXyzCamera() {
 				applyMusicMixState();
 				renderMusicDesk();
 				updateMotionVoice();
+				void syncMusicPatternScheduler();
 			});
 		}
 		if (soloButton instanceof HTMLElement && soloButton.dataset.bound !== "1") {
@@ -7288,6 +8229,7 @@ function initXyzCamera() {
 				applyMusicMixState();
 				renderMusicDesk();
 				updateMotionVoice();
+				void syncMusicPatternScheduler();
 			});
 		}
 		if (volumeInput instanceof HTMLInputElement && volumeInput.dataset.bound !== "1") {
@@ -7299,6 +8241,7 @@ function initXyzCamera() {
 				applyMusicMixState();
 				renderMusicDesk();
 				updateMotionVoice();
+				void syncMusicPatternScheduler();
 			});
 		}
 	});
@@ -7308,6 +8251,7 @@ function initXyzCamera() {
 		if (triggerButton instanceof HTMLElement && triggerButton.dataset.bound !== "1") {
 			triggerButton.dataset.bound = "1";
 			triggerButton.addEventListener("click", () => {
+				releaseMusicArrangementControl();
 				void recallMusicScene(key);
 			});
 		}
@@ -7318,6 +8262,108 @@ function initXyzCamera() {
 			});
 		}
 	});
+	musicArrangementSceneSelects.forEach((select, index) => {
+		if (!(select instanceof HTMLSelectElement) || select.dataset.bound === "1") {
+			return;
+		}
+		select.dataset.bound = "1";
+		select.addEventListener("change", () => {
+			const arrangement = getMusicArrangementState();
+			const currentStep = arrangement.steps[index] || normalizeXyzMusicArrangementStep();
+			arrangement.steps[index] = normalizeXyzMusicArrangementStep({
+				...currentStep,
+				sceneKey: select.value,
+			});
+			persistMusicDawState();
+			renderMusicDesk();
+		});
+	});
+	musicArrangementBarsSelects.forEach((select, index) => {
+		if (!(select instanceof HTMLSelectElement) || select.dataset.bound === "1") {
+			return;
+		}
+		select.dataset.bound = "1";
+		select.addEventListener("change", () => {
+			const arrangement = getMusicArrangementState();
+			const currentStep = arrangement.steps[index] || normalizeXyzMusicArrangementStep();
+			arrangement.steps[index] = normalizeXyzMusicArrangementStep({
+				...currentStep,
+				bars: Number(select.value),
+			});
+			persistMusicDawState();
+			renderMusicDesk();
+		});
+	});
+	musicPatternPresetButtons.forEach((button) => {
+		if (!(button instanceof HTMLElement) || button.dataset.bound === "1") {
+			return;
+		}
+		button.dataset.bound = "1";
+		button.addEventListener("click", () => {
+			const presetKey = button.dataset.xyzDawPatternPreset || "clear";
+			applyMusicPatternPreset(presetKey);
+			void syncMusicPatternScheduler();
+		});
+	});
+	musicPatternStepButtons.forEach((button) => {
+		if (!(button instanceof HTMLElement) || button.dataset.bound === "1") {
+			return;
+		}
+		button.dataset.bound = "1";
+		button.addEventListener("click", (event) => {
+			const trackKey = button.dataset.xyzDawPatternTrack || "";
+			const stepIndex = Number(button.dataset.xyzDawPatternIndex || -1);
+			setMusicPatternSelection(trackKey, stepIndex);
+			let changed = false;
+			if (event.altKey) {
+				changed = toggleMusicPatternAccent(trackKey, stepIndex);
+			} else if (event.shiftKey) {
+				changed = cycleMusicPatternRatchet(trackKey, stepIndex);
+			} else if (event.metaKey || event.ctrlKey) {
+				changed = cycleMusicPatternProbability(trackKey, stepIndex);
+			} else {
+				changed = toggleMusicPatternStep(trackKey, stepIndex);
+			}
+			if (!changed) {
+				renderMusicDesk();
+			} else {
+				void syncMusicPatternScheduler();
+			}
+		});
+	});
+	if (musicDawPatternAccentButton instanceof HTMLElement && musicDawPatternAccentButton.dataset.bound !== "1") {
+		musicDawPatternAccentButton.dataset.bound = "1";
+		musicDawPatternAccentButton.addEventListener("click", () => {
+			const selection = resolveSelectedMusicPatternStep();
+			if (toggleMusicPatternAccent(selection.trackKey, selection.stepIndex)) {
+				void syncMusicPatternScheduler();
+			}
+		});
+	}
+	if (musicDawPatternProbabilitySelect instanceof HTMLSelectElement && musicDawPatternProbabilitySelect.dataset.bound !== "1") {
+		musicDawPatternProbabilitySelect.dataset.bound = "1";
+		musicDawPatternProbabilitySelect.addEventListener("change", () => {
+			const selection = resolveSelectedMusicPatternStep();
+			if (patchMusicPatternStepMeta(selection.trackKey, selection.stepIndex, {
+				enabled: true,
+				probability: Number(musicDawPatternProbabilitySelect.value),
+			})) {
+				void syncMusicPatternScheduler();
+			}
+		});
+	}
+	if (musicDawPatternRatchetSelect instanceof HTMLSelectElement && musicDawPatternRatchetSelect.dataset.bound !== "1") {
+		musicDawPatternRatchetSelect.dataset.bound = "1";
+		musicDawPatternRatchetSelect.addEventListener("change", () => {
+			const selection = resolveSelectedMusicPatternStep();
+			if (patchMusicPatternStepMeta(selection.trackKey, selection.stepIndex, {
+				enabled: true,
+				ratchet: Number(musicDawPatternRatchetSelect.value),
+			})) {
+				void syncMusicPatternScheduler();
+			}
+		});
+	}
 
 	const normalizeLayerWeights = (weights) => {
 		const real = Math.max(0.001, Number(weights.real) || 0);
@@ -7695,14 +8741,21 @@ function initXyzCamera() {
 			const scaleProfile = currentScaleProfile(mode);
 			const instrumentProfile = currentInstrumentProfile();
 			const percussionLabel = formatPercussionLabel();
+			const pattern = getMusicPatternState();
+			const patternStepCount = countMusicPatternSteps(pattern);
+			const patternLabel = formatMusicPatternLabel(pattern);
 			const percussionActive = activePercussionKeys().length > 0;
 			const rhythmLabel = !percussionActive
-				? (safeMovement > 0.38 ? "drone libre" : "drone nu")
-				: (safeShake > 0.56
-					? `${percussionLabel} ouvert`
-					: (safeMovement > 0.38
-						? `${percussionLabel} mobile`
-						: `drone + ${percussionLabel}`));
+				? (patternStepCount > 0
+					? `${patternLabel} en veille`
+					: (safeMovement > 0.38 ? "drone libre" : "drone nu"))
+				: (patternStepCount > 0
+					? `${patternLabel} · ${patternStepCount} pas`
+					: (safeShake > 0.56
+						? `${percussionLabel} ouvert`
+						: (safeMovement > 0.38
+							? `${percussionLabel} mobile`
+							: `drone + ${percussionLabel}`)));
 			const terreState = scaleProfile.color === "bright"
 				? (safeLight > 0.66 ? "ouvre / éclaire" : "garde l horizon")
 				: (scaleProfile.color === "open"
@@ -7722,7 +8775,7 @@ function initXyzCamera() {
 			let duetCopy = "Terre porte le seuil, Mine y ouvre un trajet.";
 			let duetPhase = "hold";
 			let duetDominant = "terre";
-			let guideText = `La gamme ${scaleProfile.shortLabel} tient le cadre. Le timbre ${instrumentProfile.label} chante la note pendant que ${percussionLabel} garde le pouls.`;
+			let guideText = `La gamme ${scaleProfile.shortLabel} tient le cadre. Le timbre ${instrumentProfile.label} chante la note pendant que ${patternStepCount > 0 ? `${patternLabel} garde la marche` : `${percussionLabel} garde le pouls`}.`;
 			if (!isMembraneAudible()) {
 				guideText = "Choisis une gamme, un timbre et la percussion utile. Coupe toute la percu pour un drone nu, ou garde kick et hh pour un pouls discret.";
 				terreTitle = "Elle prépare.";
@@ -8072,14 +9125,16 @@ function initXyzCamera() {
 		}
 		await ensureMotionVoice().catch(() => false);
 		musicPlaybackStartedAt = performance.now();
+		resetMusicPatternSequencer(audioContext);
 		syncMusicTransportLoop();
+		void syncMusicPatternScheduler();
 		updateMotionVoice();
 		cueMotionVoice(1.04);
 		renderMusicDesk();
 	};
 	const exportMusicProjectSnapshot = () => {
 		const snapshot = {
-			version: 1,
+			version: 4,
 			exported_at: new Date().toISOString(),
 			surface: isIoSurfaceView() ? "io" : "xyz",
 			camera_facing: cameraFacingMode,
@@ -8087,6 +9142,7 @@ function initXyzCamera() {
 				membrane_live: isMembraneLive(),
 				membrane_demo: isMembraneDemo(),
 				recording_state: musicRecordingState,
+				arrangement_state: musicArrangementMode,
 				current_mode: currentToreMode,
 				current_note: formatToreNoteLabel(lastQuantizedMidi),
 			},
@@ -8169,8 +9225,8 @@ function initXyzCamera() {
 		lastPercussionAt[key] = nowStamp;
 		return true;
 	};
-	const triggerKick = (context, deviceProfile, intensity, startAt = context.currentTime) => {
-		if (!canTriggerPercussion("kick", 176)) {
+	const triggerKick = (context, deviceProfile, intensity, startAt = context.currentTime, { bypassGap = false } = {}) => {
+		if (!bypassGap && !canTriggerPercussion("kick", 176)) {
 			return false;
 		}
 		const now = startAt;
@@ -8200,8 +9256,8 @@ function initXyzCamera() {
 		click.stop(now + 0.06);
 		return true;
 	};
-	const triggerSnare = (context, deviceProfile, intensity, startAt = context.currentTime) => {
-		if (!canTriggerPercussion("snare", 138)) {
+	const triggerSnare = (context, deviceProfile, intensity, startAt = context.currentTime, { bypassGap = false } = {}) => {
+		if (!bypassGap && !canTriggerPercussion("snare", 138)) {
 			return false;
 		}
 		const buffer = ensurePercussionNoiseBuffer(context);
@@ -8235,8 +9291,8 @@ function initXyzCamera() {
 		body.stop(now + 0.12);
 		return true;
 	};
-	const triggerHiHat = (context, deviceProfile, intensity, startAt = context.currentTime) => {
-		if (!canTriggerPercussion("hihat", 72)) {
+	const triggerHiHat = (context, deviceProfile, intensity, startAt = context.currentTime, { bypassGap = false } = {}) => {
+		if (!bypassGap && !canTriggerPercussion("hihat", 72)) {
 			return false;
 		}
 		const buffer = ensurePercussionNoiseBuffer(context);
@@ -8625,6 +9681,7 @@ function initXyzCamera() {
 		} else {
 			clearMusicGestureTimer();
 		}
+		stopMusicArrangementPlayback({ render: false });
 		stopMusicGesturePlayback();
 		if (musicRecordingState === "count-in") {
 			cancelMusicCountIn();
@@ -8637,6 +9694,7 @@ function initXyzCamera() {
 				// Ignore recorder stop failures during teardown.
 			}
 		}
+		stopMusicPatternScheduler();
 		stopMusicTransportLoop();
 		musicPlaybackStartedAt = 0;
 		if (audioFrame) {
@@ -9713,6 +10771,7 @@ function initXyzCamera() {
 
 		button.addEventListener("click", () => {
 			const nextMode = button.dataset.xyzCameraFacingButton || "user";
+			releaseMusicArrangementControl();
 			void switchCameraFacingMode(nextMode);
 		});
 	});
@@ -9796,6 +10855,7 @@ function initXyzCamera() {
 					break;
 				case "1":
 				case "&":
+					releaseMusicArrangementControl();
 					if (event.shiftKey) {
 						storeMusicScene("scene-a");
 					} else {
@@ -9804,6 +10864,7 @@ function initXyzCamera() {
 					break;
 				case "2":
 				case "é":
+					releaseMusicArrangementControl();
 					if (event.shiftKey) {
 						storeMusicScene("scene-b");
 					} else {
@@ -9812,6 +10873,7 @@ function initXyzCamera() {
 					break;
 				case "3":
 				case "\"":
+					releaseMusicArrangementControl();
 					if (event.shiftKey) {
 						storeMusicScene("scene-c");
 					} else {
@@ -9820,6 +10882,7 @@ function initXyzCamera() {
 					break;
 				case "4":
 				case "'":
+					releaseMusicArrangementControl();
 					if (event.shiftKey) {
 						storeMusicScene("scene-d");
 					} else {
@@ -9827,13 +10890,23 @@ function initXyzCamera() {
 					}
 					break;
 				case "g":
+					releaseMusicArrangementControl();
 					void toggleMusicGestureRecording();
 					break;
 				case "l":
+					releaseMusicArrangementControl();
 					void toggleMusicGesturePlayback();
+					break;
+				case "b":
+					if (event.shiftKey) {
+						buildDefaultMusicArrangement();
+					} else {
+						void toggleMusicArrangementPlayback();
+					}
 					break;
 				case "f":
 				case "v":
+					releaseMusicArrangementControl();
 					void switchCameraFacingMode(cameraFacingMode === "environment" ? "user" : "environment");
 					break;
 				default:
