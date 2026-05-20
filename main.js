@@ -6,11 +6,24 @@ const GUIDE_VOICE_MUTE_KEY = "o-guide-voice-muted-v1";
 const DEVICE_SILENCE_INTENT_KEY = "o-device-silence-intent-v1";
 const DEVICE_VOLUME_LEVEL_KEY = "o-device-volume-level-v1";
 const XYZ_VOICE_ECHO_KEY = "o-xyz-voice-echo-v1";
-const AUDIO_DEFAULTS_VERSION_KEY = "o-audio-defaults-v2";
+const XYZ_MUSIC_SETTINGS_KEY = "o-xyz-music-settings-v1";
+const XYZ_MUSIC_DAW_KEY = "o-xyz-music-daw-v1";
+const AUDIO_DEFAULTS_VERSION_KEY = "o-audio-defaults-v3";
 const RA_MODULATION_SESSION_KEY = "o-ra-modulation-v1";
 const WORLD_INSTRUMENT_SESSION_KEY = "o-world-instrument-v1";
 const RA_MODULATION_SESSION_TTL = 6 * 60 * 60 * 1000;
 const WORLD_INSTRUMENT_SESSION_TTL = 6 * 60 * 60 * 1000;
+const XYZ_MUSIC_SCALE_KEYS = ["auto", "aeolian", "dorian", "lydian", "pentatonic"];
+const XYZ_MUSIC_INSTRUMENT_KEYS = ["membrane", "glass", "reed", "bronze"];
+const XYZ_MUSIC_PERCUSSION_KEYS = ["kick", "snare", "hihat"];
+const XYZ_MUSIC_TRACK_KEYS = ["terre", "mine", "bass", "percu"];
+const XYZ_MUSIC_SCENE_KEYS = ["scene-a", "scene-b", "scene-c", "scene-d"];
+const XYZ_MUSIC_SCENE_META = {
+	"scene-a": { shortLabel: "A", label: "aube" },
+	"scene-b": { shortLabel: "B", label: "seuil" },
+	"scene-c": { shortLabel: "C", label: "marche" },
+	"scene-d": { shortLabel: "D", label: "sève" },
+};
 
 const reveals = Array.from(document.querySelectorAll(".reveal"));
 const usernameInput = document.querySelector("[data-username-input]");
@@ -1087,18 +1100,183 @@ function writeDeviceVolumeLevel(level) {
 	syncDeviceBridgeState();
 }
 
-function readXyzVoiceEchoLevel() {
-	const raw = Number(window.localStorage.getItem(XYZ_VOICE_ECHO_KEY) || "0.08");
-	return clampNumber(Number.isFinite(raw) ? raw : 0.08, 0, 1);
+function normalizeXyzMusicSettings(raw) {
+	const source = raw && typeof raw === "object" ? raw : {};
+	const percussionSource = source.percussion && typeof source.percussion === "object" ? source.percussion : {};
+	return {
+		scale: XYZ_MUSIC_SCALE_KEYS.includes(source.scale) ? source.scale : "auto",
+		instrument: XYZ_MUSIC_INSTRUMENT_KEYS.includes(source.instrument) ? source.instrument : "membrane",
+		percussion: {
+			kick: percussionSource.kick !== false,
+			snare: percussionSource.snare === true,
+			hihat: percussionSource.hihat !== false,
+		},
+	};
 }
 
-function writeXyzVoiceEchoLevel(level) {
-	window.localStorage.setItem(XYZ_VOICE_ECHO_KEY, String(clampNumber(level, 0, 1)));
+function readXyzMusicSettings() {
+	try {
+		const raw = window.localStorage.getItem(XYZ_MUSIC_SETTINGS_KEY);
+		if (!raw) {
+			return normalizeXyzMusicSettings();
+		}
+
+		return normalizeXyzMusicSettings(JSON.parse(raw));
+	} catch {
+		return normalizeXyzMusicSettings();
+	}
+}
+
+function writeXyzMusicSettings(settings) {
+	window.localStorage.setItem(
+		XYZ_MUSIC_SETTINGS_KEY,
+		JSON.stringify(normalizeXyzMusicSettings(settings))
+	);
+}
+
+function normalizeXyzMusicTrackSet(raw) {
+	const tracksSource = raw && typeof raw === "object" ? raw : {};
+	const normalizeTrack = (key, fallbackVolume = 0.82) => {
+		const value = tracksSource[key] && typeof tracksSource[key] === "object" ? tracksSource[key] : {};
+		return {
+			volume: clampNumber(Number(value.volume ?? fallbackVolume), 0, 1),
+			mute: value.mute === true,
+			solo: value.solo === true,
+		};
+	};
+	return {
+		terre: normalizeTrack("terre", 0.82),
+		mine: normalizeTrack("mine", 0.72),
+		bass: normalizeTrack("bass", 0.76),
+		percu: normalizeTrack("percu", 0.78),
+	};
+}
+
+function normalizeXyzMusicDawCore(raw) {
+	const source = raw && typeof raw === "object" ? raw : {};
+	return {
+		bpm: clampNumber(Math.round(Number(source.bpm) || 96), 60, 168),
+		swing: clampNumber(Math.round(Number(source.swing) || 12), 0, 40),
+		loopBars: [2, 4, 8, 16].includes(Number(source.loopBars)) ? Number(source.loopBars) : 4,
+		quantize: ["1/4", "1/8", "1/16"].includes(source.quantize) ? source.quantize : "1/8",
+		countInBars: [0, 1, 2].includes(Number(source.countInBars)) ? Number(source.countInBars) : 1,
+		masterVolume: clampNumber(Number(source.masterVolume) || 0.94, 0, 1),
+		tracks: normalizeXyzMusicTrackSet(source.tracks),
+	};
+}
+
+function normalizeXyzMusicScene(raw) {
+	const source = raw && typeof raw === "object" ? raw : null;
+	if (!source) {
+		return null;
+	}
+
+	const instrumentSource = source.instrument && typeof source.instrument === "object" ? source.instrument : {};
+	const hasSceneContent = Boolean(
+		source.savedAt
+		|| Object.keys(instrumentSource).length
+		|| (source.music && typeof source.music === "object")
+		|| (source.daw && typeof source.daw === "object")
+	);
+	if (!hasSceneContent) {
+		return null;
+	}
+
+	return {
+		label: typeof source.label === "string" ? source.label.slice(0, 48) : "",
+		savedAt: Math.max(0, Math.round(Number(source.savedAt) || 0)),
+		cameraFacing: source.cameraFacing === "environment" ? "environment" : "user",
+		instrument: {
+			terreX: clampNumber(Number(instrumentSource.terreX) || 0.3, 0.08, 0.92),
+			terreY: clampNumber(Number(instrumentSource.terreY) || 0.62, 0.08, 0.92),
+			terreEnergy: clampNumber(Number(instrumentSource.terreEnergy) || 0, 0, 1),
+			mineX: clampNumber(Number(instrumentSource.mineX) || 0.72, 0.08, 0.92),
+			mineY: clampNumber(Number(instrumentSource.mineY) || 0.38, 0.08, 0.92),
+			mineEnergy: clampNumber(Number(instrumentSource.mineEnergy) || 0, 0, 1),
+			activeHands: clampNumber(Math.round(Number(instrumentSource.activeHands) || 0), 0, 2),
+		},
+		music: normalizeXyzMusicSettings(source.music),
+		daw: normalizeXyzMusicDawCore(source.daw),
+	};
+}
+
+function normalizeXyzMusicGestureLoop(raw) {
+	const source = raw && typeof raw === "object" ? raw : null;
+	if (!source || !Array.isArray(source.points)) {
+		return null;
+	}
+
+	const rawPoints = source.points
+		.slice(0, 256)
+		.map((point) => {
+			const value = point && typeof point === "object" ? point : {};
+			return {
+				offsetMs: Math.max(0, Math.round(Number(value.offsetMs) || 0)),
+				terreX: clampNumber(Number(value.terreX) || 0.3, 0.08, 0.92),
+				terreY: clampNumber(Number(value.terreY) || 0.62, 0.08, 0.92),
+				terreEnergy: clampNumber(Number(value.terreEnergy) || 0, 0, 1),
+				mineX: clampNumber(Number(value.mineX) || 0.72, 0.08, 0.92),
+				mineY: clampNumber(Number(value.mineY) || 0.38, 0.08, 0.92),
+				mineEnergy: clampNumber(Number(value.mineEnergy) || 0, 0, 1),
+				activeHands: clampNumber(Math.round(Number(value.activeHands) || 0), 0, 2),
+				cameraFacing: value.cameraFacing === "environment" ? "environment" : "user",
+			};
+		})
+		.sort((left, right) => left.offsetMs - right.offsetMs);
+
+	if (rawPoints.length < 2) {
+		return null;
+	}
+
+	const durationMs = clampNumber(
+		Math.round(Number(source.durationMs) || rawPoints[rawPoints.length - 1].offsetMs || 0),
+		400,
+		16000
+	);
+	return {
+		capturedAt: Math.max(0, Math.round(Number(source.capturedAt) || 0)),
+		durationMs,
+		points: rawPoints.map((point) => ({
+			...point,
+			offsetMs: clampNumber(point.offsetMs, 0, durationMs),
+		})),
+	};
+}
+
+function normalizeXyzMusicDawState(raw) {
+	const source = raw && typeof raw === "object" ? raw : {};
+	const scenesSource = source.scenes && typeof source.scenes === "object" ? source.scenes : {};
+	return {
+		...normalizeXyzMusicDawCore(source),
+		scenes: Object.fromEntries(
+			XYZ_MUSIC_SCENE_KEYS.map((key) => [key, normalizeXyzMusicScene(scenesSource[key])])
+		),
+		gestureLoop: normalizeXyzMusicGestureLoop(source.gestureLoop),
+	};
+}
+
+function readXyzMusicDawState() {
+	try {
+		const raw = window.localStorage.getItem(XYZ_MUSIC_DAW_KEY);
+		if (!raw) {
+			return normalizeXyzMusicDawState();
+		}
+		return normalizeXyzMusicDawState(JSON.parse(raw));
+	} catch {
+		return normalizeXyzMusicDawState();
+	}
+}
+
+function writeXyzMusicDawState(state) {
+	window.localStorage.setItem(
+		XYZ_MUSIC_DAW_KEY,
+		JSON.stringify(normalizeXyzMusicDawState(state))
+	);
 }
 
 function migrateAudioDefaults() {
 	try {
-		if (window.localStorage.getItem(AUDIO_DEFAULTS_VERSION_KEY) === "2") {
+		if (window.localStorage.getItem(AUDIO_DEFAULTS_VERSION_KEY) === "3") {
 			return;
 		}
 
@@ -1107,12 +1285,21 @@ function migrateAudioDefaults() {
 			window.localStorage.setItem(DEVICE_VOLUME_LEVEL_KEY, "0.94");
 		}
 
-		const storedEcho = Number(window.localStorage.getItem(XYZ_VOICE_ECHO_KEY) || "");
-		if (!Number.isFinite(storedEcho) || storedEcho >= 0.18) {
-			window.localStorage.setItem(XYZ_VOICE_ECHO_KEY, "0.08");
+		if (!window.localStorage.getItem(XYZ_MUSIC_SETTINGS_KEY)) {
+			window.localStorage.setItem(
+				XYZ_MUSIC_SETTINGS_KEY,
+				JSON.stringify(normalizeXyzMusicSettings())
+			);
 		}
+		if (!window.localStorage.getItem(XYZ_MUSIC_DAW_KEY)) {
+			window.localStorage.setItem(
+				XYZ_MUSIC_DAW_KEY,
+				JSON.stringify(normalizeXyzMusicDawState())
+			);
+		}
+		window.localStorage.removeItem(XYZ_VOICE_ECHO_KEY);
 
-		window.localStorage.setItem(AUDIO_DEFAULTS_VERSION_KEY, "2");
+		window.localStorage.setItem(AUDIO_DEFAULTS_VERSION_KEY, "3");
 	} catch {
 		// Ignore storage migration failures.
 	}
@@ -5517,10 +5704,10 @@ function initXyzCamera() {
 	const audioNode = document.querySelector("[data-xyz-sensor-audio]");
 	const cameraNode = document.querySelector("[data-xyz-sensor-camera]");
 	const wakeNode = document.querySelector("[data-xyz-sensor-wake]");
-	const voiceEchoInput = document.querySelector("[data-xyz-voice-echo-input]");
-	const voiceEchoReadout = document.querySelector("[data-xyz-voice-echo-readout]");
 	const musicModeNode = document.querySelector("[data-xyz-music-mode]");
 	const musicNoteNode = document.querySelector("[data-xyz-music-note]");
+	const musicTimbreNode = document.querySelector("[data-xyz-music-timbre]");
+	const musicPercussionNode = document.querySelector("[data-xyz-music-percussion]");
 	const musicRhythmNode = document.querySelector("[data-xyz-music-rhythm]");
 	const handTerreStateNode = document.querySelector("[data-xyz-hand-terre-state]");
 	const handMineStateNode = document.querySelector("[data-xyz-hand-mine-state]");
@@ -5530,6 +5717,57 @@ function initXyzCamera() {
 	const handMineCopyNode = document.querySelector("[data-xyz-hand-mine-copy]");
 	const duetStateNode = document.querySelector("[data-xyz-duet-state]");
 	const musicGuideNode = document.querySelector("[data-xyz-music-guide]");
+	const musicDawRoot = document.querySelector("[data-xyz-daw-root]");
+	const musicDawStatusNode = document.querySelector("[data-xyz-daw-status]");
+	const musicDawPlayButton = document.querySelector("[data-xyz-daw-play]");
+	const musicDawStopButton = document.querySelector("[data-xyz-daw-stop]");
+	const musicDawRecordButton = document.querySelector("[data-xyz-daw-record]");
+	const musicDawExportButton = document.querySelector("[data-xyz-daw-export-project]");
+	const musicDawBpmInput = document.querySelector("[data-xyz-daw-bpm-input]");
+	const musicDawBpmReadout = document.querySelector("[data-xyz-daw-bpm-readout]");
+	const musicDawSwingInput = document.querySelector("[data-xyz-daw-swing-input]");
+	const musicDawSwingReadout = document.querySelector("[data-xyz-daw-swing-readout]");
+	const musicDawLoopSelect = document.querySelector("[data-xyz-daw-loop-select]");
+	const musicDawQuantizeSelect = document.querySelector("[data-xyz-daw-quantize-select]");
+	const musicDawCountInSelect = document.querySelector("[data-xyz-daw-countin-select]");
+	const musicDawClockNode = document.querySelector("[data-xyz-daw-clock]");
+	const musicDawMasterInput = document.querySelector("[data-xyz-daw-master-input]");
+	const musicDawMasterReadout = document.querySelector("[data-xyz-daw-master-readout]");
+	const musicDawRecordingStateNode = document.querySelector("[data-xyz-daw-recording-state]");
+	const musicDawRecordingCopyNode = document.querySelector("[data-xyz-daw-recording-copy]");
+	const musicDawTakesNode = document.querySelector("[data-xyz-daw-takes]");
+	const musicDawGestureStateNode = document.querySelector("[data-xyz-daw-gesture-state]");
+	const musicDawGestureCopyNode = document.querySelector("[data-xyz-daw-gesture-copy]");
+	const musicDawGestureRecordButton = document.querySelector("[data-xyz-daw-gesture-record]");
+	const musicDawGesturePlayButton = document.querySelector("[data-xyz-daw-gesture-play]");
+	const musicDawGestureClearButton = document.querySelector("[data-xyz-daw-gesture-clear]");
+	const musicTrackCards = Object.fromEntries(
+		XYZ_MUSIC_TRACK_KEYS.map((key) => [key, document.querySelector(`[data-xyz-track-card="${key}"]`)])
+	);
+	const musicTrackMuteButtons = Object.fromEntries(
+		XYZ_MUSIC_TRACK_KEYS.map((key) => [key, document.querySelector(`[data-xyz-track-mute="${key}"]`)])
+	);
+	const musicTrackSoloButtons = Object.fromEntries(
+		XYZ_MUSIC_TRACK_KEYS.map((key) => [key, document.querySelector(`[data-xyz-track-solo="${key}"]`)])
+	);
+	const musicTrackVolumeInputs = Object.fromEntries(
+		XYZ_MUSIC_TRACK_KEYS.map((key) => [key, document.querySelector(`[data-xyz-track-volume="${key}"]`)])
+	);
+	const musicTrackVolumeReadouts = Object.fromEntries(
+		XYZ_MUSIC_TRACK_KEYS.map((key) => [key, document.querySelector(`[data-xyz-track-volume-readout="${key}"]`)])
+	);
+	const musicSceneCards = Object.fromEntries(
+		XYZ_MUSIC_SCENE_KEYS.map((key) => [key, document.querySelector(`[data-xyz-daw-scene="${key}"]`)])
+	);
+	const musicSceneStateNodes = Object.fromEntries(
+		XYZ_MUSIC_SCENE_KEYS.map((key) => [key, document.querySelector(`[data-xyz-daw-scene-state="${key}"]`)])
+	);
+	const musicSceneTriggerButtons = Object.fromEntries(
+		XYZ_MUSIC_SCENE_KEYS.map((key) => [key, document.querySelector(`[data-xyz-daw-scene-trigger="${key}"]`)])
+	);
+	const musicSceneStoreButtons = Object.fromEntries(
+		XYZ_MUSIC_SCENE_KEYS.map((key) => [key, document.querySelector(`[data-xyz-daw-scene-store="${key}"]`)])
+	);
 	const instrumentRoot = document.querySelector("[data-xyz-instrument-root]");
 	const instrumentViewNode = document.querySelector("[data-xyz-instrument-view]");
 	const instrumentFocusNode = document.querySelector("[data-xyz-instrument-focus]");
@@ -5539,6 +5777,9 @@ function initXyzCamera() {
 	const instrumentStage = document.querySelector("[data-xyz-instrument-stage]");
 	const instrumentStageCopyNode = document.querySelector("[data-xyz-instrument-stage-copy]");
 	const worldCopyNode = document.querySelector("[data-xyz-world-copy]");
+	const musicScaleSelect = document.querySelector("[data-xyz-music-scale]");
+	const musicInstrumentSelect = document.querySelector("[data-xyz-music-instrument]");
+	const musicPercussionButtons = Array.from(document.querySelectorAll("[data-xyz-percussion-button]"));
 	const cameraFacingButtons = Array.from(document.querySelectorAll("[data-xyz-camera-facing-button]"));
 	const arModulationRoot = document.querySelector("[data-xyz-ar-modulation]");
 	const arTitleNode = document.querySelector("[data-xyz-ar-title]");
@@ -5647,6 +5888,7 @@ function initXyzCamera() {
 	let motionVoiceOscillator = null;
 	let motionVoiceHarmonicOscillator = null;
 	let motionVoiceSubOscillator = null;
+	let motionVoiceMainGain = null;
 	let motionVoiceGain = null;
 	let motionVoiceHarmonicGain = null;
 	let motionVoiceSubGain = null;
@@ -5654,27 +5896,32 @@ function initXyzCamera() {
 	let motionVoicePanner = null;
 	let motionVoiceLfo = null;
 	let motionVoiceLfoGain = null;
-	let vocoderInputGain = null;
-	let vocoderHighpass = null;
-	let vocoderCompressor = null;
-	let vocoderBandpass = null;
-	let vocoderDirectGain = null;
-	let vocoderColorFilter = null;
-	let vocoderCarrierOscillator = null;
-	let vocoderCarrierHarmonicOscillator = null;
-	let vocoderCarrierGain = null;
-	let vocoderCarrierHarmonicGain = null;
-	let vocoderModDepth = null;
-	let vocoderHarmonicModDepth = null;
-	let vocoderWetGain = null;
-	let vocoderEchoSend = null;
-	let vocoderEchoDelay = null;
-	let vocoderEchoFeedback = null;
-	let vocoderEchoReturn = null;
-	let vocoderTuneFilter = null;
-	let vocoderTuneHarmonicFilter = null;
-	let vocoderTuneGain = null;
-	let vocoderTuneHarmonicGain = null;
+	let musicMasterGain = null;
+	let musicPercussionGain = null;
+	let musicRecorderDestination = null;
+	let musicRecorder = null;
+	let musicRecorderMimeType = "";
+	let musicRecorderChunks = [];
+	let musicTransportTimer = 0;
+	let musicPlaybackStartedAt = 0;
+	let musicRecordingState = "idle";
+	let musicRecordingStartedAt = 0;
+	let musicRecordingCountInTimer = 0;
+	let musicRecordingCountInInterval = 0;
+	let musicRecordingCountInStartedAt = 0;
+	let musicRecordingCountInTotalBeats = 0;
+	let musicRecordingCountInBeatIndex = 0;
+	let musicTakeSerial = 0;
+	let musicTakes = [];
+	let musicTakesRenderSignature = "";
+	let musicGestureMode = "idle";
+	let musicGestureRecordTimer = 0;
+	let musicGestureRecordStartedAt = 0;
+	let musicGestureRecordedAt = 0;
+	let musicGesturePlaybackStartedAt = 0;
+	let musicGesturePlaybackFrame = 0;
+	let musicGestureDraftPoints = [];
+	let musicActiveSceneKey = "";
 	let wakeLock = null;
 	let lightSensor = null;
 	let orientationBound = false;
@@ -5685,21 +5932,20 @@ function initXyzCamera() {
 	let bridgeLastAt = 0;
 	let sensorFeedbackTimer = 0;
 	let shakerNoiseBuffer = null;
-	let lastShakeAt = 0;
+	let lastPercussionAt = { kick: 0, snare: 0, hihat: 0 };
 	let lastMotionMagnitude = 0;
 	let lastDemoShakeBurst = 0;
-	let currentToreMode = "minor";
+	let currentToreMode = "aeolian";
 	let lastQuantizedMidi = 40;
 	let cameraFacingMode = readStoredCameraFacing() || (coarsePointer ? "environment" : "user");
+	const musicSettings = readXyzMusicSettings();
+	const musicDawState = readXyzMusicDawState();
 	const initialArMode = readStoredArMode() || (arModulationRoot instanceof HTMLElement
 		? (arModulationRoot.dataset.xyzArMode || (isSpatialHeadsetSurface ? "anchor" : "weave"))
 		: "weave");
 	let arModulationMode = arModeKeys.includes(initialArMode) ? initialArMode : "weave";
 	let orientationSignalSeen = false;
 	let motionSignalSeen = false;
-	const voiceFx = {
-			echoAmount: readXyzVoiceEchoLevel(),
-		};
 	const analysisCanvas = document.createElement("canvas");
 	analysisCanvas.width = 48;
 	analysisCanvas.height = 36;
@@ -5775,7 +6021,7 @@ function initXyzCamera() {
 				? "marche / paysage"
 				: (lightTone > 0.62 ? "reflets / dehors" : "détail / terrain");
 		} else if (membrane.audioLevel > 0.18) {
-			focusLabel = "visage + voix";
+			focusLabel = "visage + air";
 		} else if (sceneEnergy > 0.32) {
 			focusLabel = "proximité / peau";
 		}
@@ -5789,11 +6035,11 @@ function initXyzCamera() {
 				? (instrument.terreEnergy >= instrument.mineEnergy ? "terre seule" : "mine seule")
 				: "aucune prise");
 		const lightLabel = lightTone > 0.68
-			? "clair majeur"
-			: (lightTone < 0.32 ? "ombre mineure" : "lueur mixte");
+			? "clair ouvert"
+			: (lightTone < 0.32 ? "ombre douce" : "lueur mixte");
 		const stageCopy = cameraFacingMode === "environment"
-			? "Retourne la caméra et laisse le dehors jouer. Terre tient l horizon, Mine taille un détail, une route ou un reflet. Fleches ou glisse pour garder la prise."
-			: "Approche visage, mains ou torse. Terre pose le fond, Mine ouvre l accent, puis la voix et la lumière prennent le relais. WASD ou glisse si tu veux jouer sans quitter l écran.";
+			? "Retourne la caméra et laisse le dehors jouer. Terre tient l horizon, Mine taille un détail, une route ou un reflet. Flèches ou glisse pour garder la prise. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle."
+			: "Approche visage, mains ou torse. Terre pose le fond, Mine ouvre l accent, puis l air et la lumière prennent le relais. WASD ou glisse si tu veux jouer sans quitter l écran. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle.";
 		let worldCopy = "Le monde reste un instrument: visage, corps, lumière, paysage et toucher peuvent tous nourrir le tore.";
 		if (cameraFacingMode === "environment") {
 			worldCopy = touchEnergy > 0.24
@@ -5878,11 +6124,15 @@ function initXyzCamera() {
 		instrument.touchEnergy = instrumentTouchEnergy();
 		renderWorldInstrument();
 		syncMembraneReactiveState();
+		captureMusicGesturePoint();
 	};
 
 	const registerInstrumentPointer = (event) => {
 		if (!(instrumentStage instanceof HTMLElement)) {
 			return;
+		}
+		if (musicGestureMode === "playing") {
+			stopMusicGesturePlayback();
 		}
 
 		const rect = instrumentStage.getBoundingClientRect();
@@ -5898,7 +6148,7 @@ function initXyzCamera() {
 			const now = performance.now();
 			if (now - instrument.lastImpulseAt > 120) {
 				instrument.lastImpulseAt = now;
-				void triggerShaker(0.34 + x * 0.18 + (1 - y) * 0.14);
+				void triggerPercussionAccent(0.34 + x * 0.18 + (1 - y) * 0.14);
 			}
 		}
 		updateInstrumentFromPointers();
@@ -5913,6 +6163,9 @@ function initXyzCamera() {
 	};
 
 	const pulseInstrumentKeyboard = (hand, deltaX = 0, deltaY = 0) => {
+		if (musicGestureMode === "playing") {
+			stopMusicGesturePlayback();
+		}
 		const prefix = hand === "terre" ? "terre" : "mine";
 		const xKey = `${prefix}X`;
 		const yKey = `${prefix}Y`;
@@ -5932,20 +6185,157 @@ function initXyzCamera() {
 		}, 640);
 		renderWorldInstrument();
 		syncMembraneReactiveState();
+		captureMusicGesturePoint();
 	};
 
 	const isMembraneLive = () => document.body.classList.contains("is-membrane-live");
 	const isMembraneDemo = () => document.body.classList.contains("is-membrane-demo");
 	const isMembraneAudible = () => isMembraneLive() || isMembraneDemo();
 	const toreRootMidi = 40;
-	const toreScaleSteps = {
-			major: [0, 2, 4, 5, 7, 9, 11],
-			minor: [0, 2, 3, 5, 7, 8, 10],
-		};
-	const toreModeLabels = {
-			major: "Mi majeur",
-			minor: "Mi mineur",
-		};
+	const toreScaleCatalog = {
+		aeolian: {
+			label: "Mi éolien",
+			shortLabel: "éolien",
+			color: "shadow",
+			steps: [0, 2, 3, 5, 7, 8, 10],
+			harmonyOffset: 7,
+			liftOffset: 12,
+		},
+		dorian: {
+			label: "Mi dorien",
+			shortLabel: "dorien",
+			color: "open",
+			steps: [0, 2, 3, 5, 7, 9, 10],
+			harmonyOffset: 7,
+			liftOffset: 12,
+		},
+		lydian: {
+			label: "Mi lydien",
+			shortLabel: "lydien",
+			color: "bright",
+			steps: [0, 2, 4, 6, 7, 9, 11],
+			harmonyOffset: 7,
+			liftOffset: 14,
+		},
+		pentatonic: {
+			label: "Mi pentatonique",
+			shortLabel: "pentatonique",
+			color: "open",
+			steps: [0, 3, 5, 7, 10],
+			harmonyOffset: 7,
+			liftOffset: 12,
+		},
+	};
+	const toreInstrumentCatalog = {
+		membrane: {
+			label: "peau",
+			mainType: "triangle",
+			harmonicType: "sine",
+			subType: "sine",
+			filterType: "lowpass",
+			harmonicMix: 0.54,
+			subMix: 0.4,
+			filterBase: 240,
+			filterSpan: 1540,
+			filterAmbient: 420,
+			filterMovement: 320,
+			filterShake: 460,
+			qBase: 0.74,
+			qAmbient: 1.6,
+			qMovement: 0.44,
+			qShake: 0.62,
+			lfoBase: 0.12,
+			lfoRange: 1.8,
+			lfoAmbient: 0.52,
+			lfoShake: 0.92,
+			lfoDepthBase: 1.8,
+			lfoDepthRange: 10.8,
+			detuneDepth: 1,
+			harmonicDetuneRatio: 0.32,
+			subDetuneRatio: -0.12,
+		},
+		glass: {
+			label: "verre",
+			mainType: "sine",
+			harmonicType: "triangle",
+			subType: "sine",
+			filterType: "bandpass",
+			harmonicMix: 0.82,
+			subMix: 0.18,
+			filterBase: 560,
+			filterSpan: 2160,
+			filterAmbient: 620,
+			filterMovement: 280,
+			filterShake: 360,
+			qBase: 1.22,
+			qAmbient: 1.12,
+			qMovement: 0.36,
+			qShake: 0.42,
+			lfoBase: 0.18,
+			lfoRange: 2.4,
+			lfoAmbient: 0.88,
+			lfoShake: 0.84,
+			lfoDepthBase: 1.2,
+			lfoDepthRange: 7.2,
+			detuneDepth: 0.74,
+			harmonicDetuneRatio: 0.18,
+			subDetuneRatio: -0.04,
+		},
+		reed: {
+			label: "roseau",
+			mainType: "triangle",
+			harmonicType: "sawtooth",
+			subType: "sine",
+			filterType: "lowpass",
+			harmonicMix: 0.66,
+			subMix: 0.28,
+			filterBase: 320,
+			filterSpan: 1320,
+			filterAmbient: 560,
+			filterMovement: 420,
+			filterShake: 380,
+			qBase: 0.92,
+			qAmbient: 1.28,
+			qMovement: 0.54,
+			qShake: 0.46,
+			lfoBase: 0.14,
+			lfoRange: 2.08,
+			lfoAmbient: 0.6,
+			lfoShake: 1.02,
+			lfoDepthBase: 2.4,
+			lfoDepthRange: 9.4,
+			detuneDepth: 1.16,
+			harmonicDetuneRatio: 0.44,
+			subDetuneRatio: -0.08,
+		},
+		bronze: {
+			label: "bronze",
+			mainType: "triangle",
+			harmonicType: "square",
+			subType: "sine",
+			filterType: "lowpass",
+			harmonicMix: 0.72,
+			subMix: 0.34,
+			filterBase: 260,
+			filterSpan: 1740,
+			filterAmbient: 480,
+			filterMovement: 380,
+			filterShake: 520,
+			qBase: 0.82,
+			qAmbient: 1.18,
+			qMovement: 0.48,
+			qShake: 0.78,
+			lfoBase: 0.1,
+			lfoRange: 1.6,
+			lfoAmbient: 0.36,
+			lfoShake: 0.64,
+			lfoDepthBase: 1.6,
+			lfoDepthRange: 8.4,
+			detuneDepth: 0.86,
+			harmonicDetuneRatio: 0.28,
+			subDetuneRatio: -0.1,
+		},
+	};
 	const toreNoteNames = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
 	const arModeCatalog = {
 			anchor: {
@@ -5982,28 +6372,28 @@ function initXyzCamera() {
 				until: 0.24,
 				key: "velvet",
 				title: "Terre tient, Mine écoute.",
-				message: "Le tore commence bas, velours, presque minéral. Terre installe le fond mineur pendant que Mine attend encore son incision.",
+				message: "Le tore commence bas, velours, presque minéral. Terre installe un fond éolien pendant que Mine attend encore son incision.",
 				haptic: "soft",
 			},
 			{
 				until: 0.52,
 				key: "gloss",
 				title: "Terre ouvre, Mine taille.",
-				message: "La lumière synthétique ouvre le champ et pousse vers le majeur. Terre élargit la pièce, Mine affine déjà une note plus claire.",
+				message: "La lumière synthétique ouvre le champ et pousse vers le lydien. Terre élargit la pièce, Mine affine déjà une note plus claire.",
 				haptic: "soft",
 			},
 			{
 				until: 0.8,
 				key: "pulse",
 				title: "Terre tient, Mine frappe.",
-				message: "Inclinaison, secousse et souffle s’épaississent. Terre garde le socle pendant que Mine ouvre le shaker et impose le rythme.",
+				message: "Inclinaison, secousse et air capté s épaississent. Terre garde le socle pendant que Mine ouvre kick et hh pour poser le rythme.",
 				haptic: "medium",
 			},
 			{
 				until: 1,
 				key: "sap",
-				title: "Terre porte, Mine chante.",
-				message: "Dernière montée: lumière, voix, shaker et mouvement se nouent. La surface devient presque animale, comme si les deux mains jouaient enfin ensemble.",
+				title: "Terre porte, Mine harmonise.",
+				message: "Dernière montée: lumière, harmonie, percussion et mouvement se nouent. La surface devient plus ample, comme si les deux mains jouaient enfin ensemble.",
 				haptic: "deep",
 			},
 		];
@@ -6052,26 +6442,882 @@ function initXyzCamera() {
 		}, isAndroidSurface ? 1800 : 2400);
 	};
 
-	const renderVoiceEchoControls = () => {
-		const percent = Math.round(clampNumber(voiceFx.echoAmount, 0, 1) * 100);
-	if (voiceEchoInput instanceof HTMLInputElement) {
-			voiceEchoInput.value = String(percent);
+	const currentScaleProfile = (key = currentToreMode) => toreScaleCatalog[key] || toreScaleCatalog.aeolian;
+	const currentInstrumentProfile = () => toreInstrumentCatalog[musicSettings.instrument] || toreInstrumentCatalog.membrane;
+	const activePercussionKeys = () => XYZ_MUSIC_PERCUSSION_KEYS.filter((key) => musicSettings.percussion[key]);
+	const formatPercussionLabel = () => {
+		const active = activePercussionKeys().map((key) => {
+			if (key === "hihat") {
+				return "hh";
+			}
+			return key;
+		});
+		return active.length ? active.join(" + ") : "drone nu";
+	};
+	const renderMusicControls = () => {
+		if (musicScaleSelect instanceof HTMLSelectElement) {
+			musicScaleSelect.value = musicSettings.scale;
 		}
-		if (voiceEchoReadout instanceof HTMLElement) {
-			voiceEchoReadout.textContent = `${percent}%`;
+		if (musicInstrumentSelect instanceof HTMLSelectElement) {
+			musicInstrumentSelect.value = musicSettings.instrument;
 		}
+		musicPercussionButtons.forEach((button) => {
+			if (!(button instanceof HTMLElement)) {
+				return;
+			}
+			const key = button.dataset.xyzPercussionButton || "";
+			button.setAttribute("aria-pressed", musicSettings.percussion[key] ? "true" : "false");
+		});
+		setSensorText(musicTimbreNode, currentInstrumentProfile().label);
+		setSensorText(musicPercussionNode, formatPercussionLabel());
+		document.body.dataset.musicInstrument = musicSettings.instrument;
+		document.body.dataset.musicPercussion = activePercussionKeys().length ? activePercussionKeys().join("-") : "none";
 	};
 
-	renderVoiceEchoControls();
-	if (voiceEchoInput instanceof HTMLInputElement && voiceEchoInput.dataset.bound !== "1") {
-			voiceEchoInput.dataset.bound = "1";
-			voiceEchoInput.addEventListener("input", () => {
-				voiceFx.echoAmount = clampNumber((Number(voiceEchoInput.value) || 0) / 100, 0, 1);
-				writeXyzVoiceEchoLevel(voiceFx.echoAmount);
-				renderVoiceEchoControls();
+	const persistMusicDawState = () => {
+		writeXyzMusicDawState(musicDawState);
+	};
+
+	const getMusicTrackState = (key) => musicDawState.tracks[key] || normalizeXyzMusicDawState().tracks[key];
+	const hasSoloMusicTracks = () => XYZ_MUSIC_TRACK_KEYS.some((key) => getMusicTrackState(key).solo);
+	const getMusicTrackMix = (key) => {
+		const trackState = getMusicTrackState(key);
+		if (trackState.mute) {
+			return 0;
+		}
+		if (hasSoloMusicTracks() && !trackState.solo) {
+			return 0;
+		}
+		return clampNumber(trackState.volume, 0, 1);
+	};
+	const getMusicBeatDurationMs = () => 60000 / clampNumber(Number(musicDawState.bpm) || 96, 60, 168);
+	const getMusicLoopDurationMs = () => getMusicBeatDurationMs() * 4 * musicDawState.loopBars;
+	const getMusicSwingRatio = () => clampNumber((Number(musicDawState.swing) || 0) / 100, 0, 0.4);
+	const formatMusicPercent = (value) => `${Math.round(clampNumber(value, 0, 1) * 100)}%`;
+	const cloneMusicDawCoreSnapshot = () => ({
+		bpm: musicDawState.bpm,
+		swing: musicDawState.swing,
+		loopBars: musicDawState.loopBars,
+		quantize: musicDawState.quantize,
+		countInBars: musicDawState.countInBars,
+		masterVolume: musicDawState.masterVolume,
+		tracks: normalizeXyzMusicTrackSet(musicDawState.tracks),
+	});
+	const formatMusicDuration = (valueMs) => {
+		if (!Number.isFinite(valueMs) || valueMs <= 0) {
+			return "00:00";
+		}
+		const totalSeconds = Math.floor(valueMs / 1000);
+		const minutes = Math.floor(totalSeconds / 60);
+		const seconds = totalSeconds % 60;
+		return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+	};
+	const formatMusicBytes = (value) => {
+		if (!Number.isFinite(value) || value <= 0) {
+			return "0 Ko";
+		}
+		if (value >= 1024 * 1024) {
+			return `${(value / (1024 * 1024)).toFixed(1)} Mo`;
+		}
+		return `${Math.max(1, Math.round(value / 1024))} Ko`;
+	};
+	const formatMusicTimestamp = (value) => {
+		try {
+			return new Date(value).toLocaleTimeString("fr-FR", {
+				hour: "2-digit",
+				minute: "2-digit",
+			});
+		} catch {
+			return "--:--";
+		}
+	};
+	const buildMusicFileStamp = (value = Date.now()) => {
+		const date = new Date(value);
+		const pad = (part) => String(part).padStart(2, "0");
+		return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+	};
+	const extensionFromMimeType = (mimeType) => {
+		if (mimeType.includes("audio/webm")) {
+			return "webm";
+		}
+		if (mimeType.includes("audio/ogg")) {
+			return "ogg";
+		}
+		if (mimeType.includes("audio/mp4")) {
+			return "m4a";
+		}
+		if (mimeType.includes("application/json")) {
+			return "json";
+		}
+		return "bin";
+	};
+	const downloadBlob = (blob, filename) => {
+		const href = URL.createObjectURL(blob);
+		const anchor = document.createElement("a");
+		anchor.href = href;
+		anchor.download = filename;
+		document.body.appendChild(anchor);
+		anchor.click();
+		anchor.remove();
+		window.setTimeout(() => {
+			URL.revokeObjectURL(href);
+		}, 1000);
+	};
+	const getStoredMusicGestureLoop = () => {
+		const loop = musicDawState.gestureLoop;
+		return loop && Array.isArray(loop.points) && loop.points.length >= 2 ? loop : null;
+	};
+	const clearMusicGestureTimer = () => {
+		if (musicGestureRecordTimer) {
+			window.clearInterval(musicGestureRecordTimer);
+			musicGestureRecordTimer = 0;
+		}
+	};
+	const cancelMusicGesturePlaybackFrame = () => {
+		if (musicGesturePlaybackFrame) {
+			window.cancelAnimationFrame(musicGesturePlaybackFrame);
+			musicGesturePlaybackFrame = 0;
+		}
+	};
+	const applyInstrumentPose = (pose, { clearPointers = true, sync = true } = {}) => {
+		const source = pose && typeof pose === "object" ? pose : {};
+		if (clearPointers) {
+			instrument.pointers.clear();
+		}
+		instrument.terreX = clampNumber(Number(source.terreX) || 0.3, 0.08, 0.92);
+		instrument.terreY = clampNumber(Number(source.terreY) || 0.62, 0.08, 0.92);
+		instrument.terreEnergy = clampNumber(Number(source.terreEnergy) || 0, 0, 1);
+		instrument.mineX = clampNumber(Number(source.mineX) || 0.72, 0.08, 0.92);
+		instrument.mineY = clampNumber(Number(source.mineY) || 0.38, 0.08, 0.92);
+		instrument.mineEnergy = clampNumber(Number(source.mineEnergy) || 0, 0, 1);
+		instrument.activeHands = clampNumber(
+			Math.round(Number(source.activeHands) || ((instrument.terreEnergy > 0 ? 1 : 0) + (instrument.mineEnergy > 0 ? 1 : 0))),
+			0,
+			2
+		);
+		instrument.touchEnergy = instrumentTouchEnergy();
+		renderWorldInstrument();
+		if (sync) {
+			syncMembraneReactiveState();
+		}
+	};
+	const applyMusicDawCoreSnapshot = (snapshot) => {
+		const normalized = normalizeXyzMusicDawCore(snapshot);
+		musicDawState.bpm = normalized.bpm;
+		musicDawState.swing = normalized.swing;
+		musicDawState.loopBars = normalized.loopBars;
+		musicDawState.quantize = normalized.quantize;
+		musicDawState.countInBars = normalized.countInBars;
+		musicDawState.masterVolume = normalized.masterVolume;
+		musicDawState.tracks = normalized.tracks;
+	};
+	const captureCurrentMusicSceneSnapshot = (sceneKey) => {
+		const meta = XYZ_MUSIC_SCENE_META[sceneKey] || { label: sceneKey };
+		return normalizeXyzMusicScene({
+			label: meta.label,
+			savedAt: Date.now(),
+			cameraFacing: cameraFacingMode,
+			instrument: {
+				terreX: instrument.terreX,
+				terreY: instrument.terreY,
+				terreEnergy: instrument.terreEnergy,
+				mineX: instrument.mineX,
+				mineY: instrument.mineY,
+				mineEnergy: instrument.mineEnergy,
+				activeHands: instrument.activeHands,
+			},
+			music: normalizeXyzMusicSettings(musicSettings),
+			daw: cloneMusicDawCoreSnapshot(),
+		});
+	};
+	const storeMusicScene = (sceneKey) => {
+		const snapshot = captureCurrentMusicSceneSnapshot(sceneKey);
+		if (!snapshot) {
+			return false;
+		}
+		musicDawState.scenes[sceneKey] = snapshot;
+		musicActiveSceneKey = sceneKey;
+		persistMusicDawState();
+		renderMusicDesk();
+		pulseDeviceHaptics("soft");
+		return true;
+	};
+	const stopMusicGesturePlayback = () => {
+		cancelMusicGesturePlaybackFrame();
+		musicGesturePlaybackStartedAt = 0;
+		if (musicGestureMode === "playing") {
+			musicGestureMode = "idle";
+		}
+		renderMusicDesk();
+	};
+	const captureMusicGesturePoint = () => {
+		if (musicGestureMode !== "recording") {
+			return;
+		}
+		const offsetMs = Math.max(0, performance.now() - musicGestureRecordStartedAt);
+		musicGestureDraftPoints.push({
+			offsetMs,
+			terreX: instrument.terreX,
+			terreY: instrument.terreY,
+			terreEnergy: instrument.terreEnergy,
+			mineX: instrument.mineX,
+			mineY: instrument.mineY,
+			mineEnergy: instrument.mineEnergy,
+			activeHands: instrument.activeHands,
+			cameraFacing: cameraFacingMode,
+		});
+		const maxDurationMs = Math.min(Math.max(getMusicLoopDurationMs(), 1200), 16000);
+		if (offsetMs >= maxDurationMs) {
+			finalizeMusicGestureRecording();
+		}
+	};
+	const finalizeMusicGestureRecording = ({ discard = false } = {}) => {
+		clearMusicGestureTimer();
+		const recordedAt = musicGestureRecordedAt || Date.now();
+		const draftPoints = musicGestureDraftPoints.slice();
+		musicGestureDraftPoints = [];
+		musicGestureRecordStartedAt = 0;
+		musicGestureRecordedAt = 0;
+		musicGestureMode = "idle";
+		if (!discard && draftPoints.length >= 2) {
+			const normalizedLoop = normalizeXyzMusicGestureLoop({
+				capturedAt: recordedAt,
+				durationMs: Math.max(400, draftPoints[draftPoints.length - 1]?.offsetMs || 0),
+				points: draftPoints,
+			});
+			musicDawState.gestureLoop = normalizedLoop;
+		}
+		persistMusicDawState();
+		renderMusicDesk();
+	};
+	const interpolateMusicGesturePoint = (loop, elapsedMs) => {
+		const points = Array.isArray(loop?.points) ? loop.points : [];
+		if (!points.length) {
+			return null;
+		}
+		if (points.length === 1 || !Number.isFinite(loop.durationMs) || loop.durationMs <= 0) {
+			return points[0];
+		}
+		const normalizedOffset = elapsedMs % loop.durationMs;
+		let nextIndex = points.findIndex((point) => point.offsetMs >= normalizedOffset);
+		if (nextIndex <= 0) {
+			nextIndex = 1;
+		}
+		if (nextIndex >= points.length) {
+			nextIndex = points.length - 1;
+		}
+		const previous = points[nextIndex - 1];
+		const next = points[nextIndex];
+		const span = Math.max(1, next.offsetMs - previous.offsetMs);
+		const blend = clampNumber((normalizedOffset - previous.offsetMs) / span, 0, 1);
+		const mix = (left, right) => Number(left) + ((Number(right) - Number(left)) * blend);
+		return {
+			terreX: mix(previous.terreX, next.terreX),
+			terreY: mix(previous.terreY, next.terreY),
+			terreEnergy: mix(previous.terreEnergy, next.terreEnergy),
+			mineX: mix(previous.mineX, next.mineX),
+			mineY: mix(previous.mineY, next.mineY),
+			mineEnergy: mix(previous.mineEnergy, next.mineEnergy),
+			activeHands: Math.round(mix(previous.activeHands, next.activeHands)),
+			cameraFacing: next.cameraFacing || previous.cameraFacing || cameraFacingMode,
+		};
+	};
+	const startMusicGesturePlayback = async () => {
+		const loop = getStoredMusicGestureLoop();
+		if (!loop) {
+			return false;
+		}
+		if (!isMembraneAudible()) {
+			await startDemoMembrane();
+		}
+		stopMusicGesturePlayback();
+		musicGestureMode = "playing";
+		musicGesturePlaybackStartedAt = performance.now();
+		const renderLoop = (time) => {
+			if (musicGestureMode !== "playing") {
+				return;
+			}
+			const pose = interpolateMusicGesturePoint(loop, Math.max(0, time - musicGesturePlaybackStartedAt));
+			if (pose) {
+				applyInstrumentPose(pose, { clearPointers: true, sync: true });
+			}
+			musicGesturePlaybackFrame = window.requestAnimationFrame(renderLoop);
+		};
+		musicGesturePlaybackFrame = window.requestAnimationFrame(renderLoop);
+		renderMusicDesk();
+		return true;
+	};
+	const startMusicGestureRecording = async () => {
+		if (!isMembraneAudible()) {
+			await startDemoMembrane();
+		}
+		stopMusicGesturePlayback();
+		clearMusicGestureTimer();
+		musicGestureMode = "recording";
+		musicGestureRecordStartedAt = performance.now();
+		musicGestureRecordedAt = Date.now();
+		musicGestureDraftPoints = [];
+		captureMusicGesturePoint();
+		musicGestureRecordTimer = window.setInterval(captureMusicGesturePoint, 60);
+		renderMusicDesk();
+		pulseDeviceHaptics("soft");
+		return true;
+	};
+	const clearMusicGestureLoop = () => {
+		stopMusicGesturePlayback();
+		clearMusicGestureTimer();
+		musicGestureMode = "idle";
+		musicGestureDraftPoints = [];
+		musicDawState.gestureLoop = null;
+		persistMusicDawState();
+		renderMusicDesk();
+	};
+	const toggleMusicGestureRecording = async () => {
+		if (musicGestureMode === "recording") {
+			finalizeMusicGestureRecording();
+			return;
+		}
+		await startMusicGestureRecording();
+	};
+	const toggleMusicGesturePlayback = async () => {
+		if (musicGestureMode === "playing") {
+			stopMusicGesturePlayback();
+			return;
+		}
+		await startMusicGesturePlayback();
+	};
+	const recallMusicScene = async (sceneKey) => {
+		const scene = musicDawState.scenes[sceneKey];
+		if (!scene) {
+			return false;
+		}
+		if (!isMembraneAudible()) {
+			await startDemoMembrane();
+		}
+		stopMusicGesturePlayback();
+		musicActiveSceneKey = sceneKey;
+		musicSettings.scale = scene.music.scale;
+		musicSettings.instrument = scene.music.instrument;
+		musicSettings.percussion = {
+			...scene.music.percussion,
+		};
+		writeXyzMusicSettings(musicSettings);
+		applyMusicDawCoreSnapshot(scene.daw);
+		persistMusicDawState();
+		applyInstrumentPose(scene.instrument, { clearPointers: true, sync: false });
+		if (scene.cameraFacing !== cameraFacingMode) {
+			if (isMembraneLive() && !isMembraneDemo()) {
+				await switchCameraFacingMode(scene.cameraFacing);
+			} else {
+				cameraFacingMode = scene.cameraFacing;
+				writeStoredCameraFacing(scene.cameraFacing);
+				setSensorText(cameraNode, `${isMembraneAudible() ? "ouverte" : "en attente"} · ${cameraFacingLabel()}`);
+				renderWorldInstrument();
+			}
+		}
+		renderMusicControls();
+		applyMotionInstrumentProfile();
+		applyMusicMixState();
+		renderMusicDesk();
+		syncMembraneReactiveState();
+		updateMotionVoice();
+		cueMotionVoice(1.08);
+		pulseDeviceHaptics("medium");
+		return true;
+	};
+	const renderMusicTakes = () => {
+		if (!(musicDawTakesNode instanceof HTMLElement)) {
+			return;
+		}
+		const signature = musicTakes.map((take) => `${take.id}:${take.bytes}:${Math.round(take.durationMs)}`).join("|");
+		if (signature === musicTakesRenderSignature) {
+			return;
+		}
+		musicTakesRenderSignature = signature;
+		musicDawTakesNode.textContent = "";
+		if (!musicTakes.length) {
+			const emptyNode = document.createElement("li");
+			emptyNode.className = "xyz-music-desk__take xyz-music-desk__take--empty";
+			emptyNode.textContent = "Aucune prise pour l instant.";
+			musicDawTakesNode.appendChild(emptyNode);
+			return;
+		}
+
+		musicTakes.slice().reverse().forEach((take) => {
+			const item = document.createElement("li");
+			item.className = "xyz-music-desk__take";
+			const head = document.createElement("div");
+			head.className = "xyz-music-desk__take-head";
+			const title = document.createElement("strong");
+			title.textContent = take.name;
+			const meta = document.createElement("span");
+			meta.className = "xyz-music-desk__take-meta";
+			meta.textContent = `${formatMusicTimestamp(take.createdAt)} · ${formatMusicDuration(take.durationMs)} · ${formatMusicBytes(take.bytes)}`;
+			head.append(title, meta);
+
+			const actions = document.createElement("div");
+			actions.className = "xyz-music-desk__take-actions";
+			const downloadLink = document.createElement("a");
+			downloadLink.className = "ghost-link xyz-music-desk__take-link";
+			downloadLink.href = take.url;
+			downloadLink.download = take.filename;
+			downloadLink.textContent = "telecharger";
+			actions.appendChild(downloadLink);
+
+			const player = document.createElement("audio");
+			player.className = "xyz-music-desk__take-audio";
+			player.controls = true;
+			player.preload = "metadata";
+			player.src = take.url;
+
+			item.append(head, actions, player);
+			musicDawTakesNode.appendChild(item);
+		});
+	};
+	const getMusicTransportSnapshot = () => {
+		const beatDurationMs = getMusicBeatDurationMs();
+		const loopDurationMs = getMusicLoopDurationMs();
+		if (!musicPlaybackStartedAt || !Number.isFinite(loopDurationMs) || loopDurationMs <= 0) {
+			return {
+				active: false,
+				beatDurationMs,
+				loopDurationMs,
+				elapsedMs: 0,
+				measure: 1,
+				beat: 1,
+			};
+		}
+		const elapsedMs = Math.max(0, performance.now() - musicPlaybackStartedAt);
+		const loopElapsedMs = elapsedMs % loopDurationMs;
+		const beatProgress = loopElapsedMs / beatDurationMs;
+		return {
+			active: true,
+			beatDurationMs,
+			loopDurationMs,
+			elapsedMs,
+			measure: Math.floor(beatProgress / 4) + 1,
+			beat: Math.floor(beatProgress % 4) + 1,
+		};
+	};
+	const stopMusicTransportLoop = () => {
+		if (musicTransportTimer) {
+			window.clearInterval(musicTransportTimer);
+			musicTransportTimer = 0;
+		}
+	};
+	const syncMusicTransportLoop = () => {
+		const needsLoop = isMembraneAudible() || musicRecordingState !== "idle";
+		if (needsLoop && !musicTransportTimer) {
+			musicTransportTimer = window.setInterval(() => {
+				renderMusicDesk();
+			}, 140);
+		}
+		if (!needsLoop) {
+			stopMusicTransportLoop();
+		}
+	};
+	const renderMusicDesk = () => {
+		if (!(musicDawRoot instanceof HTMLElement)) {
+			return;
+		}
+		const transport = getMusicTransportSnapshot();
+		const mediaRecorderSupported = typeof window.MediaRecorder === "function";
+		const storedGestureLoop = getStoredMusicGestureLoop();
+		const recordingElapsedMs = musicRecordingState === "recording" && musicRecordingStartedAt
+			? Math.max(0, performance.now() - musicRecordingStartedAt)
+			: 0;
+		const countInProgress = musicRecordingState === "count-in" && musicRecordingCountInTotalBeats > 0
+			? `${Math.min(musicRecordingCountInBeatIndex + 1, musicRecordingCountInTotalBeats)}/${musicRecordingCountInTotalBeats}`
+			: "";
+		let sessionStatus = "prête";
+		if (musicRecordingState === "recording") {
+			sessionStatus = `rec ${formatMusicDuration(recordingElapsedMs)}`;
+		} else if (musicRecordingState === "count-in") {
+			sessionStatus = countInProgress ? `count-in ${countInProgress}` : "count-in";
+		} else if (isMembraneDemo()) {
+			sessionStatus = "atelier local";
+		} else if (isMembraneLive()) {
+			sessionStatus = "membrane live";
+		}
+		setSensorText(musicDawStatusNode, sessionStatus);
+		if (musicDawPlayButton instanceof HTMLElement) {
+			musicDawPlayButton.setAttribute("aria-pressed", isMembraneAudible() ? "true" : "false");
+			musicDawPlayButton.textContent = isMembraneAudible() ? "relancer l elan" : "lecture locale";
+		}
+		if (musicDawStopButton instanceof HTMLElement) {
+			musicDawStopButton.textContent = isMembraneAudible() || musicRecordingState !== "idle" ? "stop" : "relachee";
+			musicDawStopButton.toggleAttribute("disabled", !isMembraneAudible() && musicRecordingState === "idle");
+		}
+		if (musicDawRecordButton instanceof HTMLElement) {
+			musicDawRecordButton.setAttribute("aria-pressed", musicRecordingState === "idle" ? "false" : "true");
+			musicDawRecordButton.textContent = musicRecordingState === "recording"
+				? "stop rec"
+				: (musicRecordingState === "count-in" ? "annuler rec" : "rec audio");
+			musicDawRecordButton.toggleAttribute("disabled", !mediaRecorderSupported);
+		}
+		if (musicDawExportButton instanceof HTMLElement) {
+			musicDawExportButton.toggleAttribute("disabled", false);
+		}
+		if (musicDawGestureRecordButton instanceof HTMLElement) {
+			musicDawGestureRecordButton.setAttribute("aria-pressed", musicGestureMode === "recording" ? "true" : "false");
+			musicDawGestureRecordButton.textContent = musicGestureMode === "recording" ? "stop geste" : "capturer geste";
+		}
+		if (musicDawGesturePlayButton instanceof HTMLElement) {
+			musicDawGesturePlayButton.setAttribute("aria-pressed", musicGestureMode === "playing" ? "true" : "false");
+			musicDawGesturePlayButton.textContent = musicGestureMode === "playing" ? "stop boucle" : "jouer boucle";
+			musicDawGesturePlayButton.toggleAttribute("disabled", !storedGestureLoop);
+		}
+		if (musicDawGestureClearButton instanceof HTMLElement) {
+			musicDawGestureClearButton.toggleAttribute("disabled", !storedGestureLoop && musicGestureMode !== "recording");
+		}
+		if (musicDawBpmInput instanceof HTMLInputElement) {
+			musicDawBpmInput.value = String(musicDawState.bpm);
+		}
+		setSensorText(musicDawBpmReadout, String(musicDawState.bpm));
+		if (musicDawSwingInput instanceof HTMLInputElement) {
+			musicDawSwingInput.value = String(musicDawState.swing);
+		}
+		setSensorText(musicDawSwingReadout, `${musicDawState.swing}%`);
+		if (musicDawLoopSelect instanceof HTMLSelectElement) {
+			musicDawLoopSelect.value = String(musicDawState.loopBars);
+		}
+		if (musicDawQuantizeSelect instanceof HTMLSelectElement) {
+			musicDawQuantizeSelect.value = musicDawState.quantize;
+		}
+		if (musicDawCountInSelect instanceof HTMLSelectElement) {
+			musicDawCountInSelect.value = String(musicDawState.countInBars);
+		}
+		if (musicDawClockNode instanceof HTMLElement) {
+			const baseClock = `tempo ${musicDawState.bpm} bpm · boucle ${musicDawState.loopBars} mesures`;
+			if (transport.active) {
+				const recordingChunk = musicRecordingState === "recording" ? ` · rec ${formatMusicDuration(recordingElapsedMs)}` : "";
+				musicDawClockNode.textContent = `${baseClock} · mesure ${transport.measure} · temps ${transport.beat}${recordingChunk}`;
+			} else {
+				musicDawClockNode.textContent = `${baseClock} · mesure 1 · temps 1`;
+			}
+		}
+		if (musicDawMasterInput instanceof HTMLInputElement) {
+			musicDawMasterInput.value = String(Math.round(musicDawState.masterVolume * 100));
+		}
+		setSensorText(musicDawMasterReadout, formatMusicPercent(musicDawState.masterVolume));
+		XYZ_MUSIC_TRACK_KEYS.forEach((key) => {
+			const trackState = getMusicTrackState(key);
+			const trackMix = getMusicTrackMix(key);
+			const trackCard = musicTrackCards[key];
+			const muteButton = musicTrackMuteButtons[key];
+			const soloButton = musicTrackSoloButtons[key];
+			const volumeInput = musicTrackVolumeInputs[key];
+			if (trackCard instanceof HTMLElement) {
+				trackCard.dataset.trackEnabled = trackMix > 0 ? "true" : "false";
+				trackCard.dataset.trackMuted = trackState.mute ? "true" : "false";
+				trackCard.dataset.trackSolo = trackState.solo ? "true" : "false";
+			}
+			if (muteButton instanceof HTMLElement) {
+				muteButton.setAttribute("aria-pressed", trackState.mute ? "true" : "false");
+			}
+			if (soloButton instanceof HTMLElement) {
+				soloButton.setAttribute("aria-pressed", trackState.solo ? "true" : "false");
+			}
+			if (volumeInput instanceof HTMLInputElement) {
+				volumeInput.value = String(Math.round(trackState.volume * 100));
+			}
+			setSensorText(musicTrackVolumeReadouts[key], formatMusicPercent(trackState.volume));
+		});
+		XYZ_MUSIC_SCENE_KEYS.forEach((key) => {
+			const scene = musicDawState.scenes[key];
+			const sceneCard = musicSceneCards[key];
+			const triggerButton = musicSceneTriggerButtons[key];
+			const storeButton = musicSceneStoreButtons[key];
+			const sceneMeta = XYZ_MUSIC_SCENE_META[key] || { label: key };
+			if (sceneCard instanceof HTMLElement) {
+				sceneCard.dataset.sceneFilled = scene ? "true" : "false";
+				sceneCard.dataset.sceneActive = musicActiveSceneKey === key ? "true" : "false";
+			}
+			if (triggerButton instanceof HTMLElement) {
+				triggerButton.toggleAttribute("disabled", !scene);
+				triggerButton.setAttribute("aria-pressed", musicActiveSceneKey === key ? "true" : "false");
+			}
+			if (storeButton instanceof HTMLElement) {
+				storeButton.textContent = scene ? "remémoriser" : "mémoriser";
+			}
+			if (scene) {
+				const sceneScale = scene.music.scale === "auto"
+					? "auto"
+					: (scene.music.scale === "aeolian"
+						? "éolien"
+						: (scene.music.scale === "dorian"
+							? "dorien"
+							: (scene.music.scale === "lydian" ? "lydien" : "pentatonique")));
+				setSensorText(
+					musicSceneStateNodes[key],
+					`${sceneMeta.label} · ${scene.cameraFacing === "environment" ? "paysage" : "visage"} · ${sceneScale} · ${formatMusicTimestamp(scene.savedAt)}`
+				);
+			} else {
+				setSensorText(musicSceneStateNodes[key], "vide");
+			}
+		});
+		if (musicGestureMode === "recording") {
+			const durationMs = Math.max(0, performance.now() - musicGestureRecordStartedAt);
+			setSensorText(musicDawGestureStateNode, `capture ${formatMusicDuration(durationMs)}`);
+			setSensorText(
+				musicDawGestureCopyNode,
+				"Terre et Mine sont en train d inscrire un trajet. Bouge, pivote, frappe ou traverse: la boucle se refermera sur sa propre mémoire."
+			);
+		} else if (musicGestureMode === "playing" && storedGestureLoop) {
+			setSensorText(musicDawGestureStateNode, `boucle ${formatMusicDuration(storedGestureLoop.durationMs)}`);
+			setSensorText(
+				musicDawGestureCopyNode,
+				"La boucle rejoue maintenant le geste capturé. Tu peux encore changer le timbre, le mix ou la gamme pendant qu elle porte la forme."
+			);
+		} else if (storedGestureLoop) {
+			setSensorText(musicDawGestureStateNode, `boucle ${formatMusicDuration(storedGestureLoop.durationMs)}`);
+			setSensorText(
+				musicDawGestureCopyNode,
+				`Derniere capture: ${formatMusicTimestamp(storedGestureLoop.capturedAt)}. Relance-la pour rejouer la forme ou écrase-la avec un nouveau trajet.`
+			);
+		} else {
+			setSensorText(musicDawGestureStateNode, "aucune boucle");
+			setSensorText(
+				musicDawGestureCopyNode,
+				"Capture un trajet Terre/Mine sur une boucle, puis rejoue-le comme une automation vivante de l instrument."
+			);
+		}
+		if (musicRecordingState === "count-in") {
+			setSensorText(
+				musicDawRecordingStateNode,
+				countInProgress ? `count-in ${countInProgress}` : "count-in"
+			);
+			setSensorText(
+				musicDawRecordingCopyNode,
+				`La prise s ouvre apres ${musicDawState.countInBars} mesure${musicDawState.countInBars > 1 ? "s" : ""}. Le hh suit maintenant le swing de ${musicDawState.swing}%.`
+			);
+		} else if (musicRecordingState === "recording") {
+			setSensorText(musicDawRecordingStateNode, `prise en cours · ${formatMusicDuration(recordingElapsedMs)}`);
+			setSensorText(
+				musicDawRecordingCopyNode,
+				"Le master sort en direct vers une prise locale. Coupe ou relance des pistes sans perdre la couleur de la membrane."
+			);
+		} else if (!mediaRecorderSupported) {
+			setSensorText(musicDawRecordingStateNode, "enregistrement indisponible");
+			setSensorText(
+				musicDawRecordingCopyNode,
+				"Ce navigateur ne propose pas MediaRecorder. La membrane reste jouable, mais les prises locales audio ne peuvent pas partir d ici."
+			);
+		} else if (musicTakes.length) {
+			const lastTake = musicTakes[musicTakes.length - 1];
+			setSensorText(musicDawRecordingStateNode, `${musicTakes.length} prise${musicTakes.length > 1 ? "s" : ""}`);
+			setSensorText(
+				musicDawRecordingCopyNode,
+				`Derniere prise: ${lastTake.name}, ${formatMusicDuration(lastTake.durationMs)}. Elle peut deja etre relue ou telechargee.`
+			);
+		} else {
+			setSensorText(musicDawRecordingStateNode, "aucune prise");
+			setSensorText(
+				musicDawRecordingCopyNode,
+				"Le master peut etre enregistre directement dans l app, puis extrait comme audio ou rejoue plus tard dans une terre."
+			);
+		}
+		renderMusicTakes();
+		document.body.dataset.musicRecordingState = musicRecordingState;
+		document.body.dataset.musicGestureMode = musicGestureMode;
+		document.body.dataset.musicActiveScene = musicActiveSceneKey || "none";
+	};
+
+	renderMusicControls();
+	renderMusicDesk();
+	if (musicScaleSelect instanceof HTMLSelectElement && musicScaleSelect.dataset.bound !== "1") {
+		musicScaleSelect.dataset.bound = "1";
+		musicScaleSelect.addEventListener("change", () => {
+			musicSettings.scale = XYZ_MUSIC_SCALE_KEYS.includes(musicScaleSelect.value) ? musicScaleSelect.value : "auto";
+			writeXyzMusicSettings(musicSettings);
+			renderMusicControls();
+			renderToreGuide();
+			updateMotionVoice();
+		});
+	}
+	if (musicInstrumentSelect instanceof HTMLSelectElement && musicInstrumentSelect.dataset.bound !== "1") {
+		musicInstrumentSelect.dataset.bound = "1";
+		musicInstrumentSelect.addEventListener("change", () => {
+			musicSettings.instrument = XYZ_MUSIC_INSTRUMENT_KEYS.includes(musicInstrumentSelect.value) ? musicInstrumentSelect.value : "membrane";
+			writeXyzMusicSettings(musicSettings);
+			renderMusicControls();
+			applyMotionInstrumentProfile();
+			renderToreGuide();
+			updateMotionVoice();
+		});
+	}
+	musicPercussionButtons.forEach((button) => {
+		if (!(button instanceof HTMLElement) || button.dataset.bound === "1") {
+			return;
+		}
+		button.dataset.bound = "1";
+		button.addEventListener("click", () => {
+			const key = button.dataset.xyzPercussionButton || "";
+			if (!XYZ_MUSIC_PERCUSSION_KEYS.includes(key)) {
+				return;
+			}
+			musicSettings.percussion[key] = !musicSettings.percussion[key];
+			writeXyzMusicSettings(musicSettings);
+			renderMusicControls();
+			renderToreGuide();
+		});
+	});
+	if (musicDawPlayButton instanceof HTMLElement && musicDawPlayButton.dataset.bound !== "1") {
+		musicDawPlayButton.dataset.bound = "1";
+		musicDawPlayButton.addEventListener("click", () => {
+			void startMusicPlaybackFromDesk();
+		});
+	}
+	if (musicDawStopButton instanceof HTMLElement && musicDawStopButton.dataset.bound !== "1") {
+		musicDawStopButton.dataset.bound = "1";
+		musicDawStopButton.addEventListener("click", () => {
+			if (musicRecordingState !== "idle") {
+				stopMusicRecording();
+				return;
+			}
+			stopStream();
+			renderMusicDesk();
+		});
+	}
+	if (musicDawRecordButton instanceof HTMLElement && musicDawRecordButton.dataset.bound !== "1") {
+		musicDawRecordButton.dataset.bound = "1";
+		musicDawRecordButton.addEventListener("click", () => {
+			if (musicRecordingState === "recording" || musicRecordingState === "count-in") {
+				stopMusicRecording();
+				return;
+			}
+			void armMusicRecording();
+		});
+	}
+	if (musicDawExportButton instanceof HTMLElement && musicDawExportButton.dataset.bound !== "1") {
+		musicDawExportButton.dataset.bound = "1";
+		musicDawExportButton.addEventListener("click", () => {
+			exportMusicProjectSnapshot();
+		});
+	}
+	if (musicDawGestureRecordButton instanceof HTMLElement && musicDawGestureRecordButton.dataset.bound !== "1") {
+		musicDawGestureRecordButton.dataset.bound = "1";
+		musicDawGestureRecordButton.addEventListener("click", () => {
+			void toggleMusicGestureRecording();
+		});
+	}
+	if (musicDawGesturePlayButton instanceof HTMLElement && musicDawGesturePlayButton.dataset.bound !== "1") {
+		musicDawGesturePlayButton.dataset.bound = "1";
+		musicDawGesturePlayButton.addEventListener("click", () => {
+			void toggleMusicGesturePlayback();
+		});
+	}
+	if (musicDawGestureClearButton instanceof HTMLElement && musicDawGestureClearButton.dataset.bound !== "1") {
+		musicDawGestureClearButton.dataset.bound = "1";
+		musicDawGestureClearButton.addEventListener("click", () => {
+			clearMusicGestureLoop();
+		});
+	}
+	if (musicDawBpmInput instanceof HTMLInputElement && musicDawBpmInput.dataset.bound !== "1") {
+		musicDawBpmInput.dataset.bound = "1";
+		musicDawBpmInput.addEventListener("input", () => {
+			musicDawState.bpm = clampNumber(Math.round(Number(musicDawBpmInput.value) || 96), 60, 168);
+			persistMusicDawState();
+			renderMusicDesk();
+			updateMotionVoice();
+		});
+	}
+	if (musicDawSwingInput instanceof HTMLInputElement && musicDawSwingInput.dataset.bound !== "1") {
+		musicDawSwingInput.dataset.bound = "1";
+		musicDawSwingInput.addEventListener("input", () => {
+			musicDawState.swing = clampNumber(Math.round(Number(musicDawSwingInput.value) || 0), 0, 40);
+			persistMusicDawState();
+			renderMusicDesk();
+		});
+	}
+	if (musicDawLoopSelect instanceof HTMLSelectElement && musicDawLoopSelect.dataset.bound !== "1") {
+		musicDawLoopSelect.dataset.bound = "1";
+		musicDawLoopSelect.addEventListener("change", () => {
+			musicDawState.loopBars = [2, 4, 8, 16].includes(Number(musicDawLoopSelect.value)) ? Number(musicDawLoopSelect.value) : 4;
+			persistMusicDawState();
+			renderMusicDesk();
+		});
+	}
+	if (musicDawQuantizeSelect instanceof HTMLSelectElement && musicDawQuantizeSelect.dataset.bound !== "1") {
+		musicDawQuantizeSelect.dataset.bound = "1";
+		musicDawQuantizeSelect.addEventListener("change", () => {
+			musicDawState.quantize = ["1/4", "1/8", "1/16"].includes(musicDawQuantizeSelect.value) ? musicDawQuantizeSelect.value : "1/8";
+			persistMusicDawState();
+			renderMusicDesk();
+			updateMotionVoice();
+		});
+	}
+	if (musicDawCountInSelect instanceof HTMLSelectElement && musicDawCountInSelect.dataset.bound !== "1") {
+		musicDawCountInSelect.dataset.bound = "1";
+		musicDawCountInSelect.addEventListener("change", () => {
+			musicDawState.countInBars = [0, 1, 2].includes(Number(musicDawCountInSelect.value)) ? Number(musicDawCountInSelect.value) : 1;
+			persistMusicDawState();
+			renderMusicDesk();
+		});
+	}
+	if (musicDawMasterInput instanceof HTMLInputElement && musicDawMasterInput.dataset.bound !== "1") {
+		musicDawMasterInput.dataset.bound = "1";
+		musicDawMasterInput.addEventListener("input", () => {
+			musicDawState.masterVolume = clampNumber((Number(musicDawMasterInput.value) || 0) / 100, 0, 1);
+			persistMusicDawState();
+			applyMusicMixState();
+			renderMusicDesk();
+		});
+	}
+	XYZ_MUSIC_TRACK_KEYS.forEach((key) => {
+		const muteButton = musicTrackMuteButtons[key];
+		const soloButton = musicTrackSoloButtons[key];
+		const volumeInput = musicTrackVolumeInputs[key];
+		if (muteButton instanceof HTMLElement && muteButton.dataset.bound !== "1") {
+			muteButton.dataset.bound = "1";
+			muteButton.addEventListener("click", () => {
+				const trackState = getMusicTrackState(key);
+				trackState.mute = !trackState.mute;
+				persistMusicDawState();
+				applyMusicMixState();
+				renderMusicDesk();
 				updateMotionVoice();
 			});
 		}
+		if (soloButton instanceof HTMLElement && soloButton.dataset.bound !== "1") {
+			soloButton.dataset.bound = "1";
+			soloButton.addEventListener("click", () => {
+				const trackState = getMusicTrackState(key);
+				trackState.solo = !trackState.solo;
+				persistMusicDawState();
+				applyMusicMixState();
+				renderMusicDesk();
+				updateMotionVoice();
+			});
+		}
+		if (volumeInput instanceof HTMLInputElement && volumeInput.dataset.bound !== "1") {
+			volumeInput.dataset.bound = "1";
+			volumeInput.addEventListener("input", () => {
+				const trackState = getMusicTrackState(key);
+				trackState.volume = clampNumber((Number(volumeInput.value) || 0) / 100, 0, 1);
+				persistMusicDawState();
+				applyMusicMixState();
+				renderMusicDesk();
+				updateMotionVoice();
+			});
+		}
+	});
+	XYZ_MUSIC_SCENE_KEYS.forEach((key) => {
+		const triggerButton = musicSceneTriggerButtons[key];
+		const storeButton = musicSceneStoreButtons[key];
+		if (triggerButton instanceof HTMLElement && triggerButton.dataset.bound !== "1") {
+			triggerButton.dataset.bound = "1";
+			triggerButton.addEventListener("click", () => {
+				void recallMusicScene(key);
+			});
+		}
+		if (storeButton instanceof HTMLElement && storeButton.dataset.bound !== "1") {
+			storeButton.dataset.bound = "1";
+			storeButton.addEventListener("click", () => {
+				storeMusicScene(key);
+			});
+		}
+	});
 
 	const normalizeLayerWeights = (weights) => {
 		const real = Math.max(0.001, Number(weights.real) || 0);
@@ -6237,7 +7483,7 @@ function initXyzCamera() {
 		const modeConfig = arModeCatalog[arModulationMode] || arModeCatalog.weave;
 		const baseWeights = {
 			real: 0.34 + lightTone * 0.22 + presence * 0.14 + movement * 0.08 + sceneEnergy * (cameraFacingMode === "environment" ? 0.12 : 0.04) + (live ? 0.08 : 0.02),
-			plasma: 0.3 + ambient * 0.22 + movement * 0.08 + voiceFx.echoAmount * 0.12 + sceneEnergy * (cameraFacingMode === "environment" ? 0.04 : 0.12) + (plasmaBridgeUrl ? 0.06 : 0.02),
+			plasma: 0.3 + ambient * 0.22 + movement * 0.08 + touchEnergy * 0.08 + sceneEnergy * (cameraFacingMode === "environment" ? 0.04 : 0.12) + (plasmaBridgeUrl ? 0.06 : 0.02),
 			torus: 0.31 + tiltEnergy * 0.22 + handOpen * 0.16 + touchEnergy * 0.18 + bodyEnergy * 0.08 + shakeLevel * 0.14 + (demo ? 0.08 : 0.02),
 		};
 
@@ -6378,46 +7624,62 @@ function initXyzCamera() {
 			const octave = Math.floor(roundedMidi / 12) - 1;
 			return `${toreNoteNames[noteIndex]}${octave}`;
 		};
-	const resolveToreMode = (lightTone, flavor = "") => {
-			if (flavor === "velvet") {
-				currentToreMode = "minor";
-			} else if (flavor === "gloss" || flavor === "sap") {
-				currentToreMode = "major";
-			} else if (lightTone <= 0.42) {
-				currentToreMode = "minor";
-			} else if (lightTone >= 0.58) {
-				currentToreMode = "major";
-			}
-			document.body.dataset.musicalMode = currentToreMode;
-			return currentToreMode;
-		};
-	const quantizeToreMidi = (rawMidi, mode = currentToreMode) => {
-			const scale = toreScaleSteps[mode] || toreScaleSteps.minor;
-			let bestMidi = lastQuantizedMidi;
-			let bestDistance = Number.POSITIVE_INFINITY;
-			for (let octave = -1; octave <= 4; octave += 1) {
-				const baseMidi = toreRootMidi + (octave * 12);
-				for (const step of scale) {
-					const candidateMidi = baseMidi + step;
-					if (candidateMidi < 40 || candidateMidi > 79) {
-						continue;
-					}
-					const distance = Math.abs(rawMidi - candidateMidi);
-					if (distance < bestDistance) {
-						bestDistance = distance;
-						bestMidi = candidateMidi;
-					}
+	const resolveToreMode = (lightTone, flavor = "", movement = 0, ambient = 0, touch = 0) => {
+		if (musicSettings.scale !== "auto" && toreScaleCatalog[musicSettings.scale]) {
+			currentToreMode = musicSettings.scale;
+		} else if (flavor === "velvet" || lightTone < 0.28) {
+			currentToreMode = "aeolian";
+		} else if (flavor === "gloss" || lightTone > 0.76) {
+			currentToreMode = "lydian";
+		} else if (flavor === "sap" || (movement > 0.38 && touch > 0.16)) {
+			currentToreMode = "dorian";
+		} else if (ambient < 0.08 && movement < 0.18 && touch < 0.12) {
+			currentToreMode = "pentatonic";
+		} else if (lightTone > 0.56) {
+			currentToreMode = "dorian";
+		} else {
+			currentToreMode = "aeolian";
+		}
+		document.body.dataset.musicalMode = currentScaleProfile(currentToreMode).color;
+		document.body.dataset.musicalScale = currentToreMode;
+		return currentToreMode;
+	};
+	const findNearestScaleMidi = (rawMidi, mode = currentToreMode, { minMidi = 40, maxMidi = 79 } = {}) => {
+		const scale = currentScaleProfile(mode).steps;
+		let bestMidi = lastQuantizedMidi;
+		let bestDistance = Number.POSITIVE_INFINITY;
+		for (let octave = -1; octave <= 4; octave += 1) {
+			const baseMidi = toreRootMidi + (octave * 12);
+			for (const step of scale) {
+				const candidateMidi = baseMidi + step;
+				if (candidateMidi < minMidi || candidateMidi > maxMidi) {
+					continue;
+				}
+				const distance = Math.abs(rawMidi - candidateMidi);
+				if (distance < bestDistance) {
+					bestDistance = distance;
+					bestMidi = candidateMidi;
 				}
 			}
-			if (Math.abs(rawMidi - lastQuantizedMidi) < 0.46) {
-				return lastQuantizedMidi;
-			}
-			if (Math.abs(bestMidi - lastQuantizedMidi) <= 1 && Math.abs(rawMidi - lastQuantizedMidi) < 0.84) {
-				return lastQuantizedMidi;
-			}
-			lastQuantizedMidi = bestMidi;
-			return bestMidi;
-		};
+		}
+		return bestMidi;
+	};
+	const quantizeToreMidi = (rawMidi, mode = currentToreMode) => {
+		const bestMidi = findNearestScaleMidi(rawMidi, mode);
+		const quantizeProfile = {
+			"1/4": { hold: 0.74, near: 1.08 },
+			"1/8": { hold: 0.46, near: 0.84 },
+			"1/16": { hold: 0.22, near: 0.42 },
+		}[musicDawState.quantize] || { hold: 0.46, near: 0.84 };
+		if (Math.abs(rawMidi - lastQuantizedMidi) < quantizeProfile.hold) {
+			return lastQuantizedMidi;
+		}
+		if (Math.abs(bestMidi - lastQuantizedMidi) <= 1 && Math.abs(rawMidi - lastQuantizedMidi) < quantizeProfile.near) {
+			return lastQuantizedMidi;
+		}
+		lastQuantizedMidi = bestMidi;
+		return bestMidi;
+	};
 	const renderToreGuide = ({
 			mode = currentToreMode,
 			noteLabel = formatToreNoteLabel(lastQuantizedMidi),
@@ -6430,82 +7692,120 @@ function initXyzCamera() {
 			const safeMovement = clampNumber(movement, 0, 1);
 			const safeLight = clampNumber(lightTone, 0, 1);
 			const safeAmbient = clampNumber(ambient, 0, 1);
-			const rhythmLabel = safeShake > 0.56
-				? "shaker ouvert"
-				: (safeMovement > 0.38
-					? "pulsation mobile"
-					: (isMembraneDemo() ? "mine lente" : "drone stable"));
-			const terreState = mode === "major"
-				? (safeLight > 0.66 ? "ouvre / éclaire" : "garde l ouverture")
-				: (safeAmbient > 0.22 ? "tient / assombrit" : "veille / retient");
-			const mineState = safeShake > 0.56
-				? "frappe / relance"
-				: (safeMovement > 0.38
-					? "cherche / incline"
-					: (isMembraneDemo() ? "creuse / répète" : "trace / tient"));
+			const scaleProfile = currentScaleProfile(mode);
+			const instrumentProfile = currentInstrumentProfile();
+			const percussionLabel = formatPercussionLabel();
+			const percussionActive = activePercussionKeys().length > 0;
+			const rhythmLabel = !percussionActive
+				? (safeMovement > 0.38 ? "drone libre" : "drone nu")
+				: (safeShake > 0.56
+					? `${percussionLabel} ouvert`
+					: (safeMovement > 0.38
+						? `${percussionLabel} mobile`
+						: `drone + ${percussionLabel}`));
+			const terreState = scaleProfile.color === "bright"
+				? (safeLight > 0.66 ? "ouvre / éclaire" : "garde l horizon")
+				: (scaleProfile.color === "open"
+					? "soutient / aère"
+					: (safeAmbient > 0.22 ? "tient / assombrit" : "veille / retient"));
+			const mineState = !percussionActive
+				? (safeMovement > 0.38 ? "cherche / module" : "creuse / tient")
+				: (safeShake > 0.56
+					? "frappe / relance"
+					: (safeMovement > 0.38 ? "sculpte / accentue" : "trace / impulse"));
 			let terreTitle = "Elle porte.";
 			let mineTitle = "Elle creuse.";
-			let terreCopy = "Elle stabilise le mode, ouvre ou ferme la lumière, puis garde le drone respirable.";
-			let mineCopy = "Elle tient la note, déclenche l accent, cherche la voix et relance le shaker.";
+			let terreCopy = "Elle stabilise la gamme, ouvre ou ferme la lumière, puis garde le drone respirable.";
+			let mineCopy = percussionActive
+				? `Elle tient la note, ouvre l accent et laisse ${percussionLabel} respirer sans salir l accord.`
+				: "Elle tient la note et fait vibrer l harmonie sans frapper.";
 			let duetCopy = "Terre porte le seuil, Mine y ouvre un trajet.";
 			let duetPhase = "hold";
 			let duetDominant = "terre";
-			let guideText = "Incline pour tenir une note, parle pour que la voix se cale dessus, puis secoue par impulsions courtes pour marquer le shaker.";
+			let guideText = `La gamme ${scaleProfile.shortLabel} tient le cadre. Le timbre ${instrumentProfile.label} chante la note pendant que ${percussionLabel} garde le pouls.`;
 			if (!isMembraneAudible()) {
-				guideText = "Ouvre la membrane ou Terre & Mine pour installer un drone stable, puis construis avec la lumière, la voix accordée et la secousse.";
+				guideText = "Choisis une gamme, un timbre et la percussion utile. Coupe toute la percu pour un drone nu, ou garde kick et hh pour un pouls discret.";
 				terreTitle = "Elle prépare.";
 				mineTitle = "Elle attend.";
-				terreCopy = "Terre pose un fond stable avant l entrée des flux. Elle décide du sol, pas encore de l accent.";
-				mineCopy = "Mine reste suspendue tant qu il n y a ni note tenue, ni secousse, ni voix accrochée.";
+				terreCopy = "Terre pose un fond stable avant l entrée des flux. Elle décide du sol et du climat harmonique.";
+				mineCopy = "Mine reste suspendue tant qu il n y a ni note tenue ni accent choisi.";
 				duetCopy = "Terre prépare le champ, Mine n a pas encore mordu dedans.";
 				duetPhase = "prepare";
 				duetDominant = "terre";
+			} else if (!percussionActive) {
+				guideText = `La membrane joue en drone nu. Terre tient ${scaleProfile.shortLabel}, Mine fait respirer la note, et le timbre ${instrumentProfile.label} garde l harmonie ouverte.`;
+				terreTitle = "Elle tient le ciel.";
+				mineTitle = "Elle respire.";
+				terreCopy = "Terre garde la base et la lumière sans rien marteler. Le champ reste doux et continu.";
+				mineCopy = "Mine module la note, l écart harmonique et les frottements du timbre sans lancer d accent.";
+				duetCopy = "Terre porte la nappe, Mine en ouvre les veines.";
+				duetPhase = "drone";
+				duetDominant = "terre";
 			} else if (safeShake > 0.56) {
-				guideText = "Le shaker est ouvert: garde des secousses courtes et régulières, puis stabilise la main pour laisser la voix accordée respirer au-dessus.";
+				guideText = `L accent est ouvert: garde des impulsions courtes. ${percussionLabel} pose le pouls pendant que le timbre ${instrumentProfile.label} tient l accord.`;
 				terreTitle = "Elle tient le socle.";
 				mineTitle = "Elle frappe.";
-				terreCopy = "Terre garde la matière compacte pour éviter que le shaker casse la lecture du tore.";
-				mineCopy = "Mine marque la surface par impulsions courtes, relance le rythme et ouvre l accent.";
-				duetCopy = "Terre tient, Mine frappe, puis la voix peut passer entre les deux.";
+				terreCopy = "Terre garde la matière compacte pour éviter que la percussion casse la lecture du tore.";
+				mineCopy = `Mine marque la surface, relance ${percussionLabel} et ouvre l accent sans déborder sur l harmonie.`;
+				duetCopy = "Terre tient, Mine frappe, puis le relief harmonique reste lisible.";
 				duetPhase = "strike";
 				duetDominant = "mine";
-			} else if (mode === "major") {
-				guideText = safeLight > 0.66
-					? "La lumière pousse vers le majeur. Tiens l’inclinaison pour garder la note claire, puis parle pour accrocher ta voix à l’accord."
-					: "Le majeur est là mais encore fragile. Ouvre un peu plus la lumière ou lève le téléphone pour élargir la couleur.";
-				terreTitle = "Elle ouvre.";
-				mineTitle = "Elle taille clair.";
-				terreCopy = "Terre élargit le champ, éclaire le mode et garde la base en majeur sans l aplatir.";
-				mineCopy = "Mine affine la note, cherche une ligne plus nette et laisse la voix se poser sans dureté.";
-				duetCopy = "Terre ouvre la pièce, Mine taille dedans une forme plus claire.";
+			} else if (mode === "lydian") {
+				guideText = "Le lydien suspend la lumière. Terre ouvre un ciel stable, Mine laisse briller la quarte et garde le tout léger.";
+				terreTitle = "Elle ouvre haut.";
+				mineTitle = "Elle éclaire fin.";
+				terreCopy = "Terre garde l espace large, clair et presque flottant.";
+				mineCopy = "Mine affine la note et laisse l harmonie monter sans dureté.";
+				duetCopy = "Terre ouvre la pièce, Mine y suspend une ligne brillante.";
 				duetPhase = "open";
 				duetDominant = "terre";
+			} else if (mode === "dorian") {
+				guideText = "Le dorien garde la gravité mais laisse entrer de l air. Le champ reste souple, mobile et moins binaire qu une simple bascule clair / sombre.";
+				terreTitle = "Elle équilibre.";
+				mineTitle = "Elle relance souple.";
+				terreCopy = "Terre tient un sol grave sans le fermer.";
+				mineCopy = "Mine sculpte la note et les accents avec une lumière latérale plus souple.";
+				duetCopy = "Terre garde le centre, Mine ouvre un détour plus vivant.";
+				duetPhase = "flow";
+				duetDominant = "mine";
+			} else if (mode === "pentatonic") {
+				guideText = "La pentatonique simplifie la route. Peu de notes, beaucoup d espace, et une harmonie qui reste nette même quand tu bouges vite.";
+				terreTitle = "Elle simplifie.";
+				mineTitle = "Elle trace net.";
+				terreCopy = "Terre réduit le champ à quelques appuis très lisibles.";
+				mineCopy = "Mine peut bondir d une note à l autre sans créer de heurt inutile.";
+				duetCopy = "Terre réduit, Mine relance, et la phrase reste claire.";
+				duetPhase = "clear";
+				duetDominant = "mine";
 			} else if (safeAmbient > 0.22) {
-				guideText = "Le mineur tient le terrain. Parle, souffle ou fais grésiller la pièce pour verrouiller la voix sur la note avant d’ajouter le shaker.";
+				guideText = "L éolien tient le terrain. Laisse l air ambiant épaissir la matière pendant que Terre garde le sol et que Mine retient l accent.";
 				terreTitle = "Elle retient.";
 				mineTitle = "Elle creuse plus bas.";
-				terreCopy = "Terre ferme un peu la lumière, garde le mode mineur et donne au tore une densité plus grave.";
-				mineCopy = "Mine insiste sur la note, fait naître une veine plus sombre et attend la voix avant l accent.";
+				terreCopy = "Terre ferme un peu la lumière et donne au tore une densité plus grave.";
+				mineCopy = "Mine insiste sur la note et laisse la matière se foncer avant d ouvrir l accent.";
 				duetCopy = "Terre retient la lumière, Mine creuse un passage plus grave.";
 				duetPhase = "grave";
 				duetDominant = "mine";
 			} else if (isMembraneDemo()) {
 				terreTitle = "Elle rejoue.";
 				mineTitle = "Elle répète.";
-				terreCopy = "Terre garde le cycle lisible pendant que la démo alterne ouverture, ombre et montée.";
-				mineCopy = "Mine rejoue l accent, la note et la secousse pour faire sentir la partition sans capteurs.";
+				terreCopy = "Terre garde le cycle lisible pendant que la démo alterne ombre, air et clarté.";
+				mineCopy = "Mine rejoue l accent, la note et la percussion choisie pour faire sentir la partition sans capteurs.";
 				duetCopy = "Terre montre la forme, Mine la répète jusqu à ce qu elle devienne évidente.";
 				duetPhase = "repeat";
 				duetDominant = "mine";
 			}
-			document.body.dataset.musicalMode = mode;
+			document.body.dataset.musicalMode = scaleProfile.color;
+			document.body.dataset.musicalScale = mode;
 			document.body.dataset.duetPhase = duetPhase;
 			document.body.dataset.duetDominant = duetDominant;
 			if (musicGuideNode instanceof HTMLElement) {
 				musicGuideNode.dataset.duetPhase = duetPhase;
 				musicGuideNode.dataset.duetDominant = duetDominant;
+				musicGuideNode.dataset.musicalScale = mode;
 			}
-			setSensorText(musicModeNode, toreModeLabels[mode] || toreModeLabels.minor);
+			renderMusicControls();
+			setSensorText(musicModeNode, scaleProfile.label);
 			setSensorText(musicNoteNode, noteLabel);
 			setSensorText(musicRhythmNode, rhythmLabel);
 			setSensorText(handTerreStateNode, terreState);
@@ -6517,7 +7817,7 @@ function initXyzCamera() {
 			setSensorText(duetStateNode, duetCopy);
 			setSensorText(musicGuideNode, guideText);
 		};
-	const ensureShakerNoiseBuffer = (context) => {
+	const ensurePercussionNoiseBuffer = (context) => {
 			if (shakerNoiseBuffer && shakerNoiseBuffer.sampleRate === context.sampleRate) {
 				return shakerNoiseBuffer;
 			}
@@ -6530,45 +7830,475 @@ function initXyzCamera() {
 			shakerNoiseBuffer = buffer;
 			return shakerNoiseBuffer;
 		};
-	const triggerShaker = async (intensity = 0.4) => {
-			const context = await ensureReactiveAudioContext();
-			if (!context) {
-				return false;
+	const ensureMusicMasterBus = (context) => {
+		if (!musicMasterGain) {
+			musicMasterGain = context.createGain();
+			musicMasterGain.gain.value = musicDawState.masterVolume;
+			musicMasterGain.connect(context.destination);
+			if (typeof context.createMediaStreamDestination === "function") {
+				musicRecorderDestination = context.createMediaStreamDestination();
+				musicMasterGain.connect(musicRecorderDestination);
 			}
-			const deviceProfile = readDeviceAudioProfile();
-			if (deviceProfile.muted || document.hidden || !isMembraneAudible()) {
-				return false;
-			}
-			const nowStamp = performance.now();
-			if (nowStamp - lastShakeAt < 92) {
-				return false;
-			}
-			lastShakeAt = nowStamp;
-			const buffer = ensureShakerNoiseBuffer(context);
-			const source = context.createBufferSource();
-			const highpass = context.createBiquadFilter();
-			const bandpass = context.createBiquadFilter();
-			const gain = context.createGain();
-			source.buffer = buffer;
-			highpass.type = "highpass";
-			highpass.frequency.value = 1800 + (intensity * 2200);
-			bandpass.type = "bandpass";
-			bandpass.frequency.value = 2800 + (intensity * 2400);
-			bandpass.Q.value = 0.8 + (intensity * 2.2);
-			gain.gain.value = 0.0001;
-			source.connect(highpass);
-			highpass.connect(bandpass);
-			bandpass.connect(gain);
-			gain.connect(context.destination);
-			const now = context.currentTime;
-			const peak = clampNumber((0.018 + (intensity * 0.072)) * deviceProfile.volume, 0.016, 0.11);
-			gain.gain.setValueAtTime(0.0001, now);
-			gain.gain.linearRampToValueAtTime(peak, now + 0.01);
-			gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16 + (intensity * 0.1));
-			source.start(now);
-			source.stop(now + 0.22 + (intensity * 0.12));
-			return true;
+		}
+		if (!musicPercussionGain) {
+			musicPercussionGain = context.createGain();
+			musicPercussionGain.gain.value = getMusicTrackMix("percu");
+			musicPercussionGain.connect(musicMasterGain);
+		}
+		applyMusicMixState(context.currentTime);
+		return musicMasterGain;
+	};
+	const applyMusicMixState = (now = audioContext?.currentTime || 0) => {
+		if (musicMasterGain) {
+			musicMasterGain.gain.setTargetAtTime(clampNumber(musicDawState.masterVolume, 0, 1), now, 0.08);
+		}
+		if (musicPercussionGain) {
+			musicPercussionGain.gain.setTargetAtTime(getMusicTrackMix("percu"), now, 0.05);
+		}
+	};
+	const resolveMusicRecorderMimeType = () => {
+		if (typeof window.MediaRecorder !== "function") {
+			return "";
+		}
+		const candidates = [
+			"audio/webm;codecs=opus",
+			"audio/webm",
+			"audio/ogg;codecs=opus",
+			"audio/mp4",
+		];
+		if (typeof window.MediaRecorder.isTypeSupported !== "function") {
+			return candidates[0];
+		}
+		return candidates.find((candidate) => window.MediaRecorder.isTypeSupported(candidate)) || "";
+	};
+	const cancelMusicCountIn = ({ resetState = true } = {}) => {
+		if (musicRecordingCountInTimer) {
+			window.clearTimeout(musicRecordingCountInTimer);
+			musicRecordingCountInTimer = 0;
+		}
+		if (musicRecordingCountInInterval) {
+			window.clearInterval(musicRecordingCountInInterval);
+			musicRecordingCountInInterval = 0;
+		}
+		musicRecordingCountInStartedAt = 0;
+		musicRecordingCountInTotalBeats = 0;
+		musicRecordingCountInBeatIndex = 0;
+		if (resetState && musicRecordingState === "count-in") {
+			musicRecordingState = "idle";
+		}
+	};
+	const playCountInPulse = async (beatIndex = 0) => {
+		const context = await ensureReactiveAudioContext();
+		if (!context) {
+			return;
+		}
+		ensureMusicMasterBus(context);
+		const deviceProfile = readDeviceAudioProfile();
+		if (deviceProfile.muted || document.hidden) {
+			return;
+		}
+		const now = context.currentTime;
+		const tone = context.createOscillator();
+		const gain = context.createGain();
+		const output = musicMasterGain || context.destination;
+		const accentBeat = (beatIndex % 4) === 0;
+		tone.type = accentBeat ? "triangle" : "sine";
+		tone.frequency.setValueAtTime(accentBeat ? 880 : 1320, now);
+		gain.gain.setValueAtTime(0.0001, now);
+		gain.gain.linearRampToValueAtTime(clampNumber((accentBeat ? 0.045 : 0.03) * deviceProfile.volume, 0.012, 0.06), now + 0.006);
+		gain.gain.exponentialRampToValueAtTime(0.0001, now + (accentBeat ? 0.16 : 0.08));
+		tone.connect(gain);
+		gain.connect(output);
+		tone.start(now);
+		tone.stop(now + (accentBeat ? 0.18 : 0.1));
+		cueMotionVoice(0.74);
+	};
+	const finalizeMusicTake = (blob, { mimeType = "audio/webm", durationMs = 0, createdAt = Date.now() } = {}) => {
+		const serial = musicTakeSerial + 1;
+		musicTakeSerial = serial;
+		const extension = extensionFromMimeType(mimeType);
+		const filename = `membrane-take-${String(serial).padStart(2, "0")}-${buildMusicFileStamp(createdAt)}.${extension}`;
+		const take = {
+			id: `take-${serial}`,
+			name: `prise ${String(serial).padStart(2, "0")}`,
+			filename,
+			url: URL.createObjectURL(blob),
+			bytes: blob.size,
+			durationMs,
+			mimeType,
+			createdAt,
 		};
+		musicTakes = [...musicTakes, take];
+		renderMusicDesk();
+	};
+	const stopMusicRecording = () => {
+		if (musicRecordingState === "count-in") {
+			cancelMusicCountIn();
+			renderMusicDesk();
+			syncMusicTransportLoop();
+			return;
+		}
+		if (musicRecorder && musicRecorder.state !== "inactive") {
+			try {
+				musicRecorder.stop();
+			} catch {
+				musicRecordingState = "idle";
+				musicRecordingStartedAt = 0;
+				renderMusicDesk();
+				syncMusicTransportLoop();
+			}
+		}
+	};
+	const startMusicRecorderNow = async () => {
+		const context = await ensureReactiveAudioContext();
+		if (!context) {
+			return false;
+		}
+		ensureMusicMasterBus(context);
+		if (!musicRecorderDestination || typeof musicRecorderDestination.stream?.getTracks !== "function") {
+			renderMusicDesk();
+			return false;
+		}
+		if (typeof window.MediaRecorder !== "function") {
+			renderMusicDesk();
+			return false;
+		}
+		musicRecorderChunks = [];
+		const startedAt = Date.now();
+		const startedPerfAt = performance.now();
+		musicRecorderMimeType = resolveMusicRecorderMimeType();
+		try {
+			musicRecorder = musicRecorderMimeType
+				? new MediaRecorder(musicRecorderDestination.stream, { mimeType: musicRecorderMimeType })
+				: new MediaRecorder(musicRecorderDestination.stream);
+		} catch {
+			try {
+				musicRecorder = new MediaRecorder(musicRecorderDestination.stream);
+			} catch {
+				musicRecorder = null;
+				musicRecorderMimeType = "";
+				musicRecordingState = "idle";
+				musicRecordingStartedAt = 0;
+				renderMusicDesk();
+				syncMusicTransportLoop();
+				return false;
+			}
+		}
+		const recorder = musicRecorder;
+		if (!recorder) {
+			return false;
+		}
+		musicRecordingState = "recording";
+		musicRecordingStartedAt = startedPerfAt;
+		syncMusicTransportLoop();
+		renderMusicDesk();
+		recorder.addEventListener("dataavailable", (event) => {
+			if (event.data && event.data.size > 0) {
+				musicRecorderChunks.push(event.data);
+			}
+		});
+		recorder.addEventListener("stop", () => {
+			const durationMs = Math.max(0, performance.now() - startedPerfAt);
+			const mimeType = recorder.mimeType || musicRecorderMimeType || "audio/webm";
+			const chunks = musicRecorderChunks.slice();
+			musicRecorderChunks = [];
+			musicRecorder = null;
+			musicRecorderMimeType = "";
+			musicRecordingState = "idle";
+			musicRecordingStartedAt = 0;
+			if (chunks.length) {
+				finalizeMusicTake(new Blob(chunks, { type: mimeType }), {
+					mimeType,
+					durationMs,
+					createdAt: startedAt,
+				});
+			} else {
+				renderMusicDesk();
+			}
+			syncMusicTransportLoop();
+		}, { once: true });
+		recorder.start();
+		return true;
+	};
+	const armMusicRecording = async () => {
+		if (typeof window.MediaRecorder !== "function") {
+			renderMusicDesk();
+			return false;
+		}
+		if (!isMembraneAudible()) {
+			await startDemoMembrane();
+		} else {
+			musicPlaybackStartedAt = performance.now();
+			syncMusicTransportLoop();
+		}
+		const context = await ensureReactiveAudioContext();
+		if (!context) {
+			return false;
+		}
+		ensureMusicMasterBus(context);
+		const totalBeats = musicDawState.countInBars * 4;
+		if (totalBeats <= 0) {
+			return startMusicRecorderNow();
+		}
+		cancelMusicCountIn({ resetState: false });
+		musicRecordingState = "count-in";
+		musicRecordingCountInStartedAt = performance.now();
+		musicRecordingCountInTotalBeats = totalBeats;
+		musicRecordingCountInBeatIndex = 0;
+		syncMusicTransportLoop();
+		renderMusicDesk();
+		void playCountInPulse(0);
+		let nextBeatIndex = 1;
+		const beatDurationMs = getMusicBeatDurationMs();
+		musicRecordingCountInInterval = window.setInterval(() => {
+			if (nextBeatIndex >= totalBeats) {
+				return;
+			}
+			musicRecordingCountInBeatIndex = nextBeatIndex;
+			void playCountInPulse(nextBeatIndex);
+			nextBeatIndex += 1;
+			renderMusicDesk();
+		}, beatDurationMs);
+		musicRecordingCountInTimer = window.setTimeout(() => {
+			cancelMusicCountIn({ resetState: false });
+			void startMusicRecorderNow();
+		}, beatDurationMs * totalBeats);
+		return true;
+	};
+	const startMusicPlaybackFromDesk = async () => {
+		if (!isMembraneAudible()) {
+			await startDemoMembrane();
+			return;
+		}
+		await ensureMotionVoice().catch(() => false);
+		musicPlaybackStartedAt = performance.now();
+		syncMusicTransportLoop();
+		updateMotionVoice();
+		cueMotionVoice(1.04);
+		renderMusicDesk();
+	};
+	const exportMusicProjectSnapshot = () => {
+		const snapshot = {
+			version: 1,
+			exported_at: new Date().toISOString(),
+			surface: isIoSurfaceView() ? "io" : "xyz",
+			camera_facing: cameraFacingMode,
+			play_state: {
+				membrane_live: isMembraneLive(),
+				membrane_demo: isMembraneDemo(),
+				recording_state: musicRecordingState,
+				current_mode: currentToreMode,
+				current_note: formatToreNoteLabel(lastQuantizedMidi),
+			},
+			music: normalizeXyzMusicSettings(musicSettings),
+			daw: normalizeXyzMusicDawState(musicDawState),
+			membrane: membraneMetricsSnapshot(),
+			instrument: {
+				terre_x: clampNumber(instrument.terreX, 0, 1),
+				terre_y: clampNumber(instrument.terreY, 0, 1),
+				mine_x: clampNumber(instrument.mineX, 0, 1),
+				mine_y: clampNumber(instrument.mineY, 0, 1),
+				touch_energy: instrumentTouchEnergy(),
+				body_energy: instrumentBodyEnergy(),
+				scene_energy: instrumentSceneEnergy(),
+			},
+			scenes: Object.fromEntries(
+				XYZ_MUSIC_SCENE_KEYS.map((key) => {
+					const scene = musicDawState.scenes[key];
+					return [key, scene ? {
+						label: scene.label,
+						saved_at: new Date(scene.savedAt).toISOString(),
+						camera_facing: scene.cameraFacing,
+						music: scene.music,
+						daw: scene.daw,
+						instrument: scene.instrument,
+					} : null];
+				})
+			),
+			gesture_loop: musicDawState.gestureLoop ? {
+				captured_at: new Date(musicDawState.gestureLoop.capturedAt).toISOString(),
+				duration_ms: musicDawState.gestureLoop.durationMs,
+				points: musicDawState.gestureLoop.points.map((point) => ({
+					offset_ms: point.offsetMs,
+					terre_x: point.terreX,
+					terre_y: point.terreY,
+					terre_energy: point.terreEnergy,
+					mine_x: point.mineX,
+					mine_y: point.mineY,
+					mine_energy: point.mineEnergy,
+					active_hands: point.activeHands,
+					camera_facing: point.cameraFacing,
+				})),
+			} : null,
+			takes: musicTakes.map((take) => ({
+				id: take.id,
+				name: take.name,
+				filename: take.filename,
+				created_at: new Date(take.createdAt).toISOString(),
+				duration_ms: Math.round(take.durationMs),
+				bytes: take.bytes,
+				mime_type: take.mimeType,
+			})),
+		};
+		const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" });
+		downloadBlob(blob, `membrane-project-${buildMusicFileStamp()}.json`);
+	};
+	const applyMotionInstrumentProfile = () => {
+		const profile = currentInstrumentProfile();
+		if (motionVoiceOscillator) {
+			motionVoiceOscillator.type = profile.mainType;
+		}
+		if (motionVoiceHarmonicOscillator) {
+			motionVoiceHarmonicOscillator.type = profile.harmonicType;
+		}
+		if (motionVoiceSubOscillator) {
+			motionVoiceSubOscillator.type = profile.subType;
+		}
+		if (motionVoiceFilter) {
+			motionVoiceFilter.type = profile.filterType;
+		}
+		if (motionVoiceLfo) {
+			motionVoiceLfo.type = profile.filterType === "bandpass" ? "triangle" : "sine";
+		}
+	};
+	const canTriggerPercussion = (key, minGap = 120) => {
+		const nowStamp = performance.now();
+		if (nowStamp - lastPercussionAt[key] < minGap) {
+			return false;
+		}
+		lastPercussionAt[key] = nowStamp;
+		return true;
+	};
+	const triggerKick = (context, deviceProfile, intensity, startAt = context.currentTime) => {
+		if (!canTriggerPercussion("kick", 176)) {
+			return false;
+		}
+		const now = startAt;
+		const body = context.createOscillator();
+		const click = context.createOscillator();
+		const filter = context.createBiquadFilter();
+		const gain = context.createGain();
+		const output = musicPercussionGain || musicMasterGain || context.destination;
+		body.type = "sine";
+		click.type = "triangle";
+		filter.type = "lowpass";
+		filter.frequency.value = 260 + (intensity * 120);
+		body.frequency.setValueAtTime(132 + (intensity * 26), now);
+		body.frequency.exponentialRampToValueAtTime(42 + (intensity * 8), now + 0.26);
+		click.frequency.setValueAtTime(860 + (intensity * 260), now);
+		click.frequency.exponentialRampToValueAtTime(118, now + 0.04);
+		gain.gain.setValueAtTime(0.0001, now);
+		gain.gain.linearRampToValueAtTime(clampNumber((0.03 + intensity * 0.1) * deviceProfile.volume, 0.024, 0.14), now + 0.008);
+		gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+		body.connect(gain);
+		click.connect(gain);
+		gain.connect(filter);
+		filter.connect(output);
+		body.start(now);
+		click.start(now);
+		body.stop(now + 0.32);
+		click.stop(now + 0.06);
+		return true;
+	};
+	const triggerSnare = (context, deviceProfile, intensity, startAt = context.currentTime) => {
+		if (!canTriggerPercussion("snare", 138)) {
+			return false;
+		}
+		const buffer = ensurePercussionNoiseBuffer(context);
+		const now = startAt;
+		const source = context.createBufferSource();
+		const body = context.createOscillator();
+		const highpass = context.createBiquadFilter();
+		const bandpass = context.createBiquadFilter();
+		const gain = context.createGain();
+		const output = musicPercussionGain || musicMasterGain || context.destination;
+		source.buffer = buffer;
+		body.type = "triangle";
+		body.frequency.setValueAtTime(196 + (intensity * 48), now);
+		body.frequency.exponentialRampToValueAtTime(112, now + 0.11);
+		highpass.type = "highpass";
+		highpass.frequency.value = 920 + (intensity * 980);
+		bandpass.type = "bandpass";
+		bandpass.frequency.value = 1900 + (intensity * 1400);
+		bandpass.Q.value = 0.82 + (intensity * 1.2);
+		gain.gain.setValueAtTime(0.0001, now);
+		gain.gain.linearRampToValueAtTime(clampNumber((0.018 + intensity * 0.076) * deviceProfile.volume, 0.016, 0.11), now + 0.006);
+		gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+		source.connect(highpass);
+		highpass.connect(bandpass);
+		bandpass.connect(gain);
+		body.connect(gain);
+		gain.connect(output);
+		source.start(now);
+		source.stop(now + 0.2);
+		body.start(now);
+		body.stop(now + 0.12);
+		return true;
+	};
+	const triggerHiHat = (context, deviceProfile, intensity, startAt = context.currentTime) => {
+		if (!canTriggerPercussion("hihat", 72)) {
+			return false;
+		}
+		const buffer = ensurePercussionNoiseBuffer(context);
+		const now = startAt;
+		const source = context.createBufferSource();
+		const highpass = context.createBiquadFilter();
+		const bandpass = context.createBiquadFilter();
+		const gain = context.createGain();
+		const output = musicPercussionGain || musicMasterGain || context.destination;
+		source.buffer = buffer;
+		highpass.type = "highpass";
+		highpass.frequency.value = 5200 + (intensity * 2200);
+		bandpass.type = "bandpass";
+		bandpass.frequency.value = 7600 + (intensity * 1800);
+		bandpass.Q.value = 1.2 + (intensity * 2.4);
+		gain.gain.setValueAtTime(0.0001, now);
+		gain.gain.linearRampToValueAtTime(clampNumber((0.014 + intensity * 0.048) * deviceProfile.volume, 0.012, 0.082), now + 0.003);
+		gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08 + (intensity * 0.03));
+		source.connect(highpass);
+		highpass.connect(bandpass);
+		bandpass.connect(gain);
+		gain.connect(output);
+		source.start(now);
+		source.stop(now + 0.11 + (intensity * 0.04));
+		return true;
+	};
+	const triggerPercussionAccent = async (intensity = 0.4) => {
+		const context = await ensureReactiveAudioContext();
+		if (!context) {
+			return false;
+		}
+		ensureMusicMasterBus(context);
+		const deviceProfile = readDeviceAudioProfile();
+		if (deviceProfile.muted || document.hidden || !isMembraneAudible()) {
+			return false;
+		}
+		const percussionMix = getMusicTrackMix("percu");
+		if (percussionMix <= 0) {
+			return false;
+		}
+		const active = activePercussionKeys();
+		if (!active.length) {
+			return false;
+		}
+		const normalized = clampNumber(intensity * (0.64 + percussionMix * 0.36), 0, 1);
+		const beatDurationSeconds = getMusicBeatDurationMs() / 1000;
+		const swingOffset = beatDurationSeconds * getMusicSwingRatio() * 0.12;
+		const kickTime = context.currentTime;
+		const snareTime = context.currentTime + swingOffset * 0.75;
+		const hihatTime = context.currentTime + swingOffset;
+		let played = false;
+		if (musicSettings.percussion.kick && (normalized > 0.58 || (active.length === 1 && normalized > 0.22))) {
+			played = triggerKick(context, deviceProfile, normalized, kickTime) || played;
+		}
+		if (musicSettings.percussion.snare && (normalized > 0.44 || (active.length === 1 && normalized > 0.24))) {
+			played = triggerSnare(context, deviceProfile, normalized, snareTime) || played;
+		}
+		if (musicSettings.percussion.hihat && (normalized > 0.24 || !played || (active.length === 1 && normalized > 0.16))) {
+			played = triggerHiHat(context, deviceProfile, normalized, hihatTime) || played;
+		}
+		return played;
+	};
 	renderToreGuide();
 
 	const demoPhasePalette = (key) => {
@@ -6836,7 +8566,7 @@ function initXyzCamera() {
 		if (motion > 0.42 && membrane.audioLevel > 0.24) {
 			return {
 				key: "sap",
-				title: "La membrane boit voix et lumière.",
+				title: "La membrane boit air et lumière.",
 				message: "Le téléphone remonte du grain, du souffle et de l’inclinaison. Le tore devient plus nerveux, presque mastiqué par la présence.",
 			};
 		}
@@ -6890,6 +8620,25 @@ function initXyzCamera() {
 	};
 
 	const stopAudio = () => {
+		if (musicGestureMode === "recording") {
+			finalizeMusicGestureRecording();
+		} else {
+			clearMusicGestureTimer();
+		}
+		stopMusicGesturePlayback();
+		if (musicRecordingState === "count-in") {
+			cancelMusicCountIn();
+		}
+		if (musicRecorder && musicRecorder.state === "recording") {
+			try {
+				musicRecorder.requestData?.();
+				musicRecorder.stop();
+			} catch {
+				// Ignore recorder stop failures during teardown.
+			}
+		}
+		stopMusicTransportLoop();
+		musicPlaybackStartedAt = 0;
 		if (audioFrame) {
 			window.cancelAnimationFrame(audioFrame);
 			audioFrame = 0;
@@ -6899,6 +8648,7 @@ function initXyzCamera() {
 		motionVoiceOscillator = null;
 		motionVoiceHarmonicOscillator = null;
 		motionVoiceSubOscillator = null;
+		motionVoiceMainGain = null;
 		motionVoiceGain = null;
 		motionVoiceHarmonicGain = null;
 		motionVoiceSubGain = null;
@@ -6906,49 +8656,32 @@ function initXyzCamera() {
 		motionVoicePanner = null;
 		motionVoiceLfo = null;
 		motionVoiceLfoGain = null;
-		vocoderInputGain = null;
-		vocoderHighpass = null;
-		vocoderCompressor = null;
-		vocoderBandpass = null;
-		vocoderDirectGain = null;
-		vocoderColorFilter = null;
-		vocoderCarrierOscillator = null;
-		vocoderCarrierHarmonicOscillator = null;
-		vocoderCarrierGain = null;
-		vocoderCarrierHarmonicGain = null;
-		vocoderModDepth = null;
-		vocoderHarmonicModDepth = null;
-		vocoderWetGain = null;
-		vocoderEchoSend = null;
-		vocoderEchoDelay = null;
-		vocoderEchoFeedback = null;
-		vocoderEchoReturn = null;
-		vocoderTuneFilter = null;
-		vocoderTuneHarmonicFilter = null;
-		vocoderTuneGain = null;
-		vocoderTuneHarmonicGain = null;
-			if (audioContext && typeof audioContext.close === "function") {
-				audioContext.close().catch(() => {});
-			}
-			audioContext = null;
-			shakerNoiseBuffer = null;
-			lastShakeAt = 0;
-			lastMotionMagnitude = 0;
-			lastDemoShakeBurst = 0;
-			currentToreMode = "minor";
-			lastQuantizedMidi = toreRootMidi;
-			membrane.audioLevel = 0;
-			membrane.shake = 0;
-			syncMembraneReactiveState();
-			renderToreGuide({
-				mode: currentToreMode,
-				noteLabel: formatToreNoteLabel(lastQuantizedMidi),
-				shakeLevel: 0,
-				movement: 0,
-				lightTone: 0,
-				ambient: 0,
-			});
-		};
+		musicMasterGain = null;
+		musicPercussionGain = null;
+		musicRecorderDestination = null;
+		if (audioContext && typeof audioContext.close === "function") {
+			audioContext.close().catch(() => {});
+		}
+		audioContext = null;
+		shakerNoiseBuffer = null;
+		lastPercussionAt = { kick: 0, snare: 0, hihat: 0 };
+		lastMotionMagnitude = 0;
+		lastDemoShakeBurst = 0;
+		currentToreMode = "aeolian";
+		lastQuantizedMidi = toreRootMidi;
+		membrane.audioLevel = 0;
+		membrane.shake = 0;
+		syncMembraneReactiveState();
+		renderToreGuide({
+			mode: currentToreMode,
+			noteLabel: formatToreNoteLabel(lastQuantizedMidi),
+			shakeLevel: 0,
+			movement: 0,
+			lightTone: 0,
+			ambient: 0,
+		});
+		renderMusicDesk();
+	};
 
 	const ensureReactiveAudioContext = async () => {
 		const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -6963,40 +8696,44 @@ function initXyzCamera() {
 		if (audioContext.state === "suspended") {
 			await audioContext.resume().catch(() => {});
 		}
+		ensureMusicMasterBus(audioContext);
 
 		return audioContext;
 	};
 
-		function updateMotionVoice(forceMute = false) {
-			if (
-				!audioContext
+	function updateMotionVoice(forceMute = false) {
+		if (
+			!audioContext
 			|| !motionVoiceGain
 			|| !motionVoiceOscillator
 			|| !motionVoiceHarmonicOscillator
 			|| !motionVoiceSubOscillator
+			|| !motionVoiceMainGain
 		) {
 			return;
-			}
+		}
 
-			const deviceProfile = readDeviceAudioProfile();
-			const flavor = document.body.dataset.cameraFlavor || "";
-			membrane.shake = clampNumber(membrane.shake * (isMembraneDemo() ? 0.96 : 0.88), 0, 1);
-			const shakeLevel = clampNumber(membrane.shake, 0, 1);
-			const motionEnergy = clampNumber(Math.max(membrane.motionSensor, membrane.cameraMotion * 0.92), 0, 1);
-			const tiltEnergy = clampNumber((Math.abs(membrane.tiltX) + Math.abs(membrane.tiltY)) * 0.5, 0, 1);
-			const lightTone = clampNumber(membrane.lightLevel * 0.58 + membrane.luma * 0.42, 0, 1);
-			const ambient = clampNumber(membrane.audioLevel, 0, 1);
-			const touchEnergy = instrumentTouchEnergy();
-			const bodyPlay = instrumentBodyEnergy();
-			const sceneEnergy = instrumentSceneEnergy();
-			const orientationX = clampNumber(((membrane.tiltX + 1) * 0.5) * 0.68 + instrument.mineX * 0.32, 0, 1);
-			const orientationY = clampNumber(((1 - membrane.tiltY) * 0.5) * 0.62 + instrument.terreY * 0.38, 0, 1);
-			const harmonicMode = resolveToreMode(lightTone, flavor);
-			const shimmer = clampNumber(ambient * 0.36 + lightTone * 0.24 + membrane.cameraMotion * 0.14 + motionEnergy * 0.08 + touchEnergy * 0.12 + shakeLevel * 0.18, 0, 1);
-			const movement = clampNumber(motionEnergy * 0.46 + membrane.cameraMotion * 0.12 + tiltEnergy * 0.12 + bodyPlay * 0.18 + touchEnergy * 0.14 + shakeLevel * 0.28, 0, 1);
-			const presence = clampNumber(
-				Math.max(
-					membrane.luma,
+		ensureMusicMasterBus(audioContext);
+		const deviceProfile = readDeviceAudioProfile();
+		const flavor = document.body.dataset.cameraFlavor || "";
+		const instrumentProfile = currentInstrumentProfile();
+		membrane.shake = clampNumber(membrane.shake * (isMembraneDemo() ? 0.96 : 0.88), 0, 1);
+		const shakeLevel = clampNumber(membrane.shake, 0, 1);
+		const motionEnergy = clampNumber(Math.max(membrane.motionSensor, membrane.cameraMotion * 0.92), 0, 1);
+		const tiltEnergy = clampNumber((Math.abs(membrane.tiltX) + Math.abs(membrane.tiltY)) * 0.5, 0, 1);
+		const lightTone = clampNumber(membrane.lightLevel * 0.58 + membrane.luma * 0.42, 0, 1);
+		const ambient = clampNumber(membrane.audioLevel, 0, 1);
+		const touchEnergy = instrumentTouchEnergy();
+		const bodyPlay = instrumentBodyEnergy();
+		const sceneEnergy = instrumentSceneEnergy();
+		const orientationX = clampNumber(((membrane.tiltX + 1) * 0.5) * 0.68 + instrument.mineX * 0.32, 0, 1);
+		const orientationY = clampNumber(((1 - membrane.tiltY) * 0.5) * 0.62 + instrument.terreY * 0.38, 0, 1);
+		const movement = clampNumber(motionEnergy * 0.46 + membrane.cameraMotion * 0.12 + tiltEnergy * 0.12 + bodyPlay * 0.18 + touchEnergy * 0.14 + shakeLevel * 0.28, 0, 1);
+		const harmonicMode = resolveToreMode(lightTone, flavor, movement, ambient, touchEnergy);
+		const scaleProfile = currentScaleProfile(harmonicMode);
+		const presence = clampNumber(
+			Math.max(
+				membrane.luma,
 				membrane.cameraMotion,
 				membrane.motionSensor,
 				membrane.audioLevel,
@@ -7010,175 +8747,141 @@ function initXyzCamera() {
 		const handOpen = clampNumber(orientationY * 0.52 + touchEnergy * 0.28 + presence * 0.12 + movement * 0.08, 0, 1);
 		const movementGate = clampNumber((movement - 0.015) / 0.985, 0, 1);
 		const orientationGate = clampNumber(handOpen * 0.56 + lightTone * 0.14 + Math.abs(membrane.tiltX) * 0.08 + touchEnergy * 0.22, 0, 1);
-			const gate = clampNumber(
-				Math.max(movementGate * 0.82, orientationGate * 0.68),
+		const gate = clampNumber(Math.max(movementGate * 0.82, orientationGate * 0.68), 0, 1)
+			* clampNumber(0.42 + presence * 0.58, 0, 1);
+		const feedbackSafety = clampNumber(1 - ambient * 0.18, 0.68, 1);
+		const audible = !forceMute && !document.hidden && isMembraneAudible() && !deviceProfile.muted;
+		const demoPulseFloor = audible && isMembraneDemo()
+			? clampNumber((0.02 + handOpen * 0.016 + lightTone * 0.01 + shakeLevel * 0.008) * deviceProfile.volume * feedbackSafety, 0.02, 0.044)
+			: 0;
+		const terreTrackMix = getMusicTrackMix("terre");
+		const mineTrackMix = getMusicTrackMix("mine");
+		const bassTrackMix = getMusicTrackMix("bass");
+		const percussionTrackMix = getMusicTrackMix("percu");
+		const activePercussion = percussionTrackMix > 0.001 ? activePercussionKeys().length : 0;
+		const pitchOctaves = 0.28 + orientationX * 1.62 + lightTone * 0.36 + ambient * 0.1 + (instrumentPitchBias() * 0.18);
+		const rawMidi = toreRootMidi + (pitchOctaves * 12) + (instrumentPitchBias() * 4.2);
+		const quantizedMidi = quantizeToreMidi(rawMidi, harmonicMode);
+		const harmonyMidi = findNearestScaleMidi(quantizedMidi + scaleProfile.harmonyOffset, harmonicMode, { minMidi: 43, maxMidi: 91 });
+		const subMidi = findNearestScaleMidi(quantizedMidi - 12, harmonicMode, { minMidi: 28, maxMidi: 67 });
+		const liftMidi = findNearestScaleMidi(quantizedMidi + scaleProfile.liftOffset, harmonicMode, { minMidi: 55, maxMidi: 96 });
+		const noteLabel = formatToreNoteLabel(quantizedMidi);
+		const targetFrequency = midiToFrequency(quantizedMidi);
+		const harmonicFrequency = midiToFrequency(harmonyMidi);
+		const subFrequency = midiToFrequency(subMidi);
+		const liftFrequency = midiToFrequency(liftMidi);
+		const targetDetune = (
+			(membrane.tiltX * 24)
+			- (membrane.tiltY * 15)
+			+ (ambient * 4)
+			+ (shakeLevel * 5)
+			- (movement * 3)
+			+ (instrumentTextureBias() * 16)
+		) * instrumentProfile.detuneDepth;
+		const droneFloor = audible
+			? clampNumber(
+				(0.015 + handOpen * 0.012 + touchEnergy * 0.012 + sceneEnergy * 0.008 + lightTone * 0.006 + (activePercussion ? 0 : 0.006))
+				* deviceProfile.volume
+				* feedbackSafety,
 				0,
-			1
-		) * clampNumber(0.42 + presence * 0.58, 0, 1);
-			const feedbackSafety = clampNumber(1 - ambient * 0.28, 0.62, 1);
-			const audible = !forceMute && !document.hidden && isMembraneAudible() && !deviceProfile.muted;
-			const demoPulseFloor = audible && isMembraneDemo()
-				? clampNumber((0.02 + handOpen * 0.016 + lightTone * 0.01 + shakeLevel * 0.008) * deviceProfile.volume * feedbackSafety, 0.02, 0.044)
-				: 0;
-			const pitchOctaves = 0.3 + orientationX * 1.68 + lightTone * 0.42 + ambient * 0.12 + (instrumentPitchBias() * 0.18);
-			const rawMidi = toreRootMidi + (pitchOctaves * 12) + (instrumentPitchBias() * 4.2);
-			const quantizedMidi = quantizeToreMidi(rawMidi, harmonicMode);
-			const noteLabel = formatToreNoteLabel(quantizedMidi);
-			const targetFrequency = midiToFrequency(quantizedMidi);
-			const harmonicFrequency = midiToFrequency(Math.min(quantizedMidi + (harmonicMode === "major" ? 16 : 15), 91));
-			const subFrequency = midiToFrequency(Math.max(quantizedMidi - 12, 28));
-			const targetDetune = (membrane.tiltX * 26) - (membrane.tiltY * 16) + (ambient * 4) + (shakeLevel * 6) - (movement * 3) + (instrumentTextureBias() * 18);
-			const droneFloor = audible
-				? clampNumber((0.014 + handOpen * 0.012 + touchEnergy * 0.01 + sceneEnergy * 0.008 + lightTone * 0.008) * deviceProfile.volume * feedbackSafety, 0, 0.038)
-				: 0;
-			const targetGain = audible
-				? clampNumber(
-					gate * (handOpen * 0.82 + touchEnergy * 0.24) * deviceProfile.volume * feedbackSafety * 0.132 + droneFloor + demoPulseFloor,
-					0,
-					isMembraneDemo() ? 0.168 : 0.148
-				)
-				: 0;
-			const targetHarmonicGain = audible
-				? clampNumber(targetGain * (0.4 + lightTone * 0.22 + shakeLevel * 0.16), 0, isMembraneDemo() ? 0.082 : 0.072)
-				: 0;
-			const targetSubGain = audible
-				? clampNumber(targetGain * (0.3 + (1 - lightTone) * 0.22 + movement * 0.1), 0, isMembraneDemo() ? 0.064 : 0.054)
-				: 0;
-			const targetPan = clampNumber(membrane.tiltX * 0.62 + ((instrument.mineX - instrument.terreX) * 0.9) + (orientationX - 0.5) * 0.14, -1, 1);
-			const tunePresence = audible ? clampNumber(((ambient - 0.015) / 0.52) + handOpen * 0.16 + touchEnergy * 0.18 + movement * 0.08 + lightTone * 0.06, 0, 1) : 0;
-			const targetVoiceDrive = audible ? clampNumber(0.98 + presence * 0.56 + handOpen * 0.18 + ambient * 0.12 - ambient * 0.06, 0.9, 1.72) : 0.84;
-			const targetVoiceModDepth = audible ? clampNumber(0.16 + gate * 0.24 + lightTone * 0.08 + ambient * 0.04 + tunePresence * 0.08, 0.12, 0.48) : 0.02;
-			const targetVoiceHarmonicDepth = audible ? clampNumber(targetVoiceModDepth * (0.3 + lightTone * 0.18 + ambient * 0.04), 0.05, 0.24) : 0.01;
-			const targetVoiceDirect = audible ? clampNumber(gate * deviceProfile.volume * feedbackSafety * (0.08 + handOpen * 0.06) * (1 - tunePresence * 0.34), 0, 0.14) : 0;
-			const targetVoiceWet = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.16 + handOpen * 0.12 + movement * 0.08 + ambient * 0.04 + tunePresence * 0.04), 0, 0.34) : 0;
-			const targetVoiceBandpass = clampNumber(targetFrequency * (0.94 + lightTone * 0.36), 140, 2600);
-			const targetVoiceBandpassQ = 0.72 + ambient * 0.48 + movement * 0.34;
-			const targetVoiceColor = clampNumber(340 + lightTone * 1920 + ambient * 380 + movement * 240, 320, 4200);
-			const targetVoiceTuneFrequency = clampNumber(Math.max(targetFrequency * 2, targetFrequency + 72), 140, 2800);
-			const targetVoiceTuneHarmonicFrequency = clampNumber(Math.max(harmonicFrequency, targetFrequency * 3), 220, 4200);
-			const targetVoiceTuneQ = 5.8 + handOpen * 2.8 + ambient * 1.8 + lightTone * 1.2 - movement * 0.8;
-			const targetVoiceTuneHarmonicQ = 4.8 + lightTone * 2.8 + ambient * 1.8 + shakeLevel * 1.2;
-			const targetVoiceTuneGain = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.02 + tunePresence * 0.08 + ambient * 0.04 + handOpen * 0.03), 0, isMembraneDemo() ? 0.14 : 0.12) : 0;
-			const targetVoiceTuneHarmonicGain = audible ? clampNumber(targetVoiceTuneGain * (0.26 + lightTone * 0.16 + ambient * 0.1 + shakeLevel * 0.06), 0, isMembraneDemo() ? 0.08 : 0.07) : 0;
-			const targetVoiceEchoSend = audible ? clampNumber(voiceFx.echoAmount * (0.08 + handOpen * 0.08 + touchEnergy * 0.04 + lightTone * 0.04 + tunePresence * 0.03) * feedbackSafety, 0, 0.1) : 0;
-			const targetVoiceEchoFeedback = audible ? clampNumber(0.08 + voiceFx.echoAmount * 0.18 + ambient * 0.03, 0.08, 0.26) : 0.08;
-			const targetVoiceEchoReturn = audible ? clampNumber(voiceFx.echoAmount * (0.12 + lightTone * 0.08), 0, 0.1) : 0;
-			renderToreGuide({
-				mode: harmonicMode,
-				noteLabel,
-				shakeLevel,
-				movement,
-				lightTone,
-				ambient,
-			});
-			const now = audioContext.currentTime;
+				isMembraneDemo() ? 0.044 : 0.04
+			)
+			: 0;
+		const targetGain = audible
+			? clampNumber(
+				gate * (handOpen * 0.78 + touchEnergy * 0.26 + sceneEnergy * 0.1) * deviceProfile.volume * feedbackSafety * 0.12
+					+ droneFloor
+					+ demoPulseFloor,
+				0,
+				isMembraneDemo() ? 0.18 : 0.15
+			)
+			: 0;
+		const targetMainGain = audible
+			? clampNumber(
+				(0.58 + handOpen * 0.18 + sceneEnergy * 0.1 + (scaleProfile.color === "open" ? 0.08 : 0))
+				* terreTrackMix,
+				0,
+				1
+			)
+			: 0;
+		const harmonicBlend = instrumentProfile.harmonicMix + lightTone * 0.14 + (scaleProfile.color === "bright" ? 0.08 : 0) + (activePercussion ? 0 : 0.04);
+		const targetHarmonicGain = audible
+			? clampNumber(targetGain * harmonicBlend * mineTrackMix, 0, isMembraneDemo() ? 0.11 : 0.09)
+			: 0;
+		const subBlend = instrumentProfile.subMix + (scaleProfile.color === "shadow" ? 0.08 : 0) + (1 - lightTone) * 0.06;
+		const targetSubGain = audible
+			? clampNumber(targetGain * subBlend * bassTrackMix, 0, isMembraneDemo() ? 0.08 : 0.065)
+			: 0;
+		const targetPan = clampNumber(membrane.tiltX * 0.62 + ((instrument.mineX - instrument.terreX) * 0.9) + (orientationX - 0.5) * 0.14, -1, 1);
+		const targetFilterFrequency = clampNumber(
+			instrumentProfile.filterBase
+				+ lightTone * instrumentProfile.filterSpan
+				+ ambient * instrumentProfile.filterAmbient
+				+ movement * instrumentProfile.filterMovement
+				+ shakeLevel * instrumentProfile.filterShake
+				+ (liftFrequency - targetFrequency) * 0.24,
+			180,
+			4800
+		);
+		const targetFilterQ = instrumentProfile.qBase
+			+ ambient * instrumentProfile.qAmbient
+			+ movement * instrumentProfile.qMovement
+			+ shakeLevel * instrumentProfile.qShake;
+		const targetLfoFrequency = instrumentProfile.lfoBase
+			+ movement * instrumentProfile.lfoRange
+			+ ambient * instrumentProfile.lfoAmbient
+			+ shakeLevel * instrumentProfile.lfoShake
+			+ lightTone * 0.18;
+		const targetLfoDepth = instrumentProfile.lfoDepthBase
+			+ movement * instrumentProfile.lfoDepthRange
+			+ ambient * 5.6
+			+ shakeLevel * 8.4
+			+ Math.abs(membrane.tiltX) * 4.2;
+		applyMotionInstrumentProfile();
+		renderToreGuide({
+			mode: harmonicMode,
+			noteLabel,
+			shakeLevel,
+			movement,
+			lightTone,
+			ambient,
+		});
+		const now = audioContext.currentTime;
 
 		motionVoiceOscillator.frequency.setTargetAtTime(targetFrequency, now, 0.09);
 		motionVoiceHarmonicOscillator.frequency.setTargetAtTime(harmonicFrequency, now, 0.11);
 		motionVoiceSubOscillator.frequency.setTargetAtTime(subFrequency, now, 0.12);
 		motionVoiceOscillator.detune.setTargetAtTime(targetDetune, now, 0.12);
-		motionVoiceHarmonicOscillator.detune.setTargetAtTime(targetDetune * 0.42, now, 0.14);
-		motionVoiceSubOscillator.detune.setTargetAtTime(targetDetune * -0.12, now, 0.16);
+		motionVoiceHarmonicOscillator.detune.setTargetAtTime(targetDetune * instrumentProfile.harmonicDetuneRatio, now, 0.14);
+		motionVoiceSubOscillator.detune.setTargetAtTime(targetDetune * instrumentProfile.subDetuneRatio, now, 0.16);
 		motionVoiceGain.gain.cancelScheduledValues(now);
 		motionVoiceGain.gain.setTargetAtTime(targetGain, now, audible ? 0.06 : 0.02);
+		if (motionVoiceMainGain) {
+			motionVoiceMainGain.gain.setTargetAtTime(targetMainGain, now, audible ? 0.08 : 0.02);
+		}
 		if (motionVoiceHarmonicGain) {
 			motionVoiceHarmonicGain.gain.setTargetAtTime(targetHarmonicGain, now, audible ? 0.08 : 0.02);
 		}
 		if (motionVoiceSubGain) {
 			motionVoiceSubGain.gain.setTargetAtTime(targetSubGain, now, audible ? 0.08 : 0.02);
 		}
+		applyMusicMixState(now);
 
-			if (motionVoiceFilter) {
-				motionVoiceFilter.frequency.setTargetAtTime(220 + lightTone * 1680 + ambient * 540 + movement * 360 + shakeLevel * 520, now, 0.12);
-				motionVoiceFilter.Q.setTargetAtTime(0.7 + ambient * 1.8 + movement * 0.6 + shakeLevel * 0.8, now, 0.12);
-			}
+		if (motionVoiceFilter) {
+			motionVoiceFilter.frequency.setTargetAtTime(targetFilterFrequency, now, 0.12);
+			motionVoiceFilter.Q.setTargetAtTime(targetFilterQ, now, 0.12);
+		}
 
 		if (motionVoicePanner) {
 			motionVoicePanner.pan.setTargetAtTime(targetPan, now, 0.14);
 		}
 
-			if (motionVoiceLfo) {
-				motionVoiceLfo.frequency.setTargetAtTime(0.12 + movement * 2.4 + ambient * 0.7 + shakeLevel * 1.2 + lightTone * 0.22, now, 0.18);
-			}
-
-			if (motionVoiceLfoGain) {
-				motionVoiceLfoGain.gain.setTargetAtTime(2.6 + movement * 15 + ambient * 7 + shakeLevel * 10 + Math.abs(membrane.tiltX) * 5, now, 0.18);
-			}
-
-		if (vocoderCarrierOscillator) {
-			vocoderCarrierOscillator.frequency.setTargetAtTime(targetFrequency, now, 0.08);
+		if (motionVoiceLfo) {
+			motionVoiceLfo.frequency.setTargetAtTime(targetLfoFrequency, now, 0.18);
 		}
 
-		if (vocoderCarrierHarmonicOscillator) {
-			vocoderCarrierHarmonicOscillator.frequency.setTargetAtTime(harmonicFrequency, now, 0.1);
-		}
-
-			if (vocoderCarrierGain) {
-				vocoderCarrierGain.gain.setTargetAtTime(audible ? 0.022 + gate * 0.03 + lightTone * 0.008 : 0, now, audible ? 0.12 : 0.04);
-			}
-
-			if (vocoderCarrierHarmonicGain) {
-				vocoderCarrierHarmonicGain.gain.setTargetAtTime(audible ? 0.014 + lightTone * 0.022 + ambient * 0.006 + shakeLevel * 0.004 : 0, now, audible ? 0.12 : 0.04);
-			}
-
-		if (vocoderInputGain) {
-			vocoderInputGain.gain.setTargetAtTime(targetVoiceDrive, now, 0.18);
-		}
-
-		if (vocoderBandpass) {
-			vocoderBandpass.frequency.setTargetAtTime(targetVoiceBandpass, now, 0.12);
-			vocoderBandpass.Q.setTargetAtTime(targetVoiceBandpassQ, now, 0.12);
-		}
-
-		if (vocoderColorFilter) {
-			vocoderColorFilter.frequency.setTargetAtTime(targetVoiceColor, now, 0.16);
-			vocoderColorFilter.Q.setTargetAtTime(0.72 + lightTone * 0.6 + ambient * 0.18, now, 0.16);
-		}
-
-		if (vocoderTuneFilter) {
-			vocoderTuneFilter.frequency.setTargetAtTime(targetVoiceTuneFrequency, now, 0.1);
-			vocoderTuneFilter.Q.setTargetAtTime(targetVoiceTuneQ, now, 0.12);
-		}
-
-		if (vocoderTuneHarmonicFilter) {
-			vocoderTuneHarmonicFilter.frequency.setTargetAtTime(targetVoiceTuneHarmonicFrequency, now, 0.12);
-			vocoderTuneHarmonicFilter.Q.setTargetAtTime(targetVoiceTuneHarmonicQ, now, 0.14);
-		}
-
-		if (vocoderModDepth) {
-			vocoderModDepth.gain.setTargetAtTime(targetVoiceModDepth, now, audible ? 0.12 : 0.04);
-		}
-
-		if (vocoderHarmonicModDepth) {
-			vocoderHarmonicModDepth.gain.setTargetAtTime(targetVoiceHarmonicDepth, now, audible ? 0.12 : 0.04);
-		}
-
-		if (vocoderDirectGain) {
-			vocoderDirectGain.gain.setTargetAtTime(targetVoiceDirect, now, audible ? 0.12 : 0.04);
-		}
-
-		if (vocoderTuneGain) {
-			vocoderTuneGain.gain.setTargetAtTime(targetVoiceTuneGain, now, audible ? 0.12 : 0.04);
-		}
-
-		if (vocoderTuneHarmonicGain) {
-			vocoderTuneHarmonicGain.gain.setTargetAtTime(targetVoiceTuneHarmonicGain, now, audible ? 0.12 : 0.04);
-		}
-
-		if (vocoderWetGain) {
-			vocoderWetGain.gain.setTargetAtTime(targetVoiceWet, now, audible ? 0.12 : 0.04);
-		}
-
-		if (vocoderEchoSend) {
-			vocoderEchoSend.gain.setTargetAtTime(targetVoiceEchoSend, now, audible ? 0.16 : 0.04);
-		}
-
-		if (vocoderEchoFeedback) {
-			vocoderEchoFeedback.gain.setTargetAtTime(targetVoiceEchoFeedback, now, audible ? 0.18 : 0.04);
-		}
-
-		if (vocoderEchoReturn) {
-			vocoderEchoReturn.gain.setTargetAtTime(targetVoiceEchoReturn, now, audible ? 0.18 : 0.04);
+		if (motionVoiceLfoGain) {
+			motionVoiceLfoGain.gain.setTargetAtTime(targetLfoDepth, now, 0.18);
 		}
 	}
 
@@ -7187,8 +8890,10 @@ function initXyzCamera() {
 		if (!context) {
 			return false;
 		}
+		const musicOutput = ensureMusicMasterBus(context);
 
 		if (motionVoiceOscillator && motionVoiceGain) {
+			applyMusicMixState(context.currentTime);
 			updateMotionVoice();
 			return true;
 		}
@@ -7197,6 +8902,7 @@ function initXyzCamera() {
 		motionVoiceHarmonicOscillator = context.createOscillator();
 		motionVoiceSubOscillator = context.createOscillator();
 		motionVoiceFilter = context.createBiquadFilter();
+		motionVoiceMainGain = context.createGain();
 		motionVoiceGain = context.createGain();
 		motionVoiceHarmonicGain = context.createGain();
 		motionVoiceSubGain = context.createGain();
@@ -7204,29 +8910,27 @@ function initXyzCamera() {
 		motionVoiceLfo = context.createOscillator();
 		motionVoiceLfoGain = context.createGain();
 
-		motionVoiceOscillator.type = "sine";
-		motionVoiceHarmonicOscillator.type = "triangle";
-		motionVoiceSubOscillator.type = "sine";
 		motionVoiceOscillator.frequency.value = 164;
 		motionVoiceHarmonicOscillator.frequency.value = 246;
 		motionVoiceSubOscillator.frequency.value = 82;
-		motionVoiceFilter.type = "lowpass";
 		motionVoiceFilter.frequency.value = 360;
 		motionVoiceFilter.Q.value = 1.2;
+		motionVoiceMainGain.gain.value = getMusicTrackMix("terre");
 		motionVoiceGain.gain.value = 0;
 		motionVoiceHarmonicGain.gain.value = 0;
 		motionVoiceSubGain.gain.value = 0;
 		if (motionVoicePanner) {
 			motionVoicePanner.pan.value = 0;
 		}
-		motionVoiceLfo.type = "sine";
 		motionVoiceLfo.frequency.value = 0.28;
 		motionVoiceLfoGain.gain.value = 8;
+		applyMotionInstrumentProfile();
 
 		motionVoiceLfo.connect(motionVoiceLfoGain);
 		motionVoiceLfoGain.connect(motionVoiceOscillator.detune);
 		motionVoiceLfoGain.connect(motionVoiceHarmonicOscillator.detune);
-		motionVoiceOscillator.connect(motionVoiceFilter);
+		motionVoiceOscillator.connect(motionVoiceMainGain);
+		motionVoiceMainGain.connect(motionVoiceFilter);
 		motionVoiceHarmonicOscillator.connect(motionVoiceHarmonicGain);
 		motionVoiceHarmonicGain.connect(motionVoiceFilter);
 		motionVoiceSubOscillator.connect(motionVoiceSubGain);
@@ -7237,116 +8941,12 @@ function initXyzCamera() {
 		} else {
 			motionVoiceFilter.connect(motionVoiceGain);
 		}
-		motionVoiceGain.connect(context.destination);
+		motionVoiceGain.connect(musicOutput);
 		motionVoiceOscillator.start();
 		motionVoiceHarmonicOscillator.start();
 		motionVoiceSubOscillator.start();
 		motionVoiceLfo.start();
-		updateMotionVoice();
-		return true;
-	};
-
-	const ensureVoiceVocoder = async () => {
-		const context = await ensureReactiveAudioContext();
-		if (!context || !audioSource) {
-			return false;
-		}
-
-		if (vocoderCarrierOscillator && vocoderWetGain) {
-			updateMotionVoice();
-			return true;
-		}
-
-		vocoderInputGain = context.createGain();
-		vocoderHighpass = context.createBiquadFilter();
-		vocoderCompressor = context.createDynamicsCompressor();
-		vocoderBandpass = context.createBiquadFilter();
-		vocoderDirectGain = context.createGain();
-		vocoderColorFilter = context.createBiquadFilter();
-		vocoderCarrierOscillator = context.createOscillator();
-		vocoderCarrierHarmonicOscillator = context.createOscillator();
-		vocoderCarrierGain = context.createGain();
-		vocoderCarrierHarmonicGain = context.createGain();
-		vocoderModDepth = context.createGain();
-		vocoderHarmonicModDepth = context.createGain();
-		vocoderTuneFilter = context.createBiquadFilter();
-		vocoderTuneHarmonicFilter = context.createBiquadFilter();
-		vocoderTuneGain = context.createGain();
-		vocoderTuneHarmonicGain = context.createGain();
-		vocoderWetGain = context.createGain();
-		vocoderEchoSend = context.createGain();
-		vocoderEchoDelay = context.createDelay(0.9);
-		vocoderEchoFeedback = context.createGain();
-		vocoderEchoReturn = context.createGain();
-
-		vocoderInputGain.gain.value = 0.96;
-		vocoderHighpass.type = "highpass";
-		vocoderHighpass.frequency.value = 180;
-		vocoderHighpass.Q.value = 0.78;
-		vocoderCompressor.threshold.value = -26;
-		vocoderCompressor.knee.value = 16;
-		vocoderCompressor.ratio.value = 4.4;
-		vocoderCompressor.attack.value = 0.004;
-		vocoderCompressor.release.value = 0.16;
-		vocoderBandpass.type = "bandpass";
-		vocoderBandpass.frequency.value = 360;
-		vocoderBandpass.Q.value = 0.92;
-		vocoderDirectGain.gain.value = 0;
-		vocoderColorFilter.type = "lowpass";
-		vocoderColorFilter.frequency.value = 860;
-		vocoderColorFilter.Q.value = 0.84;
-		vocoderCarrierOscillator.type = "sawtooth";
-		vocoderCarrierHarmonicOscillator.type = "triangle";
-		vocoderCarrierOscillator.frequency.value = 164;
-		vocoderCarrierHarmonicOscillator.frequency.value = 246;
-		vocoderCarrierGain.gain.value = 0;
-		vocoderCarrierHarmonicGain.gain.value = 0;
-		vocoderModDepth.gain.value = 0.16;
-		vocoderHarmonicModDepth.gain.value = 0.08;
-		vocoderTuneFilter.type = "bandpass";
-		vocoderTuneFilter.frequency.value = 220;
-		vocoderTuneFilter.Q.value = 6.6;
-		vocoderTuneHarmonicFilter.type = "bandpass";
-		vocoderTuneHarmonicFilter.frequency.value = 440;
-		vocoderTuneHarmonicFilter.Q.value = 5.2;
-		vocoderTuneGain.gain.value = 0;
-		vocoderTuneHarmonicGain.gain.value = 0;
-		vocoderWetGain.gain.value = 0;
-		vocoderEchoSend.gain.value = 0;
-		vocoderEchoDelay.delayTime.value = 0.24;
-		vocoderEchoFeedback.gain.value = 0.16;
-		vocoderEchoReturn.gain.value = 0;
-
-		audioSource.connect(vocoderInputGain);
-		vocoderInputGain.connect(vocoderHighpass);
-		vocoderHighpass.connect(vocoderCompressor);
-		vocoderCompressor.connect(vocoderBandpass);
-		vocoderCompressor.connect(vocoderTuneFilter);
-		vocoderCompressor.connect(vocoderTuneHarmonicFilter);
-		vocoderBandpass.connect(vocoderModDepth);
-		vocoderBandpass.connect(vocoderHarmonicModDepth);
-		vocoderBandpass.connect(vocoderDirectGain);
-		vocoderTuneFilter.connect(vocoderTuneGain);
-		vocoderTuneHarmonicFilter.connect(vocoderTuneHarmonicGain);
-		vocoderModDepth.connect(vocoderCarrierGain.gain);
-		vocoderHarmonicModDepth.connect(vocoderCarrierHarmonicGain.gain);
-		vocoderCarrierOscillator.connect(vocoderCarrierGain);
-		vocoderCarrierHarmonicOscillator.connect(vocoderCarrierHarmonicGain);
-		vocoderDirectGain.connect(vocoderColorFilter);
-		vocoderTuneGain.connect(vocoderColorFilter);
-		vocoderTuneHarmonicGain.connect(vocoderColorFilter);
-		vocoderCarrierGain.connect(vocoderColorFilter);
-		vocoderCarrierHarmonicGain.connect(vocoderColorFilter);
-		vocoderColorFilter.connect(vocoderWetGain);
-		vocoderWetGain.connect(context.destination);
-		vocoderWetGain.connect(vocoderEchoSend);
-		vocoderEchoSend.connect(vocoderEchoDelay);
-		vocoderEchoDelay.connect(vocoderEchoFeedback);
-		vocoderEchoFeedback.connect(vocoderEchoDelay);
-		vocoderEchoDelay.connect(vocoderEchoReturn);
-		vocoderEchoReturn.connect(context.destination);
-		vocoderCarrierOscillator.start();
-		vocoderCarrierHarmonicOscillator.start();
+		applyMusicMixState(context.currentTime);
 		updateMotionVoice();
 		return true;
 	};
@@ -7369,16 +8969,31 @@ function initXyzCamera() {
 			const sustain = isDemoCue
 				? clampNumber(peak * 0.46, 0.02, 0.06)
 				: clampNumber(peak * 0.38, 0.012, 0.038);
+		const terreTrackMix = getMusicTrackMix("terre");
+		const mineTrackMix = getMusicTrackMix("mine");
+		const bassTrackMix = getMusicTrackMix("bass");
 		motionVoiceGain.gain.cancelScheduledValues(now);
 		motionVoiceGain.gain.setValueAtTime(Math.max(motionVoiceGain.gain.value, 0.002), now);
 		motionVoiceGain.gain.linearRampToValueAtTime(peak, now + 0.06);
 		motionVoiceGain.gain.exponentialRampToValueAtTime(sustain, now + 0.42);
+		if (motionVoiceMainGain) {
+			const mainPeak = clampNumber((0.56 + intensity * 0.14) * terreTrackMix, 0, 1);
+			motionVoiceMainGain.gain.cancelScheduledValues(now);
+			motionVoiceMainGain.gain.setValueAtTime(Math.max(motionVoiceMainGain.gain.value, 0.001), now);
+			motionVoiceMainGain.gain.linearRampToValueAtTime(mainPeak, now + 0.08);
+		}
 
 			if (motionVoiceHarmonicGain) {
 				motionVoiceHarmonicGain.gain.cancelScheduledValues(now);
 				motionVoiceHarmonicGain.gain.setValueAtTime(Math.max(motionVoiceHarmonicGain.gain.value, 0.001), now);
-				motionVoiceHarmonicGain.gain.linearRampToValueAtTime(clampNumber(peak * 0.58, 0.014, 0.05), now + 0.08);
-				motionVoiceHarmonicGain.gain.exponentialRampToValueAtTime(clampNumber(sustain * 0.58, 0.006, 0.022), now + 0.44);
+				motionVoiceHarmonicGain.gain.linearRampToValueAtTime(clampNumber(peak * 0.58 * mineTrackMix, 0, 0.05), now + 0.08);
+				motionVoiceHarmonicGain.gain.exponentialRampToValueAtTime(clampNumber(sustain * 0.58 * mineTrackMix, 0.0001, 0.022), now + 0.44);
+			}
+			if (motionVoiceSubGain) {
+				motionVoiceSubGain.gain.cancelScheduledValues(now);
+				motionVoiceSubGain.gain.setValueAtTime(Math.max(motionVoiceSubGain.gain.value, 0.001), now);
+				motionVoiceSubGain.gain.linearRampToValueAtTime(clampNumber(peak * 0.42 * bassTrackMix, 0, 0.04), now + 0.08);
+				motionVoiceSubGain.gain.exponentialRampToValueAtTime(clampNumber(sustain * 0.42 * bassTrackMix, 0.0001, 0.018), now + 0.44);
 			}
 	};
 
@@ -7404,8 +9019,8 @@ function initXyzCamera() {
 		setSensorText(
 			audioNode,
 			membrane.audioLevel > 0.03
-				? `${Math.round(membrane.audioLevel * 100)}% · voix accordée`
-				: "souffle bas"
+				? `${Math.round(membrane.audioLevel * 100)}% · air capté`
+				: "air calme"
 		);
 	};
 
@@ -7421,7 +9036,6 @@ function initXyzCamera() {
 		audioAnalyser.fftSize = 512;
 		audioSource.connect(audioAnalyser);
 		audioFrame = window.requestAnimationFrame(analyzeAudio);
-		await ensureVoiceVocoder();
 		await ensureMotionVoice();
 		return true;
 	};
@@ -7435,20 +9049,20 @@ function initXyzCamera() {
 		demoPhaseIndex = -1;
 	};
 
-		const startDemoMembrane = async () => {
-			stopDemoMode();
-			setUiState(
-				"demo",
-				"Terre et Mine ouvrent un atelier local a deux mains: Terre porte le champ, Mine y creuse note, accent et voix, puis le tore les rejoue sans capteurs.",
-				"Terre et Mine ouvrent la matière du tore."
-			);
-			setReactiveCssState(0.28, 0.14, [112, 122, 196], "velvet");
-			membrane.audioLevel = 0.08;
-			membrane.motionSensor = 0.18;
-			membrane.shake = 0.12;
-			membrane.tiltX = 0.12;
-			membrane.tiltY = 0.16;
-			syncMembraneReactiveState();
+	const startDemoMembrane = async () => {
+		stopDemoMode();
+		setUiState(
+			"demo",
+			"Terre et Mine ouvrent un atelier local a deux mains: Terre porte le champ, Mine y creuse note, accent, harmonie et percussion choisie, puis le tore les rejoue sans capteurs.",
+			"Terre et Mine ouvrent la matière du tore."
+		);
+		setReactiveCssState(0.28, 0.14, [112, 122, 196], "velvet");
+		membrane.audioLevel = 0.08;
+		membrane.motionSensor = 0.18;
+		membrane.shake = 0.12;
+		membrane.tiltX = 0.12;
+		membrane.tiltY = 0.16;
+		syncMembraneReactiveState();
 		const voiceReady = await ensureMotionVoice().catch(() => false);
 		if (voiceReady) {
 			updateMotionVoice();
@@ -7458,10 +9072,14 @@ function initXyzCamera() {
 		setSensorText(wakeNode, "démo locale");
 		pulseDeviceHaptics("soft");
 		demoStartedAt = performance.now();
+		musicPlaybackStartedAt = demoStartedAt;
+		syncMusicTransportLoop();
+		renderMusicDesk();
 
 		const renderDemoFrame = (time) => {
 			const elapsed = Math.max(0, time - demoStartedAt);
-			const progress = (elapsed % 28000) / 28000;
+			const loopDurationMs = Math.max(getMusicLoopDurationMs(), 1000);
+			const progress = (elapsed % loopDurationMs) / loopDurationMs;
 			const seconds = elapsed / 1000;
 			const wave = (Math.sin(seconds * 0.84) + 1) / 2;
 			const undertow = (Math.cos(seconds * 0.31 + 1.2) + 1) / 2;
@@ -7499,7 +9117,7 @@ function initXyzCamera() {
 			setSensorText(motionNode, `${Math.round(motionSensor * 100)}% · demo`);
 				setSensorText(
 					lightNode,
-					`${Math.round(60 + lightLevel * 860)} lux · ${currentToreMode === "major" ? "majeur" : "mineur"}`
+					`${Math.round(60 + lightLevel * 860)} lux · ${currentScaleProfile().shortLabel}`
 				);
 			setSensorText(audioNode, `${Math.round(audio * 100)}% d’amplitude`);
 			setSensorText(cameraNode, `${phase.key} synthétique`);
@@ -7511,7 +9129,7 @@ function initXyzCamera() {
 					cueMotionVoice(0.82 + blend * 0.18);
 				}
 				if (burst > 0.6 && lastDemoShakeBurst <= 0.6) {
-					void triggerShaker(0.42 + (burst * 0.34));
+					void triggerPercussionAccent(0.42 + (burst * 0.34));
 				}
 				lastDemoShakeBurst = burst;
 
@@ -7572,7 +9190,7 @@ function initXyzCamera() {
 					syncMembraneReactiveState();
 					setSensorText(
 						lightNode,
-						`${Math.round(Number(lightSensor.illuminance) || 0)} lux · ${currentToreMode === "major" ? "majeur" : "mineur"}`
+						`${Math.round(Number(lightSensor.illuminance) || 0)} lux · ${currentScaleProfile().shortLabel}`
 					);
 				});
 			lightSensor.addEventListener("error", () => {
@@ -7655,12 +9273,12 @@ function initXyzCamera() {
 				membrane.shake = clampNumber(Math.max(shakeImpulse, membrane.shake * 0.72), 0, 1);
 				syncMembraneReactiveState();
 				if (shakeImpulse > 0.14) {
-					void triggerShaker(0.36 + (shakeImpulse * 0.5));
+					void triggerPercussionAccent(0.36 + (shakeImpulse * 0.5));
 				}
 				setSensorText(
 					motionNode,
 					shakeImpulse > 0.12
-						? `${Math.round(membrane.motionSensor * 100)}% · shaker`
+						? `${Math.round(membrane.motionSensor * 100)}% · accent`
 						: `${Math.round(membrane.motionSensor * 100)}%`
 				);
 			});
@@ -7765,6 +9383,14 @@ function initXyzCamera() {
 		if (titleNode instanceof HTMLElement && title) {
 			titleNode.textContent = title;
 		}
+		if (isLiveLike && !musicPlaybackStartedAt) {
+			musicPlaybackStartedAt = performance.now();
+		}
+		if (!isLiveLike && state !== "loading") {
+			musicPlaybackStartedAt = 0;
+		}
+		syncMusicTransportLoop();
+		renderMusicDesk();
 	};
 
 	const stopStream = ({ quiet = false } = {}) => {
@@ -7860,7 +9486,7 @@ function initXyzCamera() {
 			stopAnalysis();
 			analysisFrame = window.requestAnimationFrame(analyzeFrame);
 			setSensorText(cameraNode, `ouverte · ${cameraFacingLabel()}`);
-			setSensorText(audioNode, analyserReady ? "ouvert" : "micro ouvert");
+			setSensorText(audioNode, analyserReady ? "air ouvert" : "micro ouvert");
 			return { videoReady: true, audioReady: true };
 		} catch {
 			stopMediaTracks(stream);
@@ -7875,7 +9501,7 @@ function initXyzCamera() {
 		try {
 			audioStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
 			const analyserReady = await ensureAudioAnalyser(audioStream);
-			setSensorText(audioNode, analyserReady ? "ouvert" : "micro ouvert");
+			setSensorText(audioNode, analyserReady ? "air ouvert" : "micro ouvert");
 			return true;
 		} catch {
 			setSensorText(audioNode, optional ? "refusé · optionnel" : "refusé");
@@ -7899,15 +9525,15 @@ function initXyzCamera() {
 			"loading",
 			isSpatialHeadsetSurface
 				? (cameraFacingMode === "environment"
-					? "La couche spatiale ouvre le paysage d abord. Le but est de laisser marche, reflets, voix et présence nourrir le tore sans casser la lecture du casque."
-					: "La couche spatiale ouvre d abord visage, voix et présence. Le but est de stabiliser la lecture avant la future passe native.")
+					? "La couche spatiale ouvre le paysage d abord. Le but est de laisser marche, reflets, air et présence nourrir le tore sans casser la lecture du casque."
+					: "La couche spatiale ouvre d abord visage, air et présence. Le but est de stabiliser la lecture avant la future passe native.")
 				: (isAndroidSurface
 				? (cameraFacingMode === "environment"
 					? "Sur Android, la membrane ouvre d abord le paysage, puis tente micro et capteurs sans bloquer toute la surface si un flux manque."
 					: "Sur Android, la membrane ouvre d’abord le visage, puis tente le micro et les capteurs sans bloquer toute la surface si un flux manque.")
 				: (cameraFacingMode === "environment"
 					? "Le tore demande au téléphone paysage, lumière, souffle, mouvement et présence. Le dehors doit pouvoir jouer comme un instrument entier."
-					: "Le tore demande au téléphone lumière, souffle, mouvement et présence. La réaction sonore, les modes majeur/mineur et la voix accordée restent locales à ce navigateur.")),
+					: "Le tore demande au téléphone lumière, souffle, mouvement et présence. La réaction sonore, les gammes, les timbres et l harmonie restent locales à ce navigateur.")),
 			restarting
 				? (cameraFacingMode === "environment"
 					? "Le monde se retourne vers le paysage…"
@@ -7957,8 +9583,8 @@ function initXyzCamera() {
 							? "La couche spatiale parcourt maintenant le dehors. Marche, reflets, perspective, souffle et gestes nourrissent le tore comme une peau musicale du paysage."
 							: "La couche spatiale ouvre déjà le paysage. Même sans micro, dehors, lumière, marche et cadrage font respirer le tore.")
 						: (audioReady
-							? "La couche spatiale est ouverte. Visage, voix, mains et présence locale modulent déjà le tore en lecture stable pour le casque."
-							: "La couche spatiale voit déjà ton visage et la présence proche. La voix et les capteurs plus fins pourront venir ensuite sans casser la lecture."))
+							? "La couche spatiale est ouverte. Visage, air, mains et présence locale modulent déjà le tore en lecture stable pour le casque."
+							: "La couche spatiale voit déjà ton visage et la présence proche. L air et les capteurs plus fins pourront venir ensuite sans casser la lecture."))
 					: (cameraFacingMode === "environment"
 						? (audioReady
 							? "La membrane parcourt maintenant le dehors. Marche, reflets, perspective, souffle et gestes nourrissent le tore comme un instrument de paysage."
@@ -8000,10 +9626,10 @@ function initXyzCamera() {
 				isSpatialHeadsetSurface
 					? (cameraFacingMode === "environment"
 						? (audioReady
-							? "Le paysage n est pas encore entièrement visible, mais la voix et la présence locale suffisent déjà pour régler le rythme du tore."
+							? "Le paysage n est pas encore entièrement visible, mais l air et la présence locale suffisent déjà pour régler le rythme du tore."
 							: "La couche spatiale reste partielle ici. On garde tout de même une lecture stable du paysage sans promettre encore le vrai volume natif.")
 						: (audioReady
-							? "La couche spatiale n a pas encore toute l image, mais la voix et la présence locale suffisent déjà pour régler le rythme du tore."
+							? "La couche spatiale n a pas encore toute l image, mais l air et la présence locale suffisent déjà pour régler le rythme du tore."
 							: "La couche spatiale reste partielle ici. On garde une lecture stable sans promettre encore le vrai volume natif."))
 					: (cameraFacingMode === "environment"
 						? (audioReady
@@ -8011,7 +9637,7 @@ function initXyzCamera() {
 							: "La membrane ne capte pas encore tout le paysage, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le tore.")
 						: (audioReady
 							? "La membrane n’a pas encore d’image, mais le tore écoute déjà souffle, mouvement, lumière ou veille et peut rester vivant sur Android."
-							: "La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le thérémin du tore.")),
+							: "La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le tore.")),
 				isSpatialHeadsetSurface
 					? (cameraFacingMode === "environment"
 						? (audioReady
@@ -8050,7 +9676,7 @@ function initXyzCamera() {
 		setUiState(
 			"error",
 			isSpatialHeadsetSurface
-				? "Cette surface n a encore ouvert ni voix, ni image, ni présence exploitable. Le tore revient donc à une lecture locale plus simple en attendant le client natif."
+				? "Cette surface n a encore ouvert ni air, ni image, ni présence exploitable. Le tore revient donc à une lecture locale plus simple en attendant le client natif."
 				: (isAndroidSurface
 				? "Android n’a encore laissé passer ni caméra, ni micro, ni capteur. La membrane revient à son rêve interne jusqu’à une nouvelle autorisation."
 				: "Permission refusée ou capteur inaccessible. La membrane revient à son rêve interne, sans captation directe."),
@@ -8166,7 +9792,45 @@ function initXyzCamera() {
 				case " ":
 				case "spacebar":
 					pulseInstrumentKeyboard("mine", 0, 0);
-					void triggerShaker(0.58);
+					void triggerPercussionAccent(0.58);
+					break;
+				case "1":
+				case "&":
+					if (event.shiftKey) {
+						storeMusicScene("scene-a");
+					} else {
+						void recallMusicScene("scene-a");
+					}
+					break;
+				case "2":
+				case "é":
+					if (event.shiftKey) {
+						storeMusicScene("scene-b");
+					} else {
+						void recallMusicScene("scene-b");
+					}
+					break;
+				case "3":
+				case "\"":
+					if (event.shiftKey) {
+						storeMusicScene("scene-c");
+					} else {
+						void recallMusicScene("scene-c");
+					}
+					break;
+				case "4":
+				case "'":
+					if (event.shiftKey) {
+						storeMusicScene("scene-d");
+					} else {
+						void recallMusicScene("scene-d");
+					}
+					break;
+				case "g":
+					void toggleMusicGestureRecording();
+					break;
+				case "l":
+					void toggleMusicGesturePlayback();
 					break;
 				case "f":
 				case "v":
@@ -8200,6 +9864,11 @@ function initXyzCamera() {
 	});
 
 	window.addEventListener("beforeunload", () => {
+		musicTakes.forEach((take) => {
+			if (take?.url) {
+				URL.revokeObjectURL(take.url);
+			}
+		});
 		stopStream();
 	});
 
@@ -8214,7 +9883,7 @@ function initXyzCamera() {
 	setSensorText(orientationNode, isSpatialHeadsetSurface ? "geste a venir" : "prête");
 	setSensorText(motionNode, isSpatialHeadsetSurface ? "presence a venir" : "prêt");
 	setSensorText(lightNode, "capteur ou Ocam");
-	setSensorText(audioNode, isSpatialHeadsetSurface ? "voix locale" : "prêt");
+	setSensorText(audioNode, isSpatialHeadsetSurface ? "air local" : "prêt");
 	setSensorText(cameraNode, `${isSpatialHeadsetSurface ? "preview locale" : "prête"} · ${cameraFacingLabel()}`);
 	setSensorText(wakeNode, "sur demande");
 	resetMembraneReactiveState();

@@ -155,9 +155,12 @@ function aza_api_request(string $path, array $payload, string $method = 'POST'):
 
     $context = stream_context_create($options);
     $body = @file_get_contents($url, false, $context);
+    $response_headers = function_exists('http_get_last_response_headers')
+        ? (http_get_last_response_headers() ?: [])
+        : ($http_response_header ?? []);
 
     $status = 0;
-    if (isset($http_response_header[0]) && preg_match('#HTTP/\\S+\\s+(\\d+)#', $http_response_header[0], $match)) {
+    if (isset($response_headers[0]) && preg_match('#HTTP/\\S+\\s+(\\d+)#', $response_headers[0], $match)) {
         $status = (int)$match[1];
     }
 

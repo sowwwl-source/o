@@ -580,7 +580,7 @@ $pageDescription = $isLabSurface
                         <p><span>orientation</span><strong data-xyz-sensor-orientation>en attente</strong></p>
                         <p><span>mouvement</span><strong data-xyz-sensor-motion>en attente</strong></p>
                         <p><span>lumière</span><strong data-xyz-sensor-light>en attente</strong></p>
-                        <p><span>voix</span><strong data-xyz-sensor-audio>en attente</strong></p>
+                        <p><span>ambiance</span><strong data-xyz-sensor-audio>en attente</strong></p>
                         <p><span>caméra</span><strong data-xyz-sensor-camera>en attente</strong></p>
                         <p><span>veille</span><strong data-xyz-sensor-wake>en attente</strong></p>
                     </div>
@@ -600,11 +600,6 @@ $pageDescription = $isLabSurface
                                 <span>niveau O.</span>
                                 <input type="range" min="0" max="100" step="1" value="82" data-device-volume-input>
                                 <strong data-device-volume-readout>82%</strong>
-                            </label>
-                            <label class="device-bridge-range">
-                                <span>écho voix</span>
-                                <input type="range" min="0" max="100" step="1" value="18" data-xyz-voice-echo-input>
-                                <strong data-xyz-voice-echo-readout>18%</strong>
                             </label>
                             <div class="device-bridge-actions">
                                 <button type="button" class="ghost-link" data-device-install hidden>Installer</button>
@@ -640,12 +635,250 @@ $pageDescription = $isLabSurface
                     <div class="xyz-music-guide" data-xyz-music-guide-root>
                         <span class="summary-label">atelier</span>
                         <div class="xyz-music-guide__grid" aria-label="Lecture musicale du tore">
-                            <p><span>mode</span><strong data-xyz-music-mode>Mi mineur</strong></p>
+                            <p><span>mode</span><strong data-xyz-music-mode>Mi éolien</strong></p>
                             <p><span>note</span><strong data-xyz-music-note>Mi2</strong></p>
+                            <p><span>timbre</span><strong data-xyz-music-timbre>peau</strong></p>
+                            <p><span>percu</span><strong data-xyz-music-percussion>kick + hh</strong></p>
                             <p><span>rythme</span><strong data-xyz-music-rhythm>drone stable</strong></p>
                             <p><span>terre</span><strong data-xyz-hand-terre-state>porte le champ</strong></p>
                             <p><span>mine</span><strong data-xyz-hand-mine-state>creuse la note</strong></p>
                         </div>
+                        <div class="xyz-music-guide__controls" aria-label="Réglages musicaux de la membrane">
+                            <label class="xyz-music-guide__control">
+                                <span>gamme</span>
+                                <select data-xyz-music-scale>
+                                    <option value="auto">auto</option>
+                                    <option value="aeolian">éolien</option>
+                                    <option value="dorian">dorien</option>
+                                    <option value="lydian">lydien</option>
+                                    <option value="pentatonic">pentatonique</option>
+                                </select>
+                            </label>
+                            <label class="xyz-music-guide__control">
+                                <span>timbre</span>
+                                <select data-xyz-music-instrument>
+                                    <option value="membrane">peau</option>
+                                    <option value="glass">verre</option>
+                                    <option value="reed">roseau</option>
+                                    <option value="bronze">bronze</option>
+                                </select>
+                            </label>
+                            <div class="xyz-music-guide__percussion">
+                                <span>percu</span>
+                                <div class="xyz-music-guide__toggle-group" role="group" aria-label="Percussions actives">
+                                    <button type="button" class="ghost-link xyz-music-guide__toggle" data-xyz-percussion-button="kick" aria-pressed="true">kick</button>
+                                    <button type="button" class="ghost-link xyz-music-guide__toggle" data-xyz-percussion-button="snare" aria-pressed="false">snare</button>
+                                    <button type="button" class="ghost-link xyz-music-guide__toggle" data-xyz-percussion-button="hihat" aria-pressed="true">hh</button>
+                                </div>
+                            </div>
+                        </div>
+                        <section class="xyz-music-desk" data-xyz-daw-root aria-label="Console musicale membrane">
+                            <div class="xyz-music-desk__transport">
+                                <div class="xyz-music-desk__transport-head">
+                                    <span class="summary-label">session</span>
+                                    <strong data-xyz-daw-status>prête</strong>
+                                </div>
+                                <div class="xyz-music-desk__transport-actions" role="group" aria-label="Transport musical">
+                                    <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-play>lecture locale</button>
+                                    <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-stop>stop</button>
+                                    <button type="button" class="ghost-link xyz-music-desk__transport-button xyz-music-desk__transport-button--record" data-xyz-daw-record>rec audio</button>
+                                    <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-export-project>export projet</button>
+                                </div>
+                                <div class="xyz-music-desk__transport-grid">
+                                    <label class="xyz-music-desk__field">
+                                        <span>bpm</span>
+                                        <input type="range" min="60" max="168" step="1" value="96" data-xyz-daw-bpm-input>
+                                        <strong data-xyz-daw-bpm-readout>96</strong>
+                                    </label>
+                                    <label class="xyz-music-desk__field">
+                                        <span>swing</span>
+                                        <input type="range" min="0" max="40" step="1" value="12" data-xyz-daw-swing-input>
+                                        <strong data-xyz-daw-swing-readout>12%</strong>
+                                    </label>
+                                    <label class="xyz-music-desk__field">
+                                        <span>boucle</span>
+                                        <select data-xyz-daw-loop-select>
+                                            <option value="2">2 mesures</option>
+                                            <option value="4" selected>4 mesures</option>
+                                            <option value="8">8 mesures</option>
+                                            <option value="16">16 mesures</option>
+                                        </select>
+                                    </label>
+                                    <label class="xyz-music-desk__field">
+                                        <span>quantize</span>
+                                        <select data-xyz-daw-quantize-select>
+                                            <option value="1/4">1/4</option>
+                                            <option value="1/8" selected>1/8</option>
+                                            <option value="1/16">1/16</option>
+                                        </select>
+                                    </label>
+                                    <label class="xyz-music-desk__field">
+                                        <span>count-in</span>
+                                        <select data-xyz-daw-countin-select>
+                                            <option value="0">off</option>
+                                            <option value="1" selected>1 mesure</option>
+                                            <option value="2">2 mesures</option>
+                                        </select>
+                                    </label>
+                                    <p class="xyz-music-desk__clock" data-xyz-daw-clock>boucle 4 mesures · mesure 1 · temps 1</p>
+                                </div>
+                            </div>
+                            <div class="xyz-music-desk__memory" aria-label="Mémoire immersive">
+                                <div class="xyz-music-memory">
+                                    <div class="xyz-music-memory__head">
+                                        <span class="summary-label">scenes</span>
+                                        <strong>memoire du tore</strong>
+                                    </div>
+                                    <p class="xyz-music-memory__copy">Mémorise une position Terre/Mine, le timbre, la gamme et le mix, puis relance-les comme des états jouables.</p>
+                                    <div class="xyz-music-memory__grid" role="group" aria-label="Scènes de la membrane">
+                                        <article class="xyz-music-scene" data-xyz-daw-scene="scene-a">
+                                            <div class="xyz-music-scene__head">
+                                                <span class="summary-label">A</span>
+                                                <strong>aube</strong>
+                                            </div>
+                                            <p class="xyz-music-scene__state" data-xyz-daw-scene-state="scene-a">vide</p>
+                                            <div class="xyz-music-scene__actions">
+                                                <button type="button" class="ghost-link xyz-music-scene__button" data-xyz-daw-scene-trigger="scene-a">jouer</button>
+                                                <button type="button" class="ghost-link xyz-music-scene__button" data-xyz-daw-scene-store="scene-a">mémoriser</button>
+                                            </div>
+                                        </article>
+                                        <article class="xyz-music-scene" data-xyz-daw-scene="scene-b">
+                                            <div class="xyz-music-scene__head">
+                                                <span class="summary-label">B</span>
+                                                <strong>seuil</strong>
+                                            </div>
+                                            <p class="xyz-music-scene__state" data-xyz-daw-scene-state="scene-b">vide</p>
+                                            <div class="xyz-music-scene__actions">
+                                                <button type="button" class="ghost-link xyz-music-scene__button" data-xyz-daw-scene-trigger="scene-b">jouer</button>
+                                                <button type="button" class="ghost-link xyz-music-scene__button" data-xyz-daw-scene-store="scene-b">mémoriser</button>
+                                            </div>
+                                        </article>
+                                        <article class="xyz-music-scene" data-xyz-daw-scene="scene-c">
+                                            <div class="xyz-music-scene__head">
+                                                <span class="summary-label">C</span>
+                                                <strong>marche</strong>
+                                            </div>
+                                            <p class="xyz-music-scene__state" data-xyz-daw-scene-state="scene-c">vide</p>
+                                            <div class="xyz-music-scene__actions">
+                                                <button type="button" class="ghost-link xyz-music-scene__button" data-xyz-daw-scene-trigger="scene-c">jouer</button>
+                                                <button type="button" class="ghost-link xyz-music-scene__button" data-xyz-daw-scene-store="scene-c">mémoriser</button>
+                                            </div>
+                                        </article>
+                                        <article class="xyz-music-scene" data-xyz-daw-scene="scene-d">
+                                            <div class="xyz-music-scene__head">
+                                                <span class="summary-label">D</span>
+                                                <strong>sève</strong>
+                                            </div>
+                                            <p class="xyz-music-scene__state" data-xyz-daw-scene-state="scene-d">vide</p>
+                                            <div class="xyz-music-scene__actions">
+                                                <button type="button" class="ghost-link xyz-music-scene__button" data-xyz-daw-scene-trigger="scene-d">jouer</button>
+                                                <button type="button" class="ghost-link xyz-music-scene__button" data-xyz-daw-scene-store="scene-d">mémoriser</button>
+                                            </div>
+                                        </article>
+                                    </div>
+                                </div>
+                                <div class="xyz-music-memory xyz-music-memory--gesture">
+                                    <div class="xyz-music-memory__head">
+                                        <span class="summary-label">geste</span>
+                                        <strong data-xyz-daw-gesture-state>aucune boucle</strong>
+                                    </div>
+                                    <p class="xyz-music-memory__copy" data-xyz-daw-gesture-copy>Capture un trajet Terre/Mine sur une boucle, puis rejoue-le comme une automation vivante de l instrument.</p>
+                                    <div class="xyz-music-memory__actions" role="group" aria-label="Boucle de geste">
+                                        <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-gesture-record>capturer geste</button>
+                                        <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-gesture-play>jouer boucle</button>
+                                        <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-gesture-clear>effacer</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="xyz-music-desk__mixer" aria-label="Mixer membrane">
+                                <article class="xyz-music-track" data-xyz-track-card="terre">
+                                    <div class="xyz-music-track__head">
+                                        <span class="summary-label">terre</span>
+                                        <strong>fond</strong>
+                                    </div>
+                                    <p class="xyz-music-track__copy">La charpente stable, la gravite et le corps du tore.</p>
+                                    <div class="xyz-music-track__actions">
+                                        <button type="button" class="ghost-link xyz-music-track__toggle" data-xyz-track-mute="terre" aria-pressed="false">mute</button>
+                                        <button type="button" class="ghost-link xyz-music-track__toggle" data-xyz-track-solo="terre" aria-pressed="false">solo</button>
+                                    </div>
+                                    <label class="xyz-music-track__level">
+                                        <span>niveau</span>
+                                        <input type="range" min="0" max="100" step="1" value="82" data-xyz-track-volume="terre">
+                                        <strong data-xyz-track-volume-readout="terre">82%</strong>
+                                    </label>
+                                </article>
+                                <article class="xyz-music-track" data-xyz-track-card="mine">
+                                    <div class="xyz-music-track__head">
+                                        <span class="summary-label">mine</span>
+                                        <strong>harmonie</strong>
+                                    </div>
+                                    <p class="xyz-music-track__copy">La ligne qui creuse, eclaire ou assombrit la phrase.</p>
+                                    <div class="xyz-music-track__actions">
+                                        <button type="button" class="ghost-link xyz-music-track__toggle" data-xyz-track-mute="mine" aria-pressed="false">mute</button>
+                                        <button type="button" class="ghost-link xyz-music-track__toggle" data-xyz-track-solo="mine" aria-pressed="false">solo</button>
+                                    </div>
+                                    <label class="xyz-music-track__level">
+                                        <span>niveau</span>
+                                        <input type="range" min="0" max="100" step="1" value="72" data-xyz-track-volume="mine">
+                                        <strong data-xyz-track-volume-readout="mine">72%</strong>
+                                    </label>
+                                </article>
+                                <article class="xyz-music-track" data-xyz-track-card="bass">
+                                    <div class="xyz-music-track__head">
+                                        <span class="summary-label">basse</span>
+                                        <strong>ancrage</strong>
+                                    </div>
+                                    <p class="xyz-music-track__copy">Le sous-sol, la tenue et la respiration grave du champ.</p>
+                                    <div class="xyz-music-track__actions">
+                                        <button type="button" class="ghost-link xyz-music-track__toggle" data-xyz-track-mute="bass" aria-pressed="false">mute</button>
+                                        <button type="button" class="ghost-link xyz-music-track__toggle" data-xyz-track-solo="bass" aria-pressed="false">solo</button>
+                                    </div>
+                                    <label class="xyz-music-track__level">
+                                        <span>niveau</span>
+                                        <input type="range" min="0" max="100" step="1" value="76" data-xyz-track-volume="bass">
+                                        <strong data-xyz-track-volume-readout="bass">76%</strong>
+                                    </label>
+                                </article>
+                                <article class="xyz-music-track" data-xyz-track-card="percu">
+                                    <div class="xyz-music-track__head">
+                                        <span class="summary-label">percu</span>
+                                        <strong>accents</strong>
+                                    </div>
+                                    <p class="xyz-music-track__copy">Kick, snare et hh dessinent le pas, la marche et la nervure.</p>
+                                    <div class="xyz-music-track__actions">
+                                        <button type="button" class="ghost-link xyz-music-track__toggle" data-xyz-track-mute="percu" aria-pressed="false">mute</button>
+                                        <button type="button" class="ghost-link xyz-music-track__toggle" data-xyz-track-solo="percu" aria-pressed="false">solo</button>
+                                    </div>
+                                    <label class="xyz-music-track__level">
+                                        <span>niveau</span>
+                                        <input type="range" min="0" max="100" step="1" value="78" data-xyz-track-volume="percu">
+                                        <strong data-xyz-track-volume-readout="percu">78%</strong>
+                                    </label>
+                                </article>
+                                <article class="xyz-music-track xyz-music-track--master" data-xyz-track-card="master">
+                                    <div class="xyz-music-track__head">
+                                        <span class="summary-label">master</span>
+                                        <strong>sortie</strong>
+                                    </div>
+                                    <p class="xyz-music-track__copy">Le bus final de la membrane, celui qui part vers l oreille et les prises.</p>
+                                    <label class="xyz-music-track__level">
+                                        <span>niveau</span>
+                                        <input type="range" min="0" max="100" step="1" value="94" data-xyz-daw-master-input>
+                                        <strong data-xyz-daw-master-readout>94%</strong>
+                                    </label>
+                                </article>
+                            </div>
+                            <div class="xyz-music-desk__recorder">
+                                <div class="xyz-music-desk__recorder-head">
+                                    <span class="summary-label">prises</span>
+                                    <strong data-xyz-daw-recording-state>aucune prise</strong>
+                                </div>
+                                <p class="panel-copy" data-xyz-daw-recording-copy>Le master peut etre enregistre directement dans l app, puis extrait comme audio ou relu plus tard dans la terre.</p>
+                                <ul class="xyz-music-desk__takes" data-xyz-daw-takes>
+                                    <li class="xyz-music-desk__take xyz-music-desk__take--empty">Aucune prise pour l instant.</li>
+                                </ul>
+                            </div>
+                        </section>
                         <div class="xyz-music-guide__duet" aria-label="Partition Terre et Mine">
                             <article class="xyz-music-guide__hand xyz-music-guide__hand--terre">
                                 <span class="summary-label">main terre</span>
@@ -655,11 +888,11 @@ $pageDescription = $isLabSurface
                             <article class="xyz-music-guide__hand xyz-music-guide__hand--mine">
                                 <span class="summary-label">main mine</span>
                                 <strong data-xyz-hand-mine-title>Elle creuse.</strong>
-                                <p data-xyz-hand-mine-copy>Elle tient la note, déclenche l’accent, cherche la voix et relance le shaker.</p>
+                                <p data-xyz-hand-mine-copy>Elle tient la note, ouvre l accent et laisse la percussion respirer sans salir l accord.</p>
                             </article>
                         </div>
                         <p class="xyz-music-guide__duet-state" data-xyz-duet-state>Terre porte le seuil, Mine y ouvre un trajet.</p>
-                        <p class="panel-copy" data-xyz-music-guide>La lumière ouvre le majeur, l’ombre garde le mineur, l’inclinaison tient la note, la voix s’y accroche et la secousse déclenche un shaker.</p>
+                        <p class="panel-copy" data-xyz-music-guide>Choisis une gamme, un timbre et la percussion utile. La lumière colore l accord, l inclinaison tient la note, Terre porte la base et Mine ouvre l accent.</p>
                     </div>
                 </article>
 
