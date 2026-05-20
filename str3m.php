@@ -475,6 +475,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                         class="str3m-player<?= $dailyAudioHasSource ? '' : ' is-empty' ?>"
                         data-str3m-player
                         data-str3m-player-has-source="<?= $dailyAudioHasSource ? '1' : '0' ?>"
+                        data-str3m-player-source-url="<?= h($dailyAudioPath) ?>"
                         data-str3m-player-title="<?= h($dailyAudioTitle) ?>"
                         data-str3m-player-mood="<?= h((string) ($dailyStream['mood'] ?? 'calm')) ?>"
                         data-str3m-player-template="<?= h((string) ($dailyStream['template'] ?? 'empty')) ?>"
@@ -567,10 +568,24 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                                     <h5 id="str3m-player-status-title">État</h5>
                                 </div>
                                 <div class="str3m-player__status-grid">
+                                    <p><span>Moteur</span><strong data-str3m-player-engine><?= $dailyAudioHasSource ? 'web en attente' : 'veille' ?></strong></p>
+                                    <p><span>Sortie</span><strong data-str3m-player-output><?= $dailyAudioHasSource ? 'intégrée' : 'veille' ?></strong></p>
+                                    <p><span>Média</span><strong data-str3m-player-source-state><?= $dailyAudioHasSource ? 'annoncée' : 'aucune source' ?></strong></p>
                                     <p><span>Source</span><strong data-str3m-player-source><?= $dailyAudioHasSource ? h($dailyAudioTitle) : 'aucune nappe' ?></strong></p>
                                     <p><span>Vitesse</span><strong data-str3m-player-rate-state>1.00×</strong></p>
                                     <p><span>EQ</span><strong data-str3m-player-summary>plat</strong></p>
                                     <p><span>Raccourcis</span><strong>Espace · ← → · ±</strong></p>
+                                </div>
+                                <div class="str3m-player__status-actions">
+                                    <a
+                                        class="str3m-player__status-link"
+                                        data-str3m-player-open
+                                        href="<?= $dailyAudioHasSource ? h($dailyAudioPath) : '#' ?>"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        <?= $dailyAudioHasSource ? '' : 'hidden aria-hidden="true"' ?>
+                                    >ouvrir la source</a>
+                                    <button type="button" class="str3m-player__button" data-str3m-player-retry<?= $dailyAudioHasSource ? '' : ' disabled' ?>>relancer EQ</button>
                                 </div>
                             </section>
                         </div>

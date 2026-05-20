@@ -6,6 +6,7 @@ const GUIDE_VOICE_MUTE_KEY = "o-guide-voice-muted-v1";
 const DEVICE_SILENCE_INTENT_KEY = "o-device-silence-intent-v1";
 const DEVICE_VOLUME_LEVEL_KEY = "o-device-volume-level-v1";
 const XYZ_VOICE_ECHO_KEY = "o-xyz-voice-echo-v1";
+const AUDIO_DEFAULTS_VERSION_KEY = "o-audio-defaults-v2";
 const RA_MODULATION_SESSION_KEY = "o-ra-modulation-v1";
 const WORLD_INSTRUMENT_SESSION_KEY = "o-world-instrument-v1";
 const RA_MODULATION_SESSION_TTL = 6 * 60 * 60 * 1000;
@@ -570,7 +571,7 @@ function str3mWorldProfileFromState(state) {
 				bassDelta: 0.8,
 				midDelta: -0.2,
 				trebleDelta: 1.6,
-				gainDelta: 4,
+				gainDelta: 6,
 			};
 		}
 
@@ -587,7 +588,7 @@ function str3mWorldProfileFromState(state) {
 				bassDelta: -0.4,
 				midDelta: 0.6,
 				trebleDelta: 1.9,
-				gainDelta: 2,
+				gainDelta: 4,
 			};
 		}
 
@@ -603,7 +604,7 @@ function str3mWorldProfileFromState(state) {
 			bassDelta: 0.6,
 			midDelta: 0.2,
 			trebleDelta: 0.4,
-			gainDelta: 3,
+			gainDelta: 5,
 		};
 	}
 
@@ -620,7 +621,7 @@ function str3mWorldProfileFromState(state) {
 			bassDelta: 0.7,
 			midDelta: 0.8,
 			trebleDelta: 0.5,
-			gainDelta: 3,
+			gainDelta: 5,
 		};
 	}
 
@@ -636,7 +637,7 @@ function str3mWorldProfileFromState(state) {
 		bassDelta: 0.2,
 		midDelta: 0.4,
 		trebleDelta: -0.3,
-		gainDelta: 1,
+		gainDelta: 3,
 	};
 }
 
@@ -693,7 +694,7 @@ function str3mPlayerPresetFromRaState(state) {
 			bass: -0.5,
 			mid: 1.5,
 			treble: 1.2,
-			gain: 102,
+			gain: 106,
 			status: "preset traduit",
 			note: "Régime traduit: le lecteur s’éclaircit légèrement pour laisser mieux passer les coutures, les voix et les matières intermédiaires.",
 		};
@@ -707,7 +708,7 @@ function str3mPlayerPresetFromRaState(state) {
 			bass: 2.2,
 			mid: 0.8,
 			treble: 0.5,
-			gain: 106,
+			gain: 110,
 			status: "preset bouclé",
 			note: "Régime bouclé: le lecteur pousse un peu l’élan, le bas et la relance pour rendre les prises publiques plus franches.",
 		};
@@ -720,7 +721,7 @@ function str3mPlayerPresetFromRaState(state) {
 		bass: 1.2,
 		mid: -0.4,
 		treble: -0.8,
-		gain: 100,
+		gain: 104,
 		status: "preset ancré",
 		note: "Régime ancré: le lecteur ralentit légèrement et garde une tenue plus dense pour laisser apparaître les terres et les repères.",
 	};
@@ -734,7 +735,7 @@ function str3mPlayerPresetFromSpatialState(raState, worldState) {
 		bass: 0,
 		mid: 0,
 		treble: 0,
-		gain: 100,
+		gain: 104,
 		status: "preset stable",
 		note: "",
 	};
@@ -773,6 +774,151 @@ function composeStr3mSpatialProfile(raState, worldState) {
 		focus,
 		note: [worldProfile?.note, raProfile?.note].filter(Boolean).join(" "),
 		playerPreset: str3mPlayerPresetFromSpatialState(raState, worldState),
+	};
+}
+
+function pickIslandReaderKey(candidates, availableKeys, excludedKeys = []) {
+	if (!Array.isArray(candidates) || !Array.isArray(availableKeys) || !availableKeys.length) {
+		return "";
+	}
+
+	const excluded = new Set(
+		Array.isArray(excludedKeys)
+			? excludedKeys.filter(Boolean)
+			: []
+	);
+
+	for (const candidate of candidates) {
+		const key = typeof candidate === "string" ? candidate.trim() : "";
+		if (!key || excluded.has(key)) {
+			continue;
+		}
+		if (availableKeys.includes(key)) {
+			return key;
+		}
+	}
+
+	return "";
+}
+
+function islandRaProfileFromState(state) {
+	if (!state || typeof state !== "object") {
+		return null;
+	}
+
+	if (state.mode === "translate" || (state.mode === "weave" && state.dominant === "plasma")) {
+		return {
+			focus: "translate",
+			primaryCandidates: ["audio", "text", "data", "archive"],
+			secondaryCandidates: ["pdf", "image", "svg"],
+			note: "Regime traduit: la station relit d abord voix, texte, donnee et memoire avant les surfaces les plus immediates.",
+		};
+	}
+
+	if (state.mode === "loop" || (state.mode === "weave" && state.dominant === "torus")) {
+		return {
+			focus: "loop",
+			primaryCandidates: ["model", "svg", "design", "archive"],
+			secondaryCandidates: ["video", "image", "pdf"],
+			note: "Regime boucle: la station privilegie relief, trace, structure et objet avant la simple illustration.",
+		};
+	}
+
+	return {
+		focus: "anchor",
+		primaryCandidates: ["image", "video", "pdf", "svg"],
+		secondaryCandidates: ["audio", "text", "data"],
+		note: "Regime ancre: la station garde d abord les surfaces visibles, les reperes et les documents avant les couches plus abstraites.",
+	};
+}
+
+function islandWorldProfileFromState(state) {
+	if (!state || typeof state !== "object") {
+		return null;
+	}
+
+	const cameraFacing = state.cameraFacing === "environment" ? "environment" : "user";
+	const sceneEnergy = clampNumber(Number(state.sceneEnergy) || 0, 0, 1);
+	const touchEnergy = clampNumber(Number(state.touchEnergy) || 0, 0, 1);
+	const activeHands = Math.max(0, Number.parseInt(state.activeHands, 10) || 0);
+	const focusLabel = String(state.focusLabel || "").toLowerCase();
+	const lightLabel = String(state.lightLabel || "").toLowerCase();
+	const touchLabel = String(state.touchLabel || "").toLowerCase();
+	const hasDuetHands = activeHands >= 2 || touchLabel.includes("terre + mine");
+	const hasReflections = focusLabel.includes("reflets") || focusLabel.includes("dehors") || lightLabel.includes("clair");
+	const isWalking = focusLabel.includes("marche") || focusLabel.includes("horizon") || sceneEnergy > 0.52;
+
+	if (cameraFacing === "environment") {
+		if (isWalking) {
+			return {
+				tone: "landscape",
+				primaryCandidates: ["video", "image", "pdf"],
+				secondaryCandidates: ["svg", "data"],
+				note: "Paysage actif: la station pousse les matieres qui gardent marche, horizon, reflets et terrain lisibles.",
+			};
+		}
+
+		if (hasReflections) {
+			return {
+				tone: "landscape",
+				primaryCandidates: ["image", "video", "svg"],
+				secondaryCandidates: ["design", "pdf"],
+				note: "Paysage lumineux: la station avance les surfaces qui retiennent reflets, dehors et details de peau du monde.",
+			};
+		}
+
+		return {
+			tone: "landscape",
+			primaryCandidates: ["image", "pdf", "text"],
+			secondaryCandidates: ["video", "data"],
+			note: "Paysage tenu: la station garde une lecture large, stable et documentee avant de densifier la matiere.",
+		};
+	}
+
+	if (hasDuetHands || touchEnergy > 0.34) {
+		return {
+			tone: "face",
+			primaryCandidates: ["audio", "model", "design"],
+			secondaryCandidates: ["text", "archive"],
+			note: "Proximite active: Terre et Mine poussent la station vers les matieres jouables, tactiles ou sculpturales.",
+		};
+	}
+
+	return {
+		tone: "face",
+		primaryCandidates: ["audio", "text", "image"],
+		secondaryCandidates: ["pdf", "data"],
+		note: "Proximite tenue: la station garde une lecture proche, entre voix, texte et surface visible.",
+	};
+}
+
+function composeIslandSpatialProfile(raState, worldState, availableKeys = []) {
+	const raProfile = islandRaProfileFromState(raState);
+	const worldProfile = islandWorldProfileFromState(worldState);
+	const primary = pickIslandReaderKey(
+		[
+			...(worldProfile?.primaryCandidates || []),
+			...(raProfile?.primaryCandidates || []),
+			...availableKeys,
+		],
+		availableKeys
+	) || (availableKeys[0] || "");
+	const secondary = pickIslandReaderKey(
+		[
+			...(raProfile?.secondaryCandidates || []),
+			...(worldProfile?.secondaryCandidates || []),
+			...availableKeys,
+		],
+		availableKeys,
+		primary ? [primary] : []
+	);
+
+	return {
+		raProfile,
+		worldProfile,
+		primary,
+		secondary,
+		note: [worldProfile?.note, raProfile?.note].filter(Boolean).join(" "),
 	};
 }
 
@@ -932,8 +1078,8 @@ function writeDeviceSilenceIntent(isSilent) {
 }
 
 function readDeviceVolumeLevel() {
-	const raw = Number(window.localStorage.getItem(DEVICE_VOLUME_LEVEL_KEY) || "0.82");
-	return clampNumber(Number.isFinite(raw) ? raw : 0.82, 0, 1);
+	const raw = Number(window.localStorage.getItem(DEVICE_VOLUME_LEVEL_KEY) || "0.94");
+	return clampNumber(Number.isFinite(raw) ? raw : 0.94, 0, 1);
 }
 
 function writeDeviceVolumeLevel(level) {
@@ -942,13 +1088,37 @@ function writeDeviceVolumeLevel(level) {
 }
 
 function readXyzVoiceEchoLevel() {
-	const raw = Number(window.localStorage.getItem(XYZ_VOICE_ECHO_KEY) || "0.18");
-	return clampNumber(Number.isFinite(raw) ? raw : 0.18, 0, 1);
+	const raw = Number(window.localStorage.getItem(XYZ_VOICE_ECHO_KEY) || "0.08");
+	return clampNumber(Number.isFinite(raw) ? raw : 0.08, 0, 1);
 }
 
 function writeXyzVoiceEchoLevel(level) {
 	window.localStorage.setItem(XYZ_VOICE_ECHO_KEY, String(clampNumber(level, 0, 1)));
 }
+
+function migrateAudioDefaults() {
+	try {
+		if (window.localStorage.getItem(AUDIO_DEFAULTS_VERSION_KEY) === "2") {
+			return;
+		}
+
+		const storedVolume = Number(window.localStorage.getItem(DEVICE_VOLUME_LEVEL_KEY) || "");
+		if (!Number.isFinite(storedVolume) || storedVolume <= 0.82) {
+			window.localStorage.setItem(DEVICE_VOLUME_LEVEL_KEY, "0.94");
+		}
+
+		const storedEcho = Number(window.localStorage.getItem(XYZ_VOICE_ECHO_KEY) || "");
+		if (!Number.isFinite(storedEcho) || storedEcho >= 0.18) {
+			window.localStorage.setItem(XYZ_VOICE_ECHO_KEY, "0.08");
+		}
+
+		window.localStorage.setItem(AUDIO_DEFAULTS_VERSION_KEY, "2");
+	} catch {
+		// Ignore storage migration failures.
+	}
+}
+
+migrateAudioDefaults();
 
 function deviceIsStandalone() {
 	return Boolean(displayModeMedia?.matches || window.navigator.standalone === true);
@@ -1342,19 +1512,19 @@ function resolveGuideVoiceSpectralProfile(program = "collective", lambdaCandidat
 	const lambda = spectralLambdaValue(lambdaCandidate, 548);
 	const normalized = (lambda - 380) / (780 - 380);
 	const frequencyBias = 1 - normalized;
-	let pitch = 0.82 + frequencyBias * 0.34;
-	let rate = 0.86 + frequencyBias * 0.18;
-	let volume = 0.94;
+	let pitch = 0.8 + frequencyBias * 0.22;
+	let rate = 0.84 + frequencyBias * 0.11;
+	let volume = 0.84;
 
 	switch ((program || "collective").toLowerCase()) {
 		case "dur3rb":
-			pitch -= 0.08;
-			rate -= 0.06;
-			volume += 0.02;
+			pitch -= 0.05;
+			rate -= 0.05;
+			volume += 0.01;
 			break;
 		case "tocu":
-			pitch += 0.07;
-			rate += 0.06;
+			pitch += 0.04;
+			rate += 0.03;
 			break;
 		case "culbu1on":
 			pitch += 0.02;
@@ -1364,9 +1534,9 @@ function resolveGuideVoiceSpectralProfile(program = "collective", lambdaCandidat
 			break;
 	}
 
-	pitch = clampNumber(pitch, 0.74, 1.24);
-	rate = clampNumber(rate, 0.82, 1.14);
-	volume = clampNumber(volume, 0.86, 1);
+	pitch = clampNumber(pitch, 0.74, 1.05);
+	rate = clampNumber(rate, 0.82, 1.02);
+	volume = clampNumber(volume, 0.76, 0.9);
 
 	let registerLabel = "medium soyeux";
 	if (frequencyBias >= 0.82) {
@@ -2437,7 +2607,12 @@ function bindStr3mIntegratedPlayer(root) {
 	const rateStateOutput = root.querySelector("[data-str3m-player-rate-state]");
 	const eqStateOutput = root.querySelector("[data-str3m-player-eq-state]");
 	const eqSummaryOutput = root.querySelector("[data-str3m-player-summary]");
+	const engineOutput = root.querySelector("[data-str3m-player-engine]");
+	const outputModeOutput = root.querySelector("[data-str3m-player-output]");
+	const sourceStateOutput = root.querySelector("[data-str3m-player-source-state]");
 	const sourceOutput = root.querySelector("[data-str3m-player-source]");
+	const sourceOpenLink = root.querySelector("[data-str3m-player-open]");
+	const retryButton = root.querySelector("[data-str3m-player-retry]");
 	const raNoteOutput = root.querySelector("[data-str3m-player-ra-note]");
 	const preservePitchInput = root.querySelector("[data-str3m-player-preserve-pitch]");
 	const resetButton = root.querySelector("[data-str3m-player-reset]");
@@ -2451,6 +2626,9 @@ function bindStr3mIntegratedPlayer(root) {
 	const trebleValue = root.querySelector("[data-str3m-player-treble-value]");
 	const gainValue = root.querySelector("[data-str3m-player-gain-value]");
 	const title = root.dataset.str3mPlayerTitle || "str3m quotidien";
+	const sourceUrl = root.dataset.str3mPlayerSourceUrl || audio.currentSrc || audio.querySelector("source")?.getAttribute("src") || "";
+	const initialAriaHidden = audio.getAttribute("aria-hidden");
+	const initiallyHadControls = audio.hasAttribute("controls");
 	const storageKey = "o:str3m-player:v1";
 
 	const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -2498,10 +2676,86 @@ function bindStr3mIntegratedPlayer(root) {
 	let currentDefaultSettings = buildSettingsFromPreset(currentSpatialPreset);
 	let userCustomizedSettings = Boolean(storedSettings);
 
+	const setEngineState = (label) => {
+		if (engineOutput instanceof HTMLElement) {
+			engineOutput.textContent = label;
+		}
+	};
+
+	const setOutputMode = (label) => {
+		if (outputModeOutput instanceof HTMLElement) {
+			outputModeOutput.textContent = label;
+		}
+	};
+
+	const setSourceState = (label) => {
+		if (sourceStateOutput instanceof HTMLElement) {
+			sourceStateOutput.textContent = label;
+		}
+	};
+
+	const syncSourceAccess = () => {
+		if (!(sourceOpenLink instanceof HTMLAnchorElement)) {
+			return;
+		}
+
+		if (!hasSource || !sourceUrl) {
+			sourceOpenLink.hidden = true;
+			sourceOpenLink.setAttribute("aria-hidden", "true");
+			sourceOpenLink.removeAttribute("href");
+			return;
+		}
+
+		sourceOpenLink.hidden = false;
+		sourceOpenLink.removeAttribute("aria-hidden");
+		sourceOpenLink.href = sourceUrl;
+	};
+
+	const enableNativeAudioFallback = (statusCopy = "lecture native") => {
+		root.dataset.str3mPlayerFallback = "1";
+		audio.controls = true;
+		audio.setAttribute("controls", "controls");
+		audio.removeAttribute("aria-hidden");
+		audio.classList.add("is-fallback-controls");
+		if (eqStateOutput instanceof HTMLElement) {
+			eqStateOutput.textContent = "natif";
+		}
+		setEngineState("natif");
+		setOutputMode("native secours");
+		if (statusCopy) {
+			setStatus(statusCopy);
+		}
+	};
+
+	const disableNativeAudioFallback = () => {
+		root.dataset.str3mPlayerFallback = "0";
+		audio.classList.remove("is-fallback-controls");
+		if (!initiallyHadControls) {
+			audio.controls = false;
+			audio.removeAttribute("controls");
+		}
+		if (initialAriaHidden === null) {
+			audio.removeAttribute("aria-hidden");
+		} else {
+			audio.setAttribute("aria-hidden", initialAriaHidden);
+		}
+	};
+
 	const settings = {
 		...currentDefaultSettings,
 		...(storedSettings || {}),
 	};
+
+	syncSourceAccess();
+	if (!hasSource) {
+		setEngineState("veille");
+		setOutputMode("veille");
+		setSourceState("aucune source");
+	} else {
+		setEngineState("web en attente");
+		setOutputMode("intégrée");
+		setSourceState("annoncée");
+	}
 
 	applyPresetDecor(currentSpatialPreset);
 
@@ -2654,45 +2908,55 @@ function bindStr3mIntegratedPlayer(root) {
 
 		const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 		if (!AudioContextClass) {
+			enableNativeAudioFallback("lecture native");
 			if (eqStateOutput instanceof HTMLElement) {
 				eqStateOutput.textContent = "natif";
 			}
 			return null;
 		}
 
-		const context = new AudioContextClass();
-		const source = context.createMediaElementSource(audio);
-		const bass = context.createBiquadFilter();
-		const mid = context.createBiquadFilter();
-		const treble = context.createBiquadFilter();
-		const gain = context.createGain();
+		try {
+			const context = new AudioContextClass();
+			const source = context.createMediaElementSource(audio);
+			const bass = context.createBiquadFilter();
+			const mid = context.createBiquadFilter();
+			const treble = context.createBiquadFilter();
+			const gain = context.createGain();
 
-		bass.type = "lowshelf";
-		bass.frequency.value = 180;
-		mid.type = "peaking";
-		mid.frequency.value = 1000;
-		mid.Q.value = 0.85;
-		treble.type = "highshelf";
-		treble.frequency.value = 3200;
+			bass.type = "lowshelf";
+			bass.frequency.value = 180;
+			mid.type = "peaking";
+			mid.frequency.value = 1000;
+			mid.Q.value = 0.85;
+			treble.type = "highshelf";
+			treble.frequency.value = 3200;
 
-		source.connect(bass);
-		bass.connect(mid);
-		mid.connect(treble);
-		treble.connect(gain);
-		gain.connect(context.destination);
+			source.connect(bass);
+			bass.connect(mid);
+			mid.connect(treble);
+			treble.connect(gain);
+			gain.connect(context.destination);
 
-		graph = { context, bass, mid, treble, gain };
-		applyEqSettings();
+			graph = { context, bass, mid, treble, gain };
+			disableNativeAudioFallback();
+			applyEqSettings();
 
-		if (eqStateOutput instanceof HTMLElement) {
-			eqStateOutput.textContent = "actif";
+			if (eqStateOutput instanceof HTMLElement) {
+				eqStateOutput.textContent = "actif";
+			}
+			setEngineState("eq web");
+			setOutputMode("intégrée");
+
+			if (context.state === "suspended") {
+				await context.resume().catch(() => {});
+			}
+
+			return graph;
+		} catch (_error) {
+			enableNativeAudioFallback("lecture native");
+			graph = null;
+			return null;
 		}
-
-		if (context.state === "suspended") {
-			await context.resume().catch(() => {});
-		}
-
-		return graph;
 	};
 
 	const resetPlayer = () => {
@@ -2760,7 +3024,9 @@ function bindStr3mIntegratedPlayer(root) {
 
 	if (toggleButton instanceof HTMLButtonElement) {
 		toggleButton.addEventListener("click", async () => {
-			await ensureAudioGraph();
+			await ensureAudioGraph().catch(() => {
+				enableNativeAudioFallback("lecture native");
+			});
 			if (audio.paused) {
 				audio.play().then(() => {
 					setStatus("en lecture");
@@ -2841,7 +3107,25 @@ function bindStr3mIntegratedPlayer(root) {
 		resetButton.addEventListener("click", resetPlayer);
 	}
 
+	if (retryButton instanceof HTMLButtonElement) {
+		retryButton.addEventListener("click", async () => {
+			setStatus("relance moteur…");
+			setSourceState("vérification");
+			const restoredGraph = await ensureAudioGraph().catch(() => null);
+			if (restoredGraph) {
+				setStatus("EQ relancé");
+				setSourceState(audio.readyState >= 2 ? "prête" : "annoncée");
+				return;
+			}
+			enableNativeAudioFallback("lecture native");
+			setSourceState("native disponible");
+		});
+	}
+
 	audio.addEventListener("loadedmetadata", syncProgress);
+	audio.addEventListener("loadedmetadata", () => {
+		setSourceState("chargée");
+	});
 	audio.addEventListener("durationchange", syncProgress);
 	audio.addEventListener("timeupdate", syncProgress);
 	audio.addEventListener("play", () => {
@@ -2862,11 +3146,28 @@ function bindStr3mIntegratedPlayer(root) {
 	});
 	audio.addEventListener("waiting", () => {
 		setStatus("mise en mémoire…");
+		setSourceState("mise en mémoire");
 	});
 	audio.addEventListener("canplay", () => {
+		setSourceState("prête");
 		if (audio.paused) {
 			setStatus("prêt");
 		}
+	});
+	audio.addEventListener("stalled", () => {
+		setSourceState("réseau lent");
+	});
+	audio.addEventListener("suspend", () => {
+		if (audio.networkState === HTMLMediaElement.NETWORK_IDLE) {
+			setSourceState(audio.readyState >= 2 ? "prête" : "pause réseau");
+		}
+	});
+	audio.addEventListener("emptied", () => {
+		setSourceState("vidée");
+	});
+	audio.addEventListener("error", () => {
+		setStatus("erreur média");
+		setSourceState("erreur média");
 	});
 
 	const refreshSpatialPreset = () => {
@@ -2951,6 +3252,7 @@ function initIslandReaderStation() {
 		return;
 	}
 	shell.dataset.islandReaderBound = "1";
+	const isSpatialIoView = document.body.classList.contains("io-surface-view");
 
 	const tabs = Array.from(shell.querySelectorAll("[data-island-reader-tab]"))
 		.filter((tab) => tab instanceof HTMLButtonElement);
@@ -2964,6 +3266,7 @@ function initIslandReaderStation() {
 	const counter = shell.querySelector("[data-island-reader-counter]");
 	const currentLabel = shell.querySelector("[data-island-reader-current-label]");
 	const currentMeta = shell.querySelector("[data-island-reader-current-meta]");
+	const curatorCopy = shell.querySelector("[data-island-reader-curator-copy]");
 	const recommendationLabel = shell.querySelector("[data-island-reader-recommendation-label]");
 	const recommendationCopy = shell.querySelector("[data-island-reader-recommendation-copy]");
 
@@ -2979,6 +3282,13 @@ function initIslandReaderStation() {
 	let currentKey = "";
 	let autoplayEnabled = false;
 	let autoplayTimer = null;
+	let userSteered = false;
+	let spatialProfile = null;
+	let latestRaState = readActiveIoRaSession();
+	let latestWorldState = readActiveIoWorldInstrumentSession();
+	const defaultCuratorCopy = curatorCopy instanceof HTMLElement
+		? curatorCopy.textContent?.trim() || "La station garde le fil et peut deriver vers la matiere suivante."
+		: "La station garde le fil et peut deriver vers la matiere suivante.";
 
 	const formatCounter = (value, size) => String(value).padStart(2, "0") + " / " + String(size).padStart(2, "0");
 
@@ -3002,6 +3312,8 @@ function initIslandReaderStation() {
 			? availableKeys[(availableIndex + 1) % availableKeys.length]
 			: (availableKeys[0] || "");
 		const nextMeta = nextKey ? getReaderMeta(nextKey) : null;
+		const spatialPrimaryMeta = spatialProfile?.primary ? getReaderMeta(spatialProfile.primary) : null;
+		const spatialSecondaryMeta = spatialProfile?.secondary ? getReaderMeta(spatialProfile.secondary) : null;
 
 		if (currentLabel instanceof HTMLElement) {
 			currentLabel.textContent = meta.label || "Veille";
@@ -3016,13 +3328,27 @@ function initIslandReaderStation() {
 		}
 
 		if (recommendationLabel instanceof HTMLElement) {
-			recommendationLabel.textContent = nextMeta?.label || "Aucune suite";
+			recommendationLabel.textContent = spatialPrimaryMeta?.label || nextMeta?.label || "Aucune suite";
 		}
 
 		if (recommendationCopy instanceof HTMLElement) {
-			recommendationCopy.textContent = nextMeta
-				? `Ensuite : ${nextMeta.label} · ${nextMeta.format}`
-				: "Aucune matière active recommandée pour l’instant.";
+			if (spatialPrimaryMeta) {
+				const lead = spatialProfile?.primary === key
+					? `Prise tenue : ${spatialPrimaryMeta.label} · ${spatialPrimaryMeta.format}.`
+					: `Prise conseillee : ${spatialPrimaryMeta.label} · ${spatialPrimaryMeta.format}.`;
+				const tail = spatialSecondaryMeta
+					? ` Ensuite : ${spatialSecondaryMeta.label} · ${spatialSecondaryMeta.format}.`
+					: (nextMeta ? ` Ensuite : ${nextMeta.label} · ${nextMeta.format}.` : "");
+				recommendationCopy.textContent = `${lead}${tail}`.trim();
+			} else {
+				recommendationCopy.textContent = nextMeta
+					? `Ensuite : ${nextMeta.label} · ${nextMeta.format}`
+					: "Aucune matiere active recommandee pour l instant.";
+			}
+		}
+
+		if (curatorCopy instanceof HTMLElement) {
+			curatorCopy.textContent = spatialProfile?.note || defaultCuratorCopy;
 		}
 
 		if (previousButton instanceof HTMLButtonElement) {
@@ -3038,6 +3364,53 @@ function initIslandReaderStation() {
 			autoplayButton.textContent = `parcours auto · ${autoplayEnabled ? "on" : "off"}`;
 			autoplayButton.setAttribute("aria-pressed", autoplayEnabled ? "true" : "false");
 		}
+	};
+
+	const syncSpatialRecommendations = () => {
+		[...tabs, ...navItems, ...panels].forEach((node) => {
+			if (node instanceof HTMLElement) {
+				delete node.dataset.raRecommended;
+			}
+		});
+
+		if (!isSpatialIoView || !spatialProfile) {
+			delete shell.dataset.islandRaMode;
+			delete shell.dataset.islandRaDominant;
+			delete shell.dataset.islandWorldTone;
+			delete document.body.dataset.islandRaMode;
+			delete document.body.dataset.islandRaDominant;
+			delete document.body.dataset.islandWorldTone;
+			delete document.body.dataset.islandCameraFacing;
+			return;
+		}
+
+		const setRecommendation = (key, value) => {
+			if (!key) {
+				return;
+			}
+
+			[tabs, navItems, panels].forEach((collection) => {
+				collection.forEach((node) => {
+					if (!(node instanceof HTMLElement)) {
+						return;
+					}
+					const nodeKey = node.dataset.islandReaderTab || node.dataset.islandReaderNav || node.dataset.islandReaderPanel || "";
+					if (nodeKey === key) {
+						node.dataset.raRecommended = value;
+					}
+				});
+			});
+		};
+
+		shell.dataset.islandRaMode = typeof latestRaState?.mode === "string" ? latestRaState.mode : "";
+		shell.dataset.islandRaDominant = typeof latestRaState?.dominant === "string" ? latestRaState.dominant : "";
+		shell.dataset.islandWorldTone = spatialProfile.worldProfile?.tone || "";
+		document.body.dataset.islandRaMode = typeof latestRaState?.mode === "string" ? latestRaState.mode : "";
+		document.body.dataset.islandRaDominant = typeof latestRaState?.dominant === "string" ? latestRaState.dominant : "";
+		document.body.dataset.islandWorldTone = spatialProfile.worldProfile?.tone || "";
+		document.body.dataset.islandCameraFacing = typeof latestWorldState?.cameraFacing === "string" ? latestWorldState.cameraFacing : "";
+		setRecommendation(spatialProfile.primary, "primary");
+		setRecommendation(spatialProfile.secondary, "secondary");
 	};
 
 	const clearAutoplay = () => {
@@ -3097,13 +3470,18 @@ function initIslandReaderStation() {
 
 		const activeNavItem = navItems.find((item) => item.dataset.islandReaderNav === key);
 		if (activeNavItem instanceof HTMLElement) {
-			activeNavItem.scrollIntoView({
-				block: "nearest",
-				inline: "nearest",
-				behavior: fromAutoplay ? "auto" : "smooth",
-			});
+			try {
+				activeNavItem.scrollIntoView({
+					block: "nearest",
+					inline: "nearest",
+					behavior: fromAutoplay ? "auto" : "smooth",
+				});
+			} catch {
+				activeNavItem.scrollIntoView();
+			}
 		}
 
+		syncSpatialRecommendations();
 		syncCurator(key);
 
 		if (!fromAutoplay) {
@@ -3120,8 +3498,37 @@ function initIslandReaderStation() {
 		}
 	};
 
+	const applyIslandSpatialState = (raState, worldState) => {
+		latestRaState = raState;
+		latestWorldState = worldState;
+
+		if (!isSpatialIoView) {
+			spatialProfile = null;
+			syncSpatialRecommendations();
+			syncCurator(currentKey || availableKeys[0] || tabs[0]?.dataset.islandReaderTab || "");
+			return;
+		}
+
+		spatialProfile = composeIslandSpatialProfile(raState, worldState, availableKeys);
+		syncSpatialRecommendations();
+
+		const preferredKey = spatialProfile?.primary || "";
+		if (!currentKey) {
+			activate(preferredKey || availableKeys[0] || tabs[0]?.dataset.islandReaderTab || "", { fromAutoplay: false });
+			return;
+		}
+
+		if (!userSteered && preferredKey && currentKey !== preferredKey) {
+			activate(preferredKey, { fromAutoplay: false });
+			return;
+		}
+
+		syncCurator(currentKey);
+	};
+
 	tabs.forEach((tab) => {
 		tab.addEventListener("click", () => {
+			userSteered = true;
 			activate(tab.dataset.islandReaderTab || "", { fromAutoplay: false });
 		});
 
@@ -3146,12 +3553,14 @@ function initIslandReaderStation() {
 
 			event.preventDefault();
 			const nextTab = tabs[nextIndex];
+			userSteered = true;
 			activate(nextTab.dataset.islandReaderTab || "", { focusTarget: "tab", fromAutoplay: false });
 		});
 	});
 
 	navItems.forEach((item) => {
 		item.addEventListener("click", () => {
+			userSteered = true;
 			activate(item.dataset.islandReaderNav || "", { fromAutoplay: false });
 		});
 
@@ -3176,15 +3585,18 @@ function initIslandReaderStation() {
 
 			event.preventDefault();
 			const nextItem = navItems[nextIndex];
+			userSteered = true;
 			activate(nextItem.dataset.islandReaderNav || "", { focusTarget: "nav", fromAutoplay: false });
 		});
 	});
 
 	previousButton?.addEventListener("click", () => {
+		userSteered = true;
 		stepAvailable(-1, true);
 	});
 
 	nextButton?.addEventListener("click", () => {
+		userSteered = true;
 		stepAvailable(1, true);
 	});
 
@@ -3201,7 +3613,8 @@ function initIslandReaderStation() {
 	});
 
 	document.addEventListener("keydown", (event) => {
-		if (!shell.contains(document.activeElement) && !shell.matches(":hover")) {
+		const isHovered = typeof shell.matches === "function" ? shell.matches(":hover") : false;
+		if (!shell.contains(document.activeElement) && !isHovered) {
 			return;
 		}
 
@@ -3214,15 +3627,28 @@ function initIslandReaderStation() {
 
 		if (event.key === "PageDown") {
 			event.preventDefault();
+			userSteered = true;
 			stepAvailable(1, true);
 		} else if (event.key === "PageUp") {
 			event.preventDefault();
+			userSteered = true;
 			stepAvailable(-1, true);
 		}
 	});
 
 	const initiallyActive = tabs.find((tab) => tab.classList.contains("is-active")) || tabs[0];
 	activate(initiallyActive.dataset.islandReaderTab || "", { fromAutoplay: false });
+	applyIslandSpatialState(latestRaState, latestWorldState);
+	if (isSpatialIoView) {
+		window.addEventListener("o:ra-modulation", (event) => {
+			const detail = event instanceof CustomEvent ? event.detail : null;
+			applyIslandSpatialState(detail, latestWorldState);
+		});
+		window.addEventListener("o:world-instrument", (event) => {
+			const detail = event instanceof CustomEvent ? event.detail : null;
+			applyIslandSpatialState(latestRaState, detail);
+		});
+	}
 }
 
 function initIslandReaderFullscreen() {
@@ -6607,36 +7033,36 @@ function initXyzCamera() {
 				: 0;
 			const targetGain = audible
 				? clampNumber(
-					gate * (handOpen * 0.78 + touchEnergy * 0.22) * deviceProfile.volume * feedbackSafety * 0.118 + droneFloor + demoPulseFloor,
+					gate * (handOpen * 0.82 + touchEnergy * 0.24) * deviceProfile.volume * feedbackSafety * 0.132 + droneFloor + demoPulseFloor,
 					0,
-					isMembraneDemo() ? 0.148 : 0.128
+					isMembraneDemo() ? 0.168 : 0.148
 				)
 				: 0;
 			const targetHarmonicGain = audible
-				? clampNumber(targetGain * (0.42 + lightTone * 0.24 + shakeLevel * 0.18), 0, isMembraneDemo() ? 0.072 : 0.064)
+				? clampNumber(targetGain * (0.4 + lightTone * 0.22 + shakeLevel * 0.16), 0, isMembraneDemo() ? 0.082 : 0.072)
 				: 0;
 			const targetSubGain = audible
-				? clampNumber(targetGain * (0.28 + (1 - lightTone) * 0.24 + movement * 0.1), 0, isMembraneDemo() ? 0.052 : 0.046)
+				? clampNumber(targetGain * (0.3 + (1 - lightTone) * 0.22 + movement * 0.1), 0, isMembraneDemo() ? 0.064 : 0.054)
 				: 0;
 			const targetPan = clampNumber(membrane.tiltX * 0.62 + ((instrument.mineX - instrument.terreX) * 0.9) + (orientationX - 0.5) * 0.14, -1, 1);
 			const tunePresence = audible ? clampNumber(((ambient - 0.015) / 0.52) + handOpen * 0.16 + touchEnergy * 0.18 + movement * 0.08 + lightTone * 0.06, 0, 1) : 0;
-			const targetVoiceDrive = audible ? clampNumber(1.18 + presence * 1.12 + handOpen * 0.42 + ambient * 0.34 - ambient * 0.18, 0.96, 2.68) : 0.84;
-			const targetVoiceModDepth = audible ? clampNumber(0.24 + gate * 0.42 + lightTone * 0.12 + ambient * 0.08 + tunePresence * 0.14, 0.16, 0.86) : 0.02;
-			const targetVoiceHarmonicDepth = audible ? clampNumber(targetVoiceModDepth * (0.44 + lightTone * 0.3 + ambient * 0.08), 0.08, 0.48) : 0.01;
-			const targetVoiceDirect = audible ? clampNumber(gate * deviceProfile.volume * feedbackSafety * (0.05 + handOpen * 0.07) * (1 - tunePresence * 0.56), 0, 0.098) : 0;
-			const targetVoiceWet = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.28 + handOpen * 0.18 + movement * 0.12 + ambient * 0.08 + tunePresence * 0.08), 0, 0.62) : 0;
+			const targetVoiceDrive = audible ? clampNumber(0.98 + presence * 0.56 + handOpen * 0.18 + ambient * 0.12 - ambient * 0.06, 0.9, 1.72) : 0.84;
+			const targetVoiceModDepth = audible ? clampNumber(0.16 + gate * 0.24 + lightTone * 0.08 + ambient * 0.04 + tunePresence * 0.08, 0.12, 0.48) : 0.02;
+			const targetVoiceHarmonicDepth = audible ? clampNumber(targetVoiceModDepth * (0.3 + lightTone * 0.18 + ambient * 0.04), 0.05, 0.24) : 0.01;
+			const targetVoiceDirect = audible ? clampNumber(gate * deviceProfile.volume * feedbackSafety * (0.08 + handOpen * 0.06) * (1 - tunePresence * 0.34), 0, 0.14) : 0;
+			const targetVoiceWet = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.16 + handOpen * 0.12 + movement * 0.08 + ambient * 0.04 + tunePresence * 0.04), 0, 0.34) : 0;
 			const targetVoiceBandpass = clampNumber(targetFrequency * (0.94 + lightTone * 0.36), 140, 2600);
-			const targetVoiceBandpassQ = 1 + ambient * 0.85 + movement * 0.65;
+			const targetVoiceBandpassQ = 0.72 + ambient * 0.48 + movement * 0.34;
 			const targetVoiceColor = clampNumber(340 + lightTone * 1920 + ambient * 380 + movement * 240, 320, 4200);
 			const targetVoiceTuneFrequency = clampNumber(Math.max(targetFrequency * 2, targetFrequency + 72), 140, 2800);
 			const targetVoiceTuneHarmonicFrequency = clampNumber(Math.max(harmonicFrequency, targetFrequency * 3), 220, 4200);
-			const targetVoiceTuneQ = 7.5 + handOpen * 4.8 + ambient * 3.4 + lightTone * 1.8 - movement * 1.2;
-			const targetVoiceTuneHarmonicQ = 6.2 + lightTone * 4.6 + ambient * 2.8 + shakeLevel * 2.1;
-			const targetVoiceTuneGain = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.034 + tunePresence * 0.19 + ambient * 0.12 + handOpen * 0.05), 0, isMembraneDemo() ? 0.26 : 0.22) : 0;
-			const targetVoiceTuneHarmonicGain = audible ? clampNumber(targetVoiceTuneGain * (0.38 + lightTone * 0.28 + ambient * 0.18 + shakeLevel * 0.08), 0, isMembraneDemo() ? 0.16 : 0.14) : 0;
-			const targetVoiceEchoSend = audible ? clampNumber(voiceFx.echoAmount * (0.14 + handOpen * 0.12 + touchEnergy * 0.1 + lightTone * 0.08 + tunePresence * 0.06) * feedbackSafety, 0, 0.24) : 0;
-			const targetVoiceEchoFeedback = audible ? clampNumber(0.1 + voiceFx.echoAmount * 0.36 + ambient * 0.06, 0.08, 0.42) : 0.08;
-			const targetVoiceEchoReturn = audible ? clampNumber(voiceFx.echoAmount * (0.28 + lightTone * 0.16), 0, 0.22) : 0;
+			const targetVoiceTuneQ = 5.8 + handOpen * 2.8 + ambient * 1.8 + lightTone * 1.2 - movement * 0.8;
+			const targetVoiceTuneHarmonicQ = 4.8 + lightTone * 2.8 + ambient * 1.8 + shakeLevel * 1.2;
+			const targetVoiceTuneGain = audible ? clampNumber(deviceProfile.volume * feedbackSafety * (0.02 + tunePresence * 0.08 + ambient * 0.04 + handOpen * 0.03), 0, isMembraneDemo() ? 0.14 : 0.12) : 0;
+			const targetVoiceTuneHarmonicGain = audible ? clampNumber(targetVoiceTuneGain * (0.26 + lightTone * 0.16 + ambient * 0.1 + shakeLevel * 0.06), 0, isMembraneDemo() ? 0.08 : 0.07) : 0;
+			const targetVoiceEchoSend = audible ? clampNumber(voiceFx.echoAmount * (0.08 + handOpen * 0.08 + touchEnergy * 0.04 + lightTone * 0.04 + tunePresence * 0.03) * feedbackSafety, 0, 0.1) : 0;
+			const targetVoiceEchoFeedback = audible ? clampNumber(0.08 + voiceFx.echoAmount * 0.18 + ambient * 0.03, 0.08, 0.26) : 0.08;
+			const targetVoiceEchoReturn = audible ? clampNumber(voiceFx.echoAmount * (0.12 + lightTone * 0.08), 0, 0.1) : 0;
 			renderToreGuide({
 				mode: harmonicMode,
 				noteLabel,
@@ -6853,36 +7279,36 @@ function initXyzCamera() {
 		vocoderEchoFeedback = context.createGain();
 		vocoderEchoReturn = context.createGain();
 
-		vocoderInputGain.gain.value = 1.24;
+		vocoderInputGain.gain.value = 0.96;
 		vocoderHighpass.type = "highpass";
-		vocoderHighpass.frequency.value = 150;
+		vocoderHighpass.frequency.value = 180;
 		vocoderHighpass.Q.value = 0.78;
-		vocoderCompressor.threshold.value = -22;
-		vocoderCompressor.knee.value = 18;
-		vocoderCompressor.ratio.value = 3.2;
-		vocoderCompressor.attack.value = 0.006;
-		vocoderCompressor.release.value = 0.22;
+		vocoderCompressor.threshold.value = -26;
+		vocoderCompressor.knee.value = 16;
+		vocoderCompressor.ratio.value = 4.4;
+		vocoderCompressor.attack.value = 0.004;
+		vocoderCompressor.release.value = 0.16;
 		vocoderBandpass.type = "bandpass";
 		vocoderBandpass.frequency.value = 360;
-		vocoderBandpass.Q.value = 1.2;
+		vocoderBandpass.Q.value = 0.92;
 		vocoderDirectGain.gain.value = 0;
 		vocoderColorFilter.type = "lowpass";
-		vocoderColorFilter.frequency.value = 980;
-		vocoderColorFilter.Q.value = 0.92;
+		vocoderColorFilter.frequency.value = 860;
+		vocoderColorFilter.Q.value = 0.84;
 		vocoderCarrierOscillator.type = "sawtooth";
 		vocoderCarrierHarmonicOscillator.type = "triangle";
 		vocoderCarrierOscillator.frequency.value = 164;
 		vocoderCarrierHarmonicOscillator.frequency.value = 246;
 		vocoderCarrierGain.gain.value = 0;
 		vocoderCarrierHarmonicGain.gain.value = 0;
-		vocoderModDepth.gain.value = 0.2;
-		vocoderHarmonicModDepth.gain.value = 0.12;
+		vocoderModDepth.gain.value = 0.16;
+		vocoderHarmonicModDepth.gain.value = 0.08;
 		vocoderTuneFilter.type = "bandpass";
 		vocoderTuneFilter.frequency.value = 220;
-		vocoderTuneFilter.Q.value = 8.4;
+		vocoderTuneFilter.Q.value = 6.6;
 		vocoderTuneHarmonicFilter.type = "bandpass";
 		vocoderTuneHarmonicFilter.frequency.value = 440;
-		vocoderTuneHarmonicFilter.Q.value = 6.6;
+		vocoderTuneHarmonicFilter.Q.value = 5.2;
 		vocoderTuneGain.gain.value = 0;
 		vocoderTuneHarmonicGain.gain.value = 0;
 		vocoderWetGain.gain.value = 0;
@@ -9968,10 +10394,10 @@ function mountGuideVoice(root) {
 	};
 	const syncGuideVoiceCueLevels = () => {
 		const profile = readGuideVoiceOutputProfile();
-		if (audioStart) audioStart.volume = 0.3 * profile.volume;
-		if (audioStop) audioStop.volume = 0.3 * profile.volume;
+		if (audioStart) audioStart.volume = 0.36 * profile.volume;
+		if (audioStop) audioStop.volume = 0.34 * profile.volume;
 		if (audioLoop) {
-			audioLoop.volume = 0.15 * profile.volume;
+			audioLoop.volume = 0.2 * profile.volume;
 			audioLoop.loop = true;
 		}
 	};
@@ -10408,9 +10834,9 @@ function mountGuideVoice(root) {
 		const utterance = new window.SpeechSynthesisUtterance(text);
 		utterance.lang = languageCode;
 		utterance.voice = pickGuideSpeechVoice(synth, languageCode);
-		utterance.rate = spectral.rate;
-		utterance.pitch = spectral.pitch;
-		utterance.volume = clampNumber(spectral.volume * deviceProfile.volume, 0, 1);
+		utterance.rate = clampNumber(spectral.rate * 0.97, 0.82, 1);
+		utterance.pitch = clampNumber(spectral.pitch * 0.96, 0.72, 1.02);
+		utterance.volume = clampNumber(spectral.volume * deviceProfile.volume * 0.92, 0, 0.88);
 		utterance.onstart = () => {
 			startBreather();
 		};

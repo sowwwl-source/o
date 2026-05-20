@@ -4,6 +4,8 @@ declare(strict_types=1);
 require __DIR__ . '/config.php';
 
 $host = request_host();
+$surfaceVariant = current_surface_variant($host);
+$isSpatialHeadsetMode = $surfaceVariant === 'io' && spatial_preview_mode($host) === 'headset';
 $identifier = trim((string) ($_GET['u'] ?? ''));
 $land = null;
 $notFound = false;
@@ -56,29 +58,16 @@ $pickIslandItem = static function (array $items, callable $predicate): ?array {
 };
 
 $islandPreviewText = static function (?string $publicPath, int $maxBytes = 16000, int $maxChars = 1800): string {
-    $absolutePath = aza_absolute_storage_path($publicPath);
-    if (!is_string($absolutePath) || $absolutePath === '' || !is_file($absolutePath) || !is_readable($absolutePath)) {
-        return '';
-    }
+    return aza_memory_extract_preview_text($publicPath, $maxBytes, $maxChars);
+};
 
-    $raw = @file_get_contents($absolutePath, false, null, 0, $maxBytes);
-    if (!is_string($raw) || $raw === '') {
-        return '';
-    }
-
-    $normalized = str_replace(["\r\n", "\r"], "\n", $raw);
-    $normalized = trim($normalized);
+$islandForceDownloadHref = static function (?string $href): string {
+    $normalized = trim((string) $href);
     if ($normalized === '') {
         return '';
     }
 
-    if (function_exists('mb_substr')) {
-        $normalized = mb_substr($normalized, 0, $maxChars, 'UTF-8');
-    } else {
-        $normalized = substr($normalized, 0, $maxChars);
-    }
-
-    return $normalized;
+    return o_route_href($normalized, ['download' => '1'], null, false);
 };
 
 $buildDesignFallbackLabel = static function (?array $item): string {
@@ -308,7 +297,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
     <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 <?php endif; ?>
 </head>
-<body class="experience island-view">
+<body class="experience island-view<?= $surfaceVariant === 'io' ? ' io-surface-view' : '' ?><?= $isSpatialHeadsetMode ? ' io-headset-mode' : '' ?>">
 <?= render_skip_link() ?>
 <?= render_nucleus_banner('island') ?>
 <div class="noise" aria-hidden="true"></div>
@@ -343,6 +332,8 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
             </div>
         </header>
 
+        <?= render_spatial_context_bar('island', $host) ?>
+
         <section class="panel reveal island-reader-station" aria-labelledby="island-reader-title">
             <div class="section-topline aza-timeline-header">
                 <div>
@@ -365,7 +356,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                             <span data-island-reader-counter><?= h($islandCuratorProgressLabel) ?></span>
                         </div>
                         <p class="island-reader-curator__meta" data-island-reader-current-meta><?= h((string) (($activeIslandReaderData['format'] ?? 'veille') . ' · ' . ($activeIslandReaderData['source_label'] ?? 'Veille'))) ?></p>
-                        <p class="island-reader-curator__copy">La station garde le fil et peut dériver vers la matière suivante.</p>
+                        <p class="island-reader-curator__copy" data-island-reader-curator-copy>La station garde le fil et peut dériver vers la matière suivante.</p>
                     </div>
 
                     <div class="island-reader-curator__controls action-row">
@@ -420,7 +411,6 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                 id="<?= h($readerId) ?>"
                                 role="tabpanel"
                                 aria-labelledby="<?= h($readerId) ?>-tab"
-                                <?= $isOpen ? '' : 'hidden' ?>
                                 data-island-reader-panel="<?= h((string) $reader['key']) ?>"
                             >
                                 <div class="island-reader-stage<?= $reader['available'] ? '' : ' is-empty' ?>">
@@ -457,6 +447,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                         class="str3m-player island-reader-audio-player"
                                         data-str3m-player
                                         data-str3m-player-has-source="1"
+                                        data-str3m-player-source-url="<?= h($readerHref) ?>"
                                         data-str3m-player-title="<?= h($readerTitle) ?>"
                                         data-str3m-player-mood="island"
                                         data-str3m-player-template="audio"
@@ -534,10 +525,17 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                                     <h5 id="<?= h($readerId) ?>-status-title">État</h5>
                                                 </div>
                                                 <div class="str3m-player__status-grid">
+                                                    <p><span>Moteur</span><strong data-str3m-player-engine>web en attente</strong></p>
+                                                    <p><span>Sortie</span><strong data-str3m-player-output>intégrée</strong></p>
+                                                    <p><span>Média</span><strong data-str3m-player-source-state>annoncée</strong></p>
                                                     <p><span>Source</span><strong data-str3m-player-source><?= h($readerTitle) ?></strong></p>
                                                     <p><span>Vitesse</span><strong data-str3m-player-rate-state>1.00×</strong></p>
                                                     <p><span>EQ</span><strong data-str3m-player-summary>plat</strong></p>
                                                     <p><span>Raccourcis</span><strong>Espace · ← → · ±</strong></p>
+                                                </div>
+                                                <div class="str3m-player__status-actions">
+                                                    <a class="str3m-player__status-link" data-str3m-player-open href="<?= h($readerHref) ?>" target="_blank" rel="noreferrer">ouvrir la source</a>
+                                                    <button type="button" class="str3m-player__button" data-str3m-player-retry>relancer EQ</button>
                                                 </div>
                                             </section>
                                         </div>
@@ -559,7 +557,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                         <p>Lecture image intégrée, sans sortie de contexte.</p>
                                         <div class="action-row">
                                             <a class="pill-link" href="<?= h($readerHref) ?>" target="_blank" rel="noreferrer">ouvrir l’image</a>
-                                            <a class="ghost-link" href="<?= h($readerHref) ?>" download>extraire</a>
+                                            <a class="ghost-link" href="<?= h($islandForceDownloadHref($readerHref)) ?>" download>extraire</a>
                                         </div>
                                     </div>
                                 </div>
@@ -593,7 +591,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                         <p><?= h($islandVideoSelectionNote) ?></p>
                                         <div class="action-row">
                                             <a class="pill-link" href="<?= h($readerHref) ?>" target="_blank" rel="noreferrer">ouvrir la vidéo</a>
-                                            <a class="ghost-link" href="<?= h($readerHref) ?>" download>extraire</a>
+                                            <a class="ghost-link" href="<?= h($islandForceDownloadHref($readerHref)) ?>" download>extraire</a>
                                         </div>
                                     </div>
                                 </div>
@@ -606,7 +604,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                         <p>Le document reste lisible dans l’île, avec possibilité d’ouverture externe si besoin.</p>
                                         <div class="action-row">
                                             <a class="pill-link" href="<?= h($readerHref) ?>" target="_blank" rel="noreferrer">ouvrir le PDF</a>
-                                            <a class="ghost-link" href="<?= h($readerHref) ?>" download>télécharger</a>
+                                            <a class="ghost-link" href="<?= h($islandForceDownloadHref($readerHref)) ?>" download>télécharger</a>
                                         </div>
                                     </div>
                                 </div>
@@ -639,7 +637,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                         <p>Lecture continue pour texte, markdown ou document léger, sans quitter la station.</p>
                                         <div class="action-row">
                                             <a class="pill-link" href="<?= h($readerHref) ?>" target="_blank" rel="noreferrer">ouvrir le texte</a>
-                                            <a class="ghost-link" href="<?= h($readerHref) ?>" download>extraire</a>
+                                            <a class="ghost-link" href="<?= h($islandForceDownloadHref($readerHref)) ?>" download>extraire</a>
                                         </div>
                                     </div>
                                 </div>
@@ -654,7 +652,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                         <p>Le tracé vectoriel est rendu en natif, net sur toutes les échelles.</p>
                                         <div class="action-row">
                                             <a class="pill-link" href="<?= h($readerHref) ?>" target="_blank" rel="noreferrer">ouvrir le SVG</a>
-                                            <a class="ghost-link" href="<?= h($readerHref) ?>" download>extraire</a>
+                                            <a class="ghost-link" href="<?= h($islandForceDownloadHref($readerHref)) ?>" download>extraire</a>
                                         </div>
                                     </div>
                                 </div>
@@ -685,7 +683,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                         <p>Lecture orientée structure : utile pour JSON, CSV, XML, YAML ou autres fichiers de données lisibles.</p>
                                         <div class="action-row">
                                             <a class="pill-link" href="<?= h($readerHref) ?>" target="_blank" rel="noreferrer">ouvrir la donnée</a>
-                                            <a class="ghost-link" href="<?= h($readerHref) ?>" download>extraire</a>
+                                            <a class="ghost-link" href="<?= h($islandForceDownloadHref($readerHref)) ?>" download>extraire</a>
                                         </div>
                                     </div>
                                 </div>
@@ -718,7 +716,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                         <p>Source de design lisible quand une miniature ou un aperçu existe ; sinon on garde un accès direct au fichier maître.</p>
                                         <div class="action-row">
                                             <a class="pill-link" href="<?= h($readerHref) ?>" target="_blank" rel="noreferrer">ouvrir la source</a>
-                                            <a class="ghost-link" href="<?= h($readerHref) ?>" download>extraire</a>
+                                            <a class="ghost-link" href="<?= h($islandForceDownloadHref($readerHref)) ?>" download>extraire</a>
                                         </div>
                                     </div>
                                 </div>
@@ -759,7 +757,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                         <p>Lecture synthétique d’une archive mémoire : densité, familles, dossiers dominants et quelques chemins repères.</p>
                                         <div class="action-row">
                                             <a class="pill-link" href="<?= h($readerHref) ?>" target="_blank" rel="noreferrer">ouvrir l’archive</a>
-                                            <a class="ghost-link" href="<?= h($readerHref) ?>" download>extraire</a>
+                                            <a class="ghost-link" href="<?= h($islandForceDownloadHref($readerHref)) ?>" download>extraire</a>
                                         </div>
                                     </div>
                                 </div>
@@ -801,7 +799,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                         <p>Lecture 3D intégrée quand le format le permet, sinon fallback propre et extraction directe.</p>
                                         <div class="action-row">
                                             <a class="pill-link" href="<?= h($readerHref) ?>" target="_blank" rel="noreferrer">ouvrir l’objet</a>
-                                            <a class="ghost-link" href="<?= h($readerHref) ?>" download>extraire</a>
+                                            <a class="ghost-link" href="<?= h($islandForceDownloadHref($readerHref)) ?>" download>extraire</a>
                                         </div>
                                     </div>
                                 </div>
@@ -886,7 +884,7 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                 <p class="c0r3-note"><?= h((string) $item['summary']) ?></p>
                             <?php endif; ?>
                             <?php if (!empty($item['href'])): ?>
-                                <a href="<?= h((string) $item['href']) ?>" class="c0r3-download" download>[ extraire ]</a>
+                                <a href="<?= h($islandForceDownloadHref((string) $item['href'])) ?>" class="c0r3-download" download>[ extraire ]</a>
                             <?php endif; ?>
                         </article>
                     <?php endforeach; ?>
@@ -1018,6 +1016,8 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                 <a class="pill-link" href="<?= h($homeHref) ?>">Revenir à l’accueil</a>
             </div>
         </section>
+
+        <?= render_spatial_context_bar('island', $host) ?>
     <?php endif; ?>
 </main>
 </body>

@@ -155,6 +155,26 @@ function aza_absolute_storage_path(?string $publicPath): ?string
         return null;
     }
 
+    $query = parse_url($publicPath, PHP_URL_QUERY);
+    if (is_string($query) && $query !== '') {
+        $params = [];
+        parse_str($query, $params);
+        $requestedFile = trim((string) ($params['f'] ?? ''));
+        if ($requestedFile !== '') {
+            $publicPath = $requestedFile;
+        } else {
+            $path = parse_url($publicPath, PHP_URL_PATH);
+            if (is_string($path) && $path !== '') {
+                $publicPath = $path;
+            }
+        }
+    } elseif (str_contains($publicPath, '://') || str_contains($publicPath, '?')) {
+        $path = parse_url($publicPath, PHP_URL_PATH);
+        if (is_string($path) && $path !== '') {
+            $publicPath = $path;
+        }
+    }
+
     $normalized = ltrim(str_replace('\\', '/', $publicPath), '/');
     $mountPrefix = trim(o_mount_prefix(), '/');
     if ($mountPrefix !== '' && ($normalized === $mountPrefix || str_starts_with($normalized, $mountPrefix . '/'))) {
@@ -1078,6 +1098,13 @@ function render_spatial_context_bar(string $view = 'surface', ?string $host = nu
             'copy' => 'Terre cadre les présences visibles et Mine capte les gestes, les preuves et les bifurcations rapides.',
             'dominant' => 'terre',
             'note' => 'Str3m reste la grande nappe publique: lecture lente, repères clairs, bifurcation rapide vers les terres.',
+        ],
+        'island' => [
+            'label' => 'island',
+            'title' => 'L ile garde une lecture situee.',
+            'copy' => 'Terre cadre le relief, Mine choisit la matiere la plus juste avant de pousser plus loin dans la memoire.',
+            'dominant' => 'terre',
+            'note' => 'L ile reste stable pendant que la surface spatiale decide quelle matiere doit prendre la main.',
         ],
         'surface' => [
             'label' => 'surface',

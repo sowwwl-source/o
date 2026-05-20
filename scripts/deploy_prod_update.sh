@@ -480,6 +480,7 @@ docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon-192.png
 docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_signal_validation.php
 docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_0wlslw0_agent.php
 docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_spatial_surface.php
+docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_media_readers.php
 docker exec "${project_name}-app-1" php -r '
 $headers = @get_headers("http://127.0.0.1/icons/icon.svg");
 if (!is_array($headers) || !isset($headers[0]) || stripos((string) $headers[0], "200") === false) {
@@ -504,6 +505,8 @@ else
 fi
 echo "==> Verifying sowwwl.io spatial surface inside app container"
 docker exec "${project_name}-app-1" php /var/www/html/scripts/check_spatial_surface.php --require-ready >/dev/null
+echo "==> Verifying media readers inside app container"
+docker exec "${project_name}-app-1" php /var/www/html/scripts/check_media_readers.php --require-ready >/dev/null
 curl -fsSI https://sowwwl.com/
 curl -fsSI https://sowwwl.io/
 curl -fsSI https://www.sowwwl.io/
@@ -511,6 +514,7 @@ curl -fsSI https://sowwwl.xyz/
 curl -fsSI https://sowwwl.xyz/map
 curl -fsSI https://sowwwl.com/signal
 curl -fsSI https://sowwwl.com/str3m
+curl -fsSI 'https://sowwwl.com/island?u=pablo-espallergues'
 curl -fsSI https://sowwwl.com/0wlslw0
 curl -fsSI https://sowwwl.com/icons/icon.svg
 curl -fsSI https://sowwwl.com/icons/icon-192.png
@@ -522,6 +526,8 @@ assert_body_matches https://sowwwl.com/ 'Trois portes : public, terre, 0wlslw0|P
 assert_body_matches https://sowwwl.com/main.js 'runPageInit\("xyzCamera", initXyzCamera\);'
 assert_body_matches https://sowwwl.com/main.js 'runPageInit\("guideVoice", initGuideVoice\);'
 assert_body_matches https://sowwwl.com/main.js 'const hasRecognition = Boolean\(RecognitionCtor\);'
+assert_body_matches https://sowwwl.com/str3m 'data-str3m-player-engine|data-str3m-player-source-state|ouvrir la source'
+assert_body_matches 'https://sowwwl.com/island?u=pablo-espallergues' 'data-island-reader-shell|data-str3m-player-engine|ouvrir la source'
 assert_body_matches https://sowwwl.io/ 'monde instrument|Surface de jeu Terre et Mine|Mode casque web'
 assert_body_matches https://sowwwl.io/ 'Perspective caméra|data-xyz-camera-facing-button="environment"'
 assert_body_matches 'https://sowwwl.io/manifest.php?app=io&spatial=headset' '"name"[[:space:]]*:[[:space:]]*"SOWWWL IO"'

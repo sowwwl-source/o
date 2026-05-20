@@ -12,6 +12,73 @@ function aza_asset_fail(int $status): never
     exit;
 }
 
+/**
+ * @return array{start:int,end:int,length:int}|null
+ */
+function aza_asset_parse_range(?string $headerValue, int $fileSize): ?array
+{
+    $candidate = trim((string) $headerValue);
+    if ($candidate === '' || $fileSize <= 0) {
+        return null;
+    }
+
+    if (preg_match('/^bytes=(\d*)-(\d*)$/', $candidate, $matches) !== 1) {
+        return null;
+    }
+
+    $startRaw = $matches[1] ?? '';
+    $endRaw = $matches[2] ?? '';
+    if ($startRaw === '' && $endRaw === '') {
+        return null;
+    }
+
+    if ($startRaw === '') {
+        $suffixLength = (int) $endRaw;
+        if ($suffixLength <= 0) {
+            return null;
+        }
+
+        $start = max($fileSize - min($suffixLength, $fileSize), 0);
+        $end = $fileSize - 1;
+    } else {
+        $start = (int) $startRaw;
+        $end = $endRaw !== '' ? (int) $endRaw : ($fileSize - 1);
+        if ($start >= $fileSize || $start > $end) {
+            http_response_code(416);
+            header('Content-Range: bytes */' . $fileSize);
+            exit;
+        }
+
+        $end = min($end, $fileSize - 1);
+    }
+
+    return [
+        'start' => $start,
+        'end' => $end,
+        'length' => ($end - $start) + 1,
+    ];
+}
+
+function aza_asset_should_display_inline(string $contentType, string $path): bool
+{
+    $normalizedType = strtolower(trim($contentType));
+    $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+
+    if (str_starts_with($normalizedType, 'image/')
+        || str_starts_with($normalizedType, 'audio/')
+        || str_starts_with($normalizedType, 'video/')
+        || str_starts_with($normalizedType, 'text/')
+    ) {
+        return true;
+    }
+
+    if (in_array($normalizedType, ['application/pdf', 'application/json', 'application/xml', 'image/svg+xml', 'model/gltf+json', 'model/gltf-binary'], true)) {
+        return true;
+    }
+
+    return in_array($extension, ['svg', 'pdf', 'json', 'csv', 'xml', 'yaml', 'yml', 'tsv', 'gltf', 'glb'], true);
+}
+
 $publicPath = trim((string) ($_GET['f'] ?? ''));
 if ($publicPath === '') {
     aza_asset_fail(404);
@@ -55,14 +122,24 @@ if (function_exists('finfo_open')) {
 $downloadName = basename($realPath);
 $asciiName = preg_replace('/[^A-Za-z0-9._-]/', '_', $downloadName) ?: 'telechargement';
 $fileSize = @filesize($realPath);
+$range = is_int($fileSize) && $fileSize >= 0
+    ? aza_asset_parse_range($_SERVER['HTTP_RANGE'] ?? null, $fileSize)
+    : null;
+$forceDownload = trim((string) ($_GET['download'] ?? '')) === '1';
+$dispositionType = !$forceDownload && aza_asset_should_display_inline($contentType, $realPath) ? 'inline' : 'attachment';
 
 header('Cache-Control: private, max-age=600');
 header('Pragma: public');
 header("Content-Security-Policy: default-src 'none'; sandbox");
 header('X-Content-Type-Options: nosniff');
+header('Accept-Ranges: bytes');
 header('Content-Type: ' . $contentType);
-header('Content-Disposition: attachment; filename="' . $asciiName . '"; filename*=UTF-8\'\'' . rawurlencode($downloadName));
-if (is_int($fileSize) && $fileSize >= 0) {
+header('Content-Disposition: ' . $dispositionType . '; filename="' . $asciiName . '"; filename*=UTF-8\'\'' . rawurlencode($downloadName));
+if ($range !== null) {
+    http_response_code(206);
+    header('Content-Range: bytes ' . $range['start'] . '-' . $range['end'] . '/' . $fileSize);
+    header('Content-Length: ' . (string) $range['length']);
+} elseif (is_int($fileSize) && $fileSize >= 0) {
     header('Content-Length: ' . (string) $fileSize);
 }
 
@@ -75,12 +152,25 @@ if (!$handle) {
     aza_asset_fail(404);
 }
 
-while (!feof($handle)) {
-    $chunk = fread($handle, 8192);
-    if ($chunk === false) {
-        break;
+if ($range !== null) {
+    fseek($handle, $range['start']);
+    $remaining = $range['length'];
+    while ($remaining > 0 && !feof($handle)) {
+        $chunk = fread($handle, min(8192, $remaining));
+        if ($chunk === false || $chunk === '') {
+            break;
+        }
+        $remaining -= strlen($chunk);
+        echo $chunk;
     }
-    echo $chunk;
+} else {
+    while (!feof($handle)) {
+        $chunk = fread($handle, 8192);
+        if ($chunk === false) {
+            break;
+        }
+        echo $chunk;
+    }
 }
 
 fclose($handle);
