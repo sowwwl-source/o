@@ -265,7 +265,7 @@ $activeConversationCount = count($conversation);
                 <div>
                     <h2>Messagerie non initialisée</h2>
                     <p class="panel-copy"><?= h($signalSchemaHint) ?></p>
-                    <p class="panel-copy">Si la base vient de revenir, rejoue au besoin la migration Signal du projet (<code>../migrations/2026_05_02_signal_mail.sql</code> depuis le dossier <code>o/</code>) puis redémarre l’app.</p>
+                    <p class="panel-copy">Si la base vient de revenir, rejoue au besoin la migration Signal du projet (<code>migrations/2026_05_02_signal_mail.sql</code> depuis le dossier <code>o/</code>) puis redémarre l’app.</p>
                 </div>
                 <span class="badge"><?= ($signalSchemaStatus['database_available'] ?? false) ? 'schéma à compléter' : 'sql indisponible' ?></span>
             </div>

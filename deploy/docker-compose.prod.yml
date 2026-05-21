@@ -93,12 +93,12 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-CHANGE_ME_ROOT_DB_PASSWORD}
     volumes:
       - sowwwl_xyz_db_data:/var/lib/mysql
-      - ../../init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
-      - ../../migrations/003_echoes_notification.sql:/docker-entrypoint-initdb.d/003_echoes_notification.sql:ro
-      - ../../migrations/004_liaisons_ports.sql:/docker-entrypoint-initdb.d/004_liaisons_ports.sql:ro
-      - ../../migrations/005_flows.sql:/docker-entrypoint-initdb.d/005_flows.sql:ro
-      - ../../migrations/2026_05_02_signal_mail.sql:/docker-entrypoint-initdb.d/006_signal_mail.sql:ro
-      - ../../migrations/007_query_indexes.sql:/docker-entrypoint-initdb.d/007_query_indexes.sql:ro
+      - ../init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+      - ../migrations/003_echoes_notification.sql:/docker-entrypoint-initdb.d/003_echoes_notification.sql:ro
+      - ../migrations/004_liaisons_ports.sql:/docker-entrypoint-initdb.d/004_liaisons_ports.sql:ro
+      - ../migrations/005_flows.sql:/docker-entrypoint-initdb.d/005_flows.sql:ro
+      - ../migrations/2026_05_02_signal_mail.sql:/docker-entrypoint-initdb.d/006_signal_mail.sql:ro
+      - ../migrations/007_query_indexes.sql:/docker-entrypoint-initdb.d/007_query_indexes.sql:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]

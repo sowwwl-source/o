@@ -29,12 +29,12 @@ It uses one VPS, one Caddy reverse proxy, one PHP app container for the `o/` exp
 - `Caddyfile` - domain routing and redirects
 - `api/` - minimal AzA API stub with docs and health endpoints
 - `app/` - PHP runtime image for `sowwwl.xyz`
-- `../../init.sql` - base SQL schema mounted into MySQL on first boot
-- `../../migrations/003_echoes_notification.sql` - Echo notifications mounted into MySQL on first boot
-- `../../migrations/004_liaisons_ports.sql` - liaison/p0rt schema mounted into MySQL on first boot
-- `../../migrations/005_flows.sql` - fl0w schema mounted into MySQL on first boot
-- `../../migrations/2026_05_02_signal_mail.sql` - Signal mailbox/message schema mounted as `006_signal_mail.sql` on first boot
-- `../../migrations/007_query_indexes.sql` - additive query indexes mounted into MySQL on first boot
+- `../init.sql` - base SQL schema mounted into MySQL on first boot
+- `../migrations/003_echoes_notification.sql` - Echo notifications mounted into MySQL on first boot
+- `../migrations/004_liaisons_ports.sql` - liaison/p0rt schema mounted into MySQL on first boot
+- `../migrations/005_flows.sql` - fl0w schema mounted into MySQL on first boot
+- `../migrations/2026_05_02_signal_mail.sql` - Signal mailbox/message schema mounted as `006_signal_mail.sql` on first boot
+- `../migrations/007_query_indexes.sql` - additive query indexes mounted into MySQL on first boot
 - `sites/` - static sites for the hub, org, alternate landing, SPA shell, and temporary product shell
 
 ## Prepare
@@ -109,11 +109,11 @@ On a fresh MySQL volume, `init.sql` and migrations `003` through `007` are impor
 If the database already exists, mounted init scripts are not replayed automatically. Apply missing migrations manually, in order:
 
 ```bash
-docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../../migrations/003_echoes_notification.sql
-docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../../migrations/004_liaisons_ports.sql
-docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../../migrations/005_flows.sql
-docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../../migrations/2026_05_02_signal_mail.sql
-docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../../migrations/007_query_indexes.sql
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../migrations/003_echoes_notification.sql
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../migrations/004_liaisons_ports.sql
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../migrations/005_flows.sql
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../migrations/2026_05_02_signal_mail.sql
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../migrations/007_query_indexes.sql
 ```
 
 Then restart the PHP app:

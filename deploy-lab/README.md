@@ -40,10 +40,11 @@ Later it should be replaced by a Pi-backed route or tunnel target.
 - `Caddyfile`
 - `.env.lab.example`
 - `db/Dockerfile`
-- `db/init/*.sql`
+- `../init.sql` and `../migrations/*.sql`
 
 The lab DB image embeds its init SQL files.
 This avoids fragile bind mounts to `/opt/o-3ternet-lab/init.sql` on the droplet.
+The lab DB image uses the same ordered schema sequence as production: `001`, `003`, `004`, `005`, `006_signal_mail`, then `007`.
 
 ## Deploy
 
