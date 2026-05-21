@@ -148,6 +148,11 @@ $echoContactsHtml = signal_render_echo_contacts_html($contacts, $targetUsername)
 
     <?= render_spatial_context_bar('echo', $host) ?>
 
+    <?= render_continuity_dome('echo', [
+        'host' => $host,
+        'land' => $land,
+    ]) ?>
+
     <?php if ($message !== ''): ?>
         <section class="panel reveal">
             <div class="flash flash-<?= h($messageType) ?>" aria-live="polite">

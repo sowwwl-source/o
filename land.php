@@ -163,6 +163,14 @@ $landContextOpen = $created || ($sessionBound && $isAuthenticatedHere);
             </div>
         </header>
 
+        <?= render_continuity_dome('land', [
+            'host' => $host,
+            'land' => $land,
+            'memory_summary' => $landMemorySummary,
+            'island_projection' => $landIslandProjection,
+            'unread_signal' => $signalUnread,
+        ]) ?>
+
         <section class="panel-shell panel-shell--land">
             <aside class="panel reveal land-ritual-shell" aria-labelledby="ritual-title">
                 <div class="section-topline">

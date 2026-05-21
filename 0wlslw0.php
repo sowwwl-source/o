@@ -194,6 +194,11 @@ $guideVoiceNotes = [
 
     <?= render_spatial_context_bar('guide', $host) ?>
 
+    <?= render_continuity_dome('guide', [
+        'host' => $host,
+        'land' => $authenticatedLand,
+    ]) ?>
+
     <section
         class="panel reveal guide-panel guide-voice-shell"
         aria-labelledby="guide-voice-title"

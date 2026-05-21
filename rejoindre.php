@@ -238,6 +238,11 @@ $journeyStatusAside = match (true) {
         </div>
     </header>
 
+    <?= render_continuity_dome('join', [
+        'host' => $host,
+        'land' => $authenticatedLand,
+    ]) ?>
+
     <?php if ($message !== ''): ?>
         <div class="flash flash-<?= h($messageType) ?>" aria-live="polite">
             <p><?= h($message) ?></p>

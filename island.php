@@ -334,6 +334,13 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
 
         <?= render_spatial_context_bar('island', $host) ?>
 
+        <?= render_continuity_dome('island', [
+            'host' => $host,
+            'land' => $land,
+            'memory_summary' => $islandSummary,
+            'island_projection' => $islandProjection,
+        ]) ?>
+
         <section class="panel reveal island-reader-station" aria-labelledby="island-reader-title">
             <div class="section-topline aza-timeline-header">
                 <div>

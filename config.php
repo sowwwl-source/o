@@ -1055,6 +1055,230 @@ function render_nucleus_banner(string $currentLabel = 'surface', string $href = 
 HTML;
 }
 
+function render_continuity_dome(string $current = 'surface', array $context = []): string
+{
+    $host = request_host(is_string($context['host'] ?? null) ? (string) $context['host'] : null);
+    $currentKey = strtolower(trim($current)) ?: 'surface';
+    $land = is_array($context['land'] ?? null) ? $context['land'] : current_authenticated_land();
+    $landSlug = trim((string) (($context['land_slug'] ?? '') ?: ($land['slug'] ?? '')));
+    $landUsername = trim((string) (($context['land_username'] ?? '') ?: ($land['username'] ?? '')));
+    $hasLand = $landSlug !== '';
+    $memoryCount = max(0, (int) (
+        $context['memory_count']
+        ?? $context['trace_count']
+        ?? ($context['memory_summary']['count'] ?? null)
+        ?? ($context['memory_totals']['all'] ?? null)
+        ?? 0
+    ));
+    $islandStatus = trim((string) (
+        $context['island_status']
+        ?? ($context['island_projection']['status_label'] ?? '')
+    ));
+    $signalCount = max(0, (int) (
+        $context['unread_signal']
+        ?? $context['unread_total']
+        ?? 0
+    ));
+
+    $route = static fn (string $path, array $params = []): string => o_route_href($path, $params, $host);
+    $landHref = $hasLand ? $route('/land', ['u' => $landSlug]) : $route('/rejoindre');
+    $azaHref = $hasLand ? $route('/aza', ['u' => $landSlug]) : $route('/aza');
+    $islandHref = $hasLand ? $route('/island', ['u' => $landSlug]) : '';
+    $signalHref = $route('/signal');
+    $echoHref = $landUsername !== '' ? $route('/echo', ['u' => $landUsername]) : $route('/echo');
+
+    $catalog = [
+        'surface' => [
+            'label' => 'Noyau',
+            'verb' => 'orienter',
+            'copy' => 'reprendre le centre et choisir la bonne porte',
+            'href' => $route('/'),
+            'layer' => 'arc',
+        ],
+        'guide' => [
+            'label' => '0wlslw0',
+            'verb' => 'clarifier',
+            'copy' => 'comprendre le passage avant de bifurquer',
+            'href' => $route('/0wlslw0'),
+            'layer' => 'arc',
+        ],
+        'join' => [
+            'label' => $hasLand ? 'Terre' : 'Rejoindre',
+            'verb' => $hasLand ? 'ancrer' : 'poser',
+            'copy' => $hasLand ? 'revenir a la terre active' : 'ouvrir une terre pour donner une adresse a la suite',
+            'href' => $landHref,
+            'layer' => 'arc',
+        ],
+        'land' => [
+            'label' => 'Terre',
+            'verb' => 'ancrer',
+            'copy' => $hasLand ? 'tenir l identite, la frequence et les routes de cette presence' : 'aucune terre active pour le moment',
+            'href' => $landHref,
+            'layer' => 'arc',
+        ],
+        'aza' => [
+            'label' => 'aZa',
+            'verb' => 'deposer',
+            'copy' => 'classer les traces, sources, formats et strates',
+            'href' => $azaHref,
+            'layer' => 'voute',
+        ],
+        'island' => [
+            'label' => 'Ile',
+            'verb' => 'lire',
+            'copy' => $hasLand ? 'relire la matiere en lecteurs situes' : 'demande une terre pour devenir lisible',
+            'href' => $islandHref,
+            'layer' => 'voute',
+        ],
+        'str3m' => [
+            'label' => 'Str3m',
+            'verb' => 'publier',
+            'copy' => 'voir le courant public et les presences actives',
+            'href' => $route('/str3m'),
+            'layer' => 'dome',
+        ],
+        'map' => [
+            'label' => 'Map',
+            'verb' => 'situer',
+            'copy' => 'voir le tore, les noeuds et les courants',
+            'href' => $route('/map'),
+            'layer' => 'dome',
+        ],
+        'signal' => [
+            'label' => 'Signal',
+            'verb' => 'relier',
+            'copy' => 'tenir la boite, le contexte et la memoire des messages',
+            'href' => $signalHref,
+            'layer' => 'voute',
+        ],
+        'echo' => [
+            'label' => 'Echo',
+            'verb' => 'repondre',
+            'copy' => 'relancer une terre en direct sans perdre Signal',
+            'href' => $echoHref,
+            'layer' => 'dome',
+        ],
+    ];
+
+    if ($currentKey === 'home' || $currentKey === 'noyau') {
+        $currentKey = 'surface';
+    }
+    if ($currentKey === '0wlslw0') {
+        $currentKey = 'guide';
+    }
+    if (!isset($catalog[$currentKey])) {
+        $currentKey = 'surface';
+    }
+
+    $arcMap = [
+        'surface' => ['guide', 'join', 'str3m'],
+        'guide' => ['join', 'str3m', 'signal'],
+        'join' => ['guide', 'land', 'aza'],
+        'land' => ['aza', 'island', 'signal'],
+        'aza' => ['land', 'island', 'str3m'],
+        'island' => ['aza', 'land', 'str3m'],
+        'str3m' => ['map', 'land', 'signal'],
+        'map' => ['str3m', 'land', 'guide'],
+        'signal' => ['land', 'echo', 'str3m'],
+        'echo' => ['signal', 'land', 'str3m'],
+    ];
+    $arcKeys = $arcMap[$currentKey] ?? ['guide', 'land', 'str3m'];
+    $domeKeys = ['surface', 'guide', 'land', 'aza', 'island', 'str3m', 'map', 'signal', 'echo'];
+    $currentNode = $catalog[$currentKey];
+    $arcSentence = match ($currentKey) {
+        'land' => 'La terre devient arche quand sa memoire trouve aZa, son ile, puis ses liaisons.',
+        'aza' => 'aZa devient voute quand chaque trace sait revenir a la terre et repartir vers l ile.',
+        'island' => 'L ile devient dome quand la lecture situee renvoie vers la source, la terre et le courant.',
+        'str3m' => 'Str3m devient dome quand le public peut redescendre vers les terres et les fils.',
+        'signal', 'echo' => 'La liaison tient quand Signal garde la memoire et Echo garde la prise directe.',
+        'map' => 'La carte tient le dome quand chaque noeud peut rejoindre sa terre et son courant.',
+        default => 'L arc se construit en reliant orientation, terre, matiere, lecture et liaison.',
+    };
+    $landLabel = $hasLand
+        ? (($landUsername !== '' ? $landUsername : $landSlug) . ' / ' . $landSlug)
+        : 'terre a poser';
+    $memoryLabel = $memoryCount > 0
+        ? (string) $memoryCount . ' trace' . ($memoryCount > 1 ? 's' : '')
+        : 'memoire en veille';
+    $signalLabel = $signalCount > 0
+        ? (string) $signalCount . ' signal' . ($signalCount > 1 ? 's' : '') . ' a reprendre'
+        : 'liaison prete';
+    $islandLabel = $islandStatus !== '' ? $islandStatus : ($hasLand ? 'ile disponible selon matiere' : 'ile apres ancrage');
+
+    ob_start();
+    ?>
+    <section class="continuity-dome reveal" data-continuity-dome data-continuity-current="<?= h($currentKey) ?>" aria-labelledby="continuity-dome-title">
+        <div class="continuity-dome__head">
+            <p class="continuity-dome__eyebrow"><strong>arc / voute / dome</strong> <span><?= h((string) $currentNode['label']) ?></span></p>
+            <h2 id="continuity-dome-title">Les briques se tiennent ensemble.</h2>
+            <p><?= h($arcSentence) ?></p>
+        </div>
+
+        <div class="continuity-dome__arc" aria-label="Arc recommande depuis cette surface">
+            <?php foreach ($arcKeys as $index => $key): ?>
+                <?php
+                $node = $catalog[$key] ?? null;
+                if (!$node) {
+                    continue;
+                }
+                $href = trim((string) ($node['href'] ?? ''));
+                $isCurrent = $key === $currentKey;
+                ?>
+                <?php if ($href !== ''): ?>
+                    <a class="continuity-dome__step<?= $isCurrent ? ' is-current' : '' ?>" href="<?= h($href) ?>" data-continuity-step="<?= h($key) ?>">
+                        <span><?= h(str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT)) ?></span>
+                        <strong><?= h((string) $node['label']) ?></strong>
+                        <em><?= h((string) $node['verb']) ?></em>
+                        <small><?= h((string) $node['copy']) ?></small>
+                    </a>
+                <?php else: ?>
+                    <span class="continuity-dome__step is-muted<?= $isCurrent ? ' is-current' : '' ?>" data-continuity-step="<?= h($key) ?>">
+                        <span><?= h(str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT)) ?></span>
+                        <strong><?= h((string) $node['label']) ?></strong>
+                        <em><?= h((string) $node['verb']) ?></em>
+                        <small><?= h((string) $node['copy']) ?></small>
+                    </span>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="continuity-dome__vault" aria-label="Etat de la voute">
+            <p><span>ancrage</span><strong><?= h($landLabel) ?></strong></p>
+            <p><span>matiere</span><strong><?= h($memoryLabel) ?></strong></p>
+            <p><span>ile</span><strong><?= h($islandLabel) ?></strong></p>
+            <p><span>liaison</span><strong><?= h($signalLabel) ?></strong></p>
+        </div>
+
+        <div class="continuity-dome__map" aria-label="Dome complet des routes">
+            <?php foreach ($domeKeys as $key): ?>
+                <?php
+                $node = $catalog[$key];
+                $href = trim((string) ($node['href'] ?? ''));
+                $class = 'continuity-dome__node';
+                if ($key === $currentKey) {
+                    $class .= ' is-current';
+                }
+                if ($href === '') {
+                    $class .= ' is-muted';
+                }
+                ?>
+                <?php if ($href !== ''): ?>
+                    <a class="<?= h($class) ?>" href="<?= h($href) ?>" data-continuity-node="<?= h($key) ?>" data-continuity-layer="<?= h((string) $node['layer']) ?>">
+                        <span><?= h((string) $node['label']) ?></span>
+                    </a>
+                <?php else: ?>
+                    <span class="<?= h($class) ?>" data-continuity-node="<?= h($key) ?>" data-continuity-layer="<?= h((string) $node['layer']) ?>">
+                        <span><?= h((string) $node['label']) ?></span>
+                    </span>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+    </section>
+    <?php
+
+    return trim((string) ob_get_clean());
+}
+
 function render_spatial_context_bar(string $view = 'surface', ?string $host = null, ?string $note = null): string
 {
     $resolvedHost = request_host($host);

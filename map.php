@@ -40,6 +40,10 @@ $pageHeadVariant = pwa_default_app_id($host);
 
     <?= render_spatial_context_bar('map', $host) ?>
 
+    <?= render_continuity_dome('map', [
+        'host' => $host,
+    ]) ?>
+
     <div id="sowwwl-map-surface" class="map-fallback" aria-live="polite"></div>
     <section class="map-lexical-console" aria-labelledby="map-lexical-title">
         <form class="map-lexical-console__bar" data-map-lexical-form>

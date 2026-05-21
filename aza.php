@@ -336,6 +336,14 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
         <?php endif; ?>
     </header>
 
+    <?= render_continuity_dome('aza', [
+        'host' => $host,
+        'land' => $ownerLand ?: $authenticatedLand,
+        'land_slug' => $ownerLand ? (string) $ownerLand['slug'] : ($authenticatedLand ? (string) $authenticatedLand['slug'] : ''),
+        'memory_totals' => $memoryTotals,
+        'island_projection' => $islandProjection,
+    ]) ?>
+
     <section class="panel reveal aza-mode-panel" aria-labelledby="aza-mode-title">
         <div class="section-topline">
             <div>

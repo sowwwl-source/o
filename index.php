@@ -457,6 +457,14 @@ $pageDescription = $isLabSurface
 
         <?= render_spatial_context_bar('surface', $host) ?>
 
+        <?= render_continuity_dome('surface', [
+            'host' => $host,
+            'land' => $authenticatedLand,
+            'land_slug' => $activeLandSlug,
+            'land_username' => $activeLandUsername,
+            'unread_signal' => $unreadSignal,
+        ]) ?>
+
         <details class="panel reveal xyz-archi-dock" data-xyz-archi-dock data-corner-dock data-corner-dock-side="right" data-corner-dock-priority="secondary">
             <summary class="xyz-archi-dock__toggle">
                 <span class="corner-dock-toggle__kicker">archi</span>
@@ -1641,6 +1649,14 @@ $pageDescription = $isLabSurface
             <?php endif; ?>
         </nav>
     </section>
+
+    <?= render_continuity_dome('surface', [
+        'host' => $host,
+        'land' => $authenticatedLand,
+        'land_slug' => $activeLandSlug,
+        'land_username' => $activeLandUsername,
+        'unread_signal' => $unreadSignal,
+    ]) ?>
     <?php endif; ?>
 
     <?php if (!$homeVisualOnly && $authenticatedLand): ?>

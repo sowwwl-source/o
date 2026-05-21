@@ -238,6 +238,12 @@ $activeConversationCount = count($conversation);
 
     <?= render_spatial_context_bar('signal', $host) ?>
 
+    <?= render_continuity_dome('signal', [
+        'host' => $host,
+        'land' => $land,
+        'unread_total' => $unreadTotal,
+    ]) ?>
+
     <?php if ($message !== ''): ?>
         <section class="panel reveal">
             <div class="flash flash-<?= h($messageType) ?>" aria-live="polite">

@@ -8504,6 +8504,274 @@ body.io-headset-mode .spatial-context__note {
 	color: rgba(var(--fg-rgb) / 0.54);
 }
 
+.continuity-dome {
+	position: relative;
+	isolation: isolate;
+	display: grid;
+	gap: 1rem;
+	padding: clamp(1rem, 2vw, 1.35rem);
+	overflow: hidden;
+	border-radius: 1.4rem;
+	border: 1px solid rgba(var(--fg-rgb) / 0.1);
+	background:
+		radial-gradient(circle at 12% 0%, rgba(var(--land-secondary-rgb) / 0.14), transparent 34%),
+		radial-gradient(circle at 86% 12%, rgba(244 183 112 / 0.11), transparent 32%),
+		linear-gradient(145deg, rgba(var(--panel-rgb) / 0.5), rgba(var(--panel-rgb) / 0.2));
+	box-shadow:
+		0 1.4rem 3.6rem rgba(0 0 0 / 0.18),
+		inset 0 1px 0 rgba(255 255 255 / 0.04);
+}
+
+.continuity-dome::before,
+.continuity-dome::after {
+	content: "";
+	position: absolute;
+	pointer-events: none;
+	z-index: -1;
+}
+
+.continuity-dome::before {
+	inset: 0.7rem 1rem auto;
+	height: 46%;
+	border: 1px solid rgba(var(--land-secondary-rgb) / 0.16);
+	border-bottom: 0;
+	border-radius: 999px 999px 0 0;
+	opacity: 0.68;
+}
+
+.continuity-dome::after {
+	inset: auto 0 0;
+	height: 38%;
+	background:
+		linear-gradient(90deg, transparent, rgba(var(--land-secondary-rgb) / 0.12), transparent),
+		repeating-linear-gradient(90deg, rgba(var(--fg-rgb) / 0.035) 0 1px, transparent 1px 4.8rem);
+	mask-image: linear-gradient(180deg, transparent, #000);
+	opacity: 0.7;
+}
+
+.continuity-dome__head {
+	display: grid;
+	gap: 0.4rem;
+	max-width: 58rem;
+}
+
+.continuity-dome__eyebrow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.65rem;
+	margin: 0;
+	font-size: 0.72rem;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: rgba(var(--fg-rgb) / 0.58);
+}
+
+.continuity-dome__eyebrow strong {
+	color: rgb(var(--land-secondary-rgb));
+}
+
+.continuity-dome__head h2 {
+	margin: 0;
+	font-size: clamp(1.22rem, 3vw, 2rem);
+	line-height: 1.02;
+	letter-spacing: -0.045em;
+}
+
+.continuity-dome__head p {
+	margin: 0;
+	color: rgba(var(--fg-rgb) / 0.72);
+	line-height: 1.62;
+}
+
+.continuity-dome__arc {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.8rem;
+}
+
+.continuity-dome__step {
+	position: relative;
+	display: grid;
+	gap: 0.42rem;
+	min-height: 11rem;
+	padding: 1rem;
+	border-radius: 1.05rem;
+	border: 1px solid rgba(var(--fg-rgb) / 0.09);
+	background:
+		linear-gradient(180deg, rgba(var(--fg-rgb) / 0.045), rgba(var(--fg-rgb) / 0.018)),
+		rgba(var(--panel-rgb) / 0.2);
+	color: inherit;
+	text-decoration: none;
+	transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.continuity-dome__step::after {
+	content: "";
+	position: absolute;
+	left: 1rem;
+	right: 1rem;
+	bottom: 0.85rem;
+	height: 1px;
+	background: linear-gradient(90deg, rgba(var(--land-secondary-rgb) / 0.38), transparent);
+	opacity: 0.5;
+}
+
+.continuity-dome__step:hover,
+.continuity-dome__step:focus-visible {
+	transform: translateY(-2px);
+	border-color: rgba(var(--land-secondary-rgb) / 0.28);
+	background:
+		linear-gradient(180deg, rgba(var(--land-secondary-rgb) / 0.09), rgba(var(--fg-rgb) / 0.02)),
+		rgba(var(--panel-rgb) / 0.28);
+	box-shadow: 0 1rem 2rem rgba(0 0 0 / 0.16);
+}
+
+.continuity-dome__step > span {
+	width: max-content;
+	padding: 0.28rem 0.5rem;
+	border-radius: 999px;
+	border: 1px solid rgba(var(--land-secondary-rgb) / 0.18);
+	color: rgb(var(--land-secondary-rgb));
+	font-size: 0.68rem;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.continuity-dome__step strong {
+	font-size: clamp(1.02rem, 2vw, 1.22rem);
+	line-height: 1.08;
+}
+
+.continuity-dome__step em {
+	color: rgba(var(--fg-rgb) / 0.72);
+	font-style: normal;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	font-size: 0.72rem;
+}
+
+.continuity-dome__step small {
+	max-width: 28ch;
+	color: rgba(var(--fg-rgb) / 0.62);
+	font-size: 0.82rem;
+	line-height: 1.48;
+}
+
+.continuity-dome__step.is-muted {
+	opacity: 0.6;
+}
+
+.continuity-dome__step.is-current,
+.continuity-dome__node.is-current {
+	border-color: rgba(var(--land-secondary-rgb) / 0.38);
+	box-shadow: inset 0 0 0 1px rgba(var(--land-secondary-rgb) / 0.1);
+}
+
+.continuity-dome__vault {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 0.6rem;
+}
+
+.continuity-dome__vault p {
+	display: grid;
+	gap: 0.25rem;
+	margin: 0;
+	padding: 0.75rem 0.85rem;
+	border-radius: 0.9rem;
+	border: 1px solid rgba(var(--fg-rgb) / 0.07);
+	background: rgba(var(--fg-rgb) / 0.025);
+}
+
+.continuity-dome__vault span {
+	color: rgba(var(--fg-rgb) / 0.52);
+	font-size: 0.68rem;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+.continuity-dome__vault strong {
+	color: rgba(var(--fg-rgb) / 0.88);
+	font-size: 0.88rem;
+	line-height: 1.3;
+}
+
+.continuity-dome__map {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.48rem;
+}
+
+.continuity-dome__node {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 2.2rem;
+	padding: 0.52rem 0.72rem;
+	border-radius: 999px;
+	border: 1px solid rgba(var(--fg-rgb) / 0.09);
+	background: rgba(var(--panel-rgb) / 0.18);
+	color: rgba(var(--fg-rgb) / 0.74);
+	font-size: 0.72rem;
+	letter-spacing: 0.1em;
+	text-decoration: none;
+	text-transform: uppercase;
+	transition: transform 160ms ease, border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.continuity-dome__node:hover,
+.continuity-dome__node:focus-visible {
+	transform: translateY(-1px);
+	border-color: rgba(var(--land-secondary-rgb) / 0.28);
+	color: rgba(var(--fg-rgb) / 0.95);
+	background: rgba(var(--land-secondary-rgb) / 0.07);
+}
+
+.continuity-dome__node.is-muted {
+	opacity: 0.5;
+}
+
+.continuity-dome__node[data-continuity-layer="arc"] {
+	border-color: rgba(var(--land-secondary-rgb) / 0.16);
+}
+
+.continuity-dome__node[data-continuity-layer="voute"] {
+	border-color: rgba(244 183 112 / 0.16);
+}
+
+.continuity-dome__node[data-continuity-layer="dome"] {
+	border-color: rgba(166 206 255 / 0.16);
+}
+
+@media (max-width: 900px) {
+	.continuity-dome__arc,
+	.continuity-dome__vault {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 640px) {
+	.continuity-dome {
+		border-radius: 1.05rem;
+	}
+
+	.continuity-dome__arc,
+	.continuity-dome__vault {
+		grid-template-columns: 1fr;
+	}
+
+	.continuity-dome__step {
+		min-height: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.continuity-dome__step,
+	.continuity-dome__node {
+		transition: none;
+	}
+}
+
 .guide-grid,
 .guide-cards {
 	display: grid;

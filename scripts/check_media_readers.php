@@ -69,6 +69,7 @@ $routes = [
         'path' => '/str3m',
         'markers' => [
             'data-str3m-player',
+            'data-continuity-dome',
             'data-str3m-player-engine',
             'data-str3m-player-output',
             'data-str3m-player-source-state',
@@ -81,6 +82,7 @@ $routes = [
         'path' => '/island?u=' . rawurlencode($islandSlug),
         'markers' => [
             'data-island-reader-shell',
+            'data-continuity-dome',
             'data-island-reader-panel',
             'data-island-reader-nav',
             'data-str3m-player-engine',

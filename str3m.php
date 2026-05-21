@@ -416,6 +416,12 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
 
     <?= render_spatial_context_bar('str3m', $host) ?>
 
+    <?= render_continuity_dome('str3m', [
+        'host' => $host,
+        'land' => $authenticatedLand,
+        'trace_count' => $publicSignalCount,
+    ]) ?>
+
     <section class="panel reveal str3m-panel" aria-labelledby="str3m-title">
         <div class="section-topline">
             <div>
