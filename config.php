@@ -1057,8 +1057,12 @@ HTML;
 
 function render_continuity_dome(string $current = 'surface', array $context = []): string
 {
+    static $instanceCounter = 0;
+
+    $instanceCounter++;
     $host = request_host(is_string($context['host'] ?? null) ? (string) $context['host'] : null);
     $currentKey = strtolower(trim($current)) ?: 'surface';
+    $surfaceVariant = current_surface_variant($host);
     $land = is_array($context['land'] ?? null) ? $context['land'] : current_authenticated_land();
     $landSlug = trim((string) (($context['land_slug'] ?? '') ?: ($land['slug'] ?? '')));
     $landUsername = trim((string) (($context['land_username'] ?? '') ?: ($land['username'] ?? '')));
@@ -1086,6 +1090,7 @@ function render_continuity_dome(string $current = 'surface', array $context = []
     $islandHref = $hasLand ? $route('/island', ['u' => $landSlug]) : '';
     $signalHref = $route('/signal');
     $echoHref = $landUsername !== '' ? $route('/echo', ['u' => $landUsername]) : $route('/echo');
+    $labHref = $surfaceVariant === 'lab' ? $route('/') : 'https://lab.sowwwl.cloud/';
 
     $catalog = [
         'surface' => [
@@ -1158,6 +1163,13 @@ function render_continuity_dome(string $current = 'surface', array $context = []
             'href' => $echoHref,
             'layer' => 'dome',
         ],
+        'lab' => [
+            'label' => 'Lab',
+            'verb' => 'prototyper',
+            'copy' => 'relier capteurs, pocket, plasma et reprise differee',
+            'href' => $labHref,
+            'layer' => 'dome',
+        ],
     ];
 
     if ($currentKey === 'home' || $currentKey === 'noyau') {
@@ -1165,6 +1177,9 @@ function render_continuity_dome(string $current = 'surface', array $context = []
     }
     if ($currentKey === '0wlslw0') {
         $currentKey = 'guide';
+    }
+    if ($currentKey === 'atelier') {
+        $currentKey = 'lab';
     }
     if (!isset($catalog[$currentKey])) {
         $currentKey = 'surface';
@@ -1181,9 +1196,10 @@ function render_continuity_dome(string $current = 'surface', array $context = []
         'map' => ['str3m', 'land', 'guide'],
         'signal' => ['land', 'echo', 'str3m'],
         'echo' => ['signal', 'land', 'str3m'],
+        'lab' => ['surface', 'str3m', 'island'],
     ];
     $arcKeys = $arcMap[$currentKey] ?? ['guide', 'land', 'str3m'];
-    $domeKeys = ['surface', 'guide', 'land', 'aza', 'island', 'str3m', 'map', 'signal', 'echo'];
+    $domeKeys = ['surface', 'guide', 'land', 'aza', 'island', 'str3m', 'map', 'signal', 'echo', 'lab'];
     $currentNode = $catalog[$currentKey];
     $arcSentence = match ($currentKey) {
         'land' => 'La terre devient arche quand sa memoire trouve aZa, son ile, puis ses liaisons.',
@@ -1192,6 +1208,7 @@ function render_continuity_dome(string $current = 'surface', array $context = []
         'str3m' => 'Str3m devient dome quand le public peut redescendre vers les terres et les fils.',
         'signal', 'echo' => 'La liaison tient quand Signal garde la memoire et Echo garde la prise directe.',
         'map' => 'La carte tient le dome quand chaque noeud peut rejoindre sa terre et son courant.',
+        'lab' => 'Le lab ferme le dome quand les prototypes savent revenir au public, a l ile et au noyau.',
         default => 'L arc se construit en reliant orientation, terre, matiere, lecture et liaison.',
     };
     $landLabel = $hasLand
@@ -1204,13 +1221,14 @@ function render_continuity_dome(string $current = 'surface', array $context = []
         ? (string) $signalCount . ' signal' . ($signalCount > 1 ? 's' : '') . ' a reprendre'
         : 'liaison prete';
     $islandLabel = $islandStatus !== '' ? $islandStatus : ($hasLand ? 'ile disponible selon matiere' : 'ile apres ancrage');
+    $titleId = 'continuity-dome-title-' . preg_replace('/[^a-z0-9_-]+/i', '-', $currentKey) . '-' . (string) $instanceCounter;
 
     ob_start();
     ?>
-    <section class="continuity-dome reveal" data-continuity-dome data-continuity-current="<?= h($currentKey) ?>" aria-labelledby="continuity-dome-title">
+    <section class="continuity-dome reveal" data-continuity-dome data-continuity-current="<?= h($currentKey) ?>" aria-labelledby="<?= h($titleId) ?>">
         <div class="continuity-dome__head">
             <p class="continuity-dome__eyebrow"><strong>arc / voute / dome</strong> <span><?= h((string) $currentNode['label']) ?></span></p>
-            <h2 id="continuity-dome-title">Les briques se tiennent ensemble.</h2>
+            <h2 id="<?= h($titleId) ?>">Les briques se tiennent ensemble.</h2>
             <p><?= h($arcSentence) ?></p>
         </div>
 

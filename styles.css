@@ -8583,6 +8583,43 @@ body.io-headset-mode .spatial-context__note {
 	line-height: 1.62;
 }
 
+.continuity-dome__return {
+	display: inline-grid;
+	justify-self: start;
+	gap: 0.12rem;
+	margin-top: 0.1rem;
+	padding: 0.55rem 0.72rem;
+	border-radius: 0.9rem;
+	border: 1px solid rgba(var(--land-secondary-rgb) / 0.14);
+	background:
+		linear-gradient(135deg, rgba(var(--land-secondary-rgb) / 0.09), rgba(var(--fg-rgb) / 0.018)),
+		rgba(var(--panel-rgb) / 0.18);
+	color: inherit;
+	text-decoration: none;
+	transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.continuity-dome__return:hover,
+.continuity-dome__return:focus-visible {
+	transform: translateY(-1px);
+	border-color: rgba(var(--land-secondary-rgb) / 0.3);
+	background:
+		linear-gradient(135deg, rgba(var(--land-secondary-rgb) / 0.14), rgba(var(--fg-rgb) / 0.03)),
+		rgba(var(--panel-rgb) / 0.24);
+}
+
+.continuity-dome__return span {
+	color: rgba(var(--fg-rgb) / 0.52);
+	font-size: 0.64rem;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+.continuity-dome__return strong {
+	font-size: 0.84rem;
+	line-height: 1.25;
+}
+
 .continuity-dome__arc {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -8731,6 +8768,14 @@ body.io-headset-mode .spatial-context__note {
 	opacity: 0.5;
 }
 
+.continuity-dome__node[data-continuity-seen="1"] {
+	color: rgba(var(--fg-rgb) / 0.88);
+	border-color: rgba(var(--land-secondary-rgb) / 0.22);
+	background:
+		linear-gradient(180deg, rgba(var(--land-secondary-rgb) / 0.07), transparent),
+		rgba(var(--panel-rgb) / 0.2);
+}
+
 .continuity-dome__node[data-continuity-layer="arc"] {
 	border-color: rgba(var(--land-secondary-rgb) / 0.16);
 }
@@ -8766,6 +8811,7 @@ body.io-headset-mode .spatial-context__note {
 }
 
 @media (prefers-reduced-motion: reduce) {
+	.continuity-dome__return,
 	.continuity-dome__step,
 	.continuity-dome__node {
 		transition: none;

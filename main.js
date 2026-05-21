@@ -14099,6 +14099,93 @@ function initSpatialContext() {
 	});
 }
 
+function initContinuityDome() {
+	const roots = Array.from(document.querySelectorAll("[data-continuity-dome]"))
+		.filter((root) => root instanceof HTMLElement);
+	if (!roots.length) {
+		return;
+	}
+
+	const storageKey = "o:continuity-dome:v1";
+	const currentPath = normalizeRoutePathForComparison(window.location.href);
+	const isSafeContinuityPath = (path) => typeof path === "string" && path.startsWith("/") && !path.startsWith("//");
+
+	const readTrail = () => {
+		try {
+			const parsed = JSON.parse(window.localStorage.getItem(storageKey) || "[]");
+			return Array.isArray(parsed)
+				? parsed
+					.filter((item) => item && typeof item === "object" && isSafeContinuityPath(item.path) && typeof item.label === "string")
+					.slice(0, 8)
+				: [];
+		} catch (_error) {
+			return [];
+		}
+	};
+
+	const writeTrail = (trail) => {
+		try {
+			window.localStorage.setItem(storageKey, JSON.stringify(trail.slice(0, 8)));
+		} catch (_error) {
+			// Navigation memory is a comfort layer; the dome still works without storage.
+		}
+	};
+
+	const trail = readTrail();
+	const firstRoot = roots[0];
+	const currentKey = firstRoot.dataset.continuityCurrent || "surface";
+	const currentLabel = firstRoot.querySelector(".continuity-dome__eyebrow span")?.textContent?.trim()
+		|| firstRoot.querySelector(".continuity-dome__node.is-current span")?.textContent?.trim()
+		|| currentKey;
+	const previous = trail.find((item) => isSafeContinuityPath(item.path) && normalizeRoutePathForComparison(item.path) !== currentPath);
+
+	roots.forEach((root) => {
+		root.dataset.continuityTrailReady = "1";
+		const seenPaths = new Set(trail.map((item) => normalizeRoutePathForComparison(item.path)).filter(Boolean));
+		root.querySelectorAll("[data-continuity-node]").forEach((node) => {
+			if (!(node instanceof HTMLElement)) {
+				return;
+			}
+			const href = node instanceof HTMLAnchorElement ? node.href : "";
+			const path = normalizeRoutePathForComparison(href);
+			if (path && seenPaths.has(path) && path !== currentPath) {
+				node.dataset.continuitySeen = "1";
+			}
+		});
+
+		if (!previous || root.querySelector("[data-continuity-return]")) {
+			return;
+		}
+
+		const head = root.querySelector(".continuity-dome__head");
+		if (!(head instanceof HTMLElement)) {
+			return;
+		}
+
+		const link = document.createElement("a");
+		link.className = "continuity-dome__return";
+		link.dataset.continuityReturn = "1";
+		link.href = previous.path;
+
+		const eyebrow = document.createElement("span");
+		eyebrow.textContent = "derniere prise";
+		const label = document.createElement("strong");
+		label.textContent = `Revenir vers ${previous.label}`;
+		link.append(eyebrow, label);
+		head.append(link);
+	});
+
+	writeTrail([
+		{
+			key: currentKey,
+			label: currentLabel,
+			path: currentPath,
+			at: Date.now(),
+		},
+		...trail.filter((item) => normalizeRoutePathForComparison(item.path) !== currentPath && item.key !== currentKey),
+	]);
+}
+
 function isCompactCornerDockViewport() {
 	return window.innerWidth <= 720;
 }
@@ -17906,6 +17993,7 @@ function initStr3mRaSurface() {
 
 runPageInit("pageAccessibility", initPageAccessibility);
 runPageInit("spatialContext", initSpatialContext);
+runPageInit("continuityDome", initContinuityDome);
 runPageInit("nucleusBanner", initNucleusBanner);
 runPageInit("cornerDocks", initCornerDocks);
 runPageInit("guideVoice", initGuideVoice);

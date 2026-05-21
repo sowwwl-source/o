@@ -1451,6 +1451,15 @@ $pageDescription = $isLabSurface
             <p class="lab-console-head__status" data-lab-activation-status>Le tore attend un geste pour ouvrir mouvement, voix, lumière, caméra et veille active.</p>
         </header>
 
+        <?= render_continuity_dome('lab', [
+            'host' => $host,
+            'land' => $authenticatedLand,
+            'land_slug' => $activeLandSlug,
+            'land_username' => $activeLandUsername,
+            'trace_count' => count($labRecentPlasmaEvents),
+            'island_status' => 'île QA prête',
+        ]) ?>
+
         <div class="lab-console-grid">
             <article class="panel reveal lab-console-card lab-console-card--sensor" data-lab-card="sensor" data-lab-state="idle">
                 <div class="lab-console-card__topline">

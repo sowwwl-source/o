@@ -85,6 +85,7 @@ $routes = [
         'path' => '/' . $queryString,
         'markers' => [
             'data-spatial-context',
+            'data-continuity-dome',
             'data-xyz-instrument-stage',
             'data-xyz-camera-facing-button="environment"',
             'monde instrument',
@@ -95,6 +96,7 @@ $routes = [
         'path' => '/0wlslw0' . $queryString,
         'markers' => [
             'data-spatial-context',
+            'data-continuity-dome',
             'sowwwl.io',
         ],
     ],
@@ -102,6 +104,7 @@ $routes = [
         'path' => '/map' . $queryString,
         'markers' => [
             'data-spatial-context',
+            'data-continuity-dome',
             'Map',
         ],
     ],
@@ -109,6 +112,7 @@ $routes = [
         'path' => '/signal' . $queryString,
         'markers' => [
             'data-spatial-context',
+            'data-continuity-dome',
             'Signal',
         ],
     ],
@@ -116,6 +120,7 @@ $routes = [
         'path' => '/str3m' . $queryString,
         'markers' => [
             'data-spatial-context',
+            'data-continuity-dome',
             'Str3m',
         ],
     ],
@@ -123,6 +128,7 @@ $routes = [
         'path' => '/echo' . $queryString,
         'markers' => [
             'data-spatial-context',
+            'data-continuity-dome',
             'Echo',
         ],
     ],
