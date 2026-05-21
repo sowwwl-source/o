@@ -16,7 +16,17 @@ function aza_memory_allowed_views(): array
 
 function aza_memory_public_href(string $path): string
 {
-    $normalized = '/' . ltrim(trim($path), '/');
+    $trimmed = trim($path);
+    if ($trimmed === '') {
+        return '';
+    }
+
+    $storagePath = ltrim($trimmed, '/');
+    if ($storagePath === 'storage/aza' || str_starts_with($storagePath, 'storage/aza/')) {
+        return aza_memory_download_href($storagePath);
+    }
+
+    $normalized = '/' . ltrim($trimmed, '/');
     return function_exists('o_route_path') ? o_route_path($normalized) : $normalized;
 }
 

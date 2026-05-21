@@ -79,6 +79,62 @@ function aza_asset_should_display_inline(string $contentType, string $path): boo
     return in_array($extension, ['svg', 'pdf', 'json', 'csv', 'xml', 'yaml', 'yml', 'tsv', 'gltf', 'glb'], true);
 }
 
+function aza_asset_content_type_for_extension(string $path): ?string
+{
+    $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+    $types = [
+        'aac' => 'audio/aac',
+        'aiff' => 'audio/aiff',
+        'avif' => 'image/avif',
+        'bmp' => 'image/bmp',
+        'csv' => 'text/csv; charset=utf-8',
+        'flac' => 'audio/flac',
+        'gif' => 'image/gif',
+        'glb' => 'model/gltf-binary',
+        'gltf' => 'model/gltf+json',
+        'jpeg' => 'image/jpeg',
+        'jpg' => 'image/jpeg',
+        'json' => 'application/json; charset=utf-8',
+        'm4a' => 'audio/mp4',
+        'm4v' => 'video/mp4',
+        'md' => 'text/markdown; charset=utf-8',
+        'mp3' => 'audio/mpeg',
+        'mp4' => 'video/mp4',
+        'oga' => 'audio/ogg',
+        'ogg' => 'audio/ogg',
+        'ogv' => 'video/ogg',
+        'opus' => 'audio/ogg',
+        'pdf' => 'application/pdf',
+        'png' => 'image/png',
+        'svg' => 'image/svg+xml',
+        'svgz' => 'image/svg+xml',
+        'tsv' => 'text/tab-separated-values; charset=utf-8',
+        'txt' => 'text/plain; charset=utf-8',
+        'wav' => 'audio/wav',
+        'webm' => 'video/webm',
+        'webp' => 'image/webp',
+        'xml' => 'application/xml; charset=utf-8',
+        'yaml' => 'application/yaml; charset=utf-8',
+        'yml' => 'application/yaml; charset=utf-8',
+        'zip' => 'application/zip',
+    ];
+
+    return $types[$extension] ?? null;
+}
+
+function aza_asset_should_trust_extension_type(string $detectedType): bool
+{
+    $normalized = strtolower(trim(explode(';', $detectedType, 2)[0]));
+    return in_array($normalized, [
+        '',
+        'application/octet-stream',
+        'application/x-empty',
+        'application/zip',
+        'binary/octet-stream',
+        'text/plain',
+    ], true);
+}
+
 $publicPath = trim((string) ($_GET['f'] ?? ''));
 if ($publicPath === '') {
     aza_asset_fail(404);
@@ -117,6 +173,10 @@ if (function_exists('finfo_open')) {
         }
         @finfo_close($finfo);
     }
+}
+$extensionContentType = aza_asset_content_type_for_extension($realPath);
+if ($extensionContentType !== null && aza_asset_should_trust_extension_type($contentType)) {
+    $contentType = $extensionContentType;
 }
 
 $downloadName = basename($realPath);
