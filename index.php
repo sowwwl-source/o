@@ -519,6 +519,12 @@ $pageDescription = $isLabSurface
             <strong id="connection-meter-title"><?= h($connectionStatusText) ?></strong>
         </div>
 
+        <?php if ($message !== ''): ?>
+            <div class="connection-meter__flash flash flash-<?= h($messageType) ?>" aria-live="polite">
+                <p><?= h($message) ?></p>
+            </div>
+        <?php endif; ?>
+
         <?php if ($authenticatedLand): ?>
             <p class="connection-meter__copy">λ <?= h((string) $activeLambda) ?> nm · <?= h($activeLandUsername) ?></p>
             <div class="connection-meter__actions">
@@ -608,6 +614,7 @@ $pageDescription = $isLabSurface
                 <button type="button" class="pill-link xyz-camera-toggle" data-xyz-camera-start>Activer la membrane</button>
                 <button type="button" class="ghost-link xyz-camera-toggle" data-xyz-camera-demo aria-pressed="false">Terre &amp; Mine</button>
                 <button type="button" class="ghost-link xyz-camera-toggle hidden" data-xyz-camera-stop>Relâcher la membrane</button>
+                <a class="ghost-link" href="<?= h($authenticatedLand ? o_route_href('/land', ['u' => $activeLandSlug]) : '#connexion') ?>"><?= h($authenticatedLand ? 'Ouvrir ma terre' : 'Me connecter') ?></a>
                 <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
             </div>
 
