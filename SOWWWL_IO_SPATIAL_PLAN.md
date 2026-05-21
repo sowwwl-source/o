@@ -159,10 +159,11 @@ Examples:
 1. Keep `io` as a host/app variant in the PHP app.
 2. Reuse the `xyz` surface as the base preview.
 3. Separate spatial copy from phone-sensor copy.
-4. Add a headset-safe navigation mode in JS before any deploy.
-5. Decide which first route matters most on Vision Pro:
+4. Keep the web 3D volume explorer accessible and tied to real routes.
+5. Add a headset-safe navigation mode in JS before any deploy.
+6. Decide which first route matters most on Vision Pro:
    `0wlslw0`, `map`, or `Str3m`.
-6. Only after that, choose whether Phase 2 starts as a native visionOS shell or a deeper web prototype.
+7. Only after that, choose whether Phase 2 starts as a native visionOS shell or a deeper web prototype.
 
 ## Current local state
 
@@ -171,6 +172,9 @@ Prepared in code:
 - `sowwwl.io` is recognized as a future surface variant
 - localhost preview supports `?surface=io`
 - the shared `xyz` surface can now present `io`-specific copy
+- the `sowwwl.io` home surface has a route-backed CSS 3D volume explorer
+- the volume reacts to RA modulation and Terre & Mine state by suggesting the next node
+- the volume is keyboard navigable and remains a web preview, not a native AR promise
 
 Still intentionally not done:
 

@@ -6642,6 +6642,340 @@ function initXyzSurface() {
 	}
 }
 
+function initIoSpatialExplorer() {
+	if (!isIoSurfaceView()) {
+		return;
+	}
+
+	const root = document.querySelector("[data-io-volume-root]");
+	if (!(root instanceof HTMLElement) || root.dataset.ioVolumeBooted === "1") {
+		return;
+	}
+
+	const scene = root.querySelector("[data-io-volume-scene]");
+	const nodes = Array.from(root.querySelectorAll("[data-io-volume-node]"))
+		.filter((node) => node instanceof HTMLElement);
+	if (!(scene instanceof HTMLElement) || !nodes.length) {
+		return;
+	}
+
+	root.dataset.ioVolumeBooted = "1";
+
+	const titleNode = root.querySelector("[data-io-volume-title]");
+	const copyNode = root.querySelector("[data-io-volume-copy]");
+	const layerNode = root.querySelector("[data-io-volume-layer]");
+	const suggestionNode = root.querySelector("[data-io-volume-suggestion]");
+	const defaultIndex = Math.max(0, nodes.findIndex((node) => node.dataset.ioVolumeNode === "guide"));
+	const state = {
+		index: defaultIndex,
+		yaw: prefersSpatialHeadsetMode() ? -24 : -18,
+		pitch: prefersSpatialHeadsetMode() ? -10 : -14,
+		depth: prefersSpatialHeadsetMode() ? 1.2 : 0,
+		suggestionKey: "",
+		suggestionSource: "",
+	};
+
+	const routeKeyFromHref = (href) => {
+		if (typeof href !== "string" || href.trim() === "") {
+			return "";
+		}
+
+		try {
+			const url = new URL(href, window.location.origin);
+			const host = url.hostname.toLowerCase();
+			if (host.includes("lab.sowwwl.cloud")) {
+				return "lab";
+			}
+
+			const path = withoutBridgePrefix(url.pathname).replace(/\/+$/, "") || "/";
+			if (path === "/0wlslw0") {
+				return "guide";
+			}
+			if (path === "/map") {
+				return "map";
+			}
+			if (path === "/signal") {
+				return "signal";
+			}
+			if (path === "/str3m") {
+				return "str3m";
+			}
+			if (path === "/aza") {
+				return "aza";
+			}
+			if (path === "/island") {
+				return "island";
+			}
+			if (path === "/echo") {
+				return "echo";
+			}
+			if (path === "/land" || path === "/rejoindre") {
+				return "land";
+			}
+			if (path === "/") {
+				return "guide";
+			}
+		} catch {
+			return "";
+		}
+
+		return "";
+	};
+
+	const nodeByKey = (key) => nodes.find((node) => node.dataset.ioVolumeNode === key) || null;
+
+	const setText = (node, text) => {
+		if (node instanceof HTMLElement) {
+			node.textContent = text;
+		}
+	};
+
+	const updateSuggestion = () => {
+		const suggested = nodeByKey(state.suggestionKey);
+		nodes.forEach((node) => {
+			if (node === suggested && node.dataset.ioVolumeNode !== nodes[state.index]?.dataset.ioVolumeNode) {
+				node.dataset.ioVolumeSuggested = "1";
+			} else {
+				delete node.dataset.ioVolumeSuggested;
+			}
+		});
+
+		if (!(suggestionNode instanceof HTMLElement)) {
+			return;
+		}
+
+		if (!suggested || suggested === nodes[state.index]) {
+			suggestionNode.hidden = true;
+			suggestionNode.textContent = "";
+			return;
+		}
+
+		const source = state.suggestionSource || "la membrane";
+		suggestionNode.hidden = false;
+		suggestionNode.textContent = `Prise suggérée par ${source}: ${suggested.dataset.ioVolumeLabel || suggested.textContent?.trim() || "un autre noeud"}.`;
+	};
+
+	const render = ({ focus = false } = {}) => {
+		state.pitch = clampNumber(state.pitch, -34, 18);
+		state.depth = clampNumber(state.depth, -2.4, 3.2);
+		root.style.setProperty("--io-volume-yaw", `${state.yaw.toFixed(2)}deg`);
+		root.style.setProperty("--io-volume-pitch", `${state.pitch.toFixed(2)}deg`);
+		root.style.setProperty("--io-volume-depth", `${state.depth.toFixed(2)}rem`);
+
+		nodes.forEach((node, index) => {
+			const selected = index === state.index;
+			node.classList.toggle("is-selected", selected);
+			node.setAttribute("aria-current", selected ? "true" : "false");
+			node.tabIndex = selected ? 0 : -1;
+		});
+
+		const selectedNode = nodes[state.index];
+		if (selectedNode instanceof HTMLElement) {
+			root.dataset.ioVolumeSelected = selectedNode.dataset.ioVolumeNode || "";
+			setText(titleNode, selectedNode.dataset.ioVolumeLabel || selectedNode.textContent?.trim() || "Noeud");
+			setText(copyNode, selectedNode.dataset.ioVolumeCopy || "");
+			setText(layerNode, selectedNode.dataset.ioVolumeLayer || "volume");
+			if (focus) {
+				focusElementWithoutScroll(selectedNode);
+			}
+		}
+
+		updateSuggestion();
+	};
+
+	const selectIndex = (nextIndex, options = {}) => {
+		state.index = (nextIndex + nodes.length) % nodes.length;
+		render(options);
+	};
+
+	const selectKey = (key, options = {}) => {
+		const nextIndex = nodes.findIndex((node) => node.dataset.ioVolumeNode === key);
+		if (nextIndex >= 0) {
+			selectIndex(nextIndex, options);
+		}
+	};
+
+	const setSuggestion = (key, source) => {
+		state.suggestionKey = key || "";
+		state.suggestionSource = source || "";
+		updateSuggestion();
+	};
+
+	nodes.forEach((node, index) => {
+		node.addEventListener("focus", () => {
+			selectIndex(index);
+		});
+		node.addEventListener("pointerenter", () => {
+			if (!coarsePointer) {
+				selectIndex(index);
+			}
+		});
+	});
+
+	root.querySelectorAll("[data-io-volume-rotate]").forEach((button) => {
+		if (!(button instanceof HTMLElement)) {
+			return;
+		}
+
+		button.addEventListener("click", () => {
+			const direction = Number.parseInt(button.dataset.ioVolumeRotate || "0", 10) || 0;
+			state.yaw += direction * 22;
+			selectIndex(state.index + direction, { focus: false });
+		});
+	});
+
+	root.querySelectorAll("[data-io-volume-depth-control]").forEach((button) => {
+		if (!(button instanceof HTMLElement)) {
+			return;
+		}
+
+		button.addEventListener("click", () => {
+			const direction = Number.parseInt(button.dataset.ioVolumeDepthControl || "0", 10) || 0;
+			state.depth += direction * 0.72;
+			render();
+		});
+	});
+
+	const resetButton = root.querySelector("[data-io-volume-reset]");
+	if (resetButton instanceof HTMLElement) {
+		resetButton.addEventListener("click", () => {
+			state.yaw = prefersSpatialHeadsetMode() ? -24 : -18;
+			state.pitch = prefersSpatialHeadsetMode() ? -10 : -14;
+			state.depth = prefersSpatialHeadsetMode() ? 1.2 : 0;
+			selectKey("guide", { focus: true });
+		});
+	}
+
+	root.addEventListener("keydown", (event) => {
+		if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || isEditableFocusTarget(event.target)) {
+			return;
+		}
+
+		let handled = true;
+		switch (event.key) {
+			case "ArrowLeft":
+				state.yaw -= 18;
+				selectIndex(state.index - 1, { focus: true });
+				break;
+			case "ArrowRight":
+				state.yaw += 18;
+				selectIndex(state.index + 1, { focus: true });
+				break;
+			case "ArrowUp":
+				state.pitch -= 4;
+				render();
+				break;
+			case "ArrowDown":
+				state.pitch += 4;
+				render();
+				break;
+			case "PageUp":
+				state.depth += 0.72;
+				render();
+				break;
+			case "PageDown":
+				state.depth -= 0.72;
+				render();
+				break;
+			case "Home":
+				selectKey("guide", { focus: true });
+				break;
+			case "End":
+				selectIndex(nodes.length - 1, { focus: true });
+				break;
+			case "Enter":
+				if (event.target === root) {
+					const selectedNode = nodes[state.index];
+					const href = selectedNode instanceof HTMLAnchorElement ? selectedNode.getAttribute("href") : "";
+					if (href) {
+						window.location.href = withSurfaceContext(href);
+					}
+				} else {
+					handled = false;
+				}
+				break;
+			default:
+				handled = false;
+		}
+
+		if (handled) {
+			event.preventDefault();
+		}
+	});
+
+	root.addEventListener("wheel", (event) => {
+		if (event.ctrlKey) {
+			return;
+		}
+
+		state.depth += event.deltaY < 0 ? 0.36 : -0.36;
+		render();
+		event.preventDefault();
+	}, { passive: false });
+
+	const applyRaSuggestion = (raState) => {
+		if (!raState || typeof raState !== "object") {
+			setSuggestion("", "");
+			return;
+		}
+
+		const fromPrimary = routeKeyFromHref(raState.primary?.href || "");
+		if (fromPrimary) {
+			setSuggestion(fromPrimary, raState.modeLabel || "la modulation RA");
+			return;
+		}
+
+		if (raState.dominant === "plasma") {
+			setSuggestion("str3m", raState.dominantLabel || "le plasma");
+			return;
+		}
+		if (raState.dominant === "torus") {
+			setSuggestion("signal", raState.dominantLabel || "le tore");
+			return;
+		}
+		setSuggestion("map", raState.dominantLabel || "la réalité");
+	};
+
+	const applyWorldSuggestion = (worldState) => {
+		if (!worldState || typeof worldState !== "object") {
+			return;
+		}
+
+		const focus = String(worldState.focusLabel || "").toLowerCase();
+		const touch = String(worldState.touchLabel || "").toLowerCase();
+		const sceneEnergy = clampNumber(Number(worldState.sceneEnergy) || 0, 0, 1);
+		const activeHands = Math.max(0, Number.parseInt(worldState.activeHands, 10) || 0);
+		if (worldState.cameraFacing === "environment" && (focus.includes("marche") || focus.includes("horizon") || sceneEnergy > 0.52)) {
+			setSuggestion("str3m", "le monde instrument");
+			return;
+		}
+		if (worldState.cameraFacing === "environment") {
+			setSuggestion("map", "le monde instrument");
+			return;
+		}
+		if (activeHands >= 2 || touch.includes("terre + mine")) {
+			setSuggestion("aza", "Terre & Mine");
+		}
+	};
+
+	applyRaSuggestion(readActiveIoRaSession());
+	applyWorldSuggestion(readActiveIoWorldInstrumentSession());
+	window.addEventListener("o:ra-modulation", (event) => {
+		const detail = event instanceof CustomEvent ? event.detail : null;
+		if (detail?.surface === "io") {
+			applyRaSuggestion(detail);
+		}
+	});
+	window.addEventListener("o:world-instrument", (event) => {
+		const detail = event instanceof CustomEvent ? event.detail : null;
+		if (detail?.surface === "io") {
+			applyWorldSuggestion(detail);
+		}
+	});
+
+	render();
+}
+
 function initXyzCamera() {
 	const root = document.querySelector("[data-xyz-camera-root]");
 	const video = document.querySelector("[data-xyz-camera-video]");
@@ -13698,6 +14032,7 @@ runPageInit("mappingGenie", initMappingGenie);
 runPageInit("deviceBridgePanels", initDeviceBridgePanels);
 runPageInit("labConsole", initLabConsole);
 runPageInit("xyzSurface", initXyzSurface);
+runPageInit("ioSpatialExplorer", initIoSpatialExplorer);
 runPageInit("xyzCamera", initXyzCamera);
 
 function writeGuideVoiceSession(session) {

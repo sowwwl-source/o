@@ -296,6 +296,110 @@ $spatialModeCopy = $isSowwwlIo
         ? 'Cette passe privilégie le focus large, le clavier et les actions franches pour tester un casque dès maintenant, sans promettre encore le vrai passthrough ni les gestes natifs.'
         : 'Cette passe garde une lecture écran plus souple pour maquetter, puis permet de basculer explicitement en mode casque quand on veut tester le parcours spatial.')
     : '';
+$ioSpatialVolumeNodes = [];
+if ($isSowwwlIo) {
+    $ioSpatialVolumeNodes = [
+        [
+            'key' => 'guide',
+            'label' => '0wlslw0',
+            'layer' => 'seuil',
+            'tone' => 'guide',
+            'href' => $guideHref,
+            'x' => 0,
+            'y' => -3.8,
+            'z' => 9.4,
+            'copy' => 'Le centre de clarification. On y revient pour nommer la prochaine porte avant de dériver.',
+        ],
+        [
+            'key' => 'land',
+            'label' => $authenticatedLand ? 'Terre' : 'Rejoindre',
+            'layer' => 'ancre',
+            'tone' => 'land',
+            'href' => $authenticatedLand ? o_route_href('/land', ['u' => $activeLandSlug]) : $joinHref,
+            'x' => 0,
+            'y' => 2.1,
+            'z' => 1.2,
+            'copy' => $authenticatedLand ? 'L identité active module déjà le volume et la fréquence de lecture.' : 'La terre donne une adresse au volume avant les lectures plus profondes.',
+        ],
+        [
+            'key' => 'aza',
+            'label' => 'aZa',
+            'layer' => 'matiere',
+            'tone' => 'aza',
+            'href' => $authenticatedLand ? o_route_href('/aza', ['u' => $activeLandSlug]) : $azaHref,
+            'x' => 7.6,
+            'y' => 4.2,
+            'z' => -2.6,
+            'copy' => 'La matière déposée devient strate, source, fichier, indice et future île lisible.',
+        ],
+        [
+            'key' => 'island',
+            'label' => 'Île',
+            'layer' => 'lecture',
+            'tone' => 'island',
+            'href' => $authenticatedLand ? o_route_href('/island', ['u' => $activeLandSlug]) : $joinHref,
+            'x' => -3.5,
+            'y' => 8.2,
+            'z' => -8.4,
+            'copy' => $authenticatedLand ? 'L île relit les matières en lecteurs situés, au calme, avec reprise possible.' : 'Une terre active rendra l île lisible et partageable.',
+        ],
+        [
+            'key' => 'map',
+            'label' => 'Map',
+            'layer' => 'orientation',
+            'tone' => 'map',
+            'href' => $mapHref,
+            'x' => -8.5,
+            'y' => -1.2,
+            'z' => 4.6,
+            'copy' => 'La carte garde les nœuds, les courants et la géométrie du tore visibles.',
+        ],
+        [
+            'key' => 'signal',
+            'label' => 'Signal',
+            'layer' => 'relation',
+            'tone' => 'signal',
+            'href' => $signalHref,
+            'x' => 8.4,
+            'y' => -0.8,
+            'z' => 4.1,
+            'copy' => 'La boîte tient les fils, le contexte et les reprises entre présences.',
+        ],
+        [
+            'key' => 'str3m',
+            'label' => 'Str3m',
+            'layer' => 'courant',
+            'tone' => 'str3m',
+            'href' => $str3mHref,
+            'x' => -7.2,
+            'y' => 4.6,
+            'z' => -2.9,
+            'copy' => 'Le courant public montre ce qui circule maintenant et ce qui peut devenir prise.',
+        ],
+        [
+            'key' => 'echo',
+            'label' => 'Echo',
+            'layer' => 'réponse',
+            'tone' => 'echo',
+            'href' => o_route_href('/echo'),
+            'x' => 3.8,
+            'y' => 8.1,
+            'z' => -8.1,
+            'copy' => 'L écho relance une présence en direct sans perdre la mémoire de Signal.',
+        ],
+        [
+            'key' => 'lab',
+            'label' => 'Lab',
+            'layer' => 'prototype',
+            'tone' => 'lab',
+            'href' => 'https://lab.sowwwl.cloud/',
+            'x' => 0,
+            'y' => -7.7,
+            'z' => -6.3,
+            'copy' => 'Le lab raccorde capteurs, pocket, plasma et vérification avant passage en production.',
+        ],
+    ];
+}
 $pageHeadVariant = $isSowwwlIo ? 'io' : ($isSowwwlXyz ? 'xyz' : ($isLabSurface ? 'lab' : 'main'));
 $pageDescription = $isLabSurface
     ? 'O. Lab — atelier mobile du tore pour capteurs, pocket, plasma et livraison différée.'
@@ -518,14 +622,19 @@ $pageDescription = $isLabSurface
                     <span>prise, derive, orientation</span>
                 </button>
                 <?php if ($isSowwwlIo): ?>
-                <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="xyz-panel-spatial">
+                <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="xyz-panel-volume">
                     <span class="summary-label">08</span>
+                    <strong>volume 3D</strong>
+                    <span>noeuds, profondeur, routes</span>
+                </button>
+                <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="xyz-panel-spatial">
+                    <span class="summary-label">09</span>
                     <strong>mode casque</strong>
                     <span>projection, headset, routes</span>
                 </button>
                 <?php endif; ?>
                 <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="xyz-panel-routes">
-                    <span class="summary-label"><?= $isSowwwlIo ? '09' : '08' ?></span>
+                    <span class="summary-label"><?= $isSowwwlIo ? '10' : '08' ?></span>
                     <strong>sorties</strong>
                     <span>Signal, Str3m, Carte, situation</span>
                 </button>
@@ -1342,10 +1451,68 @@ $pageDescription = $isLabSurface
                 </article>
 
                 <?php if ($isSowwwlIo): ?>
+                <article class="xyz-surface-note xyz-surface-note--volume">
+                    <details class="xyz-archi-panel xyz-archi-panel--surface xyz-archi-panel--volume" id="xyz-panel-volume" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="volume 3D" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="1" open>
+                        <summary class="xyz-archi-panel__summary">
+                            <span class="summary-label">07 volume</span>
+                            <strong>Exploration 3D du dôme</strong>
+                            <span class="xyz-archi-panel__meta">noeuds, profondeur, trajectoire</span>
+                        </summary>
+                        <div class="xyz-archi-panel__content">
+                            <div class="xyz-spatial-volume" data-io-volume-root tabindex="0" aria-label="Exploration 3D des noeuds sowwwl.io">
+                                <div class="xyz-spatial-volume__head">
+                                    <div>
+                                        <span class="summary-label">sowwwl.io spatial</span>
+                                        <strong>Un volume navigable, pas une page plate.</strong>
+                                    </div>
+                                    <span class="badge badge-glass" data-io-volume-layer>seuil</span>
+                                </div>
+                                <div class="xyz-spatial-volume__scene-wrap">
+                                    <div class="xyz-spatial-volume__scene" data-io-volume-scene aria-label="Noeuds navigables du volume sowwwl.io">
+                                        <span class="xyz-spatial-volume__ring xyz-spatial-volume__ring--front"></span>
+                                        <span class="xyz-spatial-volume__ring xyz-spatial-volume__ring--middle"></span>
+                                        <span class="xyz-spatial-volume__ring xyz-spatial-volume__ring--back"></span>
+                                        <span class="xyz-spatial-volume__axis xyz-spatial-volume__axis--x"></span>
+                                        <span class="xyz-spatial-volume__axis xyz-spatial-volume__axis--y"></span>
+                                        <?php foreach ($ioSpatialVolumeNodes as $node): ?>
+                                        <a
+                                            class="xyz-spatial-volume__node xyz-spatial-volume__node--<?= h($node['tone']) ?>"
+                                            href="<?= h($node['href']) ?>"
+                                            data-io-volume-node="<?= h($node['key']) ?>"
+                                            data-io-volume-label="<?= h($node['label']) ?>"
+                                            data-io-volume-copy="<?= h($node['copy']) ?>"
+                                            data-io-volume-layer="<?= h($node['layer']) ?>"
+                                            style="--io-node-x: <?= h((string) $node['x']) ?>rem; --io-node-y: <?= h((string) $node['y']) ?>rem; --io-node-z: <?= h((string) $node['z']) ?>rem;"
+                                        >
+                                            <span class="xyz-spatial-volume__node-kicker"><?= h($node['layer']) ?></span>
+                                            <strong><?= h($node['label']) ?></strong>
+                                        </a>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                                <div class="xyz-spatial-volume__readout" aria-live="polite">
+                                    <span class="summary-label">prise active</span>
+                                    <strong data-io-volume-title>0wlslw0</strong>
+                                    <p data-io-volume-copy>Le centre de clarification. On y revient pour nommer la prochaine porte avant de dériver.</p>
+                                    <p class="xyz-spatial-volume__suggestion" data-io-volume-suggestion hidden></p>
+                                </div>
+                                <div class="xyz-spatial-volume__controls" aria-label="Contrôles du volume 3D">
+                                    <button type="button" class="ghost-link" data-io-volume-rotate="-1">pivoter -</button>
+                                    <button type="button" class="ghost-link" data-io-volume-rotate="1">pivoter +</button>
+                                    <button type="button" class="ghost-link" data-io-volume-depth-control="1">avancer</button>
+                                    <button type="button" class="ghost-link" data-io-volume-depth-control="-1">reculer</button>
+                                    <button type="button" class="ghost-link" data-io-volume-reset>recentre</button>
+                                </div>
+                                <p class="xyz-spatial-volume__hint">Flèches gauche/droite pour changer de nœud, haut/bas pour incliner, PageUp/PageDown pour la profondeur. Entrée ouvre la prise active.</p>
+                            </div>
+                        </div>
+                    </details>
+                </article>
+
                 <article class="xyz-surface-note xyz-surface-note--spatial">
                     <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-spatial" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="mode casque" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="0">
                         <summary class="xyz-archi-panel__summary">
-                            <span class="summary-label">07 casque</span>
+                            <span class="summary-label">08 casque</span>
                             <strong><?= h($spatialModeTitle) ?></strong>
                             <span class="xyz-archi-panel__meta">projection, headset, routes</span>
                         </summary>
@@ -1384,7 +1551,7 @@ $pageDescription = $isLabSurface
                 <article class="xyz-surface-note">
                     <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-routes" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="sorties" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="0">
                         <summary class="xyz-archi-panel__summary">
-                            <span class="summary-label"><?= $isSowwwlIo ? '08 sorties' : '07 sorties' ?></span>
+                            <span class="summary-label"><?= $isSowwwlIo ? '09 sorties' : '07 sorties' ?></span>
                             <strong>Sorties &amp; situation</strong>
                             <span class="xyz-archi-panel__meta">Signal, Str3m, Carte, terre</span>
                         </summary>

@@ -86,6 +86,7 @@ $routes = [
         'markers' => [
             'data-spatial-context',
             'data-continuity-dome',
+            'data-io-volume-root',
             'data-xyz-instrument-stage',
             'data-xyz-camera-facing-button="environment"',
             'monde instrument',
