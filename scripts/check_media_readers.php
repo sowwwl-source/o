@@ -87,6 +87,11 @@ $routes = [
             'data-str3m-player-retry',
         ],
     ],
+    'aza_asset_missing' => [
+        'path' => '/aza/asset?f=storage%2Faza%2Ffiles%2F__missing_media_probe__.mp3',
+        'expected_statuses' => [404],
+        'markers' => [],
+    ],
 ];
 
 $payload = [
@@ -102,7 +107,8 @@ $issues = [];
 foreach ($routes as $name => $route) {
     $result = media_fetch_local($host, (string) $route['path']);
     $routeIssues = [];
-    if ($result['status_code'] !== 200) {
+    $expectedStatuses = array_map('intval', (array) ($route['expected_statuses'] ?? [200]));
+    if (!in_array($result['status_code'], $expectedStatuses, true)) {
         $routeIssues[] = 'http-' . ($result['status_code'] ?: 'unreachable');
     }
 
@@ -127,6 +133,7 @@ foreach ($routes as $name => $route) {
     $payload['routes'][$name] = [
         'path' => (string) $route['path'],
         'status_code' => $result['status_code'],
+        'expected_statuses' => $expectedStatuses,
         'ready' => $routeIssues === [],
         'issues' => $routeIssues,
     ];

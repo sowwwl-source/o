@@ -83,6 +83,9 @@ Options -Indexes
   RewriteRule ^ingest/sensor/$ https://%{HTTP_HOST}/ingest/sensor [R=302,L,NC]
   RewriteRule ^ingest/membrane/$ https://%{HTTP_HOST}/ingest/membrane [R=302,L,NC]
   RewriteRule ^plasma/recent/$ https://%{HTTP_HOST}/plasma/recent [R=302,L,NC]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*aza_asset\.php(?:\?|\s) [NC]
   RewriteRule ^aza_asset\.php$ https://%{HTTP_HOST}/aza/asset [R=302,L]
 
   RewriteRule ^storage/aza/.+\.(?:svg|svgz)$ - [F,L,NC]
