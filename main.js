@@ -3122,6 +3122,7 @@ function bindStr3mIntegratedPlayer(root) {
 	const preservePitchInput = root.querySelector("[data-str3m-player-preserve-pitch]");
 	const resetButton = root.querySelector("[data-str3m-player-reset]");
 	const rateStepButtons = Array.from(root.querySelectorAll("[data-str3m-player-rate-step]"));
+	const listeningPresetButtons = Array.from(root.querySelectorAll("[data-str3m-player-listening-preset]"));
 	const bassInput = root.querySelector("[data-str3m-player-bass]");
 	const midInput = root.querySelector("[data-str3m-player-mid]");
 	const trebleInput = root.querySelector("[data-str3m-player-treble]");
@@ -3174,6 +3175,7 @@ function bindStr3mIntegratedPlayer(root) {
 		mid: preset?.mid ?? 0,
 		treble: preset?.treble ?? 0,
 		gain: preset?.gain ?? 100,
+		listeningProfile: "auto",
 	});
 	const applyPresetDecor = (preset) => {
 		root.dataset.str3mPlayerRaPreset = preset?.key || "";
@@ -3185,7 +3187,62 @@ function bindStr3mIntegratedPlayer(root) {
 	};
 	let currentSpatialPreset = str3mPlayerPresetFromSpatialState(readActiveIoRaSession(), readActiveIoWorldInstrumentSession());
 	let currentDefaultSettings = buildSettingsFromPreset(currentSpatialPreset);
-	let userCustomizedSettings = Boolean(storedSettings);
+	const listeningProfiles = {
+		auto: {
+			label: "auto",
+			status: "profil auto",
+			note: "suit le preset spatial actif",
+		},
+		velvet: {
+			label: "velours",
+			status: "profil velours",
+			note: "bas rond, aigus adoucis",
+			rate: 0.98,
+			preservePitch: true,
+			bass: 1.8,
+			mid: 0.3,
+			treble: -0.8,
+			gain: 98,
+		},
+		voice: {
+			label: "voix",
+			status: "profil voix",
+			note: "presence et paroles devant",
+			rate: 1,
+			preservePitch: true,
+			bass: -0.8,
+			mid: 2.4,
+			treble: 1.1,
+			gain: 101,
+		},
+		wide: {
+			label: "large",
+			status: "profil large",
+			note: "air, detail et scene ouverte",
+			rate: 1.02,
+			preservePitch: true,
+			bass: 0.8,
+			mid: 0.1,
+			treble: 1.7,
+			gain: 102,
+		},
+		night: {
+			label: "nuit",
+			status: "profil nuit",
+			note: "gain retenu, ecoute douce",
+			rate: 0.96,
+			preservePitch: true,
+			bass: -1,
+			mid: -0.3,
+			treble: -1.4,
+			gain: 86,
+		},
+	};
+	const normalizeListeningProfile = (key) => Object.prototype.hasOwnProperty.call(listeningProfiles, key) ? key : "custom";
+	const storedListeningProfile = typeof storedSettings?.listeningProfile === "string"
+		? normalizeListeningProfile(storedSettings.listeningProfile)
+		: "";
+	let userCustomizedSettings = Boolean(storedSettings) && storedListeningProfile !== "auto";
 
 	const setEngineState = (label) => {
 		if (engineOutput instanceof HTMLElement) {
@@ -3257,6 +3314,12 @@ function bindStr3mIntegratedPlayer(root) {
 		...currentDefaultSettings,
 		...(storedSettings || {}),
 	};
+	settings.listeningProfile = typeof settings.listeningProfile === "string"
+		? normalizeListeningProfile(settings.listeningProfile)
+		: (storedSettings ? "custom" : "auto");
+	if (settings.listeningProfile === "auto") {
+		Object.assign(settings, currentDefaultSettings, { listeningProfile: "auto" });
+	}
 
 	syncSourceAccess();
 	if (!hasSource) {
@@ -3557,6 +3620,36 @@ function bindStr3mIntegratedPlayer(root) {
 		}
 	};
 
+	const syncSettingInputs = () => {
+		if (bassInput instanceof HTMLInputElement) {
+			bassInput.value = String(settings.bass);
+		}
+		if (midInput instanceof HTMLInputElement) {
+			midInput.value = String(settings.mid);
+		}
+		if (trebleInput instanceof HTMLInputElement) {
+			trebleInput.value = String(settings.treble);
+		}
+		if (gainInput instanceof HTMLInputElement) {
+			gainInput.value = String(settings.gain);
+		}
+		if (preservePitchInput instanceof HTMLInputElement) {
+			preservePitchInput.checked = Boolean(settings.preservePitch);
+		}
+	};
+
+	const syncListeningProfileButtons = () => {
+		const activeProfile = normalizeListeningProfile(settings.listeningProfile || "custom");
+		listeningPresetButtons.forEach((button) => {
+			if (!(button instanceof HTMLButtonElement)) {
+				return;
+			}
+			const buttonProfile = normalizeListeningProfile(button.dataset.str3mPlayerListeningPreset || "auto");
+			button.setAttribute("aria-pressed", buttonProfile === activeProfile ? "true" : "false");
+		});
+		root.dataset.str3mPlayerListeningProfile = activeProfile;
+	};
+
 	const syncProgress = () => {
 		if (!(progressInput instanceof HTMLInputElement)) {
 			return;
@@ -3575,6 +3668,7 @@ function bindStr3mIntegratedPlayer(root) {
 	const applyEqSettings = () => {
 		syncSliderOutputs();
 		syncEqSummary();
+		syncListeningProfileButtons();
 
 		if (!graph) {
 			return;
@@ -3593,23 +3687,9 @@ function bindStr3mIntegratedPlayer(root) {
 		settings.mid = currentDefaultSettings.mid;
 		settings.treble = currentDefaultSettings.treble;
 		settings.gain = currentDefaultSettings.gain;
+		settings.listeningProfile = "auto";
 
-		if (bassInput instanceof HTMLInputElement) {
-			bassInput.value = String(settings.bass);
-		}
-		if (midInput instanceof HTMLInputElement) {
-			midInput.value = String(settings.mid);
-		}
-		if (trebleInput instanceof HTMLInputElement) {
-			trebleInput.value = String(settings.treble);
-		}
-		if (gainInput instanceof HTMLInputElement) {
-			gainInput.value = String(settings.gain);
-		}
-		if (preservePitchInput instanceof HTMLInputElement) {
-			preservePitchInput.checked = Boolean(settings.preservePitch);
-		}
-
+		syncSettingInputs();
 		setPreservePitch(Boolean(settings.preservePitch));
 		syncRate();
 		applyEqSettings();
@@ -3618,6 +3698,44 @@ function bindStr3mIntegratedPlayer(root) {
 		}
 		if (status) {
 			setStatus(status);
+		}
+	};
+
+	const applyListeningProfile = (profileKey, { persist = true } = {}) => {
+		const key = normalizeListeningProfile(profileKey);
+		if (key === "custom") {
+			return;
+		}
+
+		if (key === "auto") {
+			userCustomizedSettings = false;
+			applyCurrentSpatialDefaults({
+				persist,
+				status: currentSpatialPreset?.status || listeningProfiles.auto.status,
+			});
+			return;
+		}
+
+		const profile = listeningProfiles[key];
+		userCustomizedSettings = true;
+		settings.rate = profile.rate;
+		settings.preservePitch = profile.preservePitch;
+		settings.bass = profile.bass;
+		settings.mid = profile.mid;
+		settings.treble = profile.treble;
+		settings.gain = profile.gain;
+		settings.listeningProfile = key;
+
+		syncSettingInputs();
+		setPreservePitch(Boolean(settings.preservePitch));
+		syncRate();
+		applyEqSettings();
+		if (persist) {
+			saveSettings();
+		}
+		setStatus(profile.status);
+		if (eqStateOutput instanceof HTMLElement) {
+			eqStateOutput.textContent = profile.note;
 		}
 	};
 
@@ -3707,22 +3825,8 @@ function bindStr3mIntegratedPlayer(root) {
 	syncProgress();
 	syncToggleLabel();
 	syncPlaybackVisualState();
-
-	if (preservePitchInput instanceof HTMLInputElement) {
-		preservePitchInput.checked = Boolean(settings.preservePitch);
-	}
-	if (bassInput instanceof HTMLInputElement) {
-		bassInput.value = String(settings.bass);
-	}
-	if (midInput instanceof HTMLInputElement) {
-		midInput.value = String(settings.mid);
-	}
-	if (trebleInput instanceof HTMLInputElement) {
-		trebleInput.value = String(settings.treble);
-	}
-	if (gainInput instanceof HTMLInputElement) {
-		gainInput.value = String(settings.gain);
-	}
+	syncSettingInputs();
+	syncListeningProfileButtons();
 
 	if (sourceOutput instanceof HTMLElement && !hasSource) {
 		sourceOutput.textContent = "aucune nappe";
@@ -3751,6 +3855,7 @@ function bindStr3mIntegratedPlayer(root) {
 			return;
 		}
 		userCustomizedSettings = true;
+		settings.listeningProfile = "custom";
 		settings[key] = Number(input.value);
 		applyEqSettings();
 		saveSettings();
@@ -3807,19 +3912,33 @@ function bindStr3mIntegratedPlayer(root) {
 
 		button.addEventListener("click", () => {
 			userCustomizedSettings = true;
+			settings.listeningProfile = "custom";
 			const delta = Number(button.dataset.str3mPlayerRateStep || 0);
 			settings.rate = clamp((Number(settings.rate) || 1) + delta, 0.5, 2);
 			syncRate();
+			syncListeningProfileButtons();
 			saveSettings();
 			setStatus(`vitesse ${audio.playbackRate.toFixed(2)}×`);
+		});
+	});
+
+	listeningPresetButtons.forEach((button) => {
+		if (!(button instanceof HTMLButtonElement)) {
+			return;
+		}
+
+		button.addEventListener("click", () => {
+			applyListeningProfile(button.dataset.str3mPlayerListeningPreset || "auto");
 		});
 	});
 
 	if (preservePitchInput instanceof HTMLInputElement) {
 		preservePitchInput.addEventListener("change", () => {
 			userCustomizedSettings = true;
+			settings.listeningProfile = "custom";
 			settings.preservePitch = preservePitchInput.checked;
 			setPreservePitch(settings.preservePitch);
+			syncListeningProfileButtons();
 			saveSettings();
 			setStatus(settings.preservePitch ? "hauteur conservée" : "hauteur libre");
 		});
@@ -3958,8 +4077,10 @@ function bindStr3mIntegratedPlayer(root) {
 		if (event.key === "-" || event.key === "_") {
 			event.preventDefault();
 			userCustomizedSettings = true;
+			settings.listeningProfile = "custom";
 			settings.rate = clamp((Number(settings.rate) || 1) - 0.25, 0.5, 2);
 			syncRate();
+			syncListeningProfileButtons();
 			saveSettings();
 			return;
 		}
@@ -3967,8 +4088,10 @@ function bindStr3mIntegratedPlayer(root) {
 		if (event.key === "+" || event.key === "=") {
 			event.preventDefault();
 			userCustomizedSettings = true;
+			settings.listeningProfile = "custom";
 			settings.rate = clamp((Number(settings.rate) || 1) + 0.25, 0.5, 2);
 			syncRate();
+			syncListeningProfileButtons();
 			saveSettings();
 		}
 	});

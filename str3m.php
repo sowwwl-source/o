@@ -531,6 +531,14 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                                     <button type="button" class="str3m-player__button" data-str3m-player-reset<?= $dailyAudioHasSource ? '' : ' disabled' ?>>reset</button>
                                 </div>
 
+                                <div class="str3m-player__preset-bank" aria-label="Profils d'écoute">
+                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="auto" aria-pressed="true"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>auto</button>
+                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="velvet" aria-pressed="false"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>velours</button>
+                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="voice" aria-pressed="false"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>voix</button>
+                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="wide" aria-pressed="false"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>large</button>
+                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="night" aria-pressed="false"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>nuit</button>
+                                </div>
+
                                 <label class="str3m-player__toggle">
                                     <input type="checkbox" data-str3m-player-preserve-pitch checked<?= $dailyAudioHasSource ? '' : ' disabled' ?>>
                                     <span>Conserver la hauteur</span>

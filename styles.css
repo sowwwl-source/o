@@ -7905,6 +7905,60 @@ body.lab-console-view .main-torus {
 	gap: 0.55rem;
 }
 
+.str3m-player__preset-bank {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	gap: 0.42rem;
+	padding: 0.35rem;
+	border-radius: 1rem;
+	border: 1px solid rgba(var(--fg-rgb) / 0.06);
+	background:
+		linear-gradient(135deg, rgba(var(--fg-rgb) / 0.045), rgba(var(--fg-rgb) / 0.018)),
+		radial-gradient(circle at 18% 0%, rgba(var(--land-secondary-rgb) / calc(0.08 + (var(--player-mid) * 0.1))), transparent 60%);
+}
+
+.str3m-player__preset {
+	appearance: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 2.2rem;
+	padding: 0.48rem 0.42rem;
+	border-radius: 0.78rem;
+	border: 1px solid transparent;
+	background: rgba(var(--panel-rgb) / 0.26);
+	color: rgba(var(--fg-rgb) / 0.7);
+	font: inherit;
+	font-size: 0.66rem;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	cursor: pointer;
+	transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.str3m-player__preset:hover:not(:disabled),
+.str3m-player__preset:focus-visible:not(:disabled) {
+	transform: translateY(-1px);
+	border-color: rgba(var(--land-secondary-rgb) / 0.24);
+	color: rgba(var(--fg-rgb) / 0.94);
+}
+
+.str3m-player__preset[aria-pressed="true"] {
+	border-color: rgba(var(--land-secondary-rgb) / 0.34);
+	background:
+		linear-gradient(180deg, rgba(var(--land-secondary-rgb) / 0.18), rgba(var(--land-accent-rgb) / 0.08)),
+		rgba(var(--panel-rgb) / 0.42);
+	color: rgba(var(--fg-rgb) / 0.96);
+	box-shadow:
+		0 0 1.1rem rgba(var(--land-secondary-rgb) / calc(0.08 + (var(--player-energy) * 0.14))),
+		inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.str3m-player__preset:disabled {
+	opacity: 0.44;
+	cursor: not-allowed;
+}
+
 .str3m-player__button {
 	appearance: none;
 	border: 1px solid rgba(var(--land-secondary-rgb) / 0.18);
@@ -8110,6 +8164,10 @@ body.lab-console-view .main-torus {
 		flex-direction: column;
 	}
 
+	.str3m-player__preset-bank {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
 	.str3m-player__button,
 	.str3m-player__button--primary {
 		width: 100%;
@@ -8123,7 +8181,8 @@ body.lab-console-view .main-torus {
 	.str3m-player__transport,
 	.str3m-player__controls,
 	.str3m-player__eq,
-	.str3m-player__status-panel {
+	.str3m-player__status-panel,
+	.str3m-player__preset {
 		transition: none;
 	}
 

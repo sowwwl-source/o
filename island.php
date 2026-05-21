@@ -491,6 +491,13 @@ $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $g
                                                     <button type="button" class="str3m-player__button" data-str3m-player-rate-step="0.25">+</button>
                                                     <button type="button" class="str3m-player__button" data-str3m-player-reset>reset</button>
                                                 </div>
+                                                <div class="str3m-player__preset-bank" aria-label="Profils d'écoute">
+                                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="auto" aria-pressed="true">auto</button>
+                                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="velvet" aria-pressed="false">velours</button>
+                                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="voice" aria-pressed="false">voix</button>
+                                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="wide" aria-pressed="false">large</button>
+                                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="night" aria-pressed="false">nuit</button>
+                                                </div>
                                                 <label class="str3m-player__toggle">
                                                     <input type="checkbox" data-str3m-player-preserve-pitch checked>
                                                     <span>Conserver la hauteur</span>
