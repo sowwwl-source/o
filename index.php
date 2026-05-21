@@ -245,6 +245,66 @@ $homeHeroLineTwo = $authenticatedLand ? 'module le tore.' : 'écoute le monde r�
 $homeThresholdHint = $authenticatedLand
     ? 'Le noyau reste simple : terre, adresse, courant.'
     : 'Comprendre sans quitter l’entrée.';
+$homeStreamMood = (string) ($dailyStream['mood'] ?? 'calm');
+$homeStreamTemplate = (string) ($dailyStream['template'] ?? 'empty');
+$homeDailyTitle = $dailyTextItem
+    ? (string) ($dailyTextItem['title'] ?? 'Texte du jour')
+    : ($dailyAudioItem ? (string) ($dailyAudioItem['title'] ?? 'Nappe du jour') : 'Courant public en veille');
+$homeDailyCopySource = $dailyTextBody !== ''
+    ? $dailyTextBody
+    : ($dailyTextExcerpt !== ''
+        ? $dailyTextExcerpt
+        : (string) ($dailyAudioItem['meta']['excerpt'] ?? $dailyAudioItem['meta']['description'] ?? 'Le courant du jour relie les portes publiques, les terres et le guide sans forcer le passage.'));
+$homeDailyCopy = plasma_compact_text($homeDailyCopySource, 220);
+$homeDailyAudioTitle = $dailyAudioItem ? (string) ($dailyAudioItem['title'] ?? 'Nappe du jour') : 'Nappe en veille';
+$homeDailyImageTitle = $dailyImageItem ? (string) ($dailyImageItem['title'] ?? 'Surface du jour') : 'Surface en attente';
+$homeSignalState = $authenticatedLand
+    ? ($unreadSignal > 0 ? $unreadSignal . ' en attente' : 'boîte claire')
+    : 'liaison possible';
+$homeSurfaceProofs = [
+    ['label' => 'lambda', 'value' => 'λ ' . $activeLambda . ' nm'],
+    ['label' => 'mood', 'value' => $homeStreamMood],
+    ['label' => 'terres', 'value' => (string) (int) ($pulse['count'] ?? 0)],
+    ['label' => 'fuseaux', 'value' => (string) (int) ($pulse['timezones'] ?? 0)],
+];
+$homeRouteNodes = [
+    [
+        'index' => '01',
+        'kicker' => 'str3m',
+        'title' => 'Lire le courant',
+        'copy' => 'La matière publique du jour, accordée au mood ' . $homeStreamMood . '.',
+        'href' => $str3mHref,
+        'signal' => $homeStreamTemplate,
+    ],
+    [
+        'index' => '02',
+        'kicker' => 'terre',
+        'title' => $authenticatedLand ? 'Rouvrir ta terre' : 'Poser une terre',
+        'copy' => $authenticatedLand
+            ? 'Revenir au noyau ' . ($activeLandSlug !== '' ? $activeLandSlug : $activeLandLabel) . ', avec sa fréquence située.'
+            : 'Créer un point stable dans le tore, lisible sans perdre la douceur du seuil.',
+        'href' => $homePrimaryActionHref,
+        'signal' => $activeLandLabel,
+    ],
+    [
+        'index' => '03',
+        'kicker' => 'signal',
+        'title' => 'Écrire juste',
+        'copy' => $authenticatedLand
+            ? 'La boîte reste disponible pour relier, répondre, préciser.'
+            : 'La porte d’adresse attend une terre pour devenir vraiment personnelle.',
+        'href' => $signalHref,
+        'signal' => $homeSignalState,
+    ],
+    [
+        'index' => '04',
+        'kicker' => '0wlslw0',
+        'title' => 'Se faire guider',
+        'copy' => 'Un guide bref pour choisir la prochaine entrée sans casser le fil.',
+        'href' => $guideHref,
+        'signal' => 'guide',
+    ],
+];
 $membraneBridgeHref = plasma_bridge_url();
 $labSensorEndpointHref = o_route_href('/ingest/sensor');
 $labPublicPlasmaFeedHref = plasma_feed_url();
@@ -1856,6 +1916,75 @@ $pageDescription = $isLabSurface
                 </a>
             <?php endif; ?>
         </nav>
+    </section>
+
+    <section class="home-polish-shell reveal" aria-labelledby="home-polish-title">
+        <div class="home-polish-shell__halo" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+
+        <header class="home-polish-head">
+            <p class="eyebrow"><strong>sowwwl.com</strong> <span>surface vivante</span></p>
+            <h2 id="home-polish-title">Un seuil public, déjà relié au dôme.</h2>
+            <p>La page d’entrée devient une chambre claire : elle montre le courant du jour, les quatre portes actives et les preuves discrètes du tore.</p>
+        </header>
+
+        <div class="home-polish-grid">
+            <article class="home-live-card" aria-label="Courant public du jour">
+                <div class="home-live-card__beam" aria-hidden="true"></div>
+                <div class="home-live-card__top">
+                    <span class="summary-label">courant du jour</span>
+                    <span class="home-live-card__mood"><?= h($homeStreamMood) ?></span>
+                </div>
+                <h3><?= h($homeDailyTitle) ?></h3>
+                <p><?= h($homeDailyCopy) ?></p>
+
+                <div class="home-live-card__signals" aria-label="Matières disponibles">
+                    <span>
+                        <strong>audio</strong>
+                        <?= h($dailyAudioPath !== '' ? $homeDailyAudioTitle : 'en veille') ?>
+                    </span>
+                    <span>
+                        <strong>image</strong>
+                        <?= h($dailyImagePath !== '' ? $homeDailyImageTitle : 'en veille') ?>
+                    </span>
+                    <span>
+                        <strong>signal</strong>
+                        <?= h($homeSignalState) ?>
+                    </span>
+                </div>
+
+                <div class="home-live-card__actions">
+                    <a class="pill-link" href="<?= h($str3mHref) ?>">Ouvrir Str3m</a>
+                    <a class="ghost-link" href="<?= h($dailyAudioPath !== '' ? $dailyAudioPath : $azaHref) ?>"><?= $dailyAudioPath !== '' ? 'Écouter la source' : 'Préparer une matière' ?></a>
+                </div>
+            </article>
+
+            <nav class="home-route-orbit" aria-label="Chaînons publics du seuil">
+                <?php foreach ($homeRouteNodes as $routeNode): ?>
+                    <a class="home-route-node home-route-node--<?= h((string) $routeNode['kicker']) ?>" href="<?= h((string) $routeNode['href']) ?>">
+                        <span class="home-route-node__index"><?= h((string) $routeNode['index']) ?></span>
+                        <span class="home-route-node__body">
+                            <span class="summary-label"><?= h((string) $routeNode['kicker']) ?></span>
+                            <strong><?= h((string) $routeNode['title']) ?></strong>
+                            <span><?= h((string) $routeNode['copy']) ?></span>
+                        </span>
+                        <span class="home-route-node__signal"><?= h((string) $routeNode['signal']) ?></span>
+                    </a>
+                <?php endforeach; ?>
+            </nav>
+        </div>
+
+        <div class="home-proof-strip" aria-label="Preuves de surface">
+            <?php foreach ($homeSurfaceProofs as $proof): ?>
+                <span>
+                    <strong><?= h((string) $proof['value']) ?></strong>
+                    <small><?= h((string) $proof['label']) ?></small>
+                </span>
+            <?php endforeach; ?>
+        </div>
     </section>
 
     <?= render_continuity_dome('surface', [
