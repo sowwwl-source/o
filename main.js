@@ -3135,6 +3135,12 @@ function bindStr3mIntegratedPlayer(root) {
 	const initialAriaHidden = audio.getAttribute("aria-hidden");
 	const initiallyHadControls = audio.hasAttribute("controls");
 	const storageKey = "o:str3m-player:v1";
+	const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+	const islandAudioGrid = root.closest(".island-reader-grid--audio");
+	const visualHosts = [root];
+	if (islandAudioGrid instanceof HTMLElement) {
+		visualHosts.push(islandAudioGrid);
+	}
 
 	const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 	const formatTime = (value) => {
@@ -3217,6 +3223,7 @@ function bindStr3mIntegratedPlayer(root) {
 	};
 
 	const enableNativeAudioFallback = (statusCopy = "lecture native") => {
+		stopScopeRender();
 		root.dataset.str3mPlayerFallback = "1";
 		audio.controls = true;
 		audio.setAttribute("controls", "controls");
@@ -3265,6 +3272,221 @@ function bindStr3mIntegratedPlayer(root) {
 	applyPresetDecor(currentSpatialPreset);
 
 	let graph = null;
+	let scopeCanvas = null;
+	let scopeContext = null;
+	let scopeFrame = 0;
+	let frequencyData = null;
+	let timeData = null;
+	const visualLevels = {
+		energy: 0,
+		low: 0,
+		mid: 0,
+		high: 0,
+	};
+
+	const writeVisualLevels = () => {
+		visualHosts.forEach((host) => {
+			host.style.setProperty("--player-energy", visualLevels.energy.toFixed(3));
+			host.style.setProperty("--player-low", visualLevels.low.toFixed(3));
+			host.style.setProperty("--player-mid", visualLevels.mid.toFixed(3));
+			host.style.setProperty("--player-high", visualLevels.high.toFixed(3));
+		});
+	};
+
+	const resetVisualLevels = () => {
+		visualLevels.energy = 0;
+		visualLevels.low = 0;
+		visualLevels.mid = 0;
+		visualLevels.high = 0;
+		writeVisualLevels();
+	};
+
+	const ensureScopeCanvas = () => {
+		if (prefersReducedMotion) {
+			return null;
+		}
+		if (scopeCanvas instanceof HTMLCanvasElement && scopeContext instanceof CanvasRenderingContext2D) {
+			return { canvas: scopeCanvas, context: scopeContext };
+		}
+
+		const canvas = document.createElement("canvas");
+		canvas.className = "str3m-player__scope";
+		canvas.dataset.str3mPlayerScope = "1";
+		canvas.setAttribute("aria-hidden", "true");
+		root.prepend(canvas);
+
+		const context = canvas.getContext("2d");
+		if (!(context instanceof CanvasRenderingContext2D)) {
+			canvas.remove();
+			return null;
+		}
+
+		scopeCanvas = canvas;
+		scopeContext = context;
+		return { canvas, context };
+	};
+
+	const resizeScopeCanvas = (canvas) => {
+		const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+		const rect = canvas.getBoundingClientRect();
+		const width = Math.max(1, Math.floor(rect.width * pixelRatio));
+		const height = Math.max(1, Math.floor(rect.height * pixelRatio));
+		if (canvas.width !== width || canvas.height !== height) {
+			canvas.width = width;
+			canvas.height = height;
+		}
+		return { width, height, pixelRatio };
+	};
+
+	const averageBins = (data, start, end) => {
+		const safeStart = Math.max(0, Math.min(data.length - 1, Math.floor(start)));
+		const safeEnd = Math.max(safeStart + 1, Math.min(data.length, Math.floor(end)));
+		let total = 0;
+		for (let index = safeStart; index < safeEnd; index += 1) {
+			total += data[index];
+		}
+		return total / ((safeEnd - safeStart) * 255);
+	};
+
+	const drawRoundedBar = (context, x, y, width, height, radius) => {
+		if (typeof context.roundRect === "function") {
+			context.beginPath();
+			context.roundRect(x, y, width, height, radius);
+			context.fill();
+			return;
+		}
+		context.fillRect(x, y, width, height);
+	};
+
+	const drawScopeFrame = () => {
+		const analyser = graph?.analyser;
+		if (!analyser) {
+			resetVisualLevels();
+			return;
+		}
+
+		const scope = ensureScopeCanvas();
+		if (!scope) {
+			return;
+		}
+
+		const { canvas, context } = scope;
+		const { width, height, pixelRatio } = resizeScopeCanvas(canvas);
+		if (!frequencyData || frequencyData.length !== analyser.frequencyBinCount) {
+			frequencyData = new Uint8Array(analyser.frequencyBinCount);
+		}
+		if (!timeData || timeData.length !== analyser.fftSize) {
+			timeData = new Uint8Array(analyser.fftSize);
+		}
+
+		analyser.getByteFrequencyData(frequencyData);
+		analyser.getByteTimeDomainData(timeData);
+
+		const length = frequencyData.length;
+		const low = averageBins(frequencyData, 1, length * 0.08);
+		const mid = averageBins(frequencyData, length * 0.08, length * 0.36);
+		const high = averageBins(frequencyData, length * 0.36, length * 0.82);
+		const energy = clamp((low * 0.48) + (mid * 0.34) + (high * 0.18), 0, 1);
+		visualLevels.low += (low - visualLevels.low) * 0.24;
+		visualLevels.mid += (mid - visualLevels.mid) * 0.22;
+		visualLevels.high += (high - visualLevels.high) * 0.2;
+		visualLevels.energy += (energy - visualLevels.energy) * 0.24;
+		writeVisualLevels();
+
+		context.clearRect(0, 0, width, height);
+		context.globalCompositeOperation = "lighter";
+
+		const lowGlow = context.createRadialGradient(width * 0.2, height * 0.18, 0, width * 0.2, height * 0.18, width * (0.36 + visualLevels.low * 0.16));
+		lowGlow.addColorStop(0, `rgba(103, 255, 214, ${0.06 + visualLevels.low * 0.18})`);
+		lowGlow.addColorStop(1, "rgba(103, 255, 214, 0)");
+		context.fillStyle = lowGlow;
+		context.fillRect(0, 0, width, height);
+
+		const highGlow = context.createRadialGradient(width * 0.82, height * 0.84, 0, width * 0.82, height * 0.84, width * (0.3 + visualLevels.high * 0.18));
+		highGlow.addColorStop(0, `rgba(255, 220, 154, ${0.05 + visualLevels.high * 0.16})`);
+		highGlow.addColorStop(1, "rgba(255, 220, 154, 0)");
+		context.fillStyle = highGlow;
+		context.fillRect(0, 0, width, height);
+
+		const barCount = Math.min(64, Math.max(28, Math.floor(width / (pixelRatio * 15))));
+		const binStep = Math.max(1, Math.floor(length / barCount));
+		const barWidth = Math.max(pixelRatio * 2, (width / barCount) * 0.44);
+		const centerY = height * (0.6 - visualLevels.low * 0.06);
+		for (let index = 0; index < barCount; index += 1) {
+			const start = index * binStep;
+			const value = averageBins(frequencyData, start, start + binStep);
+			const lift = Math.pow(value, 1.3);
+			const barHeight = Math.max(pixelRatio * 2, lift * height * 0.42);
+			const x = (index / barCount) * width;
+			const y = centerY - (barHeight / 2);
+			const alpha = 0.12 + lift * 0.5;
+			context.fillStyle = index % 3 === 0
+				? `rgba(255, 226, 166, ${alpha})`
+				: `rgba(132, 255, 224, ${alpha})`;
+			drawRoundedBar(context, x, y, barWidth, barHeight, barWidth / 2);
+		}
+
+		context.globalCompositeOperation = "source-over";
+		context.beginPath();
+		const samples = timeData.length;
+		for (let index = 0; index < samples; index += 4) {
+			const x = (index / (samples - 1)) * width;
+			const sample = (timeData[index] - 128) / 128;
+			const y = (height * 0.38) + (sample * height * (0.08 + visualLevels.energy * 0.16));
+			if (index === 0) {
+				context.moveTo(x, y);
+			} else {
+				context.lineTo(x, y);
+			}
+		}
+		context.strokeStyle = `rgba(255, 241, 197, ${0.22 + visualLevels.energy * 0.42})`;
+		context.lineWidth = Math.max(1, pixelRatio * 1.2);
+		context.stroke();
+	};
+
+	const stopScopeRender = () => {
+		if (scopeFrame) {
+			window.cancelAnimationFrame(scopeFrame);
+			scopeFrame = 0;
+		}
+		root.classList.remove("is-visualizing", "is-playing");
+		resetVisualLevels();
+		if (scopeCanvas instanceof HTMLCanvasElement && scopeContext instanceof CanvasRenderingContext2D) {
+			const { width, height } = resizeScopeCanvas(scopeCanvas);
+			scopeContext.clearRect(0, 0, width, height);
+		}
+	};
+
+	const startScopeRender = () => {
+		if (prefersReducedMotion || scopeFrame || !graph?.analyser) {
+			return;
+		}
+		root.classList.add("is-visualizing");
+
+		const tick = () => {
+			scopeFrame = 0;
+			if (audio.paused || audio.ended || !graph?.analyser) {
+				stopScopeRender();
+				return;
+			}
+			drawScopeFrame();
+			scopeFrame = window.requestAnimationFrame(tick);
+		};
+
+		scopeFrame = window.requestAnimationFrame(tick);
+	};
+
+	const syncPlaybackVisualState = () => {
+		const isPlaying = !audio.paused && !audio.ended;
+		root.classList.toggle("is-playing", isPlaying);
+		if (isPlaying) {
+			startScopeRender();
+			return;
+		}
+		stopScopeRender();
+	};
+
+	resetVisualLevels();
 
 	const saveSettings = () => {
 		try {
@@ -3427,6 +3649,7 @@ function bindStr3mIntegratedPlayer(root) {
 			const mid = context.createBiquadFilter();
 			const treble = context.createBiquadFilter();
 			const gain = context.createGain();
+			const analyser = context.createAnalyser();
 
 			bass.type = "lowshelf";
 			bass.frequency.value = 180;
@@ -3435,16 +3658,20 @@ function bindStr3mIntegratedPlayer(root) {
 			mid.Q.value = 0.85;
 			treble.type = "highshelf";
 			treble.frequency.value = 3200;
+			analyser.fftSize = 1024;
+			analyser.smoothingTimeConstant = 0.78;
 
 			source.connect(bass);
 			bass.connect(mid);
 			mid.connect(treble);
 			treble.connect(gain);
-			gain.connect(context.destination);
+			gain.connect(analyser);
+			analyser.connect(context.destination);
 
-			graph = { context, bass, mid, treble, gain };
+			graph = { context, bass, mid, treble, gain, analyser };
 			disableNativeAudioFallback();
 			applyEqSettings();
+			ensureScopeCanvas();
 
 			if (eqStateOutput instanceof HTMLElement) {
 				eqStateOutput.textContent = "actif";
@@ -3455,6 +3682,7 @@ function bindStr3mIntegratedPlayer(root) {
 			if (context.state === "suspended") {
 				await context.resume().catch(() => {});
 			}
+			syncPlaybackVisualState();
 
 			return graph;
 		} catch (_error) {
@@ -3478,6 +3706,7 @@ function bindStr3mIntegratedPlayer(root) {
 	syncEqSummary();
 	syncProgress();
 	syncToggleLabel();
+	syncPlaybackVisualState();
 
 	if (preservePitchInput instanceof HTMLInputElement) {
 		preservePitchInput.checked = Boolean(settings.preservePitch);
@@ -3534,7 +3763,8 @@ function bindStr3mIntegratedPlayer(root) {
 			});
 			if (audio.paused) {
 				audio.play().then(() => {
-					setStatus("en lecture");
+					setStatus(graph?.analyser && !prefersReducedMotion ? "en lecture · aura" : "en lecture");
+					syncPlaybackVisualState();
 				}).catch(() => {
 					setStatus("interaction requise");
 				});
@@ -3620,6 +3850,7 @@ function bindStr3mIntegratedPlayer(root) {
 			if (restoredGraph) {
 				setStatus("EQ relancé");
 				setSourceState(audio.readyState >= 2 ? "prête" : "annoncée");
+				syncPlaybackVisualState();
 				return;
 			}
 			enableNativeAudioFallback("lecture native");
@@ -3635,10 +3866,12 @@ function bindStr3mIntegratedPlayer(root) {
 	audio.addEventListener("timeupdate", syncProgress);
 	audio.addEventListener("play", () => {
 		syncToggleLabel();
-		setStatus("en lecture");
+		syncPlaybackVisualState();
+		setStatus(graph?.analyser && !prefersReducedMotion ? "en lecture · aura" : "en lecture");
 	});
 	audio.addEventListener("pause", () => {
 		syncToggleLabel();
+		syncPlaybackVisualState();
 		if (audio.ended) {
 			setStatus("terminé");
 			return;
@@ -3647,6 +3880,7 @@ function bindStr3mIntegratedPlayer(root) {
 	});
 	audio.addEventListener("ended", () => {
 		syncToggleLabel();
+		syncPlaybackVisualState();
 		setStatus("terminé");
 	});
 	audio.addEventListener("waiting", () => {
