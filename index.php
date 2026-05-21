@@ -240,12 +240,39 @@ $mapHref = o_route_href('/map');
 $azaHref = o_route_href('/aza');
 $joinHref = o_route_href('/rejoindre');
 $logoutHref = o_route_href('/logout.php');
-$publicNucleusHref = 'https://sowwwl.com/';
 $publicAzaHref = 'https://sowwwl.com/aza';
 $publicStr3mHref = 'https://sowwwl.com/str3m';
 $publicGuideHref = 'https://0wlslw0.com/';
-$publicIoHref = 'https://sowwwl.io/';
+$publicInstrumentHref = sowwwl_instrument_href();
 $publicXyzHref = 'https://sowwwl.xyz/';
+$surfaceWayfinderAxes = [
+    [
+        'axis' => 'matter',
+        'kicker' => 'axe 01',
+        'title' => 'aZa / Str3m',
+        'copy' => 'Lire, déposer, relier la matière publique.',
+        'href' => $publicStr3mHref,
+        'signal' => 'sowwwl.com',
+    ],
+    [
+        'axis' => 'guide',
+        'kicker' => 'axe 02',
+        'title' => '0wlslw0',
+        'copy' => 'Choisir la route sans forcer la connexion.',
+        'href' => $publicGuideHref,
+        'signal' => 'guide',
+    ],
+    [
+        'axis' => 'device',
+        'kicker' => 'axe 03',
+        'title' => $isSowwwlIo ? 'sowwwl.xyz' : 'sowwwl.io',
+        'copy' => $isSowwwlIo
+            ? 'Revenir à la membrane téléphone et musique.'
+            : 'Ouvrir l’instrument spatial du monde.',
+        'href' => $isSowwwlIo ? $publicXyzHref : $publicInstrumentHref,
+        'signal' => $isSowwwlIo ? 'membrane' : 'instrument',
+    ],
+];
 $promptSeeds = guide_prompt_seeds();
 $homeHeroLineOne = $authenticatedLand ? 'Ta terre' : 'Réseau';
 $homeHeroLineTwo = $authenticatedLand ? 'module le tore.' : 'minimal.';
@@ -310,6 +337,14 @@ $homeRouteNodes = [
         'copy' => 'Un guide bref pour choisir la prochaine entrée sans casser le fil.',
         'href' => $guideHref,
         'signal' => 'guide',
+    ],
+    [
+        'index' => '05',
+        'kicker' => 'instrument',
+        'title' => 'Jouer le monde',
+        'copy' => 'La porte sowwwl.io reste ouverte pour Terre, Mine, caméra et paysage.',
+        'href' => $publicInstrumentHref,
+        'signal' => 'sowwwl.io',
     ],
 ];
 $membraneBridgeHref = plasma_bridge_url();
@@ -468,11 +503,18 @@ if ($isSowwwlIo) {
     ];
 }
 $pageHeadVariant = $isSowwwlIo ? 'io' : ($isSowwwlXyz ? 'xyz' : ($isLabSurface ? 'lab' : 'main'));
+$pageTitle = $isLabSurface
+    ? 'O. Lab · atelier mobile'
+    : ($isSowwwlIo
+        ? 'sowwwl.io · instrument spatial'
+        : ($isSowwwlXyz ? 'sowwwl.xyz · membrane musicale' : SITE_TITLE));
 $pageDescription = $isLabSurface
     ? 'O. Lab — atelier mobile du tore pour capteurs, pocket, plasma et livraison différée.'
     : ($isSowwwlIo
         ? 'SOWWWL IO — surface spatiale du tore pour Vision Pro, casques XR et lecture située.'
-        : (SITE_TITLE . ' — entrer publiquement, poser une terre, ou passer par 0wlslw0.'));
+        : ($isSowwwlXyz
+            ? 'SOWWWL XYZ — membrane musicale du tore pour téléphone, capteurs, monde instrument et gestes situés.'
+            : (SITE_TITLE . ' — entrer publiquement, poser une terre, ou passer par 0wlslw0.')));
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -481,7 +523,7 @@ $pageDescription = $isLabSurface
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title><?= h(SITE_TITLE) ?></title>
+    <title><?= h($pageTitle) ?></title>
 <?= render_o_page_head_assets($pageHeadVariant) ?>
 </head>
 <body
@@ -632,11 +674,30 @@ $pageDescription = $isLabSurface
                 <span class="badge badge-glass"><?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></span>
                 <span class="badge badge-glass">local d’abord</span>
             </div>
+
+            <nav class="xyz-surface-wayfinder" aria-label="Routes rapides de la surface">
+                <div class="xyz-surface-wayfinder__intro">
+                    <span class="summary-label">routes lisibles</span>
+                    <strong>Choisir sans masquer le centre.</strong>
+                    <a href="#xyz-panel-routes">voir les sorties</a>
+                </div>
+                <?php foreach ($surfaceWayfinderAxes as $axis): ?>
+                    <a
+                        class="xyz-surface-wayfinder__item xyz-surface-wayfinder__item--<?= h((string) $axis['axis']) ?>"
+                        href="<?= h((string) $axis['href']) ?>"
+                    >
+                        <span class="summary-label"><?= h((string) $axis['kicker']) ?></span>
+                        <strong><?= h((string) $axis['title']) ?></strong>
+                        <span><?= h((string) $axis['copy']) ?></span>
+                        <small><?= h((string) $axis['signal']) ?></small>
+                    </a>
+                <?php endforeach; ?>
+            </nav>
         </header>
 
         <?= render_spatial_context_bar('surface', $host) ?>
 
-        <?= render_continuity_dome('surface', [
+        <?= render_continuity_dome($isSowwwlIo ? 'instrument' : 'surface', [
             'host' => $host,
             'land' => $authenticatedLand,
             'land_slug' => $activeLandSlug,
@@ -759,153 +820,6 @@ $pageDescription = $isLabSurface
             </section>
 
             <aside class="xyz-surface-aside reveal">
-                <article class="xyz-surface-note xyz-surface-note--archi" aria-label="Axes de sélection de la surface">
-                    <details class="xyz-archi-dock xyz-archi-dock--inline" data-xyz-archi-dock open>
-                        <summary class="xyz-archi-dock__toggle">
-                            <span class="corner-dock-toggle__kicker">sommaire</span>
-                            <strong>Trois axes autour du centre</strong>
-                            <span class="corner-dock-toggle__meta" data-xyz-archi-current>cartographie</span>
-                        </summary>
-
-                        <div class="xyz-archi-dock__head">
-                            <div class="xyz-archi-dock__copy">
-                                <p class="eyebrow"><strong><?= h($spatialSurfaceHostLabel) ?></strong> <span>archiborescence intégrée</span></p>
-                                <p>Le centre reste vide pour voir. Les décisions se posent autour : matière, guide, appareillage.</p>
-                            </div>
-                        </div>
-
-                        <div class="xyz-archi-axis-map" aria-label="Trois axes de redirection">
-                            <span class="xyz-archi-axis-center">centre libre</span>
-                            <a class="xyz-archi-axis-card xyz-archi-axis-card--content" href="<?= h($publicNucleusHref) ?>">
-                                <span>axe 01</span>
-                                <strong>aZa / Str3m</strong>
-                                <small>sowwwl.com</small>
-                            </a>
-                            <a class="xyz-archi-axis-card xyz-archi-axis-card--guide" href="<?= h($publicGuideHref) ?>">
-                                <span>axe 02</span>
-                                <strong>0wlslw0</strong>
-                                <small>clarifier</small>
-                            </a>
-                            <a class="xyz-archi-axis-card xyz-archi-axis-card--device" href="<?= h($isSowwwlIo ? $publicXyzHref : $publicIoHref) ?>">
-                                <span>axe 03</span>
-                                <strong><?= h($isSowwwlIo ? 'xyz membrane' : 'io spatial') ?></strong>
-                                <small>appareillage</small>
-                            </a>
-                        </div>
-
-                        <div class="xyz-archi-dock__actions">
-                            <button type="button" class="ghost-link xyz-archi-dock__action" data-xyz-archi-expand>ouvrir tout</button>
-                            <button type="button" class="ghost-link xyz-archi-dock__action" data-xyz-archi-collapse>resserrer</button>
-                        </div>
-
-                        <nav class="xyz-archi-dock__nav" aria-label="Menu hiérarchisé de la surface">
-                            <details class="xyz-archi-dock__group" open>
-                                <summary>
-                                    <span class="summary-label">matière</span>
-                                    <strong>sowwwl.com</strong>
-                                </summary>
-                                <div class="xyz-archi-dock__group-body">
-                                    <a class="xyz-archi-dock__link" href="<?= h($publicAzaHref) ?>">
-                                        <span class="summary-label">aZa</span>
-                                        <strong>Déposer / relire</strong>
-                                        <span>matières, fichiers, sources</span>
-                                    </a>
-                                    <a class="xyz-archi-dock__link" href="<?= h($publicStr3mHref) ?>">
-                                        <span class="summary-label">Str3m</span>
-                                        <strong>Lire le courant</strong>
-                                        <span>texte, image, musique</span>
-                                    </a>
-                                    <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="xyz-panel-music">
-                                        <span class="summary-label">interne</span>
-                                        <strong>Atelier membrane</strong>
-                                        <span>lecture, motif, prises</span>
-                                    </button>
-                                </div>
-                            </details>
-
-                            <details class="xyz-archi-dock__group">
-                                <summary>
-                                    <span class="summary-label">guide</span>
-                                    <strong>0wlslw0.com</strong>
-                                </summary>
-                                <div class="xyz-archi-dock__group-body">
-                                    <a class="xyz-archi-dock__link" href="<?= h($publicGuideHref) ?>">
-                                        <span class="summary-label">seuil</span>
-                                        <strong>Nommer la route</strong>
-                                        <span>question, orientation, retour</span>
-                                    </a>
-                                    <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="mapping">
-                                        <span class="summary-label">interne</span>
-                                        <strong>Cartographie</strong>
-                                        <span>réel, plasma, tore</span>
-                                    </button>
-                                    <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="xyz-panel-routes">
-                                        <span class="summary-label">interne</span>
-                                        <strong>Sorties</strong>
-                                        <span>les trois portes finales</span>
-                                    </button>
-                                </div>
-                            </details>
-
-                            <details class="xyz-archi-dock__group" <?= $isSowwwlIo ? 'open' : '' ?>>
-                                <summary>
-                                    <span class="summary-label">appareil</span>
-                                    <strong><?= h($isSowwwlIo ? 'sowwwl.io' : 'sowwwl.xyz') ?></strong>
-                                </summary>
-                                <div class="xyz-archi-dock__group-body">
-                                    <a class="xyz-archi-dock__link" href="<?= h($publicIoHref) ?>">
-                                        <span class="summary-label">spatial</span>
-                                        <strong>sowwwl.io</strong>
-                                        <span>écran, casque, volume</span>
-                                    </a>
-                                    <a class="xyz-archi-dock__link" href="<?= h($publicXyzHref) ?>">
-                                        <span class="summary-label">membrane</span>
-                                        <strong>sowwwl.xyz</strong>
-                                        <span>téléphone, réel, musique</span>
-                                    </a>
-                                    <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="xyz-panel-rituel">
-                                        <span class="summary-label">interne</span>
-                                        <strong>Rituel &amp; capteurs</strong>
-                                        <span>caméra, mouvement, veille</span>
-                                    </button>
-                                    <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="xyz-panel-device">
-                                        <span class="summary-label">interne</span>
-                                        <strong>Appareil</strong>
-                                        <span>niveau O., partage, natif</span>
-                                    </button>
-                                    <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="xyz-panel-instrument">
-                                        <span class="summary-label">interne</span>
-                                        <strong>Monde instrument</strong>
-                                        <span>Terre, Mine, visage, paysage</span>
-                                    </button>
-                                    <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="xyz-panel-ar">
-                                        <span class="summary-label">interne</span>
-                                        <strong>Modulation RA</strong>
-                                        <span>ancrer, traduire, boucler</span>
-                                    </button>
-                                    <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="xyz-panel-gestures">
-                                        <span class="summary-label">interne</span>
-                                        <strong>Gestes</strong>
-                                        <span>prise, dérive, orientation</span>
-                                    </button>
-                                    <?php if ($isSowwwlIo): ?>
-                                    <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="xyz-panel-volume">
-                                        <span class="summary-label">interne</span>
-                                        <strong>Volume 3D</strong>
-                                        <span>noeuds, profondeur, routes</span>
-                                    </button>
-                                    <button type="button" class="xyz-archi-dock__link" data-xyz-archi-nav="xyz-panel-spatial">
-                                        <span class="summary-label">interne</span>
-                                        <strong>Mode casque</strong>
-                                        <span>projection, headset, routes</span>
-                                    </button>
-                                    <?php endif; ?>
-                                </div>
-                            </details>
-                        </nav>
-                    </details>
-                </article>
-
                 <article class="xyz-surface-note xyz-surface-note--camera" data-xyz-camera-panel>
                     <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-rituel" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="rituel & capteurs" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="1" open>
                         <summary class="xyz-archi-panel__summary">
@@ -1745,7 +1659,7 @@ $pageDescription = $isLabSurface
                                         <a class="ghost-link" href="<?= h($publicAzaHref) ?>">aZa</a>
                                         <a class="ghost-link" href="<?= h($publicStr3mHref) ?>">Str3m</a>
                                         <a class="ghost-link" href="<?= h($publicGuideHref) ?>">0wlslw0</a>
-                                        <a class="ghost-link" href="<?= h($isSowwwlIo ? $publicXyzHref : $publicIoHref) ?>"><?= h($isSowwwlIo ? 'xyz' : 'io') ?></a>
+                                        <a class="ghost-link" href="<?= h($isSowwwlIo ? $publicXyzHref : $publicInstrumentHref) ?>"><?= h($isSowwwlIo ? 'xyz' : 'io') ?></a>
                                     </div>
                                     <p class="panel-copy">Quand le centre a fini de respirer, la sortie ne se disperse pas : matière sur sowwwl.com, guide sur 0wlslw0.com, appareillage entre io et xyz.</p>
                                 </div>
@@ -1956,6 +1870,7 @@ $pageDescription = $isLabSurface
             <p class="lead"><?= h($homeLead) ?></p>
             <div class="home-threshold-links" aria-label="Repères du seuil">
                 <a class="ghost-link" href="<?= h($guideHref) ?>">Comprendre avec 0wlslw0</a>
+                <a class="ghost-link" href="<?= h($publicInstrumentHref) ?>">Instrument · sowwwl.io</a>
                 <?php if ($authenticatedLand): ?>
                     <a class="ghost-link" href="<?= h($signalHref) ?>">Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : ' · boîte' ?></a>
                 <?php else: ?>
@@ -1986,6 +1901,12 @@ $pageDescription = $isLabSurface
                     <span>Voir le courant avant de replonger dans ta terre.</span>
                     <small class="entry-card__hint">Dire : « ramène-moi vers Str3m »</small>
                 </a>
+                <a href="<?= h($publicInstrumentHref) ?>" class="entry-card entry-card--instrument">
+                    <span class="summary-label">04 · instrument</span>
+                    <strong>Jouer l’instrument</strong>
+                    <span>Ouvrir sowwwl.io pour Terre, Mine, visage et paysage.</span>
+                    <small class="entry-card__hint">Dire : « ouvre l’instrument »</small>
+                </a>
             <?php else: ?>
                 <a href="<?= h($str3mHref) ?>" class="entry-card entry-card--primary">
                     <span class="summary-label">01 · public</span>
@@ -2005,6 +1926,12 @@ $pageDescription = $isLabSurface
                     <span>Passer par 0wlslw0 pour clarifier vite, puis continuer.</span>
                     <small class="entry-card__hint">Dire : « aide-moi à choisir »</small>
                 </a>
+                <a href="<?= h($publicInstrumentHref) ?>" class="entry-card entry-card--instrument">
+                    <span class="summary-label">04 · instrument</span>
+                    <strong>Jouer l’instrument</strong>
+                    <span>Ouvrir sowwwl.io sans compte pour tester Terre, Mine et le monde.</span>
+                    <small class="entry-card__hint">Dire : « je veux jouer »</small>
+                </a>
             <?php endif; ?>
         </nav>
     </section>
@@ -2019,7 +1946,7 @@ $pageDescription = $isLabSurface
         <header class="home-polish-head">
             <p class="eyebrow"><strong>sowwwl.com</strong> <span>réseau minimal</span></p>
             <h2 id="home-polish-title">Réseau minimal, déjà relié au dôme.</h2>
-            <p>La page d’entrée devient une chambre claire : elle montre le courant du jour, les quatre portes actives et les preuves discrètes du tore.</p>
+            <p>La page d’entrée devient une chambre claire : elle montre le courant du jour, les cinq portes actives et les preuves discrètes du tore.</p>
         </header>
 
         <div class="home-polish-grid">

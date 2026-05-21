@@ -6468,37 +6468,21 @@ function initDeviceBridgePanels() {
 	});
 }
 
-function initXyzArchiborescence(root) {
-	if (!(root instanceof HTMLElement) || root.dataset.xyzArchiBooted === "1") {
+function initXyzSurfacePanels(root) {
+	if (!(root instanceof HTMLElement) || root.dataset.xyzSurfacePanelsBooted === "1") {
 		return;
 	}
 
-	root.dataset.xyzArchiBooted = "1";
+	root.dataset.xyzSurfacePanelsBooted = "1";
 	initCornerDocks();
 
-	const dock = document.querySelector("[data-xyz-archi-dock]");
-	const currentNode = document.querySelector("[data-xyz-archi-current]");
-	const expandButton = document.querySelector("[data-xyz-archi-expand]");
-	const collapseButton = document.querySelector("[data-xyz-archi-collapse]");
-	const navButtons = Array.from(document.querySelectorAll("[data-xyz-archi-nav]"));
 	const panels = Array.from(document.querySelectorAll("[data-xyz-archi-panel]"))
 		.filter((panel) => panel instanceof HTMLDetailsElement);
-	const sections = Array.from(document.querySelectorAll("[data-xyz-archi-section]"))
-		.filter((section) => section instanceof HTMLElement);
-	const isCompactArchiViewport = () => window.matchMedia("(max-width: 900px)").matches;
-	let compactViewport = isCompactArchiViewport();
-	let syncFrame = 0;
-	let bulkArchiToggle = false;
-	let bulkArchiTimer = 0;
+	const isCompactPanelsViewport = () => window.matchMedia("(max-width: 900px)").matches;
+	let compactViewport = isCompactPanelsViewport();
+	let bulkPanelToggle = false;
+	let bulkPanelTimer = 0;
 
-	const sectionId = (section) => section instanceof HTMLElement ? section.id || "" : "";
-	const sectionLabel = (section) => {
-		if (!(section instanceof HTMLElement)) {
-			return "surface";
-		}
-
-		return section.dataset.xyzArchiLabel || sectionId(section) || "surface";
-	};
 	const panelDefaultOpen = (panel) => panel instanceof HTMLElement && panel.dataset.xyzArchiDefaultOpen === "1";
 
 	const openPanelChain = (target) => {
@@ -6511,23 +6495,8 @@ function initXyzArchiborescence(root) {
 		}
 	};
 
-	const focusArchiTarget = (target) => {
-		if (!(target instanceof HTMLElement)) {
-			return;
-		}
-
-		const focusTarget = target instanceof HTMLDetailsElement
-			? target.querySelector("summary")
-			: target;
-		if (focusTarget instanceof HTMLElement) {
-			window.requestAnimationFrame(() => {
-				focusElementWithoutScroll(focusTarget);
-			});
-		}
-	};
-
 	const closeCompactSiblingPanels = (panel) => {
-		if (!(panel instanceof HTMLDetailsElement) || !panel.open || !compactViewport || bulkArchiToggle) {
+		if (!(panel instanceof HTMLDetailsElement) || !panel.open || !compactViewport || bulkPanelToggle) {
 			return;
 		}
 
@@ -6547,35 +6516,33 @@ function initXyzArchiborescence(root) {
 		});
 	};
 
-	const runBulkArchiMutation = (mutate) => {
+	const runBulkPanelMutation = (mutate) => {
 		if (typeof mutate !== "function") {
 			return;
 		}
 
-		if (bulkArchiTimer) {
-			window.clearTimeout(bulkArchiTimer);
-			bulkArchiTimer = 0;
+		if (bulkPanelTimer) {
+			window.clearTimeout(bulkPanelTimer);
+			bulkPanelTimer = 0;
 		}
 
-		bulkArchiToggle = true;
+		bulkPanelToggle = true;
 		try {
 			mutate();
 		} finally {
-			bulkArchiTimer = window.setTimeout(() => {
-				bulkArchiToggle = false;
-				bulkArchiTimer = 0;
-				requestCurrentSectionSync();
+			bulkPanelTimer = window.setTimeout(() => {
+				bulkPanelToggle = false;
+				bulkPanelTimer = 0;
 			}, 180);
 		}
-		requestCurrentSectionSync();
 	};
 
-	const applyCompactArchiDefaults = () => {
+	const applyCompactPanelDefaults = () => {
 		if (!compactViewport) {
 			return;
 		}
 
-		runBulkArchiMutation(() => {
+		runBulkPanelMutation(() => {
 			const openGroups = new Set();
 			panels.forEach((panel) => {
 				const group = panel.dataset.xyzArchiGroup || "";
@@ -6595,153 +6562,55 @@ function initXyzArchiborescence(root) {
 		});
 	};
 
-	const restoreArchiDefaults = () => {
+	const restorePanelDefaults = () => {
 		if (compactViewport) {
-			applyCompactArchiDefaults();
+			applyCompactPanelDefaults();
 			return;
 		}
 
-		runBulkArchiMutation(() => {
+		runBulkPanelMutation(() => {
 			panels.forEach((panel) => {
 				panel.open = panelDefaultOpen(panel);
 			});
 		});
 	};
 
-	const expandArchiPanels = () => {
-		runBulkArchiMutation(() => {
-			panels.forEach((panel) => {
-				panel.open = true;
-			});
-		});
-	};
-
-	const updateCurrentSection = () => {
-		syncFrame = 0;
-		if (!sections.length) {
-			return;
-		}
-
-		const anchorY = compactViewport ? 112 : 148;
-		let activeSection = null;
-		let bestScore = Number.POSITIVE_INFINITY;
-
-		sections.forEach((section) => {
-			const rect = section.getBoundingClientRect();
-			if (rect.bottom <= 0) {
-				return;
+		const openHashPanel = () => {
+			const target = window.location.hash ? document.getElementById(window.location.hash.slice(1)) : null;
+			if (target instanceof HTMLElement) {
+				openPanelChain(target);
+				window.requestAnimationFrame(() => {
+					const focusTarget = target instanceof HTMLDetailsElement
+						? target.querySelector("summary")
+						: target;
+					if (focusTarget instanceof HTMLElement) {
+						focusElementWithoutScroll(focusTarget);
+					}
+				});
 			}
-
-			let score = Math.abs(rect.top - anchorY);
-			if (rect.top <= anchorY && rect.bottom >= anchorY) {
-				score -= 120;
-			}
-
-			if (score < bestScore) {
-				bestScore = score;
-				activeSection = section;
-			}
-		});
-
-		if (!(activeSection instanceof HTMLElement)) {
-			activeSection = sections[0];
-		}
-
-		const activeId = sectionId(activeSection);
-		const activeLabel = sectionLabel(activeSection);
-		if (currentNode instanceof HTMLElement) {
-			currentNode.textContent = activeLabel;
-		}
-
-		navButtons.forEach((button) => {
-			if (!(button instanceof HTMLElement)) {
-				return;
-			}
-			button.setAttribute("aria-current", button.dataset.xyzArchiNav === activeId ? "true" : "false");
-		});
-	};
-
-	function requestCurrentSectionSync() {
-		if (syncFrame) {
-			window.cancelAnimationFrame(syncFrame);
-		}
-		syncFrame = window.requestAnimationFrame(updateCurrentSection);
-	}
+		};
 
 	panels.forEach((panel) => {
 		panel.addEventListener("toggle", () => {
 			closeCompactSiblingPanels(panel);
-			requestCurrentSectionSync();
 		});
 	});
 
-	navButtons.forEach((button) => {
-		if (!(button instanceof HTMLElement)) {
+	if (compactViewport) {
+		applyCompactPanelDefaults();
+	}
+	openHashPanel();
+
+	window.addEventListener("hashchange", openHashPanel);
+	window.addEventListener("resize", () => {
+		const nextCompact = isCompactPanelsViewport();
+		if (nextCompact === compactViewport) {
 			return;
 		}
 
-		button.addEventListener("click", () => {
-			const targetId = button.dataset.xyzArchiNav || "";
-			if (!targetId) {
-				return;
-			}
-
-			const target = document.getElementById(targetId);
-			if (!(target instanceof HTMLElement)) {
-				return;
-			}
-
-			openPanelChain(target);
-			target.scrollIntoView({
-				behavior: reducedMotion ? "auto" : "smooth",
-				block: "start",
-			});
-			focusArchiTarget(target);
-			requestCurrentSectionSync();
-
-			if (dock instanceof HTMLDetailsElement && isCompactCornerDockViewport()) {
-				closeCornerDock(dock);
-			}
-		});
+		compactViewport = nextCompact;
+		restorePanelDefaults();
 	});
-
-	if (expandButton instanceof HTMLElement) {
-		expandButton.addEventListener("click", expandArchiPanels);
-	}
-
-	if (collapseButton instanceof HTMLElement) {
-		collapseButton.addEventListener("click", restoreArchiDefaults);
-	}
-
-	const hashTarget = window.location.hash ? document.getElementById(window.location.hash.slice(1)) : null;
-	if (hashTarget instanceof HTMLElement) {
-		openPanelChain(hashTarget);
-	}
-
-	if (compactViewport) {
-		applyCompactArchiDefaults();
-	}
-
-	window.addEventListener("scroll", requestCurrentSectionSync, { passive: true });
-	window.addEventListener("hashchange", () => {
-		const target = window.location.hash ? document.getElementById(window.location.hash.slice(1)) : null;
-		if (target instanceof HTMLElement) {
-			openPanelChain(target);
-			requestCurrentSectionSync();
-		}
-	});
-	window.addEventListener("resize", () => {
-		const nextCompact = isCompactArchiViewport();
-		if (nextCompact !== compactViewport) {
-			compactViewport = nextCompact;
-			if (compactViewport) {
-				applyCompactArchiDefaults();
-			}
-		}
-		requestCurrentSectionSync();
-	});
-
-	requestCurrentSectionSync();
 }
 
 function initXyzSurface() {
@@ -6752,7 +6621,7 @@ function initXyzSurface() {
 
 	const headsetMode = prefersSpatialHeadsetMode();
 	root.dataset.xyzInteractionMode = headsetMode ? "headset" : (coarsePointer ? "touch" : "pointer");
-	initXyzArchiborescence(root);
+	initXyzSurfacePanels(root);
 
 	const applyDrift = (clientX, clientY) => {
 		const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1;
@@ -15129,77 +14998,77 @@ function currentGuideVoicePageInfo() {
 	const heading = document.querySelector("h1 strong, h1")?.textContent?.trim() || "";
 	const landSlug = new URLSearchParams(window.location.search).get("u") || "";
 
-	if (path === "/" && hash === "#str3m-quotidien") {
-		return {
-			key: "str3m",
-			label: "le Str3m quotidien",
-			hint: "Tu peux dire signal, aZa, echo, map, noyau, ou guide.",
-		};
-	}
-
-	switch (path) {
-		case "/":
-			return {
-				key: "home",
-				label: "le noyau",
-				hint: "Tu peux dire Str3m, Signal, aZa, Echo, map, ou guide.",
-			};
-		case "/signal":
-			return {
-				key: "signal",
-				label: "Signal",
-				hint: "Tu peux dire noyau, Str3m, aZa, Echo, map, ou guide.",
-			};
-		case "/str3m":
+		if (path === "/" && hash === "#str3m-quotidien") {
 			return {
 				key: "str3m",
-				label: "Str3m",
-				hint: "Tu peux dire noyau, Signal, aZa, Echo, map, ou guide.",
+				label: "le Str3m quotidien",
+				hint: "Tu peux dire Signal, aZa, instrument, map, noyau, ou guide.",
 			};
-		case "/aza":
-			return {
-				key: "aza",
-				label: "aZa",
-				hint: "Tu peux dire noyau, Signal, Str3m, Echo, map, ou guide.",
-			};
-		case "/echo":
-			return {
-				key: "echo",
-				label: "Echo",
-				hint: "Tu peux dire noyau, Signal, Str3m, aZa, map, ou guide.",
-			};
-		case "/map":
-			return {
-				key: "map",
-				label: "la map du tore vivant",
-				hint: "Tu peux dire noyau, Signal, Str3m, aZa, Echo, ou guide.",
-			};
-		case "/0wlslw0":
-			return {
-				key: "guide",
-				label: "0wlslw0",
-				hint: "Tu peux dire noyau, Signal, Str3m, aZa, Echo, ou map.",
-			};
-		case "/land":
-			return {
-				key: "land",
-				label: heading || (landSlug ? `la terre ${landSlug}` : "une terre"),
-				hint: "Tu peux dire noyau, Signal, Str3m, aZa, Echo, map, ou guide.",
-			};
-		case "/island":
-			return {
-				key: "island",
-				label: heading || (landSlug ? `l'île ${landSlug}` : "une île"),
-				hint: "Tu peux dire matière suivante, matière précédente, Str3m, noyau, ou guide.",
-			};
-		default:
-			return {
-				key: "unknown",
-				label: heading || "cette page",
-				hint: "Tu peux dire noyau, Signal, Str3m, aZa, Echo, map, ou guide.",
-			};
+		}
+
+	switch (path) {
+			case "/":
+				return {
+					key: "home",
+					label: "le noyau",
+					hint: "Tu peux dire Str3m, Signal, aZa, instrument, map, ou guide.",
+				};
+			case "/signal":
+				return {
+					key: "signal",
+					label: "Signal",
+					hint: "Tu peux dire noyau, Str3m, aZa, instrument, map, ou guide.",
+				};
+			case "/str3m":
+				return {
+					key: "str3m",
+					label: "Str3m",
+					hint: "Tu peux dire noyau, Signal, aZa, instrument, map, ou guide.",
+				};
+			case "/aza":
+				return {
+					key: "aza",
+					label: "aZa",
+					hint: "Tu peux dire noyau, Signal, Str3m, instrument, map, ou guide.",
+				};
+			case "/echo":
+				return {
+					key: "echo",
+					label: "Echo",
+					hint: "Tu peux dire noyau, Signal, Str3m, aZa, instrument, map, ou guide.",
+				};
+			case "/map":
+				return {
+					key: "map",
+					label: "la map du tore vivant",
+					hint: "Tu peux dire noyau, Signal, Str3m, aZa, instrument, ou guide.",
+				};
+			case "/0wlslw0":
+				return {
+					key: "guide",
+					label: "0wlslw0",
+					hint: "Tu peux dire noyau, Signal, Str3m, aZa, instrument, ou map.",
+				};
+			case "/land":
+				return {
+					key: "land",
+					label: heading || (landSlug ? `la terre ${landSlug}` : "une terre"),
+					hint: "Tu peux dire noyau, Signal, Str3m, aZa, instrument, map, ou guide.",
+				};
+			case "/island":
+				return {
+					key: "island",
+					label: heading || (landSlug ? `l'île ${landSlug}` : "une île"),
+					hint: "Tu peux dire matière suivante, matière précédente, Str3m, instrument, noyau, ou guide.",
+				};
+			default:
+				return {
+					key: "unknown",
+					label: heading || "cette page",
+					hint: "Tu peux dire noyau, Signal, Str3m, aZa, instrument, map, ou guide.",
+				};
+		}
 	}
-}
 
 function findGuideVoiceLandRoute() {
 	const preferredAnchors = Array.from(document.querySelectorAll("a[href]"));

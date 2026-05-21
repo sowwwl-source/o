@@ -673,6 +673,11 @@ function surface_brand_label(?string $host = null): string
     };
 }
 
+function sowwwl_instrument_href(): string
+{
+    return 'https://sowwwl.io/#xyz-panel-instrument';
+}
+
 function spatial_preview_mode(?string $host = null): string
 {
     if (current_surface_variant($host) !== 'io') {
@@ -840,6 +845,7 @@ function pwa_app_catalog(): array
             'shortcuts' => [
                 ['name' => 'Signal', 'short_name' => 'Signal', 'url' => o_route_href('/signal')],
                 ['name' => 'Str3m', 'short_name' => 'Str3m', 'url' => o_route_href('/str3m')],
+                ['name' => 'Instrument', 'short_name' => 'IO', 'url' => sowwwl_instrument_href()],
                 ['name' => '0wlslw0', 'short_name' => '0wlslw0', 'url' => o_route_href('/0wlslw0')],
             ],
         ],
@@ -869,6 +875,7 @@ function pwa_app_catalog(): array
             'background_color' => '#09090b',
             'shortcuts' => [
                 ['name' => 'Ouvrir 0wlslw0', 'short_name' => '0wlslw0', 'url' => o_route_href('/0wlslw0')],
+                ['name' => 'Ouvrir l’instrument', 'short_name' => 'IO', 'url' => sowwwl_instrument_href()],
                 ['name' => 'Lire Str3m', 'short_name' => 'Str3m', 'url' => o_route_href('/str3m')],
                 ['name' => 'Revenir au noyau', 'short_name' => 'Noyau', 'url' => o_route_href('/')],
             ],
@@ -884,6 +891,7 @@ function pwa_app_catalog(): array
             'background_color' => '#09090b',
             'orientation' => 'any',
             'shortcuts' => [
+                ['name' => 'Ouvrir l’instrument', 'short_name' => 'Instrument', 'url' => o_route_href('/#xyz-panel-instrument')],
                 ['name' => 'Ouvrir 0wlslw0', 'short_name' => '0wlslw0', 'url' => o_route_href('/0wlslw0')],
                 ['name' => 'Lire Str3m', 'short_name' => 'Str3m', 'url' => o_route_href('/str3m')],
                 ['name' => 'Voir la carte', 'short_name' => 'Carte', 'url' => o_route_href('/map')],
@@ -1025,6 +1033,7 @@ function render_nucleus_banner(string $currentLabel = 'surface', string $href = 
 {
     $label = htmlspecialchars(trim($currentLabel) !== '' ? trim($currentLabel) : 'surface', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $target = htmlspecialchars(o_route_href($href), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $instrumentTarget = htmlspecialchars(sowwwl_instrument_href(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $aria = htmlspecialchars(
         'Retour au noyau. Réalité traverse le plasma, se boucle en tore, puis revient au noyau. Appui long tactile puis glisse pour naviguer dans le tore. Surface actuelle : ' . $currentLabel . '.',
         ENT_QUOTES | ENT_SUBSTITUTE,
@@ -1051,6 +1060,10 @@ function render_nucleus_banner(string $currentLabel = 'surface', string $href = 
             <span class="nucleus-banner__state-label">actuel</span>
             <strong>{$label}</strong>
         </span>
+    </a>
+    <a class="instrument-orbit-link" href="{$instrumentTarget}" aria-label="Ouvrir l’instrument sur sowwwl.io">
+        <span>instrument</span>
+        <strong>sowwwl.io</strong>
     </a>
 HTML;
 }
@@ -1091,6 +1104,7 @@ function render_continuity_dome(string $current = 'surface', array $context = []
     $signalHref = $route('/signal');
     $echoHref = $landUsername !== '' ? $route('/echo', ['u' => $landUsername]) : $route('/echo');
     $labHref = $surfaceVariant === 'lab' ? $route('/') : 'https://lab.sowwwl.cloud/';
+    $instrumentHref = sowwwl_instrument_href();
 
     $catalog = [
         'surface' => [
@@ -1142,6 +1156,13 @@ function render_continuity_dome(string $current = 'surface', array $context = []
             'href' => $route('/str3m'),
             'layer' => 'dome',
         ],
+        'instrument' => [
+            'label' => 'Instrument',
+            'verb' => 'jouer',
+            'copy' => 'ouvrir sowwwl.io, Terre, Mine et le monde instrument',
+            'href' => $instrumentHref,
+            'layer' => 'dome',
+        ],
         'map' => [
             'label' => 'Map',
             'verb' => 'situer',
@@ -1186,7 +1207,7 @@ function render_continuity_dome(string $current = 'surface', array $context = []
     }
 
     $arcMap = [
-        'surface' => ['guide', 'join', 'str3m'],
+        'surface' => ['guide', 'instrument', 'join', 'str3m'],
         'guide' => ['join', 'str3m', 'signal'],
         'join' => ['guide', 'land', 'aza'],
         'land' => ['aza', 'island', 'signal'],
@@ -1196,16 +1217,18 @@ function render_continuity_dome(string $current = 'surface', array $context = []
         'map' => ['str3m', 'land', 'guide'],
         'signal' => ['land', 'echo', 'str3m'],
         'echo' => ['signal', 'land', 'str3m'],
+        'instrument' => ['surface', 'str3m', 'guide'],
         'lab' => ['surface', 'str3m', 'island'],
     ];
     $arcKeys = $arcMap[$currentKey] ?? ['guide', 'land', 'str3m'];
-    $domeKeys = ['surface', 'guide', 'land', 'aza', 'island', 'str3m', 'map', 'signal', 'echo', 'lab'];
+    $domeKeys = ['surface', 'guide', 'land', 'aza', 'island', 'str3m', 'instrument', 'map', 'signal', 'echo', 'lab'];
     $currentNode = $catalog[$currentKey];
     $arcSentence = match ($currentKey) {
         'land' => 'La terre devient arche quand sa memoire trouve aZa, son ile, puis ses liaisons.',
         'aza' => 'aZa devient voute quand chaque trace sait revenir a la terre et repartir vers l ile.',
         'island' => 'L ile devient dome quand la lecture situee renvoie vers la source, la terre et le courant.',
         'str3m' => 'Str3m devient dome quand le public peut redescendre vers les terres et les fils.',
+        'instrument' => 'L instrument devient dome quand sowwwl.io reste accessible depuis chaque brique.',
         'signal', 'echo' => 'La liaison tient quand Signal garde la memoire et Echo garde la prise directe.',
         'map' => 'La carte tient le dome quand chaque noeud peut rejoindre sa terre et son courant.',
         'lab' => 'Le lab ferme le dome quand les prototypes savent revenir au public, a l ile et au noyau.',

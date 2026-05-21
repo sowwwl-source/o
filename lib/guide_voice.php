@@ -259,19 +259,21 @@ function guide_voice_message(string $key, string $language = 'fr'): string
             'goodbye' => 'Je reste au passage si tu veux reprendre plus tard. Tu peux revenir quand tu veux.',
             'greeting' => 'Bonjour. On peut faire très simple : comprendre O., visiter sans compte, ou choisir la bonne porte.',
             'confused' => 'Respire, on va simple. O. fonctionne par terres et par portes. Si tu veux juste regarder sans t’engager, commence par Str3m.',
-            'compare' => 'En très court : Str3m fait découvrir publiquement, Signal sert à écrire et recevoir, aZa garde les traces, et Echo relie deux terres directement. Si tu hésites encore, commence par Str3m.',
+            'compare' => 'En très court : Str3m fait découvrir publiquement, Signal sert à écrire et recevoir, aZa garde les traces, Echo relie deux terres, et l’instrument ouvre sowwwl.io pour jouer le monde. Si tu hésites encore, commence par Str3m.',
             'signal_reply' => 'Signal est la boîte située d’une terre. Tu y passes pour écrire, recevoir, et valider une identité légère.',
             'str3m_reply' => 'Str3m te laisse sentir le projet publiquement, sans poser de terre tout de suite. C’est la bonne porte pour regarder avant de t’engager.',
             'aza_reply' => 'aZa est la couche de mémoire et d’archives. Tu peux y lire publiquement ce qui a déjà été déposé, puis déposer à ton tour avec une terre liée.',
+            'instrument_reply' => 'L’instrument est sur sowwwl.io. Tu peux y jouer Terre et Mine, puis laisser le visage, le corps, la lumière et le paysage nourrir le tore.',
             'echo_reply' => 'Echo sert aux résonances directes entre terres. Ce n’est pas un mur public, mais un passage plus adressé.',
             'create_reply' => 'Pour entrer vraiment, il faut poser une terre. Tu choisis un nom, un fuseau, puis tu reçois ton ancrage dans O.',
             'reopen_reply_auth' => 'Ta terre est déjà liée ici. Je peux te renvoyer directement vers ton espace.',
             'reopen_reply_guest' => 'Je ne vois pas de terre liée dans cette session. Repars du noyau pour te reconnecter ou relancer la création.',
             'overview' => 'O. n’est pas un fil social classique. C’est un ensemble de terres et de portes. Je suis là pour clarifier le projet, puis t’emmener vers la bonne page.',
-            'unknown' => 'Je peux t’aider à comprendre O., visiter publiquement, poser une terre, ou choisir entre Signal, Str3m, aZa et Echo. Dis-moi simplement ce que tu veux faire.',
+            'unknown' => 'Je peux t’aider à comprendre O., visiter publiquement, poser une terre, ou choisir entre Signal, Str3m, aZa, Echo et l’instrument. Dis-moi simplement ce que tu veux faire.',
             'route_signal' => 'Aller vers Signal',
             'route_str3m' => 'Aller vers Str3m',
             'route_aza' => 'Lire aZa',
+            'route_instrument' => 'Ouvrir l’instrument',
             'route_echo' => 'Aller vers Echo',
             'route_create' => 'Poser une terre',
             'route_reopen' => 'Ouvrir ma terre',
@@ -282,19 +284,21 @@ function guide_voice_message(string $key, string $language = 'fr'): string
             'goodbye' => 'I will stay by the threshold if you want to return later.',
             'greeting' => 'Hello. We can keep this simple: understand O., visit without an account, or choose the right door.',
             'confused' => 'Take a breath, we can make this simple. O. works through lands and doors. If you only want to look around, start with Str3m.',
-            'compare' => 'Very briefly: Str3m lets you discover publicly, Signal is for writing and receiving, aZa keeps traces, and Echo links two lands directly. If you still hesitate, start with Str3m.',
+            'compare' => 'Very briefly: Str3m lets you discover publicly, Signal is for writing and receiving, aZa keeps traces, Echo links two lands directly, and the instrument opens sowwwl.io to play the world. If you still hesitate, start with Str3m.',
             'signal_reply' => 'Signal is the situated mailbox of a land. You use it to write, receive, and hold a light contact identity.',
             'str3m_reply' => 'Str3m lets you feel the project publicly before creating a land. It is the right door for looking first.',
             'aza_reply' => 'aZa is the layer of memory and archives. You can read what has already been deposited, then add your own traces once a land is linked.',
+            'instrument_reply' => 'The instrument lives on sowwwl.io. You can play Terre and Mine, then let face, body, light, and landscape feed the torus.',
             'echo_reply' => 'Echo is for direct resonance between lands. It is not a public wall, but a more addressed passage.',
             'create_reply' => 'To enter fully, you need to create a land. You choose a name, a timezone, then receive your anchor inside O.',
             'reopen_reply_auth' => 'Your land is already linked here. I can send you back to it directly.',
             'reopen_reply_guest' => 'I cannot see a linked land in this session. Return to the core to reconnect or start again.',
             'overview' => 'O. is not a conventional social feed. It is a set of lands and doors. I am here to clarify the place, then guide you to the right page.',
-            'unknown' => 'I can help you understand O., visit publicly, create a land, or choose between Signal, Str3m, aZa, and Echo. Just tell me what you want to do.',
+            'unknown' => 'I can help you understand O., visit publicly, create a land, or choose between Signal, Str3m, aZa, Echo, and the instrument. Just tell me what you want to do.',
             'route_signal' => 'Go to Signal',
             'route_str3m' => 'Go to Str3m',
             'route_aza' => 'Read aZa',
+            'route_instrument' => 'Open the instrument',
             'route_echo' => 'Go to Echo',
             'route_create' => 'Create a land',
             'route_reopen' => 'Open my land',
@@ -309,6 +313,7 @@ function guide_voice_message(string $key, string $language = 'fr'): string
             'signal_reply' => 'Signal es el buzón situado de una tierra. Sirve para escribir, recibir y mantener una identidad ligera de contacto.',
             'str3m_reply' => 'Str3m te deja sentir el proyecto en público antes de crear una tierra. Es la puerta correcta para mirar primero.',
             'aza_reply' => 'aZa es la capa de memoria y archivo. Puedes leer lo ya depositado y luego añadir tus propias trazas cuando una tierra esté vinculada.',
+            'instrument_reply' => 'El instrumento está en sowwwl.io. Puedes tocar Terre y Mine, y dejar que rostro, cuerpo, luz y paisaje alimenten el toro.',
             'echo_reply' => 'Echo sirve para resonancias directas entre tierras. No es un muro público, sino un pasaje más dirigido.',
             'create_reply' => 'Para entrar de verdad, necesitas crear una tierra. Eliges un nombre, una zona horaria y recibes tu anclaje en O.',
             'reopen_reply_auth' => 'Tu tierra ya está vinculada aquí. Puedo llevarte directamente a ella.',
@@ -318,6 +323,7 @@ function guide_voice_message(string $key, string $language = 'fr'): string
             'route_signal' => 'Ir a Signal',
             'route_str3m' => 'Ir a Str3m',
             'route_aza' => 'Leer aZa',
+            'route_instrument' => 'Abrir el instrumento',
             'route_echo' => 'Ir a Echo',
             'route_create' => 'Crear una tierra',
             'route_reopen' => 'Abrir mi tierra',
@@ -332,6 +338,7 @@ function guide_voice_message(string $key, string $language = 'fr'): string
             'signal_reply' => 'Signal é a caixa situada de uma terra. Serve para escrever, receber e manter uma identidade leve de contacto.',
             'str3m_reply' => 'Str3m deixa-te sentir o projeto publicamente antes de criar uma terra. É a porta certa para olhar primeiro.',
             'aza_reply' => 'aZa é a camada de memória e arquivo. Podes ler o que já foi depositado e depois acrescentar os teus próprios vestígios quando uma terra estiver ligada.',
+            'instrument_reply' => 'O instrumento vive em sowwwl.io. Podes tocar Terre e Mine, e deixar rosto, corpo, luz e paisagem alimentar o toro.',
             'echo_reply' => 'Echo serve para ressonâncias diretas entre terras. Não é um muro público, mas uma passagem mais endereçada.',
             'create_reply' => 'Para entrar de verdade, precisas de criar uma terra. Escolhes um nome, um fuso horário e recebes a tua âncora em O.',
             'reopen_reply_auth' => 'A tua terra já está ligada aqui. Posso levar-te de volta diretamente.',
@@ -341,6 +348,7 @@ function guide_voice_message(string $key, string $language = 'fr'): string
             'route_signal' => 'Ir para Signal',
             'route_str3m' => 'Ir para Str3m',
             'route_aza' => 'Ler aZa',
+            'route_instrument' => 'Abrir o instrumento',
             'route_echo' => 'Ir para Echo',
             'route_create' => 'Criar uma terra',
             'route_reopen' => 'Abrir a minha terra',
@@ -355,6 +363,7 @@ function guide_voice_message(string $key, string $language = 'fr'): string
             'signal_reply' => 'Signal è la casella situata di una terra. Serve per scrivere, ricevere e mantenere un’identità leggera di contatto.',
             'str3m_reply' => 'Str3m ti permette di sentire il progetto pubblicamente prima di creare una terra. È la porta giusta per guardare per prima.',
             'aza_reply' => 'aZa è lo strato della memoria e degli archivi. Puoi leggere ciò che è già stato depositato e poi aggiungere le tue tracce quando una terra è collegata.',
+            'instrument_reply' => 'Lo strumento vive su sowwwl.io. Puoi suonare Terre e Mine, poi lasciare che volto, corpo, luce e paesaggio nutrano il toro.',
             'echo_reply' => 'Echo serve per risonanze dirette tra terre. Non è un muro pubblico, ma un passaggio più indirizzato.',
             'create_reply' => 'Per entrare davvero, devi creare una terra. Scegli un nome, un fuso orario e ricevi il tuo ancoraggio in O.',
             'reopen_reply_auth' => 'La tua terra è già collegata qui. Posso riportarti lì direttamente.',
@@ -364,6 +373,7 @@ function guide_voice_message(string $key, string $language = 'fr'): string
             'route_signal' => 'Vai a Signal',
             'route_str3m' => 'Vai a Str3m',
             'route_aza' => 'Leggi aZa',
+            'route_instrument' => 'Apri lo strumento',
             'route_echo' => 'Vai a Echo',
             'route_create' => 'Crea una terra',
             'route_reopen' => 'Apri la mia terra',
@@ -505,6 +515,18 @@ function guide_voice_contextual_followup_reply(string $lastIntent, string $langu
             guide_voice_route_label('aza', $language),
             ''
         ),
+        'instrument' => guide_voice_build_route_reply(
+            match ($language) {
+                'en' => 'Stay with the instrument if you want to play the torus directly. sowwwl.io keeps the world as a playable surface.',
+                'es' => 'Quédate con el instrumento si quieres tocar el toro directamente. sowwwl.io mantiene el mundo como superficie tocable.',
+                'pt' => 'Fica com o instrumento se queres tocar o toro diretamente. sowwwl.io mantém o mundo como superfície tocável.',
+                'it' => 'Resta con lo strumento se vuoi suonare direttamente il toro. sowwwl.io tiene il mondo come superficie suonabile.',
+                default => 'Reste avec l’instrument si tu veux jouer le tore directement. sowwwl.io garde le monde comme surface jouable.',
+            },
+            guide_voice_route_href('instrument', $authenticatedLand),
+            guide_voice_route_label('instrument', $language),
+            ''
+        ),
         'create' => guide_voice_build_route_reply(
             match ($language) {
                 'en' => 'The next move is to choose a land name, read the AzA pages, then seal the land.',
@@ -569,6 +591,13 @@ function guide_voice_suggestions_for_intent(string $intent, string $language = '
             'it' => ['Apri aZa.', 'Che cosa conserva aZa?', 'E poi?'],
             default => ['Ouvre aZa.', 'Que garde aZa ?', 'Et après ?'],
         },
+        'instrument' => match ($language) {
+            'en' => ['Open the instrument.', 'What can I play there?', 'Take me to Str3m too.'],
+            'es' => ['Abre el instrumento.', '¿Qué puedo tocar ahí?', 'Llévame también a Str3m.'],
+            'pt' => ['Abre o instrumento.', 'O que posso tocar aí?', 'Leva-me também ao Str3m.'],
+            'it' => ['Apri lo strumento.', 'Che cosa posso suonare lì?', 'Portami anche a Str3m.'],
+            default => ['Ouvre l’instrument.', 'Que puis-je jouer là-bas ?', 'Emmène-moi aussi vers Str3m.'],
+        },
         'echo' => match ($language) {
             'en' => ['Open Echo.', 'Explain the difference with Signal.', 'What next?'],
             'es' => ['Abre Echo.', 'Explícame la diferencia con Signal.', '¿Y después?'],
@@ -600,18 +629,18 @@ function guide_voice_suggestions_for_intent(string $intent, string $language = '
             },
         'confused', 'compare', 'overview', 'unknown', 'greeting' => $hasLand
             ? match ($language) {
-                'en' => ['Reopen my land.', 'Guide me to Signal.', 'Explain the difference between Signal and aZa.'],
-                'es' => ['Reabre mi tierra.', 'Guíame hacia Signal.', 'Explícame la diferencia entre Signal y aZa.'],
-                'pt' => ['Reabre a minha terra.', 'Guia-me até ao Signal.', 'Explica a diferença entre Signal e aZa.'],
-                'it' => ['Riapri la mia terra.', 'Guidami verso Signal.', 'Spiegami la differenza tra Signal e aZa.'],
-                default => ['Rouvre ma terre.', 'Guide-moi vers Signal.', 'Explique-moi la différence entre Signal et aZa.'],
+                'en' => ['Reopen my land.', 'Guide me to Signal.', 'Open the instrument.', 'Explain the difference between Signal and aZa.'],
+                'es' => ['Reabre mi tierra.', 'Guíame hacia Signal.', 'Abre el instrumento.', 'Explícame la diferencia entre Signal y aZa.'],
+                'pt' => ['Reabre a minha terra.', 'Guia-me até ao Signal.', 'Abre o instrumento.', 'Explica a diferença entre Signal e aZa.'],
+                'it' => ['Riapri la mia terra.', 'Guidami verso Signal.', 'Apri lo strumento.', 'Spiegami la differenza tra Signal e aZa.'],
+                default => ['Rouvre ma terre.', 'Guide-moi vers Signal.', 'Ouvre l’instrument.', 'Explique-moi la différence entre Signal et aZa.'],
             }
             : match ($language) {
-                'en' => ['Explain O.', 'Take me to Str3m.', 'I want to create a land.'],
-                'es' => ['Explícame O.', 'Llévame a Str3m.', 'Quiero crear una tierra.'],
-                'pt' => ['Explica O.', 'Leva-me ao Str3m.', 'Quero criar uma terra.'],
-                'it' => ['Spiega O.', 'Portami a Str3m.', 'Voglio creare una terra.'],
-                default => ['Explique O.', 'Emmène-moi vers Str3m.', 'Je veux poser une terre.'],
+                'en' => ['Explain O.', 'Take me to Str3m.', 'Open the instrument.', 'I want to create a land.'],
+                'es' => ['Explícame O.', 'Llévame a Str3m.', 'Abre el instrumento.', 'Quiero crear una tierra.'],
+                'pt' => ['Explica O.', 'Leva-me ao Str3m.', 'Abre o instrumento.', 'Quero criar uma terra.'],
+                'it' => ['Spiega O.', 'Portami a Str3m.', 'Apri lo strumento.', 'Voglio creare una terra.'],
+                default => ['Explique O.', 'Emmène-moi vers Str3m.', 'Ouvre l’instrument.', 'Je veux poser une terre.'],
             },
         default => [],
     };
@@ -699,6 +728,7 @@ function guide_voice_remote_payload(string $utterance, ?array $authenticatedLand
             'signal' => guide_voice_route_href('signal', $authenticatedLand),
             'str3m' => guide_voice_route_href('str3m', $authenticatedLand),
             'aza' => guide_voice_route_href('aza', $authenticatedLand),
+            'instrument' => guide_voice_route_href('instrument', $authenticatedLand),
             'echo' => guide_voice_route_href('echo', $authenticatedLand),
             'guide' => function_exists('o_route_path') ? o_route_path('/0wlslw0') : '/0wlslw0',
         ],
@@ -1126,6 +1156,18 @@ function guide_voice_local_reply(string $utterance, ?array $authenticatedLand = 
         return $reply;
     }
 
+    if ($intent === 'instrument') {
+        $reply = guide_voice_build_route_reply(
+            guide_voice_message('instrument_reply', $language),
+            guide_voice_route_href('instrument', $authenticatedLand),
+            guide_voice_route_label('instrument', $language),
+            $text
+        );
+        $reply['_intent'] = $intent;
+        $reply['_language'] = $language;
+        return $reply;
+    }
+
     if ($intent === 'echo') {
         $reply = guide_voice_build_route_reply(
             guide_voice_message('echo_reply', $language),
@@ -1195,6 +1237,17 @@ function guide_voice_detect_intent(string $text): string
         return 'greeting';
     }
 
+    if (guide_voice_contains($text, [
+        'aide moi a choisir', 'aide-moi a choisir', 'aide-moi à choisir', 'aide moi à choisir',
+        'choisir la bonne porte', 'bonne porte', 'choisis pour moi',
+        'help me choose', 'choose for me',
+        'ayudame a elegir', 'ayúdame a elegir',
+        'ajuda me a escolher', 'ajuda-me a escolher',
+        'aiutami a scegliere',
+    ])) {
+        return 'compare';
+    }
+
     if (guide_voice_contains($text, ['je suis perdu', 'perdu', 'je comprends rien', 'je comprends pas', 'je ne comprends pas', 'aide moi', 'aide-moi', 'je suis confus', 'i am lost', 'i am confused', 'help me', 'no entiendo', 'estoy perdido', 'ayudame', 'ayúdame', 'estou perdido', 'estou confuso', 'ajuda me', 'ajuda-me', 'sono perso', 'sono confuso', 'aiutami'])) {
         return 'confused';
     }
@@ -1218,6 +1271,15 @@ function guide_voice_detect_intent(string $text): string
 
     if (guide_voice_contains($text, ['str3m', 'stream', 'courant public', 'public current', 'corriente publica', 'corriente pública', 'corrente publica', 'corrente pública', 'corrente pubblico'])) {
         return 'str3m';
+    }
+
+    if (guide_voice_contains($text, [
+        'instrument', 'instrumento', 'strumento', 'jouer', 'jeu', 'jouer le monde', 'ouvre l instrument', 'ouvrir l instrument',
+        'sowwwl.io', 'sowwwl io', 'spatial', 'casque', 'vision pro', 'xr', 'volume 3d', 'terre mine', 'terre et mine',
+        'play the instrument', 'open the instrument', 'play', 'spatial surface', 'headset',
+        'tocar', 'abre el instrumento', 'abrir o instrumento', 'suonare', 'apri lo strumento'
+    ])) {
+        return 'instrument';
     }
 
     if (guide_voice_contains($text, ['visiter', 'public', 'voir', 'observer', 'decouvrir', 'découvrir', 'regarder', 'visit', 'look around', 'discover', 'watch', 'publicly', 'read publicly', 'browse publicly', 'visitar', 'ver', 'mirar', 'descubrir', 'visitar', 'olhar', 'guardare', 'visitare', 'scoprire'])) {
@@ -1267,6 +1329,7 @@ function guide_voice_route_href(string $route, ?array $authenticatedLand = null)
         'signal' => '/signal',
         'str3m' => '/str3m',
         'aza' => '/aza',
+        'instrument' => function_exists('sowwwl_instrument_href') ? sowwwl_instrument_href() : 'https://sowwwl.io/#xyz-panel-instrument',
         'echo' => '/echo',
         'create' => '/rejoindre',
         'reopen' => $slug !== '' ? '/land?u=' . rawurlencode($slug) : '/',
@@ -1278,7 +1341,7 @@ function guide_voice_route_href(string $route, ?array $authenticatedLand = null)
 
 function guide_voice_should_auto_navigate(string $utterance): bool
 {
-    return preg_match('/\b(go|take me|guide me|vas-y|ouvre|ouvrir|emmene|emmène|amene|amène|mene|mène|allons|conduis|direction|direct|llevame|llévame|guia me|guíame|leva me|leva-me|portami)\b/u', $utterance) === 1;
+    return preg_match('/\b(go|take me|guide me|guide moi|guide-moi|vas-y|ouvre|ouvrir|emmene|emmène|amene|amène|mene|mène|allons|conduis|direction|direct|llevame|llévame|guia me|guíame|leva me|leva-me|portami)\b/u', $utterance) === 1;
 }
 
 function guide_voice_contains(string $haystack, array $needles): bool
@@ -1364,6 +1427,7 @@ function guide_voice_infer_route_from_text(string $reply, string $utterance = ''
         'signal' => ['href' => guide_voice_route_href('signal'), 'label' => guide_voice_route_label('signal', $language), 'auto_navigate' => false],
         'str3m', 'public', 'confused', 'compare' => ['href' => guide_voice_route_href('str3m'), 'label' => guide_voice_route_label('str3m', $language), 'auto_navigate' => false],
         'aza' => ['href' => guide_voice_route_href('aza'), 'label' => guide_voice_route_label('aza', $language), 'auto_navigate' => false],
+        'instrument' => ['href' => guide_voice_route_href('instrument'), 'label' => guide_voice_route_label('instrument', $language), 'auto_navigate' => false],
         'echo' => ['href' => guide_voice_route_href('echo'), 'label' => guide_voice_route_label('echo', $language), 'auto_navigate' => false],
         'create' => ['href' => guide_voice_route_href('create'), 'label' => guide_voice_route_label('create', $language), 'auto_navigate' => false],
         default => null,
