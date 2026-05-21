@@ -5423,6 +5423,91 @@ body[data-camera-facing="environment"] .xyz-world-instrument__stage {
 		0 0 1rem rgba(var(--land-secondary-rgb) / 0.08);
 }
 
+.xyz-music-rituals {
+	display: grid;
+	gap: 0.78rem;
+	padding: 0.92rem 0.96rem;
+	border-radius: 1.05rem;
+	border: 1px solid rgba(var(--fg-rgb) / 0.08);
+	background:
+		radial-gradient(circle at 0% 0%, rgba(122 226 255 / 0.12), transparent 34%),
+		radial-gradient(circle at 100% 12%, rgba(248 211 122 / 0.1), transparent 30%),
+		linear-gradient(180deg, rgba(var(--panel-rgb) / 0.5), rgba(var(--panel-rgb) / 0.24));
+}
+
+.xyz-music-rituals__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.72rem;
+}
+
+.xyz-music-rituals__head strong {
+	display: block;
+	margin-top: 0.2rem;
+	font-size: 1rem;
+	color: rgba(var(--fg-rgb) / 0.96);
+}
+
+.xyz-music-rituals__arch {
+	min-height: 2.7rem;
+	justify-content: center;
+	border-color: rgba(248 211 122 / 0.24);
+	font-size: 0.72rem;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.xyz-music-rituals__copy {
+	margin: 0;
+	color: rgba(var(--fg-rgb) / 0.72);
+	line-height: 1.6;
+}
+
+.xyz-music-rituals__grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 0.58rem;
+}
+
+.xyz-music-ritual {
+	display: grid;
+	align-content: start;
+	gap: 0.24rem;
+	min-height: 6.4rem;
+	padding: 0.78rem 0.82rem;
+	border-color: rgba(var(--fg-rgb) / 0.1);
+	text-align: left;
+	justify-content: stretch;
+}
+
+.xyz-music-ritual span,
+.xyz-music-ritual em {
+	font-size: 0.62rem;
+	line-height: 1.25;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: rgba(var(--fg-rgb) / 0.58);
+	font-style: normal;
+}
+
+.xyz-music-ritual strong {
+	margin: 0;
+	font-size: 0.92rem;
+	line-height: 1.18;
+	color: rgba(var(--fg-rgb) / 0.92);
+}
+
+.xyz-music-ritual[aria-pressed="true"] {
+	transform: translateY(-0.08rem);
+	border-color: rgba(var(--land-secondary-rgb) / 0.32);
+	background:
+		linear-gradient(180deg, rgba(var(--land-secondary-rgb) / 0.14), rgba(var(--fg-rgb) / 0.02)),
+		rgba(var(--panel-rgb) / 0.32);
+	box-shadow: 0 0 0 1px rgba(var(--land-secondary-rgb) / 0.06), 0 0 1.2rem rgba(var(--land-secondary-rgb) / 0.08);
+}
+
 .xyz-music-desk {
 	display: grid;
 	gap: 0.82rem;
@@ -7430,6 +7515,10 @@ body.lab-console-view .main-torus {
 		grid-template-columns: 1fr;
 	}
 
+	.xyz-music-rituals__grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
 	.xyz-archi-panel__content {
 		gap: 0.72rem;
 	}
@@ -7631,6 +7720,18 @@ body.lab-console-view .main-torus {
 
 	.xyz-music-pattern__editor-controls {
 		grid-template-columns: 1fr;
+	}
+
+	.xyz-music-rituals__grid {
+		grid-template-columns: 1fr;
+	}
+
+	.xyz-music-rituals__head {
+		display: grid;
+	}
+
+	.xyz-music-rituals__arch {
+		width: 100%;
 	}
 
 	.xyz-archi-panel {

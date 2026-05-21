@@ -898,6 +898,38 @@ $pageDescription = $isLabSurface
                                                 </div>
                                             </div>
                                         </div>
+                                        <div class="xyz-music-rituals" data-xyz-music-rituals>
+                                            <div class="xyz-music-rituals__head">
+                                                <div>
+                                                    <span class="summary-label">rituels</span>
+                                                    <strong data-xyz-music-ritual-state>arche prête</strong>
+                                                </div>
+                                                <button type="button" class="ghost-link xyz-music-rituals__arch" data-xyz-music-ritual-arch>créer arche A-D</button>
+                                            </div>
+                                            <p class="xyz-music-rituals__copy" data-xyz-music-ritual-copy>Charge un profil musical complet: pose Terre/Mine, gamme, timbre, tempo, FX, motif et scène associée.</p>
+                                            <div class="xyz-music-rituals__grid" role="group" aria-label="Rituels musicaux">
+                                                <button type="button" class="ghost-link xyz-music-ritual" data-xyz-music-ritual="aube" aria-pressed="false">
+                                                    <span>A</span>
+                                                    <strong>aube claire</strong>
+                                                    <em>verriere · 84 bpm</em>
+                                                </button>
+                                                <button type="button" class="ghost-link xyz-music-ritual" data-xyz-music-ritual="seuil" aria-pressed="false">
+                                                    <span>B</span>
+                                                    <strong>seuil profond</strong>
+                                                    <em>peau · 96 bpm</em>
+                                                </button>
+                                                <button type="button" class="ghost-link xyz-music-ritual" data-xyz-music-ritual="marche" aria-pressed="false">
+                                                    <span>C</span>
+                                                    <strong>marche plasma</strong>
+                                                    <em>roseau · 112 bpm</em>
+                                                </button>
+                                                <button type="button" class="ghost-link xyz-music-ritual" data-xyz-music-ritual="braise" aria-pressed="false">
+                                                    <span>D</span>
+                                                    <strong>braise dense</strong>
+                                                    <em>bronze · 126 bpm</em>
+                                                </button>
+                                            </div>
+                                        </div>
                                         <p class="panel-copy" data-xyz-music-guide>Choisis une gamme, un timbre et la percussion utile. La lumière colore l accord, l inclinaison tient la note, Terre porte la base et Mine ouvre l accent.</p>
                                     </div>
                                 </details>

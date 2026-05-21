@@ -48,6 +48,113 @@ const XYZ_MUSIC_SCENE_META = {
 	"scene-c": { shortLabel: "C", label: "marche" },
 	"scene-d": { shortLabel: "D", label: "sève" },
 };
+const XYZ_MUSIC_RITUAL_KEYS = ["aube", "seuil", "marche", "braise"];
+const XYZ_MUSIC_RITUAL_META = {
+	aube: {
+		sceneKey: "scene-a",
+		label: "aube claire",
+		state: "A · aube claire",
+		copy: "Verriere, air haut et petits impacts: parfait pour ouvrir la membrane sans l alourdir.",
+		cameraFacing: "user",
+		music: { scale: "lydian", instrument: "glass", percussion: { kick: true, snare: false, hihat: true } },
+		daw: {
+			bpm: 84,
+			swing: 8,
+			humanize: 22,
+			microtimingMs: 6,
+			loopBars: 4,
+			quantize: "1/8",
+			fxPreset: "glass",
+			patternPreset: "drizzle",
+			tracks: {
+				terre: { volume: 0.72 },
+				mine: { volume: 0.78 },
+				bass: { volume: 0.48 },
+				percu: { volume: 0.58 },
+			},
+		},
+		instrument: { terreX: 0.25, terreY: 0.68, terreEnergy: 0.58, mineX: 0.74, mineY: 0.3, mineEnergy: 0.46, activeHands: 2 },
+		bars: 4,
+	},
+	seuil: {
+		sceneKey: "scene-b",
+		label: "seuil profond",
+		state: "B · seuil profond",
+		copy: "Peau proche, basse stable et pulsation simple: la prise qui ancre avant la traverse.",
+		cameraFacing: "user",
+		music: { scale: "aeolian", instrument: "membrane", percussion: { kick: true, snare: false, hihat: true } },
+		daw: {
+			bpm: 96,
+			swing: 14,
+			humanize: 16,
+			microtimingMs: 9,
+			loopBars: 4,
+			quantize: "1/8",
+			fxPreset: "bare",
+			patternPreset: "pulse",
+			tracks: {
+				terre: { volume: 0.86 },
+				mine: { volume: 0.62 },
+				bass: { volume: 0.82 },
+				percu: { volume: 0.74 },
+			},
+		},
+		instrument: { terreX: 0.33, terreY: 0.72, terreEnergy: 0.74, mineX: 0.62, mineY: 0.48, mineEnergy: 0.32, activeHands: 2 },
+		bars: 4,
+	},
+	marche: {
+		sceneKey: "scene-c",
+		label: "marche plasma",
+		state: "C · marche plasma",
+		copy: "Roseau, dorien et pas syncopes: le dehors commence a marcher dans le tore.",
+		cameraFacing: "environment",
+		music: { scale: "dorian", instrument: "reed", percussion: { kick: true, snare: true, hihat: true } },
+		daw: {
+			bpm: 112,
+			swing: 22,
+			humanize: 18,
+			microtimingMs: 12,
+			loopBars: 8,
+			quantize: "1/16",
+			fxPreset: "mist",
+			patternPreset: "stride",
+			tracks: {
+				terre: { volume: 0.78 },
+				mine: { volume: 0.72 },
+				bass: { volume: 0.74 },
+				percu: { volume: 0.84 },
+			},
+		},
+		instrument: { terreX: 0.21, terreY: 0.54, terreEnergy: 0.62, mineX: 0.82, mineY: 0.36, mineEnergy: 0.72, activeHands: 2 },
+		bars: 4,
+	},
+	braise: {
+		sceneKey: "scene-d",
+		label: "braise dense",
+		state: "D · braise dense",
+		copy: "Bronze, grain chaud et contre-champ: le final serre la matiere sans couper le souffle.",
+		cameraFacing: "environment",
+		music: { scale: "pentatonic", instrument: "bronze", percussion: { kick: true, snare: true, hihat: true } },
+		daw: {
+			bpm: 126,
+			swing: 28,
+			humanize: 24,
+			microtimingMs: 15,
+			loopBars: 8,
+			quantize: "1/16",
+			fxPreset: "ember",
+			patternPreset: "storm",
+			tracks: {
+				terre: { volume: 0.82 },
+				mine: { volume: 0.8 },
+				bass: { volume: 0.88 },
+				percu: { volume: 0.9 },
+			},
+		},
+		instrument: { terreX: 0.3, terreY: 0.42, terreEnergy: 0.78, mineX: 0.78, mineY: 0.24, mineEnergy: 0.86, activeHands: 2 },
+		bars: 8,
+	},
+};
 const XYZ_MUSIC_PATTERN_PRESET_META = {
 	clear: {
 		label: "silence",
@@ -1556,6 +1663,41 @@ function normalizeXyzMusicDawState(raw) {
 		gestureLoop: normalizeXyzMusicGestureLoop(source.gestureLoop),
 		arrangement: normalizeXyzMusicArrangement(source.arrangement),
 	};
+}
+
+function buildXyzMusicRitualDawCore(ritual) {
+	const source = ritual && typeof ritual === "object" ? ritual : {};
+	const dawSource = source.daw && typeof source.daw === "object" ? source.daw : {};
+	const fxPreset = XYZ_MUSIC_FX_PRESET_META[dawSource.fxPreset] || XYZ_MUSIC_FX_PRESET_META.bare;
+	return normalizeXyzMusicDawCore({
+		bpm: dawSource.bpm,
+		swing: dawSource.swing,
+		humanize: dawSource.humanize,
+		microtimingMs: dawSource.microtimingMs,
+		loopBars: dawSource.loopBars,
+		quantize: dawSource.quantize,
+		countInBars: dawSource.countInBars,
+		masterVolume: dawSource.masterVolume ?? 0.98,
+		fx: fxPreset.fx,
+		tracks: dawSource.tracks,
+		pattern: buildMusicPatternPreset(dawSource.patternPreset || "clear"),
+	});
+}
+
+function buildXyzMusicRitualScene(ritualKey, { savedAt = Date.now() } = {}) {
+	const ritual = XYZ_MUSIC_RITUAL_META[ritualKey];
+	if (!ritual) {
+		return null;
+	}
+
+	return normalizeXyzMusicScene({
+		label: ritual.label,
+		savedAt,
+		cameraFacing: ritual.cameraFacing,
+		instrument: ritual.instrument,
+		music: ritual.music,
+		daw: buildXyzMusicRitualDawCore(ritual),
+	});
 }
 
 function readXyzMusicDawState() {
@@ -7111,6 +7253,10 @@ function initXyzCamera() {
 	const musicScaleSelect = document.querySelector("[data-xyz-music-scale]");
 	const musicInstrumentSelect = document.querySelector("[data-xyz-music-instrument]");
 	const musicPercussionButtons = Array.from(document.querySelectorAll("[data-xyz-percussion-button]"));
+	const musicRitualButtons = Array.from(document.querySelectorAll("[data-xyz-music-ritual]"));
+	const musicRitualArchButton = document.querySelector("[data-xyz-music-ritual-arch]");
+	const musicRitualStateNode = document.querySelector("[data-xyz-music-ritual-state]");
+	const musicRitualCopyNode = document.querySelector("[data-xyz-music-ritual-copy]");
 	const cameraFacingButtons = Array.from(document.querySelectorAll("[data-xyz-camera-facing-button]"));
 	const arModulationRoot = document.querySelector("[data-xyz-ar-modulation]");
 	const arTitleNode = document.querySelector("[data-xyz-ar-title]");
@@ -7287,6 +7433,7 @@ function initXyzCamera() {
 	let musicGesturePlaybackFrame = 0;
 	let musicGestureDraftPoints = [];
 	let musicActiveSceneKey = "";
+	let musicActiveRitualKey = "";
 	let musicArrangementMode = "idle";
 	let musicArrangementStartedAt = 0;
 	let musicArrangementLastStepIndex = -1;
@@ -7905,6 +8052,28 @@ function initXyzCamera() {
 		const meta = XYZ_MUSIC_PATTERN_PRESET_META[presetKey] || XYZ_MUSIC_PATTERN_PRESET_META.clear;
 		return presetKey === "clear" ? "aucun motif" : meta.label;
 	};
+	const renderMusicRituals = () => {
+		const activeRitual = XYZ_MUSIC_RITUAL_META[musicActiveRitualKey] || null;
+		musicRitualButtons.forEach((button) => {
+			if (!(button instanceof HTMLElement)) {
+				return;
+			}
+			button.setAttribute("aria-pressed", button.dataset.xyzMusicRitual === musicActiveRitualKey ? "true" : "false");
+		});
+		setSensorText(musicRitualStateNode, activeRitual?.state || "arche prête");
+		setSensorText(
+			musicRitualCopyNode,
+			activeRitual?.copy || "Charge un profil musical complet: pose Terre/Mine, gamme, timbre, tempo, FX, motif et scène associée."
+		);
+		document.body.dataset.musicRitual = musicActiveRitualKey || "custom";
+	};
+	const clearMusicRitualSelection = () => {
+		if (!musicActiveRitualKey) {
+			return;
+		}
+		musicActiveRitualKey = "";
+		renderMusicRituals();
+	};
 	const renderMusicControls = () => {
 		if (musicScaleSelect instanceof HTMLSelectElement) {
 			musicScaleSelect.value = musicSettings.scale;
@@ -7924,6 +8093,7 @@ function initXyzCamera() {
 		document.body.dataset.musicInstrument = musicSettings.instrument;
 		document.body.dataset.musicPercussion = activePercussionKeys().length ? activePercussionKeys().join("-") : "none";
 		document.body.dataset.musicPattern = inferXyzMusicPatternPresetKey(getMusicPatternState());
+		renderMusicRituals();
 	};
 
 	const persistMusicDawState = () => {
@@ -8713,6 +8883,84 @@ function initXyzCamera() {
 			...options,
 		});
 	};
+	const applyMusicRitualPreset = async (ritualKey, { storeScene = true } = {}) => {
+		const ritual = XYZ_MUSIC_RITUAL_META[ritualKey];
+		const scene = buildXyzMusicRitualScene(ritualKey);
+		if (!ritual || !scene) {
+			return false;
+		}
+
+		releaseMusicArrangementControl();
+		if (storeScene && ritual.sceneKey) {
+			musicDawState.scenes[ritual.sceneKey] = scene;
+		}
+		musicActiveRitualKey = ritualKey;
+		const applied = await applyMusicSceneSnapshot(scene, {
+			activeSceneKey: ritual.sceneKey || musicActiveSceneKey,
+			stopGesture: true,
+			emitHaptics: true,
+		});
+		renderMusicRituals();
+		return applied;
+	};
+	const applyMusicRitualArch = async () => {
+		releaseMusicArrangementControl();
+		stopMusicGesturePlayback();
+		const savedAt = Date.now();
+		const steps = [];
+		XYZ_MUSIC_RITUAL_KEYS.forEach((ritualKey, index) => {
+			const ritual = XYZ_MUSIC_RITUAL_META[ritualKey];
+			const scene = buildXyzMusicRitualScene(ritualKey, { savedAt: savedAt + index });
+			if (!ritual || !scene || !ritual.sceneKey) {
+				return;
+			}
+			musicDawState.scenes[ritual.sceneKey] = scene;
+			steps.push({
+				sceneKey: ritual.sceneKey,
+				bars: ritual.bars,
+			});
+		});
+		musicDawState.arrangement = normalizeXyzMusicArrangement({
+			loop: true,
+			steps: [
+				...steps,
+				...Array.from({ length: Math.max(0, XYZ_MUSIC_ARRANGEMENT_STEP_COUNT - steps.length) }, () => ({ sceneKey: "", bars: 2 })),
+			],
+		});
+		persistMusicDawState();
+		const firstKey = XYZ_MUSIC_RITUAL_KEYS[0];
+		const firstSceneKey = XYZ_MUSIC_RITUAL_META[firstKey]?.sceneKey || "";
+		const firstScene = firstSceneKey ? musicDawState.scenes[firstSceneKey] : null;
+		musicActiveRitualKey = firstKey;
+		if (firstScene) {
+			await applyMusicSceneSnapshot(firstScene, {
+				activeSceneKey: firstSceneKey,
+				stopGesture: true,
+				emitHaptics: true,
+			});
+		}
+		renderMusicRituals();
+		renderMusicDesk();
+		return true;
+	};
+	const recallMusicSceneOrRitual = async (sceneKey) => {
+		if (musicDawState.scenes[sceneKey]) {
+			return recallMusicScene(sceneKey);
+		}
+		const ritualKey = XYZ_MUSIC_RITUAL_KEYS.find((key) => XYZ_MUSIC_RITUAL_META[key]?.sceneKey === sceneKey);
+		if (ritualKey) {
+			return applyMusicRitualPreset(ritualKey);
+		}
+		return false;
+	};
+	const buildMusicArrangementOrRitualArch = () => {
+		const hasAnyScene = XYZ_MUSIC_SCENE_KEYS.some((sceneKey) => musicDawState.scenes[sceneKey]);
+		if (!hasAnyScene) {
+			void applyMusicRitualArch();
+			return;
+		}
+		buildDefaultMusicArrangement();
+	};
 	const renderMusicTakes = () => {
 		if (!(musicDawTakesNode instanceof HTMLElement)) {
 			return;
@@ -8937,6 +9185,7 @@ function initXyzCamera() {
 		}
 		if (musicDawArrangementBuildButton instanceof HTMLElement) {
 			musicDawArrangementBuildButton.toggleAttribute("disabled", false);
+			musicDawArrangementBuildButton.textContent = hasPlayableArrangementSteps ? "charger A B C D" : "créer arche A-D";
 		}
 		if (musicDawArrangementClearButton instanceof HTMLElement) {
 			musicDawArrangementClearButton.toggleAttribute("disabled", !hasArrangementSteps);
@@ -9306,6 +9555,7 @@ function initXyzCamera() {
 		document.body.dataset.musicGestureMode = musicGestureMode;
 		document.body.dataset.musicArrangementMode = musicArrangementMode;
 		document.body.dataset.musicActiveScene = musicActiveSceneKey || "none";
+		document.body.dataset.musicRitual = musicActiveRitualKey || "custom";
 	};
 
 	renderMusicControls();
@@ -9313,6 +9563,7 @@ function initXyzCamera() {
 	if (musicScaleSelect instanceof HTMLSelectElement && musicScaleSelect.dataset.bound !== "1") {
 		musicScaleSelect.dataset.bound = "1";
 		musicScaleSelect.addEventListener("change", () => {
+			clearMusicRitualSelection();
 			musicSettings.scale = XYZ_MUSIC_SCALE_KEYS.includes(musicScaleSelect.value) ? musicScaleSelect.value : "auto";
 			writeXyzMusicSettings(musicSettings);
 			renderMusicControls();
@@ -9323,6 +9574,7 @@ function initXyzCamera() {
 	if (musicInstrumentSelect instanceof HTMLSelectElement && musicInstrumentSelect.dataset.bound !== "1") {
 		musicInstrumentSelect.dataset.bound = "1";
 		musicInstrumentSelect.addEventListener("change", () => {
+			clearMusicRitualSelection();
 			musicSettings.instrument = XYZ_MUSIC_INSTRUMENT_KEYS.includes(musicInstrumentSelect.value) ? musicInstrumentSelect.value : "membrane";
 			writeXyzMusicSettings(musicSettings);
 			renderMusicControls();
@@ -9341,6 +9593,7 @@ function initXyzCamera() {
 			if (!XYZ_MUSIC_PERCUSSION_KEYS.includes(key)) {
 				return;
 			}
+			clearMusicRitualSelection();
 			musicSettings.percussion[key] = !musicSettings.percussion[key];
 			writeXyzMusicSettings(musicSettings);
 			renderMusicControls();
@@ -9348,6 +9601,21 @@ function initXyzCamera() {
 			void syncMusicPatternScheduler();
 		});
 	});
+	musicRitualButtons.forEach((button) => {
+		if (!(button instanceof HTMLElement) || button.dataset.bound === "1") {
+			return;
+		}
+		button.dataset.bound = "1";
+		button.addEventListener("click", () => {
+			void applyMusicRitualPreset(button.dataset.xyzMusicRitual || "");
+		});
+	});
+	if (musicRitualArchButton instanceof HTMLElement && musicRitualArchButton.dataset.bound !== "1") {
+		musicRitualArchButton.dataset.bound = "1";
+		musicRitualArchButton.addEventListener("click", () => {
+			void applyMusicRitualArch();
+		});
+	}
 	if (musicDawPlayButton instanceof HTMLElement && musicDawPlayButton.dataset.bound !== "1") {
 		musicDawPlayButton.dataset.bound = "1";
 		musicDawPlayButton.addEventListener("click", () => {
@@ -9439,7 +9707,7 @@ function initXyzCamera() {
 	if (musicDawArrangementBuildButton instanceof HTMLElement && musicDawArrangementBuildButton.dataset.bound !== "1") {
 		musicDawArrangementBuildButton.dataset.bound = "1";
 		musicDawArrangementBuildButton.addEventListener("click", () => {
-			buildDefaultMusicArrangement();
+			buildMusicArrangementOrRitualArch();
 		});
 	}
 	if (musicDawArrangementClearButton instanceof HTMLElement && musicDawArrangementClearButton.dataset.bound !== "1") {
@@ -13020,7 +13288,7 @@ function initXyzCamera() {
 					if (event.shiftKey) {
 						storeMusicScene("scene-a");
 					} else {
-						void recallMusicScene("scene-a");
+						void recallMusicSceneOrRitual("scene-a");
 					}
 					break;
 				case "2":
@@ -13029,7 +13297,7 @@ function initXyzCamera() {
 					if (event.shiftKey) {
 						storeMusicScene("scene-b");
 					} else {
-						void recallMusicScene("scene-b");
+						void recallMusicSceneOrRitual("scene-b");
 					}
 					break;
 				case "3":
@@ -13038,7 +13306,7 @@ function initXyzCamera() {
 					if (event.shiftKey) {
 						storeMusicScene("scene-c");
 					} else {
-						void recallMusicScene("scene-c");
+						void recallMusicSceneOrRitual("scene-c");
 					}
 					break;
 				case "4":
@@ -13047,7 +13315,7 @@ function initXyzCamera() {
 					if (event.shiftKey) {
 						storeMusicScene("scene-d");
 					} else {
-						void recallMusicScene("scene-d");
+						void recallMusicSceneOrRitual("scene-d");
 					}
 					break;
 				case "g":
@@ -13060,7 +13328,7 @@ function initXyzCamera() {
 					break;
 				case "b":
 					if (event.shiftKey) {
-						buildDefaultMusicArrangement();
+						buildMusicArrangementOrRitualArch();
 					} else {
 						void toggleMusicArrangementPlayback();
 					}
