@@ -4,8 +4,13 @@
 .idea
 .vscode
 .DS_Store
+.env
+.env.*
+deploy/.env.production
+deploy/.env.production.*
 storage/lands/*.json
 storage/aza/
+storage/runtime/
 storage/runtime/rate-limit/*.json
 /.env.production
 /.env.production.example
