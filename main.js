@@ -14855,13 +14855,14 @@ function syncCornerDocks(force = false) {
 
 		const isPrimaryDock = dock.dataset.cornerDockPriority === "primary";
 		const isGuideVoiceDock = dock.dataset.guideVoiceDock === "1";
+		const defaultOpen = dock.dataset.cornerDockDefaultOpen !== "0";
 		registerCornerDock(dock);
 		const shouldStayOpen = (!isGuideVoiceDock && dock.dataset.cornerDockActive === "1")
 			|| (dock.id && window.location.hash === `#${dock.id}`)
 			|| dock.contains(document.activeElement);
 
 		if (!compact) {
-			dock.open = true;
+			dock.open = defaultOpen || shouldStayOpen;
 			dock.dataset.cornerDockCompact = "0";
 			syncCornerDockAccessibility(dock);
 			return;
@@ -14869,7 +14870,7 @@ function syncCornerDocks(force = false) {
 
 		dock.dataset.cornerDockCompact = "1";
 		if (force || dock.dataset.cornerDockInitialized !== "1") {
-			dock.open = shouldStayOpen || (isPrimaryDock && !isGuideVoiceDock);
+			dock.open = shouldStayOpen || (isPrimaryDock && !isGuideVoiceDock && defaultOpen);
 		} else if (shouldStayOpen) {
 			dock.open = true;
 		} else if (isGuideVoiceDock) {

@@ -191,6 +191,7 @@ $homeHeroVuState = $connectionNeedleAngle < -12
     ? 'low'
     : ($connectionNeedleAngle > 12 ? 'high' : 'mid');
 $connectionStatusText = $authenticatedLand ? 'terre liée 3h33' : 'surface publique';
+$connectionDockOpen = $authenticatedLand || $message !== '';
 
 $pdoConn = null;
 if (isset($pdo) && $pdo instanceof PDO) {
@@ -224,10 +225,10 @@ if ($authenticatedLand) {
     }
 }
 
-$homeStatusLabel = $authenticatedLand ? 'terre liée' : 'surface collective';
+$homeStatusLabel = $authenticatedLand ? 'terre liée' : 'réseau minimal';
 $homeLead = $authenticatedLand
     ? 'Le tore suit la fréquence de ta terre. Ouvrir, écrire, dériver.'
-    : 'Trois portes : public, terre, 0wlslw0.';
+    : 'Un réseau minimal : courant public, terre personnelle, guide discret.';
 $homePrimaryActionHref = $authenticatedLand
     ? o_route_href('/land', ['u' => $activeLandSlug])
     : o_route_href('/rejoindre');
@@ -240,11 +241,11 @@ $azaHref = o_route_href('/aza');
 $joinHref = o_route_href('/rejoindre');
 $logoutHref = o_route_href('/logout.php');
 $promptSeeds = guide_prompt_seeds();
-$homeHeroLineOne = $authenticatedLand ? 'Ta terre' : 'Le tore';
-$homeHeroLineTwo = $authenticatedLand ? 'module le tore.' : 'écoute le monde réel.';
+$homeHeroLineOne = $authenticatedLand ? 'Ta terre' : 'Réseau';
+$homeHeroLineTwo = $authenticatedLand ? 'module le tore.' : 'minimal.';
 $homeThresholdHint = $authenticatedLand
     ? 'Le noyau reste simple : terre, adresse, courant.'
-    : 'Comprendre sans quitter l’entrée.';
+    : 'Un point d’entrée simple, sans forcer l’identification.';
 $homeStreamMood = (string) ($dailyStream['mood'] ?? 'calm');
 $homeStreamTemplate = (string) ($dailyStream['template'] ?? 'empty');
 $homeDailyTitle = $dailyTextItem
@@ -495,13 +496,14 @@ $pageDescription = $isLabSurface
     data-corner-dock
     data-corner-dock-side="left"
     data-corner-dock-priority="primary"
+    data-corner-dock-default-open="<?= $connectionDockOpen ? '1' : '0' ?>"
     aria-labelledby="connection-meter-title"
-    open
+    <?= $connectionDockOpen ? 'open' : '' ?>
 >
     <summary class="connection-meter__toggle">
-        <span class="corner-dock-toggle__kicker">Connexion</span>
-        <strong><?= h($authenticatedLand ? $connectionStatusText : 'retrouver une terre') ?></strong>
-        <span class="corner-dock-toggle__meta"><?= $authenticatedLand ? h('@' . $activeLandSlug) : 'ouvrir' ?></span>
+        <span class="corner-dock-toggle__kicker">Se relier</span>
+        <strong><?= h($authenticatedLand ? $connectionStatusText : 'terre déjà posée ?') ?></strong>
+        <span class="corner-dock-toggle__meta"><?= $authenticatedLand ? h('@' . $activeLandSlug) : 'ouvrir doucement' ?></span>
     </summary>
 
     <div class="connection-meter__dial" aria-hidden="true">
@@ -614,7 +616,7 @@ $pageDescription = $isLabSurface
                 <button type="button" class="pill-link xyz-camera-toggle" data-xyz-camera-start>Activer la membrane</button>
                 <button type="button" class="ghost-link xyz-camera-toggle" data-xyz-camera-demo aria-pressed="false">Terre &amp; Mine</button>
                 <button type="button" class="ghost-link xyz-camera-toggle hidden" data-xyz-camera-stop>Relâcher la membrane</button>
-                <a class="ghost-link" href="<?= h($authenticatedLand ? o_route_href('/land', ['u' => $activeLandSlug]) : '#connexion') ?>"><?= h($authenticatedLand ? 'Ouvrir ma terre' : 'Me connecter') ?></a>
+                <a class="ghost-link" href="<?= h($authenticatedLand ? o_route_href('/land', ['u' => $activeLandSlug]) : '#connexion') ?>"><?= h($authenticatedLand ? 'Ouvrir ma terre' : 'Relier une terre') ?></a>
                 <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
             </div>
 
@@ -1933,8 +1935,8 @@ $pageDescription = $isLabSurface
         </div>
 
         <header class="home-polish-head">
-            <p class="eyebrow"><strong>sowwwl.com</strong> <span>surface vivante</span></p>
-            <h2 id="home-polish-title">Un seuil public, déjà relié au dôme.</h2>
+            <p class="eyebrow"><strong>sowwwl.com</strong> <span>réseau minimal</span></p>
+            <h2 id="home-polish-title">Réseau minimal, déjà relié au dôme.</h2>
             <p>La page d’entrée devient une chambre claire : elle montre le courant du jour, les quatre portes actives et les preuves discrètes du tore.</p>
         </header>
 
