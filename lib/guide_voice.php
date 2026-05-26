@@ -61,6 +61,59 @@ function guide_voice_normalize_endpoint(string $endpoint): string
     return $candidate;
 }
 
+function guide_voice_request_url(string $endpoint): string
+{
+    $candidate = trim($endpoint);
+    if ($candidate === '') {
+        return '';
+    }
+
+    if (!guide_voice_is_do_agent_endpoint($candidate)) {
+        return $candidate;
+    }
+
+    $parts = parse_url($candidate);
+    if (!is_array($parts)) {
+        return $candidate;
+    }
+
+    $scheme = trim((string) ($parts['scheme'] ?? 'https')) ?: 'https';
+    $host = trim((string) ($parts['host'] ?? ''));
+    if ($host === '') {
+        return $candidate;
+    }
+
+    $port = isset($parts['port']) ? ':' . (int) $parts['port'] : '';
+    $user = (string) ($parts['user'] ?? '');
+    $pass = (string) ($parts['pass'] ?? '');
+    $auth = $user !== ''
+        ? $user . ($pass !== '' ? ':' . $pass : '') . '@'
+        : '';
+    $path = trim((string) ($parts['path'] ?? ''));
+    if ($path === '' || $path === '/') {
+        $path = '/api/v1/chat/completions';
+    }
+
+    $query = [];
+    $rawQuery = trim((string) ($parts['query'] ?? ''));
+    if ($rawQuery !== '') {
+        parse_str($rawQuery, $query);
+    }
+    if (!array_key_exists('agent', $query)) {
+        $query['agent'] = 'true';
+    }
+
+    return sprintf(
+        '%s://%s%s%s%s%s',
+        $scheme,
+        $auth,
+        $host,
+        $port,
+        $path,
+        $query !== [] ? '?' . http_build_query($query) : ''
+    );
+}
+
 function guide_voice_is_do_agent_endpoint(string $endpoint): bool
 {
     $parts = parse_url(trim($endpoint));
@@ -735,6 +788,14 @@ function guide_voice_remote_payload(string $utterance, ?array $authenticatedLand
         'voice_only' => true,
     ];
 
+    if ($isDoAgentEndpoint) {
+        return [
+            'model' => 'ignored',
+            'messages' => $messages,
+            'stream' => false,
+        ];
+    }
+
     if ($config['request_mode'] === 'message') {
         return [
             (string) $config['input_field'] => $trimmedUtterance,
@@ -777,7 +838,7 @@ function guide_voice_remote_headers(array $config): array
 function guide_voice_remote_exchange(string $utterance, ?array $authenticatedLand = null): array
 {
     $config = guide_voice_config();
-    $endpoint = (string) $config['endpoint'];
+    $endpoint = guide_voice_request_url((string) $config['endpoint']);
     $endpointHost = guide_voice_endpoint_host($endpoint);
 
     if ($endpoint === '' || guide_voice_value_looks_placeholder($endpoint)) {
