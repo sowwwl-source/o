@@ -790,7 +790,7 @@ function guide_voice_remote_payload(string $utterance, ?array $authenticatedLand
 
     if ($isDoAgentEndpoint) {
         return [
-            'model' => 'ignored',
+            'model' => 'n/a',
             'messages' => $messages,
             'stream' => false,
         ];
