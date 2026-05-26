@@ -1,4 +1,6 @@
 const DEFAULT_TIMEZONE = "Europe/Paris";
+const SPATIAL_NATIVE_CONTRACT_VERSION = document.querySelector('meta[name="o-spatial-native-contract"]')?.content?.trim() || "2026-05-26";
+const SPATIAL_NATIVE_EVENT_NAME = document.querySelector('meta[name="o-spatial-native-event"]')?.content?.trim() || "o:native-spatial-state";
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const coarsePointer = window.matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints || 0) > 0;
 const THEME_KEY = "o-theme-inverted";
@@ -1305,6 +1307,361 @@ const nativeDeviceState = {
 	source: "web",
 };
 let currentDeviceBridgeState = null;
+function createNativeSpatialStateDefaults() {
+	return {
+		source: "web",
+		available: false,
+		platform: {
+			family: "web",
+			name: "browser",
+			runtime: "browser",
+			version: "",
+			build: "",
+			capabilities: [],
+		},
+		session: {
+			mode: "screen",
+			space: "screen",
+			immersion: "windowed",
+			phase: "idle",
+			focus: "document",
+			safety: "unknown",
+		},
+		inputs: {
+			primary: "pointer",
+			gazeAvailable: false,
+			pinchAvailable: false,
+			handTrackingAvailable: false,
+			controllerAvailable: false,
+			voiceAvailable: false,
+		},
+		pose: {
+			head: {
+				tracked: false,
+				position: [0, 0, 0],
+				rotation: [0, 0, 0, 1],
+				speed: 0,
+			},
+			gaze: {
+				tracked: false,
+				origin: [0, 0, 0],
+				direction: [0, 0, -1],
+				stability: 0,
+			},
+		},
+		hands: {
+			activeCount: 0,
+			left: {
+				tracked: false,
+				pinch: 0,
+				grab: 0,
+				confidence: 0,
+				jointsTracked: 0,
+				gesture: "",
+			},
+			right: {
+				tracked: false,
+				pinch: 0,
+				grab: 0,
+				confidence: 0,
+				jointsTracked: 0,
+				gesture: "",
+			},
+		},
+		world: {
+			passthrough: "none",
+			anchorsTracked: 0,
+			planesTracked: 0,
+			meshTracked: false,
+			roomTracked: false,
+			lightLevel: 0,
+			lightContrast: 0,
+			lightDirectionX: 0,
+			lightDirectionY: 0,
+			anchorStability: 0,
+		},
+		audio: {
+			spatial: false,
+			route: "",
+			outputRoute: "",
+			inputRoute: "",
+		},
+	};
+}
+
+const nativeSpatialState = createNativeSpatialStateDefaults();
+let currentSpatialBridgeState = null;
+const spatialNativeContract = Object.freeze({
+	version: SPATIAL_NATIVE_CONTRACT_VERSION,
+	event: SPATIAL_NATIVE_EVENT_NAME,
+	globals: ["__O_NATIVE_SPATIAL__", "__O_SPATIAL_NATIVE__", "OBridgeSpatialNative"],
+	shape: {
+		source: "visionos | quest | browser",
+		platform: ["family", "name", "runtime", "version", "build", "capabilities[]"],
+		session: ["mode", "space", "immersion", "phase", "focus", "safety"],
+		inputs: ["primary", "gazeAvailable", "pinchAvailable", "handTrackingAvailable", "controllerAvailable", "voiceAvailable"],
+		pose: ["head", "gaze"],
+		hands: ["activeCount", "left", "right"],
+		world: ["passthrough", "anchorsTracked", "planesTracked", "meshTracked", "roomTracked", "lightLevel", "lightContrast", "lightDirectionX", "lightDirectionY", "anchorStability"],
+		audio: ["spatial", "route", "outputRoute", "inputRoute"],
+	},
+});
+const SPATIAL_NATIVE_SIM_STORAGE_KEY = "o-spatial-native-sim-v1";
+const SPATIAL_NATIVE_SIM_DEFAULT_PRESET = "visionos";
+const SPATIAL_NATIVE_SIM_PRESETS = Object.freeze({
+	visionos: Object.freeze({
+		source: "visionos",
+		platform: {
+			family: "visionos",
+			name: "Apple Vision Pro",
+			runtime: "visionos",
+			version: "2.0",
+			build: "local-sim",
+			capabilities: ["gaze", "pinch", "hands", "anchors", "planes", "room", "mesh", "passthrough", "spatial-audio"],
+		},
+		session: {
+			mode: "mixed",
+			space: "shared",
+			immersion: "mixed",
+			phase: "active",
+			focus: "volume",
+			safety: "room-aware",
+		},
+		inputs: {
+			primary: "gaze",
+			gazeAvailable: true,
+			pinchAvailable: true,
+			handTrackingAvailable: true,
+			controllerAvailable: false,
+			voiceAvailable: true,
+		},
+		pose: {
+			head: {
+				tracked: true,
+				position: [0, 1.62, 0],
+				rotation: [0, 0, 0, 1],
+				speed: 0.16,
+			},
+			gaze: {
+				tracked: true,
+				origin: [0, 1.62, 0],
+				direction: [0.08, -0.04, -1],
+				stability: 0.88,
+			},
+		},
+		hands: {
+			activeCount: 2,
+			left: {
+				tracked: true,
+				pinch: 0.22,
+				grab: 0.08,
+				confidence: 0.92,
+				jointsTracked: 24,
+				gesture: "open",
+			},
+			right: {
+				tracked: true,
+				pinch: 0.42,
+				grab: 0.12,
+				confidence: 0.94,
+				jointsTracked: 24,
+				gesture: "pinch",
+			},
+		},
+		world: {
+			passthrough: "mixed",
+			anchorsTracked: 5,
+			planesTracked: 3,
+			meshTracked: true,
+			roomTracked: true,
+			lightLevel: 0.68,
+			lightContrast: 0.24,
+			lightDirectionX: 0.16,
+			lightDirectionY: -0.08,
+			anchorStability: 0.84,
+		},
+		audio: {
+			spatial: true,
+			route: "headset",
+			outputRoute: "spatial",
+			inputRoute: "beamforming",
+		},
+	}),
+	quest: Object.freeze({
+		source: "quest",
+		platform: {
+			family: "quest",
+			name: "Meta Quest",
+			runtime: "quest",
+			version: "3",
+			build: "local-sim",
+			capabilities: ["hands", "pinch", "controllers", "anchors", "planes", "room", "passthrough", "spatial-audio"],
+		},
+		session: {
+			mode: "mixed",
+			space: "full",
+			immersion: "immersive",
+			phase: "active",
+			focus: "room",
+			safety: "guardian",
+		},
+		inputs: {
+			primary: "hands",
+			gazeAvailable: false,
+			pinchAvailable: true,
+			handTrackingAvailable: true,
+			controllerAvailable: true,
+			voiceAvailable: false,
+		},
+		pose: {
+			head: {
+				tracked: true,
+				position: [0, 1.68, 0],
+				rotation: [0, 0, 0, 1],
+				speed: 0.24,
+			},
+			gaze: {
+				tracked: false,
+				origin: [0, 1.68, 0],
+				direction: [0, -0.02, -1],
+				stability: 0.54,
+			},
+		},
+		hands: {
+			activeCount: 2,
+			left: {
+				tracked: true,
+				pinch: 0.34,
+				grab: 0.22,
+				confidence: 0.86,
+				jointsTracked: 22,
+				gesture: "grip",
+			},
+			right: {
+				tracked: true,
+				pinch: 0.36,
+				grab: 0.2,
+				confidence: 0.86,
+				jointsTracked: 22,
+				gesture: "grip",
+			},
+		},
+		world: {
+			passthrough: "full",
+			anchorsTracked: 7,
+			planesTracked: 5,
+			meshTracked: true,
+			roomTracked: true,
+			lightLevel: 0.6,
+			lightContrast: 0.34,
+			lightDirectionX: -0.18,
+			lightDirectionY: 0.14,
+			anchorStability: 0.72,
+		},
+		audio: {
+			spatial: true,
+			route: "headset",
+			outputRoute: "open-ear",
+			inputRoute: "headset-mic",
+		},
+	}),
+	browser: Object.freeze({
+		source: "browser-shell",
+		platform: {
+			family: "web",
+			name: "Browser shell",
+			runtime: "browser-shell",
+			version: "preview",
+			build: "local-sim",
+			capabilities: ["pointer", "webxr-preview"],
+		},
+		session: {
+			mode: "screen",
+			space: "window",
+			immersion: "windowed",
+			phase: "active",
+			focus: "document",
+			safety: "browser",
+		},
+		inputs: {
+			primary: "pointer",
+			gazeAvailable: false,
+			pinchAvailable: false,
+			handTrackingAvailable: false,
+			controllerAvailable: false,
+			voiceAvailable: false,
+		},
+		pose: {
+			head: {
+				tracked: false,
+				position: [0, 0, 0],
+				rotation: [0, 0, 0, 1],
+				speed: 0,
+			},
+			gaze: {
+				tracked: false,
+				origin: [0, 0, 0],
+				direction: [0, 0, -1],
+				stability: 0,
+			},
+		},
+		hands: {
+			activeCount: 0,
+			left: {
+				tracked: false,
+				pinch: 0,
+				grab: 0,
+				confidence: 0,
+				jointsTracked: 0,
+				gesture: "",
+			},
+			right: {
+				tracked: false,
+				pinch: 0,
+				grab: 0,
+				confidence: 0,
+				jointsTracked: 0,
+				gesture: "",
+			},
+		},
+		world: {
+			passthrough: "none",
+			anchorsTracked: 0,
+			planesTracked: 0,
+			meshTracked: false,
+			roomTracked: false,
+			lightLevel: 0.32,
+			lightContrast: 0.08,
+			lightDirectionX: 0,
+			lightDirectionY: 0,
+			anchorStability: 0.12,
+		},
+		audio: {
+			spatial: false,
+			route: "browser",
+			outputRoute: "stereo",
+			inputRoute: "browser-mic",
+		},
+	}),
+});
+const SPATIAL_NATIVE_SIM_SCENARIOS = Object.freeze({
+	idle: Object.freeze({
+		label: "stable",
+		copy: "Etat pose pour regler le shell sans derive automatique.",
+	}),
+	lightSweep: Object.freeze({
+		label: "balayage lumiere",
+		copy: "Fait passer le hotspot, le contraste et le regard pour eprouver Terre & Mine.",
+	}),
+	roomWalk: Object.freeze({
+		label: "marche piece",
+		copy: "Fait bouger tete, ancrage et main pour tester le tore en volume.",
+	}),
+	duetWeave: Object.freeze({
+		label: "tresse des mains",
+		copy: "Alterne gauche/droite pour sentir la reponse du tore et du duo Terre/Mine.",
+	}),
+});
 
 function normalizeNativeSilenceMode(value) {
 	const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -1806,6 +2163,363 @@ function syncNativeDeviceSeed() {
 	updateNativeDeviceState(seed);
 }
 
+function normalizeSpatialText(value, fallback = "", maxLength = 48) {
+	return typeof value === "string" && value.trim()
+		? value.trim().slice(0, maxLength)
+		: fallback;
+}
+
+function normalizeSpatialCapabilityList(value) {
+	const source = Array.isArray(value)
+		? value
+		: (typeof value === "string" ? value.split(/[\s,]+/) : []);
+	return Array.from(new Set(
+		source
+			.map((entry) => normalizeSpatialText(entry, "", 40).toLowerCase())
+			.filter(Boolean)
+	)).slice(0, 24);
+}
+
+function normalizeSpatialMode(value, fallback = "screen") {
+	const normalized = normalizeSpatialText(value, fallback, 24).toLowerCase();
+	return ["screen", "vr", "ar", "mixed", "headset"].includes(normalized) ? normalized : fallback;
+}
+
+function normalizeSpatialSpace(value, fallback = "screen") {
+	const normalized = normalizeSpatialText(value, fallback, 24).toLowerCase();
+	return ["screen", "window", "volume", "shared", "mixed", "full", "immersive"].includes(normalized) ? normalized : fallback;
+}
+
+function normalizeSpatialImmersion(value, fallback = "windowed") {
+	const normalized = normalizeSpatialText(value, fallback, 32).toLowerCase();
+	return ["windowed", "mixed", "progressive", "full", "immersive", "portal"].includes(normalized) ? normalized : fallback;
+}
+
+function normalizeSpatialPassthrough(value, fallback = "none") {
+	const normalized = normalizeSpatialText(value, fallback, 24).toLowerCase();
+	return ["none", "mixed", "full", "portal", "progressive"].includes(normalized) ? normalized : fallback;
+}
+
+function normalizeSpatialBoolean(value, fallback = false) {
+	return value === undefined ? fallback : value === true || value === 1 || value === "1";
+}
+
+function normalizeSpatialVector3(value, fallback = [0, 0, 0], { minimum = -1, maximum = 1 } = {}) {
+	const source = Array.isArray(value) ? value : fallback;
+	return [
+		clampNumber(Number(source[0] ?? fallback[0]) || 0, minimum, maximum),
+		clampNumber(Number(source[1] ?? fallback[1]) || 0, minimum, maximum),
+		clampNumber(Number(source[2] ?? fallback[2]) || 0, minimum, maximum),
+	];
+}
+
+function normalizeSpatialQuaternion(value, fallback = [0, 0, 0, 1]) {
+	const source = Array.isArray(value) ? value : fallback;
+	return [
+		clampNumber(Number(source[0] ?? fallback[0]) || 0, -1, 1),
+		clampNumber(Number(source[1] ?? fallback[1]) || 0, -1, 1),
+		clampNumber(Number(source[2] ?? fallback[2]) || 0, -1, 1),
+		clampNumber(Number(source[3] ?? fallback[3]) || 1, -1, 1),
+	];
+}
+
+function normalizeSpatialHandState(raw, fallback = {}) {
+	const source = raw && typeof raw === "object" ? raw : {};
+	return {
+		tracked: normalizeSpatialBoolean(source.tracked, Boolean(fallback.tracked)),
+		pinch: clampNumber(Number(source.pinch ?? fallback.pinch) || 0, 0, 1),
+		grab: clampNumber(Number(source.grab ?? fallback.grab) || 0, 0, 1),
+		confidence: clampNumber(Number(source.confidence ?? fallback.confidence) || 0, 0, 1),
+		jointsTracked: clampNumber(Math.round(Number(source.jointsTracked ?? fallback.jointsTracked) || 0), 0, 64),
+		gesture: normalizeSpatialText(source.gesture ?? fallback.gesture, "", 32).toLowerCase(),
+	};
+}
+
+function readNativeSpatialSeed() {
+	const seed = window.__O_NATIVE_SPATIAL__ || window.__O_SPATIAL_NATIVE__;
+	return seed && typeof seed === "object" ? seed : null;
+}
+
+function spatialRuntimeLabel(state) {
+	const runtime = normalizeSpatialText(state?.platform?.runtime, "", 24);
+	const name = normalizeSpatialText(state?.platform?.name, "", 24);
+	const family = normalizeSpatialText(state?.platform?.family, "web", 24);
+	return runtime || name || family || "web";
+}
+
+function spatialSpaceLabel(state) {
+	const space = normalizeSpatialSpace(state?.session?.space, "screen");
+	const immersion = normalizeSpatialImmersion(state?.session?.immersion, "windowed");
+	if (space === "full" || immersion === "full" || space === "immersive") {
+		return "full space";
+	}
+	if (space === "shared") {
+		return "shared space";
+	}
+	if (space === "volume") {
+		return "volume";
+	}
+	if (space === "window") {
+		return "fenêtre";
+	}
+	if (space === "mixed" || immersion === "mixed") {
+		return "mixte";
+	}
+	return "preview web";
+}
+
+function spatialInputLabel(state) {
+	const inputs = state?.inputs && typeof state.inputs === "object" ? state.inputs : {};
+	if (inputs.gazeAvailable && inputs.pinchAvailable) {
+		return "regard + pinch";
+	}
+	if (inputs.handTrackingAvailable && inputs.pinchAvailable) {
+		return "mains + pinch";
+	}
+	if (inputs.handTrackingAvailable) {
+		return "mains";
+	}
+	if (inputs.controllerAvailable) {
+		return "contrôleurs";
+	}
+	if (inputs.voiceAvailable) {
+		return "voix";
+	}
+	return normalizeSpatialText(inputs.primary, "pointeur", 24);
+}
+
+function spatialAnchorLabel(state) {
+	const world = state?.world && typeof state.world === "object" ? state.world : {};
+	const anchorsTracked = clampNumber(Math.round(Number(world.anchorsTracked) || 0), 0, 999);
+	const planesTracked = clampNumber(Math.round(Number(world.planesTracked) || 0), 0, 999);
+	const parts = [];
+	if (anchorsTracked > 0) {
+		parts.push(`${anchorsTracked} ancre${anchorsTracked > 1 ? "s" : ""}`);
+	}
+	if (planesTracked > 0) {
+		parts.push(`${planesTracked} plan${planesTracked > 1 ? "s" : ""}`);
+	}
+	if (world.roomTracked) {
+		parts.push("pièce");
+	}
+	if (world.meshTracked) {
+		parts.push("mesh");
+	}
+	return parts.join(" · ") || "aucun";
+}
+
+function updateNativeSpatialState(partial = {}) {
+	if (!partial || typeof partial !== "object") {
+		return getCurrentSpatialBridgeState();
+	}
+
+	const platform = partial.platform && typeof partial.platform === "object" ? partial.platform : {};
+	const session = partial.session && typeof partial.session === "object" ? partial.session : {};
+	const inputs = partial.inputs && typeof partial.inputs === "object" ? partial.inputs : {};
+	const pose = partial.pose && typeof partial.pose === "object" ? partial.pose : {};
+	const head = pose.head && typeof pose.head === "object" ? pose.head : {};
+	const gaze = pose.gaze && typeof pose.gaze === "object" ? pose.gaze : {};
+	const hands = partial.hands && typeof partial.hands === "object" ? partial.hands : {};
+	const world = partial.world && typeof partial.world === "object" ? partial.world : {};
+	const audio = partial.audio && typeof partial.audio === "object" ? partial.audio : {};
+
+	nativeSpatialState.source = normalizeSpatialText(partial.source ?? nativeSpatialState.source, "web", 24).toLowerCase();
+	nativeSpatialState.platform.family = normalizeSpatialText(platform.family ?? partial.family ?? nativeSpatialState.platform.family, "web", 24).toLowerCase();
+	nativeSpatialState.platform.name = normalizeSpatialText(platform.name ?? partial.name ?? nativeSpatialState.platform.name, "browser", 32);
+	nativeSpatialState.platform.runtime = normalizeSpatialText(platform.runtime ?? partial.runtime ?? nativeSpatialState.platform.runtime, "browser", 24).toLowerCase();
+	nativeSpatialState.platform.version = normalizeSpatialText(platform.version ?? partial.version ?? nativeSpatialState.platform.version, "", 24);
+	nativeSpatialState.platform.build = normalizeSpatialText(platform.build ?? partial.build ?? nativeSpatialState.platform.build, "", 24);
+	nativeSpatialState.platform.capabilities = normalizeSpatialCapabilityList(platform.capabilities ?? partial.capabilities ?? nativeSpatialState.platform.capabilities);
+
+	nativeSpatialState.session.mode = normalizeSpatialMode(session.mode ?? partial.mode ?? nativeSpatialState.session.mode, nativeSpatialState.session.mode);
+	nativeSpatialState.session.space = normalizeSpatialSpace(session.space ?? partial.space ?? nativeSpatialState.session.space, nativeSpatialState.session.space);
+	nativeSpatialState.session.immersion = normalizeSpatialImmersion(session.immersion ?? session.style ?? partial.immersion ?? nativeSpatialState.session.immersion, nativeSpatialState.session.immersion);
+	nativeSpatialState.session.phase = normalizeSpatialText(session.phase ?? partial.phase ?? nativeSpatialState.session.phase, nativeSpatialState.session.phase, 24).toLowerCase();
+	nativeSpatialState.session.focus = normalizeSpatialText(session.focus ?? partial.focus ?? nativeSpatialState.session.focus, nativeSpatialState.session.focus, 24).toLowerCase();
+	nativeSpatialState.session.safety = normalizeSpatialText(session.safety ?? partial.safety ?? nativeSpatialState.session.safety, nativeSpatialState.session.safety, 24).toLowerCase();
+
+	nativeSpatialState.inputs.primary = normalizeSpatialText(inputs.primary ?? partial.primaryInput ?? nativeSpatialState.inputs.primary, nativeSpatialState.inputs.primary, 24).toLowerCase();
+	nativeSpatialState.inputs.gazeAvailable = normalizeSpatialBoolean(inputs.gazeAvailable ?? partial.gazeAvailable, nativeSpatialState.inputs.gazeAvailable);
+	nativeSpatialState.inputs.pinchAvailable = normalizeSpatialBoolean(inputs.pinchAvailable ?? partial.pinchAvailable, nativeSpatialState.inputs.pinchAvailable);
+	nativeSpatialState.inputs.handTrackingAvailable = normalizeSpatialBoolean(inputs.handTrackingAvailable ?? partial.handTrackingAvailable, nativeSpatialState.inputs.handTrackingAvailable);
+	nativeSpatialState.inputs.controllerAvailable = normalizeSpatialBoolean(inputs.controllerAvailable ?? partial.controllerAvailable, nativeSpatialState.inputs.controllerAvailable);
+	nativeSpatialState.inputs.voiceAvailable = normalizeSpatialBoolean(inputs.voiceAvailable ?? partial.voiceAvailable, nativeSpatialState.inputs.voiceAvailable);
+
+	nativeSpatialState.pose.head.tracked = normalizeSpatialBoolean(head.tracked ?? partial.headTracked, nativeSpatialState.pose.head.tracked);
+	nativeSpatialState.pose.head.position = normalizeSpatialVector3(head.position ?? partial.headPosition ?? nativeSpatialState.pose.head.position, nativeSpatialState.pose.head.position, { minimum: -10, maximum: 10 });
+	nativeSpatialState.pose.head.rotation = normalizeSpatialQuaternion(head.rotation ?? partial.headRotation ?? nativeSpatialState.pose.head.rotation);
+	nativeSpatialState.pose.head.speed = clampNumber(Number(head.speed ?? partial.headSpeed ?? nativeSpatialState.pose.head.speed) || 0, 0, 1);
+	nativeSpatialState.pose.gaze.tracked = normalizeSpatialBoolean(gaze.tracked ?? partial.gazeTracked, nativeSpatialState.pose.gaze.tracked);
+	nativeSpatialState.pose.gaze.origin = normalizeSpatialVector3(gaze.origin ?? partial.gazeOrigin ?? nativeSpatialState.pose.gaze.origin, nativeSpatialState.pose.gaze.origin, { minimum: -10, maximum: 10 });
+	nativeSpatialState.pose.gaze.direction = normalizeSpatialVector3(gaze.direction ?? partial.gazeDirection ?? nativeSpatialState.pose.gaze.direction, nativeSpatialState.pose.gaze.direction, { minimum: -1, maximum: 1 });
+	nativeSpatialState.pose.gaze.stability = clampNumber(Number(gaze.stability ?? partial.gazeStability ?? nativeSpatialState.pose.gaze.stability) || 0, 0, 1);
+
+	nativeSpatialState.hands.left = normalizeSpatialHandState(hands.left, nativeSpatialState.hands.left);
+	nativeSpatialState.hands.right = normalizeSpatialHandState(hands.right, nativeSpatialState.hands.right);
+	const trackedHands = [nativeSpatialState.hands.left, nativeSpatialState.hands.right].filter((handState) => handState.tracked).length;
+	nativeSpatialState.hands.activeCount = clampNumber(
+		Math.round(Number(hands.activeCount ?? partial.activeHands ?? trackedHands) || 0),
+		0,
+		2
+	);
+
+	nativeSpatialState.world.passthrough = normalizeSpatialPassthrough(world.passthrough ?? partial.passthrough ?? nativeSpatialState.world.passthrough, nativeSpatialState.world.passthrough);
+	nativeSpatialState.world.anchorsTracked = clampNumber(Math.round(Number(world.anchorsTracked ?? partial.anchorsTracked ?? nativeSpatialState.world.anchorsTracked) || 0), 0, 999);
+	nativeSpatialState.world.planesTracked = clampNumber(Math.round(Number(world.planesTracked ?? partial.planesTracked ?? nativeSpatialState.world.planesTracked) || 0), 0, 999);
+	nativeSpatialState.world.meshTracked = normalizeSpatialBoolean(world.meshTracked ?? partial.meshTracked, nativeSpatialState.world.meshTracked);
+	nativeSpatialState.world.roomTracked = normalizeSpatialBoolean(world.roomTracked ?? partial.roomTracked, nativeSpatialState.world.roomTracked);
+	nativeSpatialState.world.lightLevel = clampNumber(Number(world.lightLevel ?? world.lightEstimate ?? partial.lightLevel ?? nativeSpatialState.world.lightLevel) || 0, 0, 1);
+	nativeSpatialState.world.lightContrast = clampNumber(Number(world.lightContrast ?? partial.lightContrast ?? nativeSpatialState.world.lightContrast) || 0, 0, 1);
+	nativeSpatialState.world.lightDirectionX = clampNumber(Number(world.lightDirectionX ?? partial.lightDirectionX ?? nativeSpatialState.world.lightDirectionX) || 0, -1, 1);
+	nativeSpatialState.world.lightDirectionY = clampNumber(Number(world.lightDirectionY ?? partial.lightDirectionY ?? nativeSpatialState.world.lightDirectionY) || 0, -1, 1);
+	nativeSpatialState.world.anchorStability = clampNumber(Number(world.anchorStability ?? partial.anchorStability ?? nativeSpatialState.world.anchorStability) || 0, 0, 1);
+
+	nativeSpatialState.audio.spatial = normalizeSpatialBoolean(audio.spatial ?? partial.spatialAudio, nativeSpatialState.audio.spatial);
+	nativeSpatialState.audio.route = normalizeSpatialText(audio.route ?? partial.audioRoute ?? nativeSpatialState.audio.route, nativeSpatialState.audio.route, 32);
+	nativeSpatialState.audio.outputRoute = normalizeSpatialText(audio.outputRoute ?? partial.outputRoute ?? nativeSpatialState.audio.outputRoute, nativeSpatialState.audio.outputRoute, 32);
+	nativeSpatialState.audio.inputRoute = normalizeSpatialText(audio.inputRoute ?? partial.inputRoute ?? nativeSpatialState.audio.inputRoute, nativeSpatialState.audio.inputRoute, 32);
+
+	const hasSpatialSignal = (
+		nativeSpatialState.inputs.gazeAvailable
+		|| nativeSpatialState.inputs.pinchAvailable
+		|| nativeSpatialState.inputs.handTrackingAvailable
+		|| nativeSpatialState.hands.activeCount > 0
+		|| nativeSpatialState.world.anchorsTracked > 0
+		|| nativeSpatialState.world.planesTracked > 0
+		|| nativeSpatialState.world.meshTracked
+		|| nativeSpatialState.world.roomTracked
+		|| nativeSpatialState.world.passthrough !== "none"
+		|| nativeSpatialState.session.space !== "screen"
+		|| nativeSpatialState.session.immersion !== "windowed"
+		|| nativeSpatialState.platform.runtime !== "browser"
+	);
+	nativeSpatialState.available = normalizeSpatialBoolean(partial.available, hasSpatialSignal);
+
+	return syncSpatialBridgeState();
+}
+
+function syncNativeSpatialSeed() {
+	const seed = readNativeSpatialSeed();
+	if (!seed) {
+		return;
+	}
+
+	updateNativeSpatialState(seed);
+}
+
+function resetNativeSpatialState({ seed = true } = {}) {
+	updateNativeSpatialState(createNativeSpatialStateDefaults());
+	if (seed) {
+		syncNativeSpatialSeed();
+	}
+
+	return syncSpatialBridgeState();
+}
+
+function computeSpatialBridgeState() {
+	const runtimeLabel = spatialRuntimeLabel(nativeSpatialState);
+	const spaceLabel = spatialSpaceLabel(nativeSpatialState);
+	const inputLabel = spatialInputLabel(nativeSpatialState);
+	const anchorLabel = spatialAnchorLabel(nativeSpatialState);
+	const activeHands = clampNumber(nativeSpatialState.hands.activeCount, 0, 2);
+	const handTouchEnergy = clampNumber(
+		Math.max(
+			nativeSpatialState.hands.left.pinch,
+			nativeSpatialState.hands.right.pinch,
+			nativeSpatialState.hands.left.grab * 0.74,
+			nativeSpatialState.hands.right.grab * 0.74
+		),
+		0,
+		1
+	);
+	const gazeDirectionX = nativeSpatialState.pose.gaze.direction[0] || 0;
+	const gazeDirectionY = nativeSpatialState.pose.gaze.direction[1] || 0;
+	const headMotion = clampNumber(nativeSpatialState.pose.head.speed, 0, 1);
+	const worldReady = (
+		nativeSpatialState.world.anchorsTracked > 0
+		|| nativeSpatialState.world.planesTracked > 0
+		|| nativeSpatialState.world.meshTracked
+		|| nativeSpatialState.world.roomTracked
+	);
+	const worldLabel = nativeSpatialState.world.passthrough !== "none"
+		? `${nativeSpatialState.world.passthrough} · ${anchorLabel}`
+		: anchorLabel;
+	return {
+		available: Boolean(nativeSpatialState.available),
+		source: nativeSpatialState.source,
+		contractVersion: SPATIAL_NATIVE_CONTRACT_VERSION,
+		eventName: SPATIAL_NATIVE_EVENT_NAME,
+		runtimeLabel,
+		spaceLabel,
+		inputLabel,
+		anchorLabel,
+		worldLabel,
+		platform: {
+			...nativeSpatialState.platform,
+			capabilities: [...nativeSpatialState.platform.capabilities],
+		},
+		session: { ...nativeSpatialState.session },
+		inputs: { ...nativeSpatialState.inputs },
+		hands: {
+			activeCount: activeHands,
+			left: { ...nativeSpatialState.hands.left },
+			right: { ...nativeSpatialState.hands.right },
+		},
+		world: { ...nativeSpatialState.world },
+		audio: { ...nativeSpatialState.audio },
+		gazeTracked: Boolean(nativeSpatialState.pose.gaze.tracked),
+		gazeDirectionX: clampNumber(gazeDirectionX, -1, 1),
+		gazeDirectionY: clampNumber(gazeDirectionY, -1, 1),
+		headTracked: Boolean(nativeSpatialState.pose.head.tracked),
+		headMotion,
+		handTouchEnergy,
+		worldReady,
+		anchorStability: clampNumber(nativeSpatialState.world.anchorStability, 0, 1),
+		lightLevel: clampNumber(nativeSpatialState.world.lightLevel, 0, 1),
+		lightContrast: clampNumber(nativeSpatialState.world.lightContrast, 0, 1),
+		lightDirectionX: clampNumber(nativeSpatialState.world.lightDirectionX, -1, 1),
+		lightDirectionY: clampNumber(nativeSpatialState.world.lightDirectionY, -1, 1),
+		passthrough: nativeSpatialState.world.passthrough,
+	};
+}
+
+function syncSpatialBridgeState() {
+	currentSpatialBridgeState = computeSpatialBridgeState();
+	const body = document.body;
+	if (body instanceof HTMLBodyElement) {
+		body.dataset.spatialNativeRuntime = currentSpatialBridgeState.runtimeLabel;
+		body.dataset.spatialNativeSpace = currentSpatialBridgeState.session.space;
+		body.dataset.spatialNativeInput = currentSpatialBridgeState.inputs.primary;
+		body.dataset.spatialNativeHands = String(currentSpatialBridgeState.hands.activeCount);
+		body.dataset.spatialNativePassthrough = currentSpatialBridgeState.passthrough;
+		body.dataset.spatialNativeAnchors = String(currentSpatialBridgeState.world.anchorsTracked);
+		body.dataset.spatialNativePlanes = String(currentSpatialBridgeState.world.planesTracked);
+		body.dataset.spatialNativeAnchorStability = currentSpatialBridgeState.anchorStability.toFixed(3);
+		body.classList.toggle("is-spatial-native-live", currentSpatialBridgeState.available);
+		body.style.setProperty("--spatial-native-light", currentSpatialBridgeState.lightLevel.toFixed(3));
+		body.style.setProperty("--spatial-native-light-contrast", currentSpatialBridgeState.lightContrast.toFixed(3));
+		body.style.setProperty("--spatial-native-anchor-stability", currentSpatialBridgeState.anchorStability.toFixed(3));
+	}
+
+	window.dispatchEvent(new CustomEvent("o:spatial-native-change", {
+		detail: currentSpatialBridgeState,
+	}));
+
+	return currentSpatialBridgeState;
+}
+
+function getCurrentSpatialBridgeState() {
+	return currentSpatialBridgeState || syncSpatialBridgeState();
+}
+
+function readNativeSpatialTouchEnergy() {
+	return getCurrentSpatialBridgeState().handTouchEnergy || 0;
+}
+
+function readNativeSpatialActiveHands() {
+	return getCurrentSpatialBridgeState().hands?.activeCount || 0;
+}
+
 function computeDeviceBridgeState() {
 	const silenceIntent = readDeviceSilenceIntent();
 	const volumeIntent = readDeviceVolumeLevel();
@@ -1814,6 +2528,7 @@ function computeDeviceBridgeState() {
 	const nativeVolume = normalizeNativeVolume(nativeDeviceState.volume);
 	const nativeSource = nativeDeviceState.source || "web";
 	const nativeRoute = nativeDeviceState.route || "";
+	const spatialState = getCurrentSpatialBridgeState();
 	const nativeAudioTrusted = (
 		nativeSilenceMode !== "unknown"
 		|| nativeRoute !== ""
@@ -1839,6 +2554,14 @@ function computeDeviceBridgeState() {
 		shareAvailable: typeof navigator.share === "function",
 		installAvailable: Boolean(deferredInstallPrompt),
 		orientationLockAvailable: Boolean(screen.orientation && typeof screen.orientation.lock === "function"),
+		spatialNativeAvailable: Boolean(spatialState.available),
+		spatialRuntime: spatialState.runtimeLabel,
+		spatialSpace: spatialState.spaceLabel,
+		spatialInput: spatialState.inputLabel,
+		spatialAnchor: spatialState.anchorLabel,
+		spatialPassthrough: spatialState.passthrough,
+		spatialHandsActive: spatialState.hands.activeCount,
+		spatialWorldReady: spatialState.worldReady,
 	};
 }
 
@@ -1951,10 +2674,23 @@ function releaseDeviceOrientationLock() {
 window.addEventListener("o:native-device-state", (event) => {
 	updateNativeDeviceState(event?.detail || {});
 });
+window.addEventListener(SPATIAL_NATIVE_EVENT_NAME, (event) => {
+	updateNativeSpatialState(event?.detail || {});
+});
 
 window.OBridgeNativeDevice = {
 	updateState: updateNativeDeviceState,
 	readState: () => getCurrentDeviceBridgeState(),
+};
+window.OBridgeSpatialNative = {
+	contractVersion: SPATIAL_NATIVE_CONTRACT_VERSION,
+	eventName: SPATIAL_NATIVE_EVENT_NAME,
+	contract: spatialNativeContract,
+	updateState: updateNativeSpatialState,
+	readState: () => getCurrentSpatialBridgeState(),
+	emitState: (partial = {}) => {
+		window.dispatchEvent(new CustomEvent(SPATIAL_NATIVE_EVENT_NAME, { detail: partial }));
+	},
 };
 
 window.addEventListener("beforeinstallprompt", (event) => {
@@ -1970,13 +2706,18 @@ window.addEventListener("appinstalled", () => {
 
 document.addEventListener("visibilitychange", () => {
 	syncDeviceBridgeState();
+	syncSpatialBridgeState();
 });
 window.addEventListener("focus", () => {
+	syncNativeSpatialSeed();
 	syncDeviceBridgeState();
+	syncSpatialBridgeState();
 });
 window.addEventListener("pageshow", () => {
 	syncNativeDeviceSeed();
+	syncNativeSpatialSeed();
 	syncDeviceBridgeState();
+	syncSpatialBridgeState();
 });
 
 if (displayModeMedia) {
@@ -1992,7 +2733,9 @@ if (displayModeMedia) {
 }
 
 syncNativeDeviceSeed();
+syncNativeSpatialSeed();
 syncDeviceBridgeState();
+syncSpatialBridgeState();
 
 function isInteractiveElementTarget(target) {
 	return target instanceof Element && Boolean(target.closest("a, button, input, textarea, select, summary, label, details, [contenteditable=\"true\"]"));
@@ -2244,6 +2987,9 @@ function readCameraReactiveState() {
 			rgb: [180, 180, 180],
 			audioLevel: 0,
 			lightLevel: 0,
+			lightContrast: 0,
+			lightDirectionX: 0,
+			lightDirectionY: 0,
 			tiltX: 0,
 			tiltY: 0,
 			motionSensor: 0,
@@ -2257,10 +3003,58 @@ function readCameraReactiveState() {
 	const motion = clampNumber(Number.parseFloat(body.dataset.cameraMotion || "0"), 0, 1);
 	const audioLevel = clampNumber(Number.parseFloat(body.dataset.membraneAudio || "0"), 0, 1);
 	const lightLevel = clampNumber(Number.parseFloat(body.dataset.membraneLight || String(luma)), 0, 1);
+	const lightContrast = clampNumber(Number.parseFloat(body.dataset.membraneLightContrast || "0"), 0, 1);
+	const lightDirectionX = clampNumber(Number.parseFloat(body.dataset.membraneLightX || "0"), -1, 1);
+	const lightDirectionY = clampNumber(Number.parseFloat(body.dataset.membraneLightY || "0"), -1, 1);
 	const tiltX = clampNumber(Number.parseFloat(body.dataset.membraneTiltX || "0"), -1, 1);
 	const tiltY = clampNumber(Number.parseFloat(body.dataset.membraneTiltY || "0"), -1, 1);
 	const motionSensor = clampNumber(Number.parseFloat(body.dataset.membraneMotion || "0"), 0, 1);
 	const presence = clampNumber(Number.parseFloat(body.dataset.membranePresence || String(Math.max(luma, audioLevel))), 0, 1);
+	const nativeSpatial = getCurrentSpatialBridgeState();
+	const nativeBlend = nativeSpatial.available ? {
+		lightLevel: clampNumber(nativeSpatial.lightLevel, 0, 1),
+		lightContrast: clampNumber(nativeSpatial.lightContrast, 0, 1),
+		lightDirectionX: clampNumber(nativeSpatial.lightDirectionX, -1, 1),
+		lightDirectionY: clampNumber(nativeSpatial.lightDirectionY, -1, 1),
+		tiltX: nativeSpatial.gazeTracked ? clampNumber(nativeSpatial.gazeDirectionX * 0.82, -1, 1) : 0,
+		tiltY: nativeSpatial.gazeTracked ? clampNumber(nativeSpatial.gazeDirectionY * 0.82, -1, 1) : 0,
+		motion: clampNumber(nativeSpatial.headMotion + nativeSpatial.handTouchEnergy * 0.18, 0, 1),
+		presence: clampNumber(
+			0.18
+			+ nativeSpatial.headMotion * 0.18
+			+ nativeSpatial.handTouchEnergy * 0.22
+			+ nativeSpatial.lightLevel * 0.16
+			+ nativeSpatial.anchorStability * 0.16
+			+ (nativeSpatial.worldReady ? 0.18 : 0),
+			0,
+			1
+		),
+	} : null;
+	const preferNativeWorld = Boolean(nativeBlend && !cameraReady && !membraneReady);
+	const resolvedLightLevel = nativeBlend
+		? (preferNativeWorld ? nativeBlend.lightLevel : clampNumber(Math.max(lightLevel, nativeBlend.lightLevel * 0.74), 0, 1))
+		: lightLevel;
+	const resolvedLightContrast = nativeBlend
+		? (preferNativeWorld ? nativeBlend.lightContrast : clampNumber(Math.max(lightContrast, nativeBlend.lightContrast * 0.7), 0, 1))
+		: lightContrast;
+	const resolvedLightDirectionX = nativeBlend
+		? (preferNativeWorld ? nativeBlend.lightDirectionX : clampNumber((lightDirectionX * 0.72) + (nativeBlend.lightDirectionX * 0.28), -1, 1))
+		: lightDirectionX;
+	const resolvedLightDirectionY = nativeBlend
+		? (preferNativeWorld ? nativeBlend.lightDirectionY : clampNumber((lightDirectionY * 0.72) + (nativeBlend.lightDirectionY * 0.28), -1, 1))
+		: lightDirectionY;
+	const resolvedTiltX = nativeBlend
+		? clampNumber(preferNativeWorld ? nativeBlend.tiltX : (tiltX * 0.84) + (nativeBlend.tiltX * 0.16), -1, 1)
+		: tiltX;
+	const resolvedTiltY = nativeBlend
+		? clampNumber(preferNativeWorld ? nativeBlend.tiltY : (tiltY * 0.84) + (nativeBlend.tiltY * 0.16), -1, 1)
+		: tiltY;
+	const resolvedMotionSensor = nativeBlend
+		? (preferNativeWorld ? nativeBlend.motion : clampNumber(Math.max(motionSensor, nativeBlend.motion * 0.36), 0, 1))
+		: motionSensor;
+	const resolvedPresence = nativeBlend
+		? clampNumber(Math.max(presence, nativeBlend.presence * (preferNativeWorld ? 1 : 0.44)), 0, 1)
+		: presence;
 
 	return {
 		ready: cameraReady || membraneReady,
@@ -2269,11 +3063,14 @@ function readCameraReactiveState() {
 		motion,
 		rgb: parseRgbTriplet(body.dataset.cameraRgb || "180 180 180", [180, 180, 180]),
 		audioLevel,
-		lightLevel,
-		tiltX,
-		tiltY,
-		motionSensor,
-		presence,
+		lightLevel: resolvedLightLevel,
+		lightContrast: resolvedLightContrast,
+		lightDirectionX: resolvedLightDirectionX,
+		lightDirectionY: resolvedLightDirectionY,
+		tiltX: resolvedTiltX,
+		tiltY: resolvedTiltY,
+		motionSensor: resolvedMotionSensor,
+		presence: resolvedPresence,
 	};
 }
 
@@ -4783,6 +5580,7 @@ function initTorusCloud(canvas) {
 		longPressActive: false,
 		longPressDirection: "",
 		longPressEligible: false,
+		touchOrbitActive: false,
 	};
 
 	const torusScale = 11;
@@ -4883,8 +5681,16 @@ function initTorusCloud(canvas) {
 			return;
 		}
 
+		const nativeSpatial = getCurrentSpatialBridgeState();
+		const nativeAssistMessage = nativeSpatial.available
+			? (nativeSpatial.inputs?.gazeAvailable && nativeSpatial.inputs?.pinchAvailable
+				? "Regard : derive · pinch : approche · appui long : routes"
+				: (nativeSpatial.inputs?.handTrackingAvailable
+					? "Mains : derive · pinch : approche · appui long : routes"
+					: "Mode casque : derive douce · appui long : routes"))
+			: "";
 		const shouldShow = coarsePointer && window.innerWidth <= 820;
-		if (!shouldShow) {
+		if (!shouldShow && !nativeAssistMessage) {
 			setHintState("", false);
 			return;
 		}
@@ -4900,7 +5706,17 @@ function initTorusCloud(canvas) {
 			return;
 		}
 
-		setHintState("Appui long + glisse : Signal · Str3m · aZa · Noyau", false);
+		if (state.pointerType === "touch" && state.touchOrbitActive) {
+			setHintState("Le tore pivote · appui long pour les routes", true);
+			return;
+		}
+
+		if (nativeAssistMessage) {
+			setHintState(nativeAssistMessage, nativeSpatial.handTouchEnergy > 0.12 || nativeSpatial.headMotion > 0.08);
+			return;
+		}
+
+		setHintState("Glisse : pivoter · appui long : Signal · Str3m · aZa · Noyau", false);
 	}
 
 	function clearLongPressTimer() {
@@ -4926,6 +5742,7 @@ function initTorusCloud(canvas) {
 		clearLongPressTimer();
 		state.longPressActive = false;
 		state.longPressEligible = false;
+		state.touchOrbitActive = false;
 		setLongPressDirection("");
 		canvas.classList.remove("is-nav-armed");
 		document.body.classList.remove("torus-nav-active");
@@ -5036,8 +5853,49 @@ function initTorusCloud(canvas) {
 		}
 	}
 
+	function applyNativeSpatialNavigation() {
+		if (isPassiveCanvas || state.dragging || state.longPressActive) {
+			return;
+		}
+
+		const nativeSpatial = getCurrentSpatialBridgeState();
+		if (!nativeSpatial.available) {
+			delete canvas.dataset.nativeAssist;
+			return;
+		}
+
+		canvas.dataset.nativeAssist = "1";
+		const gazeX = nativeSpatial.gazeTracked ? clamp(nativeSpatial.gazeDirectionX, -1, 1) : 0;
+		const gazeY = nativeSpatial.gazeTracked ? clamp(nativeSpatial.gazeDirectionY, -1, 1) : 0;
+		const headMotion = clamp(nativeSpatial.headMotion, 0, 1);
+		const handTouch = clamp(nativeSpatial.handTouchEnergy, 0, 1);
+		const anchorStability = clamp(nativeSpatial.anchorStability, 0, 1);
+		const lightX = clamp(nativeSpatial.lightDirectionX, -1, 1);
+		const lightY = clamp(nativeSpatial.lightDirectionY, -1, 1);
+		const space = nativeSpatial.session?.space || "screen";
+		const immersiveBoost = ["full", "shared", "volume", "immersive"].includes(space) ? 1 : 0;
+		const gazeWeight = nativeSpatial.gazeTracked ? (0.42 + anchorStability * 0.36) : 0;
+		const handWeight = nativeSpatial.inputs?.pinchAvailable ? (0.28 + handTouch * 0.34) : 0.14;
+		const orbitIntentX = (gazeX * gazeWeight) + (lightX * 0.18);
+		const orbitIntentY = (gazeY * gazeWeight) + (lightY * 0.16);
+		const targetPanX = gazeX * (1.2 + anchorStability * 2.6);
+		const targetPanY = gazeY * (0.9 + anchorStability * 1.8);
+		const targetZoom = clamp(
+			9.15 + (immersiveBoost * 1.3) + (handTouch * 4.2) + (anchorStability * 0.8) - (headMotion * 0.9),
+			zoomMin,
+			zoomMax
+		);
+		state.velocityYaw += orbitIntentX * (0.0012 + headMotion * 0.0014 + handWeight * 0.0008);
+		state.velocityPitch += orbitIntentY * (0.001 + headMotion * 0.0011 + handWeight * 0.0005);
+		state.velocityRoll += ((orbitIntentX * 0.32) + (lightY * 0.18)) * (0.00026 + handTouch * 0.00022);
+		state.velocityPanX += (targetPanX - state.panX) * 0.018;
+		state.velocityPanY += (targetPanY - state.panY) * 0.018;
+		state.velocityZoom += (targetZoom - state.zoom) * 0.018;
+	}
+
 	function stepNavigation() {
 		applyKeyboardNavigation();
+		applyNativeSpatialNavigation();
 
 		if (!state.dragging && !reducedMotion) {
 			state.velocityYaw += 0.00024;
@@ -5072,19 +5930,21 @@ function initTorusCloud(canvas) {
 		const mobileLayoutBias = isXyzScene && width < 720
 			? clamp((720 - width) / 360, 0, 1)
 			: 0;
+		const lightOffsetX = membrane.lightDirectionX * width * 0.032;
+		const lightOffsetY = membrane.lightDirectionY * height * 0.028;
 		stepNavigation();
 
-		const centerX = width * (0.5 + mobileLayoutBias * 0.16) + state.panX * (width * 0.018) + membrane.tiltX * width * 0.042;
-		const centerY = height * (0.5 + mobileLayoutBias * 0.045) + state.autoLiftY + state.panY * (height * 0.018) + membrane.tiltY * height * 0.038;
-		const camera = 39 - state.zoom * 1.12 - membrane.presence * 1.8;
-		const scale = Math.min(width, height) * (0.09 + state.zoom * 0.01) * state.autoScale * (1 - mobileLayoutBias * 0.18);
-		const spinY = state.yaw + time * 0.00006 + membrane.tiltX * 0.24;
-		const spinX = state.pitch + Math.sin(time * 0.00012) * 0.05 + membrane.tiltY * 0.28;
-		const spinZ = state.roll + Math.cos(time * 0.00009) * 0.03 + (membrane.audioLevel - 0.08) * 0.16;
+		const centerX = width * (0.5 + mobileLayoutBias * 0.16) + state.panX * (width * 0.018) + membrane.tiltX * width * 0.042 + lightOffsetX;
+		const centerY = height * (0.5 + mobileLayoutBias * 0.045) + state.autoLiftY + state.panY * (height * 0.018) + membrane.tiltY * height * 0.038 + lightOffsetY;
+		const camera = 39 - state.zoom * 1.12 - membrane.presence * 1.8 - membrane.lightContrast * 0.9;
+		const scale = Math.min(width, height) * (0.09 + state.zoom * 0.01) * state.autoScale * (1 - mobileLayoutBias * 0.18) * (1 + membrane.lightContrast * 0.08);
+		const spinY = state.yaw + time * 0.00006 + membrane.tiltX * 0.24 + membrane.lightDirectionX * 0.1;
+		const spinX = state.pitch + Math.sin(time * 0.00012) * 0.05 + membrane.tiltY * 0.28 + membrane.lightDirectionY * 0.08;
+		const spinZ = state.roll + Math.cos(time * 0.00009) * 0.03 + (membrane.audioLevel - 0.08) * 0.16 + membrane.lightDirectionX * membrane.lightContrast * 0.12;
 
 		context.clearRect(0, 0, width, height);
 		const haloColor = Array.isArray(profile.haloColor) && profile.haloColor.length >= 3 ? profile.haloColor : profile.glow;
-		const haloRadius = Math.min(width, height) * (0.16 + profile.haloStrength * 0.24 + membrane.presence * 0.08);
+		const haloRadius = Math.min(width, height) * (0.16 + profile.haloStrength * 0.24 + membrane.presence * 0.08 + membrane.lightContrast * 0.05);
 		const haloGradient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, haloRadius);
 		haloGradient.addColorStop(0, `rgba(${haloColor[0]}, ${haloColor[1]}, ${haloColor[2]}, ${clamp(0.08 + profile.haloStrength * 0.08 + membrane.audioLevel * 0.05, 0.06, 0.22)})`);
 		haloGradient.addColorStop(0.46, `rgba(${profile.glow[0]}, ${profile.glow[1]}, ${profile.glow[2]}, ${clamp(0.04 + profile.haloStrength * 0.06, 0.03, 0.12)})`);
@@ -5185,6 +6045,7 @@ function initTorusCloud(canvas) {
 		state.pointerStartedAt = 0;
 		state.pointerNearEdge = false;
 		state.longPressEligible = false;
+		state.touchOrbitActive = false;
 		state.dragging = false;
 		canvas.classList.remove("is-dragging");
 		refreshStaticFrame();
@@ -5205,6 +6066,7 @@ function initTorusCloud(canvas) {
 			state.gestureDistance = 0;
 			state.longPressEligible = state.pointerType === "touch" && !state.pointerNearEdge;
 			state.longPressActive = false;
+			state.touchOrbitActive = false;
 			setLongPressDirection("");
 			recordGesturePoint(event.clientX, event.clientY);
 			state.dragging = true;
@@ -5226,10 +6088,6 @@ function initTorusCloud(canvas) {
 			const travelDistance = Math.hypot(travelX, travelY);
 			if (!state.longPressActive && travelDistance > 14) {
 				clearLongPressTimer();
-				if (state.pointerType === "touch") {
-					releasePointer(event);
-					return;
-				}
 			}
 
 			if (state.longPressActive) {
@@ -5240,6 +6098,32 @@ function initTorusCloud(canvas) {
 			}
 
 			if (state.pointerType === "touch") {
+				if (!state.touchOrbitActive) {
+					if (travelDistance <= 10) {
+						return;
+					}
+
+					state.touchOrbitActive = true;
+					state.lastX = event.clientX;
+					state.lastY = event.clientY;
+					canvas.classList.add("is-dragging");
+					canvas.setPointerCapture(event.pointerId);
+					updateTouchHint();
+					return;
+				}
+
+				event.preventDefault();
+				const deltaX = event.clientX - state.lastX;
+				const deltaY = event.clientY - state.lastY;
+				state.lastX = event.clientX;
+				state.lastY = event.clientY;
+				recordGesturePoint(event.clientX, event.clientY);
+				state.velocityYaw += deltaX * 0.00084;
+				state.velocityPitch += deltaY * 0.00058;
+				state.velocityRoll += deltaX * 0.00006;
+				state.velocityPanX += deltaX * 0.00046;
+				state.velocityPanY += deltaY * 0.00038;
+				refreshStaticFrame();
 				return;
 			}
 
@@ -5272,7 +6156,7 @@ function initTorusCloud(canvas) {
 
 			const swipeDirection = shouldTriggerSwipe(event);
 
-			if (swipeDirection) {
+			if (!state.touchOrbitActive && swipeDirection) {
 				navigateFromSwipe(swipeDirection);
 			} else if (shouldToggleFromCenterClick(event) || shouldToggleFromSecretGesture()) {
 				triggerSecretAccess();
@@ -6365,16 +7249,17 @@ function initDeviceBridgePanels() {
 		}
 	};
 
-	const renderPanels = (state = getCurrentDeviceBridgeState()) => {
-		panels.forEach((panel) => {
-			if (!panel) {
-				return;
-			}
+		const renderPanels = (state = getCurrentDeviceBridgeState()) => {
+			panels.forEach((panel) => {
+				if (!panel) {
+					return;
+				}
 
-			const spatialHeadsetMode = prefersSpatialHeadsetMode() && panel.context === "xyz";
-			const silenceLabel = state.nativeSilenceMode === "silent"
-				? "silence natif"
-				: (state.silenceIntent ? "silence web" : (state.nativeSilenceMode === "vibrate" ? "vibreur natif" : "web sonore"));
+				const spatialHeadsetMode = prefersSpatialHeadsetMode() && panel.context === "xyz";
+				const spatialNativeLive = state.spatialNativeAvailable === true;
+				const silenceLabel = state.nativeSilenceMode === "silent"
+					? "silence natif"
+					: (state.silenceIntent ? "silence web" : (state.nativeSilenceMode === "vibrate" ? "vibreur natif" : "web sonore"));
 			const webVolumeLabel = `${Math.round(state.webVolume * 100)}%`;
 			const nativeVolumeLabel = state.nativeVolume !== null
 				? `${Math.round(state.nativeVolume * 100)}%`
@@ -6382,23 +7267,27 @@ function initDeviceBridgePanels() {
 			const volumeLabel = state.nativeAudioTrusted && nativeVolumeLabel
 				? `${webVolumeLabel} web · natif ${nativeVolumeLabel}`
 				: webVolumeLabel;
-			const hapticsLabel = state.hapticsAvailable ? "prête" : "absente";
-			const visibilityLabel = state.visibility === "hidden" ? "arrière-plan" : "visible";
-			const standaloneLabel = state.standalone ? "installée" : (state.installAvailable ? "installable" : "navigateur");
-			const nativeLabel = state.nativeAudioTrusted || state.nativeVolume !== null
-				? `${state.nativeSource}${state.nativeRoute ? ` · ${state.nativeRoute}` : ""}`
-				: (spatialHeadsetMode ? "preview web" : "web seul");
-			const note = state.nativeAudioTrusted
-				? `Pont natif reçu: ${state.nativeSource}${state.nativeRoute ? ` · ${state.nativeRoute}` : ""}. Le thérémin local garde le niveau O. (${webVolumeLabel}) et le téléphone signale en plus un volume système à ${nativeVolumeLabel || "?"}.`
-				: (state.nativeVolume !== null
-					? "Le navigateur a reçu une valeur de volume isolée, mais elle n'est pas assez fiable pour couper le thérémin local. Le niveau O. garde donc la main."
-					: (spatialHeadsetMode
-						? (state.standalone
-							? "Cette surface tourne comme une app installée. Le web garde ici partage, lecture et niveau O., puis attend un client spatial natif pour l ancrage, le silence système et le vrai passthrough."
-							: "Le web pilote ici partage, lecture et niveau O. Le vrai silence système, l ancrage spatial et le passthrough viendront avec le client natif visionOS ou Quest.")
-						: (state.standalone
-						? "Cette surface tourne comme une app installée. Le web garde ici veille, haptique, partage et niveau O., puis attend un pont natif pour le vrai silence système."
-						: "Le web pilote ici silence, niveau, haptique, partage et mode app. Un wrapper natif pourra ensuite donner le silence et le volume réels du téléphone.")));
+				const hapticsLabel = state.hapticsAvailable ? "prête" : "absente";
+				const visibilityLabel = state.visibility === "hidden" ? "arrière-plan" : "visible";
+				const standaloneLabel = state.standalone ? "installée" : (state.installAvailable ? "installable" : "navigateur");
+				const nativeLabel = state.nativeAudioTrusted || state.nativeVolume !== null
+					? `${state.nativeSource}${state.nativeRoute ? ` · ${state.nativeRoute}` : ""}${spatialNativeLive ? ` · ${state.spatialRuntime}` : ""}`
+					: (spatialNativeLive
+						? `${state.spatialRuntime} · ${state.spatialSpace}`
+						: (spatialHeadsetMode ? "preview web" : "web seul"));
+				const note = state.nativeAudioTrusted
+					? `Pont natif reçu: ${state.nativeSource}${state.nativeRoute ? ` · ${state.nativeRoute}` : ""}. Le thérémin local garde le niveau O. (${webVolumeLabel}) et le téléphone signale en plus un volume système à ${nativeVolumeLabel || "?"}.${spatialNativeLive ? ` Côté spatial: ${state.spatialSpace}, ${state.spatialInput}, ${state.spatialAnchor}.` : ""}`
+					: (state.nativeVolume !== null
+						? "Le navigateur a reçu une valeur de volume isolée, mais elle n'est pas assez fiable pour couper le thérémin local. Le niveau O. garde donc la main."
+						: (spatialNativeLive
+							? `Pont spatial reçu: ${state.spatialRuntime} · ${state.spatialSpace}. Entrée ${state.spatialInput}, ancrage ${state.spatialAnchor}, passthrough ${state.spatialPassthrough}. Le web garde encore partage, lecture et niveau O., mais la couche native peut déjà nourrir le tore.`
+						: (spatialHeadsetMode
+							? (state.standalone
+								? "Cette surface tourne comme une app installée. Le web garde ici partage, lecture et niveau O., puis attend un client spatial natif pour l ancrage, le silence système et le vrai passthrough."
+								: "Le web pilote ici partage, lecture et niveau O. Le vrai silence système, l ancrage spatial et le passthrough viendront avec le client natif visionOS ou Quest.")
+							: (state.standalone
+							? "Cette surface tourne comme une app installée. Le web garde ici veille, haptique, partage et niveau O., puis attend un pont natif pour le vrai silence système."
+							: "Le web pilote ici silence, niveau, haptique, partage et mode app. Un wrapper natif pourra ensuite donner le silence et le volume réels du téléphone."))));
 
 			setNodeText(panel.silenceStatus, silenceLabel);
 			setNodeText(panel.volumeStatus, volumeLabel);
@@ -6741,6 +7630,104 @@ function initIoSpatialExplorer() {
 		}
 	};
 
+	const parseQueryNumber = (value, fallback, { minimum = 0, maximum = 1, scale = 100, integer = false } = {}) => {
+		if (value === null || value === "") {
+			return fallback;
+		}
+
+		const parsed = Number(value);
+		if (!Number.isFinite(parsed)) {
+			return fallback;
+		}
+
+		const normalized = scale !== 1 ? parsed / scale : parsed;
+		return integer
+			? clampNumber(Math.round(normalized), minimum, maximum)
+			: clampNumber(normalized, minimum, maximum);
+	};
+
+	const parseQueryBoolean = (value, fallback = false) => {
+		if (value === null || value === "") {
+			return fallback;
+		}
+
+		return ["1", "true", "yes", "on"].includes(String(value).trim().toLowerCase());
+	};
+
+	const readSimulatorQueryState = () => {
+		let params = null;
+		try {
+			params = new URL(window.location.href).searchParams;
+		} catch {
+			return null;
+		}
+
+		const rawPreset = params.get(simulatorQueryKeys.preset);
+		const rawScenario = params.get(simulatorQueryKeys.scenario);
+		const hasAnyQuery = Object.values(simulatorQueryKeys).some((key) => params.has(key));
+		if (!hasAnyQuery) {
+			return null;
+		}
+
+		const preset = normalizePresetKey(rawPreset);
+		const presetFallback = createSimulatorStateFromPreset(preset);
+		const queryState = normalizeStoredSimulatorState({
+			...presetFallback,
+			enabled: parseQueryBoolean(params.get(simulatorQueryKeys.enabled), rawPreset !== null || rawScenario !== null),
+			preset,
+			scenario: normalizeScenarioKey(rawScenario),
+			customized: true,
+			space: params.get(simulatorQueryKeys.space) || undefined,
+			passthrough: params.get(simulatorQueryKeys.passthrough) || undefined,
+			lightLevel: parseQueryNumber(params.get(simulatorQueryKeys.lightLevel), presetFallback.lightLevel),
+			lightContrast: parseQueryNumber(params.get(simulatorQueryKeys.lightContrast), presetFallback.lightContrast),
+			lightDirectionX: parseQueryNumber(params.get(simulatorQueryKeys.lightDirectionX), presetFallback.lightDirectionX, { minimum: -1, maximum: 1 }),
+			lightDirectionY: parseQueryNumber(params.get(simulatorQueryKeys.lightDirectionY), presetFallback.lightDirectionY, { minimum: -1, maximum: 1 }),
+			headSpeed: parseQueryNumber(params.get(simulatorQueryKeys.headSpeed), presetFallback.headSpeed),
+			anchorStability: parseQueryNumber(params.get(simulatorQueryKeys.anchorStability), presetFallback.anchorStability),
+			anchorsTracked: parseQueryNumber(params.get(simulatorQueryKeys.anchorsTracked), presetFallback.anchorsTracked, { minimum: 0, maximum: 12, scale: 1, integer: true }),
+			planesTracked: parseQueryNumber(params.get(simulatorQueryKeys.planesTracked), presetFallback.planesTracked, { minimum: 0, maximum: 12, scale: 1, integer: true }),
+			activeHands: parseQueryNumber(params.get(simulatorQueryKeys.activeHands), presetFallback.activeHands, { minimum: 0, maximum: 2, scale: 1, integer: true }),
+			leftPinch: parseQueryNumber(params.get(simulatorQueryKeys.leftPinch), presetFallback.leftPinch),
+			rightPinch: parseQueryNumber(params.get(simulatorQueryKeys.rightPinch), presetFallback.rightPinch),
+			gazeAvailable: parseQueryBoolean(params.get(simulatorQueryKeys.gazeAvailable), presetFallback.gazeAvailable),
+			pinchAvailable: parseQueryBoolean(params.get(simulatorQueryKeys.pinchAvailable), presetFallback.pinchAvailable),
+			handTrackingAvailable: parseQueryBoolean(params.get(simulatorQueryKeys.handTrackingAvailable), presetFallback.handTrackingAvailable),
+			roomTracked: parseQueryBoolean(params.get(simulatorQueryKeys.roomTracked), presetFallback.roomTracked),
+			meshTracked: parseQueryBoolean(params.get(simulatorQueryKeys.meshTracked), presetFallback.meshTracked),
+			spatialAudio: parseQueryBoolean(params.get(simulatorQueryKeys.spatialAudio), presetFallback.spatialAudio),
+		});
+
+		return queryState;
+	};
+
+	const buildSimulatorShareUrl = () => {
+		const url = new URL(window.location.href);
+		url.searchParams.set(simulatorQueryKeys.enabled, state.enabled ? "1" : "0");
+		url.searchParams.set(simulatorQueryKeys.preset, state.preset);
+		url.searchParams.set(simulatorQueryKeys.scenario, state.scenario);
+		url.searchParams.set(simulatorQueryKeys.space, state.space);
+		url.searchParams.set(simulatorQueryKeys.passthrough, state.passthrough);
+		url.searchParams.set(simulatorQueryKeys.lightLevel, String(Math.round(state.lightLevel * 100)));
+		url.searchParams.set(simulatorQueryKeys.lightContrast, String(Math.round(state.lightContrast * 100)));
+		url.searchParams.set(simulatorQueryKeys.lightDirectionX, String(Math.round(state.lightDirectionX * 100)));
+		url.searchParams.set(simulatorQueryKeys.lightDirectionY, String(Math.round(state.lightDirectionY * 100)));
+		url.searchParams.set(simulatorQueryKeys.headSpeed, String(Math.round(state.headSpeed * 100)));
+		url.searchParams.set(simulatorQueryKeys.anchorStability, String(Math.round(state.anchorStability * 100)));
+		url.searchParams.set(simulatorQueryKeys.anchorsTracked, String(state.anchorsTracked));
+		url.searchParams.set(simulatorQueryKeys.planesTracked, String(state.planesTracked));
+		url.searchParams.set(simulatorQueryKeys.activeHands, String(state.activeHands));
+		url.searchParams.set(simulatorQueryKeys.leftPinch, String(Math.round(state.leftPinch * 100)));
+		url.searchParams.set(simulatorQueryKeys.rightPinch, String(Math.round(state.rightPinch * 100)));
+		url.searchParams.set(simulatorQueryKeys.gazeAvailable, state.gazeAvailable ? "1" : "0");
+		url.searchParams.set(simulatorQueryKeys.pinchAvailable, state.pinchAvailable ? "1" : "0");
+		url.searchParams.set(simulatorQueryKeys.handTrackingAvailable, state.handTrackingAvailable ? "1" : "0");
+		url.searchParams.set(simulatorQueryKeys.roomTracked, state.roomTracked ? "1" : "0");
+		url.searchParams.set(simulatorQueryKeys.meshTracked, state.meshTracked ? "1" : "0");
+		url.searchParams.set(simulatorQueryKeys.spatialAudio, state.spatialAudio ? "1" : "0");
+		return url.toString();
+	};
+
 	const updateSuggestion = () => {
 		const suggested = nodeByKey(state.suggestionKey);
 		nodes.forEach((node) => {
@@ -6985,6 +7972,789 @@ function initIoSpatialExplorer() {
 	});
 
 	render();
+}
+
+function initSpatialNativeSimulator() {
+	const root = document.querySelector("[data-spatial-native-sim]");
+	if (!(root instanceof HTMLElement) || root.dataset.spatialNativeSimBooted === "1") {
+		return;
+	}
+
+	root.dataset.spatialNativeSimBooted = "1";
+
+	const badgeNode = root.querySelector("[data-spatial-native-sim-badge]");
+	const noteNode = root.querySelector("[data-spatial-native-sim-note]");
+	const runtimeNode = root.querySelector("[data-spatial-native-sim-runtime]");
+	const spaceNode = root.querySelector("[data-spatial-native-sim-space]");
+	const inputNode = root.querySelector("[data-spatial-native-sim-input]");
+	const anchorNode = root.querySelector("[data-spatial-native-sim-anchor]");
+	const worldNode = root.querySelector("[data-spatial-native-sim-world]");
+	const activateButton = root.querySelector("[data-spatial-native-sim-enable]");
+	const disableButton = root.querySelector("[data-spatial-native-sim-disable]");
+	const resetButton = root.querySelector("[data-spatial-native-sim-reset]");
+	const shareButton = root.querySelector("[data-spatial-native-sim-share]");
+	const presetButtons = Array.from(root.querySelectorAll("[data-spatial-native-sim-preset]"));
+	const scenarioButtons = Array.from(root.querySelectorAll("[data-spatial-native-sim-scenario]"));
+	const flagButtons = Array.from(root.querySelectorAll("[data-spatial-native-sim-flag]"));
+	const rangeInputs = Array.from(root.querySelectorAll("[data-spatial-native-sim-range]"));
+	const selectInputs = Array.from(root.querySelectorAll("[data-spatial-native-sim-select]"));
+	const outputNodes = Array.from(root.querySelectorAll("[data-spatial-native-sim-output]"));
+	const traceTitleNode = root.querySelector("[data-spatial-native-sim-trace-title]");
+	const traceListNode = root.querySelector("[data-spatial-native-sim-traces]");
+
+	const presetLabels = {
+		visionos: "visionOS",
+		quest: "Quest",
+		browser: "browser",
+	};
+	const spaceLabels = {
+		window: "fenetre",
+		volume: "volume",
+		shared: "shared",
+		full: "full",
+	};
+	const passthroughLabels = {
+		none: "none",
+		mixed: "mixed",
+		full: "full",
+		portal: "portal",
+		progressive: "progressive",
+	};
+	const simulatorQueryKeys = {
+		enabled: "native_run",
+		preset: "native_sim",
+		scenario: "native_scenario",
+		space: "native_space",
+		passthrough: "native_pass",
+		lightLevel: "native_light",
+		lightContrast: "native_contrast",
+		lightDirectionX: "native_lx",
+		lightDirectionY: "native_ly",
+		headSpeed: "native_head",
+		anchorStability: "native_anchor",
+		anchorsTracked: "native_anchors",
+		planesTracked: "native_planes",
+		activeHands: "native_hands",
+		leftPinch: "native_left",
+		rightPinch: "native_right",
+		gazeAvailable: "native_gaze",
+		pinchAvailable: "native_pinch",
+		handTrackingAvailable: "native_track",
+		roomTracked: "native_room",
+		meshTracked: "native_mesh",
+		spatialAudio: "native_audio",
+	};
+	const traceEntries = [];
+
+	let animationFrame = 0;
+	let lastTraceAt = 0;
+
+	const setText = (node, text) => {
+		if (node instanceof HTMLElement) {
+			node.textContent = text;
+		}
+	};
+
+	const cloneSimPreset = (presetKey) => {
+		const preset = SPATIAL_NATIVE_SIM_PRESETS[presetKey] || SPATIAL_NATIVE_SIM_PRESETS[SPATIAL_NATIVE_SIM_DEFAULT_PRESET];
+		return JSON.parse(JSON.stringify(preset));
+	};
+
+	const normalizePresetKey = (value) => {
+		const key = typeof value === "string" ? value.trim() : "";
+		return Object.prototype.hasOwnProperty.call(SPATIAL_NATIVE_SIM_PRESETS, key)
+			? key
+			: SPATIAL_NATIVE_SIM_DEFAULT_PRESET;
+	};
+
+	const normalizeScenarioKey = (value) => {
+		const key = typeof value === "string" ? value.trim() : "";
+		return Object.prototype.hasOwnProperty.call(SPATIAL_NATIVE_SIM_SCENARIOS, key)
+			? key
+			: "idle";
+	};
+
+	const createSimulatorStateFromPreset = (presetKey = SPATIAL_NATIVE_SIM_DEFAULT_PRESET) => {
+		const key = normalizePresetKey(presetKey);
+		const preset = SPATIAL_NATIVE_SIM_PRESETS[key] || SPATIAL_NATIVE_SIM_PRESETS[SPATIAL_NATIVE_SIM_DEFAULT_PRESET];
+		return {
+			enabled: false,
+			preset: key,
+			scenario: "idle",
+			customized: false,
+			space: normalizeSpatialSpace(preset.session?.space, "shared"),
+			passthrough: normalizeSpatialPassthrough(preset.world?.passthrough, "none"),
+			lightLevel: clampNumber(Number(preset.world?.lightLevel) || 0, 0, 1),
+			lightContrast: clampNumber(Number(preset.world?.lightContrast) || 0, 0, 1),
+			lightDirectionX: clampNumber(Number(preset.world?.lightDirectionX) || 0, -1, 1),
+			lightDirectionY: clampNumber(Number(preset.world?.lightDirectionY) || 0, -1, 1),
+			headSpeed: clampNumber(Number(preset.pose?.head?.speed) || 0, 0, 1),
+			anchorStability: clampNumber(Number(preset.world?.anchorStability) || 0, 0, 1),
+			anchorsTracked: clampNumber(Math.round(Number(preset.world?.anchorsTracked) || 0), 0, 12),
+			planesTracked: clampNumber(Math.round(Number(preset.world?.planesTracked) || 0), 0, 12),
+			activeHands: clampNumber(Math.round(Number(preset.hands?.activeCount) || 0), 0, 2),
+			leftPinch: clampNumber(Number(preset.hands?.left?.pinch) || 0, 0, 1),
+			rightPinch: clampNumber(Number(preset.hands?.right?.pinch) || 0, 0, 1),
+			gazeAvailable: preset.inputs?.gazeAvailable === true,
+			pinchAvailable: preset.inputs?.pinchAvailable === true,
+			handTrackingAvailable: preset.inputs?.handTrackingAvailable === true,
+			roomTracked: preset.world?.roomTracked === true,
+			meshTracked: preset.world?.meshTracked === true,
+			spatialAudio: preset.audio?.spatial === true,
+		};
+	};
+
+	const normalizeStoredSimulatorState = (raw) => {
+		const presetKey = normalizePresetKey(raw?.preset);
+		const fallback = createSimulatorStateFromPreset(presetKey);
+		return {
+			...fallback,
+			enabled: raw?.enabled === true,
+			preset: presetKey,
+			scenario: normalizeScenarioKey(raw?.scenario),
+			customized: raw?.customized === true,
+			space: normalizeSpatialSpace(raw?.space, fallback.space),
+			passthrough: normalizeSpatialPassthrough(raw?.passthrough, fallback.passthrough),
+			lightLevel: clampNumber(Number(raw?.lightLevel ?? fallback.lightLevel) || 0, 0, 1),
+			lightContrast: clampNumber(Number(raw?.lightContrast ?? fallback.lightContrast) || 0, 0, 1),
+			lightDirectionX: clampNumber(Number(raw?.lightDirectionX ?? fallback.lightDirectionX) || 0, -1, 1),
+			lightDirectionY: clampNumber(Number(raw?.lightDirectionY ?? fallback.lightDirectionY) || 0, -1, 1),
+			headSpeed: clampNumber(Number(raw?.headSpeed ?? fallback.headSpeed) || 0, 0, 1),
+			anchorStability: clampNumber(Number(raw?.anchorStability ?? fallback.anchorStability) || 0, 0, 1),
+			anchorsTracked: clampNumber(Math.round(Number(raw?.anchorsTracked ?? fallback.anchorsTracked) || 0), 0, 12),
+			planesTracked: clampNumber(Math.round(Number(raw?.planesTracked ?? fallback.planesTracked) || 0), 0, 12),
+			activeHands: clampNumber(Math.round(Number(raw?.activeHands ?? fallback.activeHands) || 0), 0, 2),
+			leftPinch: clampNumber(Number(raw?.leftPinch ?? fallback.leftPinch) || 0, 0, 1),
+			rightPinch: clampNumber(Number(raw?.rightPinch ?? fallback.rightPinch) || 0, 0, 1),
+			gazeAvailable: raw?.gazeAvailable === undefined ? fallback.gazeAvailable : raw.gazeAvailable === true,
+			pinchAvailable: raw?.pinchAvailable === undefined ? fallback.pinchAvailable : raw.pinchAvailable === true,
+			handTrackingAvailable: raw?.handTrackingAvailable === undefined ? fallback.handTrackingAvailable : raw.handTrackingAvailable === true,
+			roomTracked: raw?.roomTracked === undefined ? fallback.roomTracked : raw.roomTracked === true,
+			meshTracked: raw?.meshTracked === undefined ? fallback.meshTracked : raw.meshTracked === true,
+			spatialAudio: raw?.spatialAudio === undefined ? fallback.spatialAudio : raw.spatialAudio === true,
+		};
+	};
+
+	const readStoredSimulatorState = () => {
+		try {
+			const raw = window.sessionStorage.getItem(SPATIAL_NATIVE_SIM_STORAGE_KEY);
+			if (!raw) {
+				return createSimulatorStateFromPreset();
+			}
+
+			return normalizeStoredSimulatorState(JSON.parse(raw));
+		} catch {
+			return createSimulatorStateFromPreset();
+		}
+	};
+
+	const state = readStoredSimulatorState();
+	const queryState = readSimulatorQueryState();
+	if (queryState) {
+		Object.assign(state, queryState);
+	}
+
+	const renderTraceList = () => {
+		if (!(traceListNode instanceof HTMLOListElement)) {
+			return;
+		}
+
+		traceListNode.innerHTML = "";
+		if (!traceEntries.length) {
+			const item = document.createElement("li");
+			const label = document.createElement("span");
+			const strong = document.createElement("strong");
+			const copy = document.createElement("span");
+			label.className = "summary-label";
+			label.textContent = "veille";
+			strong.textContent = "aucune injection";
+			copy.textContent = "Active un preset ou ouvre une URL de simulation pour garder une passe reproductible.";
+			item.append(label, strong, copy);
+			traceListNode.append(item);
+			return;
+		}
+
+		traceEntries.slice(0, 6).forEach((entry) => {
+			const item = document.createElement("li");
+			const label = document.createElement("span");
+			const strong = document.createElement("strong");
+			const copy = document.createElement("span");
+			label.className = "summary-label";
+			label.textContent = entry.label;
+			strong.textContent = entry.title;
+			copy.textContent = entry.copy;
+			item.append(label, strong, copy);
+			traceListNode.append(item);
+		});
+	};
+
+	const pushTrace = (bridgeState, sourceLabel = "local") => {
+		if (!(bridgeState && typeof bridgeState === "object")) {
+			return;
+		}
+
+		const now = Date.now();
+		if ((sourceLabel === "anim" || sourceLabel === "bridge") && now - lastTraceAt < 900) {
+			return;
+		}
+
+		const signature = [
+			sourceLabel,
+			state.preset,
+			state.scenario,
+			bridgeState.runtimeLabel || "",
+			bridgeState.spaceLabel || "",
+			bridgeState.inputLabel || "",
+			bridgeState.anchorLabel || "",
+			Math.round((bridgeState.lightLevel || 0) * 100),
+			Math.round((bridgeState.headMotion || 0) * 100),
+			Math.round((bridgeState.handTouchEnergy || 0) * 100),
+		].join("|");
+		if (traceEntries[0]?.signature === signature) {
+			return;
+		}
+
+		traceEntries.unshift({
+			signature,
+			label: sourceLabel,
+			title: `${bridgeState.runtimeLabel || "web"} · ${bridgeState.spaceLabel || "screen"}`,
+			copy: `${bridgeState.inputLabel || "pointeur"} · ${bridgeState.anchorLabel || "aucun"} · lumière ${Math.round((bridgeState.lightLevel || 0) * 100)}% · tête ${Math.round((bridgeState.headMotion || 0) * 100)}% · mains ${Math.round((bridgeState.handTouchEnergy || 0) * 100)}%`,
+		});
+		while (traceEntries.length > 6) {
+			traceEntries.pop();
+		}
+		lastTraceAt = now;
+		renderTraceList();
+	};
+
+	const persistState = () => {
+		try {
+			window.sessionStorage.setItem(SPATIAL_NATIVE_SIM_STORAGE_KEY, JSON.stringify({
+				enabled: state.enabled,
+				preset: state.preset,
+				scenario: state.scenario,
+				customized: state.customized,
+				space: state.space,
+				passthrough: state.passthrough,
+				lightLevel: state.lightLevel,
+				lightContrast: state.lightContrast,
+				lightDirectionX: state.lightDirectionX,
+				lightDirectionY: state.lightDirectionY,
+				headSpeed: state.headSpeed,
+				anchorStability: state.anchorStability,
+				anchorsTracked: state.anchorsTracked,
+				planesTracked: state.planesTracked,
+				activeHands: state.activeHands,
+				leftPinch: state.leftPinch,
+				rightPinch: state.rightPinch,
+				gazeAvailable: state.gazeAvailable,
+				pinchAvailable: state.pinchAvailable,
+				handTrackingAvailable: state.handTrackingAvailable,
+				roomTracked: state.roomTracked,
+				meshTracked: state.meshTracked,
+				spatialAudio: state.spatialAudio,
+			}));
+		} catch {
+			// Ignore simulator storage failures.
+		}
+	};
+
+	const formatSimulatorValue = (key, value) => {
+		switch (key) {
+			case "space":
+				return spaceLabels[value] || value;
+			case "passthrough":
+				return passthroughLabels[value] || value;
+			case "lightDirectionX":
+			case "lightDirectionY": {
+				const percent = Math.round(clampNumber(Number(value) || 0, -1, 1) * 100);
+				return `${percent > 0 ? "+" : ""}${percent}%`;
+			}
+			case "anchorsTracked":
+			case "planesTracked":
+			case "activeHands":
+				return String(Math.round(Number(value) || 0));
+			default:
+				return `${Math.round(clampNumber(Number(value) || 0, 0, 1) * 100)}%`;
+		}
+	};
+
+	const applyBridgeReadout = (bridgeState = getCurrentSpatialBridgeState()) => {
+		setText(runtimeNode, bridgeState?.available ? bridgeState.runtimeLabel : "web seul");
+		setText(spaceNode, bridgeState?.available ? bridgeState.spaceLabel : "projection ecran");
+		setText(inputNode, bridgeState?.available ? bridgeState.inputLabel : "pointeur");
+		setText(anchorNode, bridgeState?.available ? bridgeState.anchorLabel : "aucun");
+		setText(worldNode, bridgeState?.available ? bridgeState.worldLabel : "passthrough none");
+		setText(traceTitleNode, state.enabled
+			? `${presetLabels[state.preset] || state.preset} · ${SPATIAL_NATIVE_SIM_SCENARIOS[state.scenario]?.label || "stable"}`
+			: "prête à rejouer");
+
+		if (badgeNode instanceof HTMLElement) {
+			badgeNode.textContent = state.enabled
+				? `${presetLabels[state.preset] || state.preset}${state.customized ? " manuel" : ""}`
+				: (bridgeState?.available ? bridgeState.runtimeLabel : "web seul");
+		}
+
+		if (noteNode instanceof HTMLElement) {
+			if (!state.enabled) {
+				noteNode.textContent = bridgeState?.available
+					? "Le bridge lit encore un runtime natif reel. L injecteur local reste coupe."
+					: "L injecteur est au repos. Active un preset pour simuler regard, mains, lumiere et ancres dans le shell io.";
+				return;
+			}
+
+			const scenarioMeta = SPATIAL_NATIVE_SIM_SCENARIOS[state.scenario] || SPATIAL_NATIVE_SIM_SCENARIOS.idle;
+			noteNode.textContent = `${presetLabels[state.preset] || state.preset} injecte ${state.customized ? "avec reglages manuels" : "sur son preset de base"}. ${scenarioMeta.copy}`;
+		}
+	};
+
+	const renderControls = () => {
+		root.dataset.nativeSimActive = state.enabled ? "1" : "0";
+		root.dataset.nativeSimPreset = state.preset;
+		root.dataset.nativeSimScenario = state.scenario;
+		root.dataset.nativeSimCustomized = state.customized ? "1" : "0";
+
+		presetButtons.forEach((button) => {
+			if (!(button instanceof HTMLButtonElement)) {
+				return;
+			}
+			const active = button.dataset.spatialNativeSimPreset === state.preset;
+			button.setAttribute("aria-pressed", active ? "true" : "false");
+		});
+
+		scenarioButtons.forEach((button) => {
+			if (!(button instanceof HTMLButtonElement)) {
+				return;
+			}
+			const active = button.dataset.spatialNativeSimScenario === state.scenario;
+			button.setAttribute("aria-pressed", active ? "true" : "false");
+		});
+
+		flagButtons.forEach((button) => {
+			if (!(button instanceof HTMLButtonElement)) {
+				return;
+			}
+			const key = button.dataset.spatialNativeSimFlag || "";
+			const active = state[key] === true;
+			button.setAttribute("aria-pressed", active ? "true" : "false");
+		});
+
+		rangeInputs.forEach((input) => {
+			if (!(input instanceof HTMLInputElement)) {
+				return;
+			}
+			const key = input.dataset.spatialNativeSimRange || "";
+			const value = state[key];
+			if (key === "anchorsTracked" || key === "planesTracked" || key === "activeHands") {
+				input.value = String(Math.round(Number(value) || 0));
+				return;
+			}
+			const scale = key === "lightDirectionX" || key === "lightDirectionY" ? 100 : 100;
+			input.value = String(Math.round((Number(value) || 0) * scale));
+		});
+
+		selectInputs.forEach((select) => {
+			if (!(select instanceof HTMLSelectElement)) {
+				return;
+			}
+			const key = select.dataset.spatialNativeSimSelect || "";
+			if (typeof state[key] === "string") {
+				select.value = state[key];
+			}
+		});
+
+		outputNodes.forEach((node) => {
+			if (!(node instanceof HTMLElement)) {
+				return;
+			}
+			const key = node.dataset.spatialNativeSimOutput || "";
+			if (!(key in state)) {
+				return;
+			}
+			node.textContent = formatSimulatorValue(key, state[key]);
+		});
+
+		if (activateButton instanceof HTMLButtonElement) {
+			activateButton.setAttribute("aria-pressed", state.enabled ? "true" : "false");
+			activateButton.textContent = state.enabled ? "injecteur actif" : "activer";
+		}
+		if (disableButton instanceof HTMLButtonElement) {
+			disableButton.disabled = !state.enabled;
+		}
+	};
+
+	const applyScenarioToPayload = (payload, seconds) => {
+		if (!payload || typeof payload !== "object") {
+			return payload;
+		}
+
+		switch (state.scenario) {
+			case "lightSweep": {
+				const wave = Math.sin(seconds * 0.82);
+				const sweep = Math.cos(seconds * 0.56);
+				payload.session.phase = "light-sweep";
+				payload.session.focus = "light";
+				payload.world.lightDirectionX = clampNumber(state.lightDirectionX + wave * 0.72, -1, 1);
+				payload.world.lightDirectionY = clampNumber(state.lightDirectionY + sweep * 0.52, -1, 1);
+				payload.world.lightLevel = clampNumber(state.lightLevel + Math.max(0, wave) * 0.12 + Math.max(0, sweep) * 0.06, 0, 1);
+				payload.world.lightContrast = clampNumber(state.lightContrast + Math.abs(wave) * 0.18, 0, 1);
+				if (payload.pose.gaze.tracked) {
+					payload.pose.gaze.direction = [
+						clampNumber(payload.world.lightDirectionX * 0.46, -1, 1),
+						clampNumber(payload.world.lightDirectionY * 0.42, -1, 1),
+						-1,
+					];
+				}
+				break;
+			}
+			case "roomWalk": {
+				const stride = Math.sin(seconds * 0.78);
+				const sway = Math.cos(seconds * 0.46);
+				payload.session.phase = "room-walk";
+				payload.session.focus = "room";
+				payload.pose.head.position = [
+					clampNumber(stride * 0.24, -1, 1),
+					clampNumber(1.62 + Math.sin(seconds * 0.22) * 0.04, -10, 10),
+					clampNumber(sway * 0.18, -1, 1),
+				];
+				payload.pose.head.speed = clampNumber(state.headSpeed + 0.22 + Math.abs(stride) * 0.18, 0, 1);
+				payload.world.anchorStability = clampNumber(state.anchorStability - 0.18 + ((sway + 1) * 0.12), 0, 1);
+				payload.world.lightDirectionX = clampNumber(state.lightDirectionX + stride * 0.22, -1, 1);
+				payload.world.lightDirectionY = clampNumber(state.lightDirectionY + sway * 0.18, -1, 1);
+				payload.hands.left.pinch = payload.hands.left.tracked
+					? clampNumber(state.leftPinch * (0.62 + Math.abs(stride) * 0.38), 0, 1)
+					: 0;
+				payload.hands.right.pinch = payload.hands.right.tracked
+					? clampNumber(state.rightPinch * (0.58 + Math.abs(sway) * 0.42), 0, 1)
+					: 0;
+				break;
+			}
+			case "duetWeave": {
+				const weave = Math.sin(seconds * 1.18);
+				const counter = Math.cos(seconds * 1.04);
+				payload.session.phase = "duet";
+				payload.session.focus = "hands";
+				if (payload.inputs.handTrackingAvailable) {
+					payload.hands.activeCount = Math.max(2, payload.hands.activeCount);
+				}
+				payload.hands.left.pinch = payload.hands.left.tracked
+					? clampNumber(0.14 + ((weave + 1) * 0.28) + state.leftPinch * 0.34, 0, 1)
+					: 0;
+				payload.hands.right.pinch = payload.hands.right.tracked
+					? clampNumber(0.14 + ((counter + 1) * 0.28) + state.rightPinch * 0.34, 0, 1)
+					: 0;
+				payload.world.lightDirectionX = clampNumber((state.lightDirectionX * 0.34) + (weave * 0.44), -1, 1);
+				payload.world.lightDirectionY = clampNumber((state.lightDirectionY * 0.34) + (counter * 0.32), -1, 1);
+				payload.pose.head.speed = clampNumber((state.headSpeed * 0.58) + 0.12 + ((Math.abs(weave) + Math.abs(counter)) * 0.08), 0, 1);
+				payload.pose.gaze.tracked = payload.pose.gaze.tracked || payload.inputs.handTrackingAvailable;
+				if (payload.pose.gaze.tracked) {
+					payload.pose.gaze.direction = [
+						clampNumber(weave * 0.28, -1, 1),
+						clampNumber(counter * 0.16, -1, 1),
+						-1,
+					];
+				}
+				break;
+			}
+			default:
+				payload.session.phase = "steady";
+				break;
+		}
+
+		return payload;
+	};
+
+	const buildSimulatedPayload = (seconds = window.performance.now() / 1000) => {
+		const payload = cloneSimPreset(state.preset);
+		const activeHands = state.handTrackingAvailable ? clampNumber(Math.round(state.activeHands), 0, 2) : 0;
+		payload.available = true;
+		payload.session.space = state.space;
+		payload.session.immersion = state.space === "window"
+			? "windowed"
+			: (state.space === "volume" ? "progressive" : (state.space === "full" ? "immersive" : "mixed"));
+		payload.session.mode = state.space === "window" ? "screen" : "mixed";
+		payload.inputs.primary = state.gazeAvailable
+			? "gaze"
+			: (state.handTrackingAvailable ? "hands" : (payload.inputs.controllerAvailable ? "controllers" : payload.inputs.primary));
+		payload.inputs.gazeAvailable = state.gazeAvailable;
+		payload.inputs.pinchAvailable = state.pinchAvailable && (state.handTrackingAvailable || payload.inputs.controllerAvailable || state.gazeAvailable);
+		payload.inputs.handTrackingAvailable = state.handTrackingAvailable;
+		payload.world.passthrough = state.passthrough;
+		payload.world.roomTracked = state.roomTracked;
+		payload.world.meshTracked = state.meshTracked;
+		payload.world.anchorsTracked = state.roomTracked ? clampNumber(Math.round(state.anchorsTracked), 0, 999) : 0;
+		payload.world.planesTracked = state.roomTracked ? clampNumber(Math.round(state.planesTracked), 0, 999) : 0;
+		payload.world.lightLevel = clampNumber(state.lightLevel, 0, 1);
+		payload.world.lightContrast = clampNumber(state.lightContrast, 0, 1);
+		payload.world.lightDirectionX = clampNumber(state.lightDirectionX, -1, 1);
+		payload.world.lightDirectionY = clampNumber(state.lightDirectionY, -1, 1);
+		payload.world.anchorStability = clampNumber(state.anchorStability, 0, 1);
+		payload.audio.spatial = state.spatialAudio;
+		payload.pose.head.tracked = payload.platform.family !== "web" || state.headSpeed > 0.02;
+		payload.pose.head.speed = clampNumber(state.headSpeed, 0, 1);
+		payload.pose.gaze.tracked = state.gazeAvailable;
+		payload.pose.gaze.stability = state.gazeAvailable
+			? clampNumber(0.48 + (state.anchorStability * 0.38), 0, 1)
+			: 0;
+		payload.hands.activeCount = activeHands;
+		payload.hands.left.tracked = state.handTrackingAvailable && activeHands > 0;
+		payload.hands.right.tracked = state.handTrackingAvailable && activeHands > 1;
+		payload.hands.left.pinch = payload.hands.left.tracked ? clampNumber(state.leftPinch, 0, 1) : 0;
+		payload.hands.right.pinch = payload.hands.right.tracked ? clampNumber(state.rightPinch, 0, 1) : 0;
+		payload.hands.left.grab = payload.hands.left.tracked ? clampNumber(payload.hands.left.pinch * 0.62, 0, 1) : 0;
+		payload.hands.right.grab = payload.hands.right.tracked ? clampNumber(payload.hands.right.pinch * 0.62, 0, 1) : 0;
+		payload.hands.left.confidence = payload.hands.left.tracked ? 0.9 : 0;
+		payload.hands.right.confidence = payload.hands.right.tracked ? 0.9 : 0;
+		payload.hands.left.jointsTracked = payload.hands.left.tracked ? 24 : 0;
+		payload.hands.right.jointsTracked = payload.hands.right.tracked ? 24 : 0;
+		payload.hands.left.gesture = payload.hands.left.tracked ? (payload.hands.left.pinch > 0.52 ? "pinch" : "open") : "";
+		payload.hands.right.gesture = payload.hands.right.tracked ? (payload.hands.right.pinch > 0.52 ? "pinch" : "open") : "";
+
+		return applyScenarioToPayload(payload, seconds);
+	};
+
+	const dispatchSimulatedPayload = (seconds) => {
+		const bridgeState = window.OBridgeSpatialNative.updateState(buildSimulatedPayload(seconds));
+		pushTrace(bridgeState, state.scenario === "idle" ? "preset" : "anim");
+		return bridgeState;
+	};
+
+	const stopAnimation = () => {
+		if (!animationFrame) {
+			return;
+		}
+		window.cancelAnimationFrame(animationFrame);
+		animationFrame = 0;
+	};
+
+	const tick = (timestamp) => {
+		animationFrame = 0;
+		if (!state.enabled || state.scenario === "idle") {
+			return;
+		}
+
+		dispatchSimulatedPayload((timestamp || 0) / 1000);
+		animationFrame = window.requestAnimationFrame(tick);
+	};
+
+	const refreshSimulation = ({ persist = true } = {}) => {
+		renderControls();
+		if (persist) {
+			persistState();
+		}
+
+		if (!state.enabled) {
+			stopAnimation();
+			resetNativeSpatialState({ seed: true });
+			applyBridgeReadout(getCurrentSpatialBridgeState());
+			renderTraceList();
+			return;
+		}
+
+		if (state.scenario === "idle") {
+			stopAnimation();
+			dispatchSimulatedPayload();
+		} else if (!animationFrame) {
+			animationFrame = window.requestAnimationFrame(tick);
+		}
+	};
+
+	const updateScalar = (key, value) => {
+		state.enabled = true;
+		state.customized = true;
+		state[key] = value;
+		refreshSimulation();
+	};
+
+	presetButtons.forEach((button) => {
+		if (!(button instanceof HTMLButtonElement)) {
+			return;
+		}
+
+		button.addEventListener("click", () => {
+			const presetKey = normalizePresetKey(button.dataset.spatialNativeSimPreset);
+			Object.assign(state, createSimulatorStateFromPreset(presetKey), {
+				enabled: true,
+				preset: presetKey,
+				scenario: "idle",
+				customized: false,
+			});
+			refreshSimulation();
+			focusElementWithoutScroll(button);
+		});
+	});
+
+	scenarioButtons.forEach((button) => {
+		if (!(button instanceof HTMLButtonElement)) {
+			return;
+		}
+
+		button.addEventListener("click", () => {
+			state.enabled = true;
+			state.scenario = normalizeScenarioKey(button.dataset.spatialNativeSimScenario);
+			refreshSimulation();
+		});
+	});
+
+	flagButtons.forEach((button) => {
+		if (!(button instanceof HTMLButtonElement)) {
+			return;
+		}
+
+		button.addEventListener("click", () => {
+			const key = button.dataset.spatialNativeSimFlag || "";
+			if (!(key in state)) {
+				return;
+			}
+			state.enabled = true;
+			state.customized = true;
+			state[key] = state[key] !== true;
+			if (key === "handTrackingAvailable" && state[key] !== true) {
+				state.activeHands = 0;
+			}
+			refreshSimulation();
+		});
+	});
+
+	rangeInputs.forEach((input) => {
+		if (!(input instanceof HTMLInputElement)) {
+			return;
+		}
+
+		input.addEventListener("input", () => {
+			const key = input.dataset.spatialNativeSimRange || "";
+			if (!key) {
+				return;
+			}
+
+			if (key === "anchorsTracked" || key === "planesTracked" || key === "activeHands") {
+				updateScalar(key, clampNumber(Math.round(Number(input.value) || 0), 0, key === "activeHands" ? 2 : 12));
+				return;
+			}
+
+			const normalized = (Number(input.value) || 0) / 100;
+			updateScalar(
+				key,
+				key === "lightDirectionX" || key === "lightDirectionY"
+					? clampNumber(normalized, -1, 1)
+					: clampNumber(normalized, 0, 1)
+			);
+		});
+	});
+
+	selectInputs.forEach((select) => {
+		if (!(select instanceof HTMLSelectElement)) {
+			return;
+		}
+
+		select.addEventListener("change", () => {
+			const key = select.dataset.spatialNativeSimSelect || "";
+			if (!key) {
+				return;
+			}
+			state.enabled = true;
+			state.customized = true;
+			if (key === "space") {
+				state.space = normalizeSpatialSpace(select.value, state.space);
+			}
+			if (key === "passthrough") {
+				state.passthrough = normalizeSpatialPassthrough(select.value, state.passthrough);
+			}
+			refreshSimulation();
+		});
+	});
+
+	if (activateButton instanceof HTMLButtonElement) {
+		activateButton.addEventListener("click", () => {
+			state.enabled = true;
+			refreshSimulation();
+		});
+	}
+
+	if (disableButton instanceof HTMLButtonElement) {
+		disableButton.addEventListener("click", () => {
+			state.enabled = false;
+			state.scenario = "idle";
+			refreshSimulation();
+		});
+	}
+
+	if (resetButton instanceof HTMLButtonElement) {
+		resetButton.addEventListener("click", () => {
+			const next = createSimulatorStateFromPreset(state.preset);
+			Object.assign(state, next, {
+				enabled: true,
+				preset: state.preset,
+				scenario: "idle",
+				customized: false,
+			});
+			refreshSimulation();
+		});
+	}
+
+	if (shareButton instanceof HTMLButtonElement) {
+		shareButton.addEventListener("click", async () => {
+			const url = buildSimulatorShareUrl();
+			try {
+				await navigator.clipboard.writeText(url);
+				shareButton.textContent = "URL copiée";
+			} catch {
+				shareButton.textContent = "copie manuelle";
+			}
+
+			window.setTimeout(() => {
+				shareButton.textContent = "copier URL";
+			}, 1800);
+		});
+	}
+
+	window.addEventListener("o:spatial-native-change", (event) => {
+		const detail = event instanceof CustomEvent ? event.detail : null;
+		pushTrace(detail || getCurrentSpatialBridgeState(), state.enabled ? "bridge" : "veille");
+		applyBridgeReadout(detail || getCurrentSpatialBridgeState());
+	});
+
+	window.addEventListener("beforeunload", () => {
+		stopAnimation();
+	});
+
+	window.OBridgeSpatialNativeSimulator = {
+		enablePreset(presetKey = SPATIAL_NATIVE_SIM_DEFAULT_PRESET) {
+			const key = normalizePresetKey(presetKey);
+			Object.assign(state, createSimulatorStateFromPreset(key), {
+				enabled: true,
+				preset: key,
+				scenario: "idle",
+				customized: false,
+			});
+			refreshSimulation();
+			return { ...state };
+		},
+		disable() {
+			state.enabled = false;
+			state.scenario = "idle";
+			refreshSimulation();
+			return { ...state };
+		},
+		apply() {
+			state.enabled = true;
+			refreshSimulation();
+			return { ...state };
+		},
+		readState() {
+			return { ...state };
+		},
+		shareUrl() {
+			return buildSimulatorShareUrl();
+		},
+	};
+
+	renderTraceList();
+	renderControls();
+	applyBridgeReadout(getCurrentSpatialBridgeState());
+	if (state.enabled) {
+		refreshSimulation({ persist: false });
+	}
 }
 
 function initXyzCamera() {
@@ -7346,6 +9116,9 @@ function initXyzCamera() {
 			cameraMotion: 0,
 			audioLevel: 0,
 			lightLevel: 0,
+			lightContrast: 0,
+			lightDirectionX: 0,
+			lightDirectionY: 0,
 			tiltX: 0,
 			tiltY: 0,
 			motionSensor: 0,
@@ -7367,8 +9140,11 @@ function initXyzCamera() {
 
 	const cameraFacingLabel = () => cameraFacingMode === "environment" ? "paysage" : "visage";
 	const instrumentTouchEnergy = () => clampNumber(
-		Math.max(instrument.terreEnergy, instrument.mineEnergy) * 0.68
-		+ Math.min(instrument.terreEnergy, instrument.mineEnergy) * 0.32,
+		(
+			Math.max(instrument.terreEnergy, instrument.mineEnergy) * 0.68
+			+ Math.min(instrument.terreEnergy, instrument.mineEnergy) * 0.32
+		) * (instrument.pointers.size > 0 ? 1 : 0.82)
+		+ readNativeSpatialTouchEnergy() * (instrument.pointers.size > 0 ? 0.28 : 0.74),
 		0,
 		1
 	);
@@ -7383,8 +9159,8 @@ function initXyzCamera() {
 	);
 	const instrumentSceneEnergy = () => clampNumber(
 		cameraFacingMode === "environment"
-			? membrane.cameraMotion * 0.44 + membrane.motionSensor * 0.24 + membrane.lightLevel * 0.2 + instrumentTouchEnergy() * 0.12
-			: membrane.audioLevel * 0.28 + membrane.luma * 0.18 + instrumentTouchEnergy() * 0.34 + Math.abs(membrane.tiltY) * 0.14,
+			? membrane.cameraMotion * 0.38 + membrane.motionSensor * 0.22 + membrane.lightLevel * 0.16 + membrane.lightContrast * 0.24 + Math.abs(membrane.lightDirectionX) * 0.08 + instrumentTouchEnergy() * 0.1
+			: membrane.audioLevel * 0.26 + membrane.luma * 0.16 + membrane.lightContrast * 0.14 + instrumentTouchEnergy() * 0.32 + Math.abs(membrane.tiltY) * 0.12,
 		0,
 		1
 	);
@@ -7398,21 +9174,110 @@ function initXyzCamera() {
 		-0.72,
 		0.72
 	);
+	const membraneLightProfile = () => {
+		const contrast = clampNumber(membrane.lightContrast, 0, 1);
+		const directionX = clampNumber(membrane.lightDirectionX, -1, 1);
+		const directionY = clampNumber(membrane.lightDirectionY, -1, 1);
+		const environmentBias = cameraFacingMode === "environment" ? 1 : 0.54;
+		return {
+			contrast,
+			directionX,
+			directionY,
+			terre: clampNumber(
+				0.12
+				+ contrast * 0.52
+				+ Math.max(0, -directionX) * 0.32 * environmentBias
+				+ Math.max(0, -directionY) * 0.14,
+				0,
+				1
+			),
+			mine: clampNumber(
+				0.12
+				+ contrast * 0.56
+				+ Math.max(0, directionX) * 0.36 * environmentBias
+				+ Math.max(0, directionY) * 0.18,
+				0,
+				1
+			),
+		};
+	};
+	const resolveAmbientInstrumentPose = (hand) => {
+		const light = membraneLightProfile();
+		const environmentBias = cameraFacingMode === "environment" ? 1 : 0.58;
+		if (hand === "terre") {
+			return {
+				x: clampNumber(
+					0.3
+					+ (light.directionX * 0.1 * environmentBias)
+					+ (membrane.tiltX * 0.04)
+					+ ((light.contrast - 0.5) * 0.02),
+					0.08,
+					0.92
+				),
+				y: clampNumber(
+					0.62
+					+ (light.directionY * 0.11 * environmentBias)
+					+ (membrane.tiltY * 0.03)
+					- (light.contrast * 0.05),
+					0.08,
+					0.92
+				),
+			};
+		}
+
+		return {
+			x: clampNumber(
+				0.72
+				+ (light.directionX * 0.18 * environmentBias)
+				+ (membrane.tiltX * 0.06),
+				0.08,
+				0.92
+			),
+			y: clampNumber(
+				0.38
+				+ (light.directionY * 0.13 * environmentBias)
+				- (membrane.tiltY * 0.04)
+				- (light.contrast * 0.02),
+				0.08,
+				0.92
+			),
+		};
+	};
+	const syncAmbientInstrumentPose = () => {
+		if (instrument.pointers.size > 0 || instrument.keyboardTimer) {
+			return;
+		}
+
+		const terrePose = resolveAmbientInstrumentPose("terre");
+		const minePose = resolveAmbientInstrumentPose("mine");
+		instrument.terreX = terrePose.x;
+		instrument.terreY = terrePose.y;
+		instrument.mineX = minePose.x;
+		instrument.mineY = minePose.y;
+	};
 
 	const renderWorldInstrument = () => {
+		syncAmbientInstrumentPose();
 		const bodyEnergy = instrumentBodyEnergy();
 		const touchEnergy = instrumentTouchEnergy();
 		const sceneEnergy = instrumentSceneEnergy();
 		const lightTone = clampNumber(Math.max(membrane.lightLevel, membrane.luma), 0, 1);
-		const activeHands = instrument.activeHands;
+		const light = membraneLightProfile();
+			const activeHands = Math.max(instrument.activeHands, readNativeSpatialActiveHands());
 		const viewLabel = cameraFacingLabel();
 		let focusLabel = cameraFacingMode === "environment" ? "horizon tenu" : "souffle proche";
 		if (cameraFacingMode === "environment") {
 			focusLabel = membrane.cameraMotion > 0.44
 				? "marche / paysage"
-				: (lightTone > 0.62 ? "reflets / dehors" : "détail / terrain");
+				: (light.contrast > 0.34
+					? (Math.abs(light.directionX) > 0.18
+						? (light.directionX < 0 ? "incidence terre" : "incidence mine")
+						: (light.directionY < -0.16 ? "lumière haute" : "reflets / dehors"))
+					: (lightTone > 0.62 ? "reflets / dehors" : "détail / terrain"));
 		} else if (membrane.audioLevel > 0.18) {
 			focusLabel = "visage + air";
+		} else if (light.contrast > 0.28) {
+			focusLabel = light.directionX < -0.14 ? "clarté terre" : (light.directionX > 0.14 ? "clarté mine" : "clarté proche");
 		} else if (sceneEnergy > 0.32) {
 			focusLabel = "proximité / peau";
 		}
@@ -7425,19 +9290,29 @@ function initXyzCamera() {
 			: (activeHands === 1
 				? (instrument.terreEnergy >= instrument.mineEnergy ? "terre seule" : "mine seule")
 				: "aucune prise");
-		const lightLabel = lightTone > 0.68
-			? "clair ouvert"
-			: (lightTone < 0.32 ? "ombre douce" : "lueur mixte");
+		const lightLabel = light.contrast > 0.42
+			? (light.directionX < -0.16
+				? "incidence terre"
+				: (light.directionX > 0.16
+					? "incidence mine"
+					: (light.directionY < -0.16 ? "lumière haute" : "incidence vive")))
+			: (lightTone > 0.68
+				? "clair ouvert"
+				: (lightTone < 0.32 ? "ombre douce" : "lueur mixte"));
 		const stageCopy = cameraFacingMode === "environment"
-			? "Retourne la caméra et laisse le dehors jouer. Terre tient l horizon, Mine taille un détail, une route ou un reflet. Flèches ou glisse pour garder la prise. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage."
-			: "Approche visage, mains ou torse. Terre pose le fond, Mine ouvre l accent, puis l air et la lumière prennent le relais. WASD ou glisse si tu veux jouer sans quitter l écran. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage.";
+			? "Retourne la caméra et laisse le dehors jouer. Glisse pour orienter le tore. La lumière incline maintenant aussi Terre et Mine: Terre prend le champ, Mine mord le détail, le reflet ou la route. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage."
+			: "Approche visage, mains ou torse. Glisse pour orienter le tore. Terre pose le fond, Mine ouvre l accent, puis l air et la lumière déplacent aussi la partition. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage.";
 		let worldCopy = "Le monde reste un instrument: visage, corps, lumière, paysage et toucher peuvent tous nourrir le tore.";
 		if (cameraFacingMode === "environment") {
 			worldCopy = touchEnergy > 0.24
 				? "Le paysage répond maintenant à tes mains. Tu peux marcher, viser, pivoter et laisser les reflets, la rue ou le ciel nourrir le tore comme un instrument vivant."
-				: "Passe en paysage pour faire jouer le dehors. Le monde devient matière: horizon, marche, reflets, façades, arbres, vitesse et lumière.";
+				: (light.contrast > 0.3
+					? "Passe en paysage pour faire jouer le dehors. L incidence lumineuse pousse déjà Terre et Mine: la nappe prend le champ, le détail perce, puis le tore suit."
+					: "Passe en paysage pour faire jouer le dehors. Le monde devient matière: horizon, marche, reflets, façades, arbres, vitesse et lumière.");
 		} else if (touchEnergy > 0.26 || membrane.audioLevel > 0.16) {
 			worldCopy = "Le visage, le souffle et les mains sont maintenant dans la boucle. Le tore peut tenir une note, ouvrir un rythme puis colorer la lumière autour de toi.";
+		} else if (light.contrast > 0.26) {
+			worldCopy = "Même sans toucher, l incidence lumineuse commence à pencher la partition: Terre ouvre ou retient le champ, Mine taille la clarté et la nervure.";
 		}
 
 		document.body.dataset.cameraFacing = cameraFacingMode;
@@ -7452,9 +9327,11 @@ function initXyzCamera() {
 		document.body.style.setProperty("--xyz-terre-x", instrument.terreX.toFixed(3));
 		document.body.style.setProperty("--xyz-terre-y", instrument.terreY.toFixed(3));
 		document.body.style.setProperty("--xyz-terre-energy", instrument.terreEnergy.toFixed(3));
+		document.body.style.setProperty("--xyz-terre-light", light.terre.toFixed(3));
 		document.body.style.setProperty("--xyz-mine-x", instrument.mineX.toFixed(3));
 		document.body.style.setProperty("--xyz-mine-y", instrument.mineY.toFixed(3));
 		document.body.style.setProperty("--xyz-mine-energy", instrument.mineEnergy.toFixed(3));
+		document.body.style.setProperty("--xyz-mine-light", light.mine.toFixed(3));
 		document.body.dataset.worldInstrumentFocus = cameraFacingMode === "environment" ? "landscape" : "face";
 
 		setSensorText(instrumentViewNode, viewLabel);
@@ -7477,6 +9354,9 @@ function initXyzCamera() {
 			sceneEnergy,
 			touchEnergy,
 			activeHands,
+			lightContrast: light.contrast,
+			lightDirectionX: light.directionX,
+			lightDirectionY: light.directionY,
 		};
 		writeWorldInstrumentSession(worldState);
 		window.dispatchEvent(new CustomEvent("o:world-instrument", { detail: worldState }));
@@ -9988,6 +11868,7 @@ function initXyzCamera() {
 	const renderArModulation = ({
 		movement = clampNumber(Math.max(membrane.motionSensor, membrane.cameraMotion), 0, 1),
 		lightTone = clampNumber(membrane.lightLevel * 0.58 + membrane.luma * 0.42, 0, 1),
+		lightContrast = clampNumber(membrane.lightContrast, 0, 1),
 		ambient = clampNumber(membrane.audioLevel, 0, 1),
 		shakeLevel = clampNumber(membrane.shake, 0, 1),
 		presence = clampNumber(
@@ -10017,9 +11898,9 @@ function initXyzCamera() {
 		const tiltEnergy = clampNumber((Math.abs(membrane.tiltX) + Math.abs(membrane.tiltY)) * 0.5, 0, 1);
 		const modeConfig = arModeCatalog[arModulationMode] || arModeCatalog.weave;
 		const baseWeights = {
-			real: 0.34 + lightTone * 0.22 + presence * 0.14 + movement * 0.08 + sceneEnergy * (cameraFacingMode === "environment" ? 0.12 : 0.04) + (live ? 0.08 : 0.02),
-			plasma: 0.3 + ambient * 0.22 + movement * 0.08 + touchEnergy * 0.08 + sceneEnergy * (cameraFacingMode === "environment" ? 0.04 : 0.12) + (plasmaBridgeUrl ? 0.06 : 0.02),
-			torus: 0.31 + tiltEnergy * 0.22 + handOpen * 0.16 + touchEnergy * 0.18 + bodyEnergy * 0.08 + shakeLevel * 0.14 + (demo ? 0.08 : 0.02),
+			real: 0.34 + lightTone * 0.18 + lightContrast * 0.12 + presence * 0.14 + movement * 0.08 + sceneEnergy * (cameraFacingMode === "environment" ? 0.12 : 0.04) + (live ? 0.08 : 0.02),
+			plasma: 0.3 + ambient * 0.22 + movement * 0.08 + touchEnergy * 0.08 + lightContrast * 0.04 + sceneEnergy * (cameraFacingMode === "environment" ? 0.04 : 0.12) + (plasmaBridgeUrl ? 0.06 : 0.02),
+			torus: 0.31 + tiltEnergy * 0.22 + handOpen * 0.16 + touchEnergy * 0.18 + bodyEnergy * 0.08 + shakeLevel * 0.14 + lightContrast * 0.08 + (demo ? 0.08 : 0.02),
 		};
 
 		if (!live && !demo) {
@@ -10221,11 +12102,17 @@ function initXyzCamera() {
 			shakeLevel = 0,
 			movement = 0,
 			lightTone = 0,
+			lightContrast = 0,
+			lightDirectionX = 0,
+			lightDirectionY = 0,
 			ambient = 0,
 		} = {}) => {
 			const safeShake = clampNumber(shakeLevel, 0, 1);
 			const safeMovement = clampNumber(movement, 0, 1);
 			const safeLight = clampNumber(lightTone, 0, 1);
+			const safeLightContrast = clampNumber(lightContrast, 0, 1);
+			const safeLightDirectionX = clampNumber(lightDirectionX, -1, 1);
+			const safeLightDirectionY = clampNumber(lightDirectionY, -1, 1);
 			const safeAmbient = clampNumber(ambient, 0, 1);
 			const scaleProfile = currentScaleProfile(mode);
 			const instrumentProfile = currentInstrumentProfile();
@@ -10245,16 +12132,20 @@ function initXyzCamera() {
 						: (safeMovement > 0.38
 							? `${percussionLabel} mobile`
 							: `drone + ${percussionLabel}`)));
-			const terreState = scaleProfile.color === "bright"
-				? (safeLight > 0.66 ? "ouvre / éclaire" : "garde l horizon")
+			const terreState = safeLightContrast > 0.36 && safeLightDirectionX < -0.14
+				? "prend / incline"
+				: (scaleProfile.color === "bright"
+					? (safeLight > 0.66 ? "ouvre / éclaire" : "garde l horizon")
 				: (scaleProfile.color === "open"
 					? "soutient / aère"
-					: (safeAmbient > 0.22 ? "tient / assombrit" : "veille / retient"));
-			const mineState = !percussionActive
-				? (safeMovement > 0.38 ? "cherche / module" : "creuse / tient")
+					: (safeAmbient > 0.22 ? "tient / assombrit" : "veille / retient")));
+			const mineState = safeLightContrast > 0.36 && safeLightDirectionX > 0.14
+				? "mord / éclaire"
+				: (!percussionActive
+					? (safeMovement > 0.38 ? "cherche / module" : "creuse / tient")
 				: (safeShake > 0.56
 					? "frappe / relance"
-					: (safeMovement > 0.38 ? "sculpte / accentue" : "trace / impulse"));
+					: (safeMovement > 0.38 ? "sculpte / accentue" : "trace / impulse")));
 			let terreTitle = "Elle porte.";
 			let mineTitle = "Elle creuse.";
 			let terreCopy = "Elle stabilise la gamme, ouvre ou ferme la lumière, puis garde le drone respirable.";
@@ -10292,6 +12183,21 @@ function initXyzCamera() {
 				duetCopy = "Terre tient, Mine frappe, puis le relief harmonique reste lisible.";
 				duetPhase = "strike";
 				duetDominant = "mine";
+			} else if (safeLightContrast > 0.42 && Math.abs(safeLightDirectionY) > 0.16) {
+				guideText = safeLightDirectionY < 0
+					? "La lumière tombe haut et ouvre le champ. Terre prend l incidence, Mine polit le bord clair, et le tore devient plus lisible sans forcer l accent."
+					: "La lumière remonte bas et taille le relief. Mine récupère davantage de morsure pendant que Terre garde la nappe lisible.";
+				terreTitle = safeLightDirectionY < 0 ? "Elle prend la hauteur." : "Elle tient dessous.";
+				mineTitle = safeLightDirectionY < 0 ? "Elle polit le bord." : "Elle taille le relief.";
+				terreCopy = safeLightDirectionY < 0
+					? "Terre ouvre la pièce, recueille la clarté et garde le fond stable."
+					: "Terre garde un sol respirable pendant que l incidence remonte depuis le bas du cadre.";
+				mineCopy = safeLightDirectionY < 0
+					? "Mine affine l éclat sans casser la douceur du champ."
+					: "Mine profite du contre-jour pour faire sortir détail, accent et nervure.";
+				duetCopy = safeLightDirectionY < 0 ? "Terre recueille la clarté, Mine en dessine le bord." : "Terre tient le sol, Mine mord le relief remonté par la lumière.";
+				duetPhase = safeLightDirectionY < 0 ? "open" : "flow";
+				duetDominant = safeLightDirectionY < 0 ? "terre" : "mine";
 			} else if (mode === "lydian") {
 				guideText = "Le lydien suspend la lumière. Terre ouvre un ciel stable, Mine laisse briller la quarte et garde le tout léger.";
 				terreTitle = "Elle ouvre haut.";
@@ -11650,6 +13556,9 @@ function initXyzCamera() {
 		renderWorldInstrument();
 		document.body.dataset.membraneAudio = membrane.audioLevel.toFixed(3);
 			document.body.dataset.membraneLight = membrane.lightLevel.toFixed(3);
+			document.body.dataset.membraneLightContrast = membrane.lightContrast.toFixed(3);
+			document.body.dataset.membraneLightX = membrane.lightDirectionX.toFixed(3);
+			document.body.dataset.membraneLightY = membrane.lightDirectionY.toFixed(3);
 			document.body.dataset.membraneTiltX = membrane.tiltX.toFixed(3);
 			document.body.dataset.membraneTiltY = membrane.tiltY.toFixed(3);
 			document.body.dataset.membraneMotion = membrane.motionSensor.toFixed(3);
@@ -11657,6 +13566,9 @@ function initXyzCamera() {
 			document.body.dataset.membranePresence = presence.toFixed(3);
 			document.body.style.setProperty("--membrane-audio", membrane.audioLevel.toFixed(3));
 			document.body.style.setProperty("--membrane-light", membrane.lightLevel.toFixed(3));
+			document.body.style.setProperty("--membrane-light-contrast", membrane.lightContrast.toFixed(3));
+			document.body.style.setProperty("--membrane-light-x", membrane.lightDirectionX.toFixed(3));
+			document.body.style.setProperty("--membrane-light-y", membrane.lightDirectionY.toFixed(3));
 			document.body.style.setProperty("--membrane-tilt-x", membrane.tiltX.toFixed(3));
 			document.body.style.setProperty("--membrane-tilt-y", membrane.tiltY.toFixed(3));
 			document.body.style.setProperty("--membrane-motion", membrane.motionSensor.toFixed(3));
@@ -11665,6 +13577,7 @@ function initXyzCamera() {
 			renderArModulation({
 				movement: clampNumber(Math.max(membrane.motionSensor, membrane.cameraMotion), 0, 1),
 				lightTone: clampNumber(membrane.lightLevel * 0.58 + membrane.luma * 0.42, 0, 1),
+				lightContrast: clampNumber(membrane.lightContrast, 0, 1),
 				ambient: clampNumber(membrane.audioLevel, 0, 1),
 				shakeLevel: clampNumber(membrane.shake, 0, 1),
 				presence,
@@ -11680,6 +13593,9 @@ function initXyzCamera() {
 		membrane.cameraMotion = 0;
 		membrane.audioLevel = 0;
 			membrane.lightLevel = 0;
+			membrane.lightContrast = 0;
+			membrane.lightDirectionX = 0;
+			membrane.lightDirectionY = 0;
 			membrane.tiltX = 0;
 			membrane.tiltY = 0;
 			membrane.motionSensor = 0;
@@ -11711,23 +13627,29 @@ function initXyzCamera() {
 			0,
 			1
 		),
-		motion: clampNumber(Math.max(membrane.cameraMotion, membrane.motionSensor), 0, 1),
-		audio: clampNumber(membrane.audioLevel, 0, 1),
-		light: clampNumber(Math.max(membrane.lightLevel, membrane.luma), 0, 1),
-		luma: clampNumber(membrane.luma, 0, 1),
-		tilt_x: clampNumber(membrane.tiltX, -1, 1),
-		tilt_y: clampNumber(membrane.tiltY, -1, 1),
-	});
+			motion: clampNumber(Math.max(membrane.cameraMotion, membrane.motionSensor), 0, 1),
+			audio: clampNumber(membrane.audioLevel, 0, 1),
+			light: clampNumber(Math.max(membrane.lightLevel, membrane.luma), 0, 1),
+			light_contrast: clampNumber(membrane.lightContrast, 0, 1),
+			light_x: clampNumber(membrane.lightDirectionX, -1, 1),
+			light_y: clampNumber(membrane.lightDirectionY, -1, 1),
+			luma: clampNumber(membrane.luma, 0, 1),
+			tilt_x: clampNumber(membrane.tiltX, -1, 1),
+			tilt_y: clampNumber(membrane.tiltY, -1, 1),
+		});
 
 	const membraneSignature = (metrics) => [
 		Math.round(clampNumber(metrics.presence, 0, 1) * 10),
 		Math.round(clampNumber(metrics.motion, 0, 1) * 10),
 		Math.round(clampNumber(metrics.audio, 0, 1) * 10),
 		Math.round(clampNumber(metrics.light, 0, 1) * 10),
+		Math.round(clampNumber(metrics.light_contrast, 0, 1) * 10),
 		Math.round(clampNumber(metrics.device_volume, 0, 1) * 10),
 		metrics.silence_intent > 0.5 ? 1 : 0,
 		Math.round((clampNumber(metrics.tilt_x, -1, 1) + 1) * 5),
 		Math.round((clampNumber(metrics.tilt_y, -1, 1) + 1) * 5),
+		Math.round((clampNumber(metrics.light_x, -1, 1) + 1) * 5),
+		Math.round((clampNumber(metrics.light_y, -1, 1) + 1) * 5),
 	].join(":");
 
 	const membraneBridgeCopy = (metrics) => `présence ${Math.round(metrics.presence * 100)}% · mouvement ${Math.round(metrics.motion * 100)}% · souffle ${Math.round(metrics.audio * 100)}% · lumière ${Math.round(metrics.light * 100)}% · niveau ${Math.round(metrics.device_volume * 100)}%${metrics.silence_intent > 0.5 ? " · silence web" : ""}${metrics.native_silence > 0.5 ? " · silence natif" : ""}`;
@@ -11800,12 +13722,15 @@ function initXyzCamera() {
 		}, 12000);
 	};
 
-	const setReactiveCssState = (luma = 0, motion = 0, rgb = [180, 180, 180], flavor = "neutral") => {
+	const setReactiveCssState = (luma = 0, motion = 0, rgb = [180, 180, 180], flavor = "neutral", lightSample = {}) => {
 		const safeLuma = clampNumber(luma, 0, 1);
 		const safeMotion = clampNumber(motion, 0, 1);
 		const safeRgb = Array.isArray(rgb) && rgb.length >= 3
 			? rgb.map((value) => clampNumber(Math.round(Number(value) || 0), 0, 255))
 			: [180, 180, 180];
+		const safeLightContrast = clampNumber(Number(lightSample.contrast) || 0, 0, 1);
+		const safeLightDirectionX = clampNumber(Number(lightSample.directionX) || 0, -1, 1);
+		const safeLightDirectionY = clampNumber(Number(lightSample.directionY) || 0, -1, 1);
 
 		document.body.dataset.cameraLuma = safeLuma.toFixed(3);
 		document.body.dataset.cameraMotion = safeMotion.toFixed(3);
@@ -11816,6 +13741,9 @@ function initXyzCamera() {
 		document.body.style.setProperty("--camera-rgb", safeRgb.join(" "));
 		membrane.luma = safeLuma;
 		membrane.cameraMotion = safeMotion;
+		membrane.lightContrast = safeLightContrast;
+		membrane.lightDirectionX = safeLightDirectionX;
+		membrane.lightDirectionY = safeLightDirectionY;
 		if (!(lightSensor && isMembraneLive())) {
 			membrane.lightLevel = safeLuma;
 		}
@@ -12000,14 +13928,17 @@ function initXyzCamera() {
 		membrane.audioLevel = 0;
 		membrane.shake = 0;
 		syncMembraneReactiveState();
-		renderToreGuide({
-			mode: currentToreMode,
-			noteLabel: formatToreNoteLabel(lastQuantizedMidi),
-			shakeLevel: 0,
-			movement: 0,
-			lightTone: 0,
-			ambient: 0,
-		});
+			renderToreGuide({
+				mode: currentToreMode,
+				noteLabel: formatToreNoteLabel(lastQuantizedMidi),
+				shakeLevel: 0,
+				movement: 0,
+				lightTone: 0,
+				lightContrast: 0,
+				lightDirectionX: 0,
+				lightDirectionY: 0,
+				ambient: 0,
+			});
 		renderMusicDesk();
 	};
 
@@ -12050,13 +13981,17 @@ function initXyzCamera() {
 		const motionEnergy = clampNumber(Math.max(membrane.motionSensor, membrane.cameraMotion * 0.92), 0, 1);
 		const tiltEnergy = clampNumber((Math.abs(membrane.tiltX) + Math.abs(membrane.tiltY)) * 0.5, 0, 1);
 		const lightTone = clampNumber(membrane.lightLevel * 0.58 + membrane.luma * 0.42, 0, 1);
+		const lightContrast = clampNumber(membrane.lightContrast, 0, 1);
+		const lightDirectionX = clampNumber(membrane.lightDirectionX, -1, 1);
+		const lightDirectionY = clampNumber(membrane.lightDirectionY, -1, 1);
+		const lightProfile = membraneLightProfile();
 		const ambient = clampNumber(membrane.audioLevel, 0, 1);
 		const touchEnergy = instrumentTouchEnergy();
 		const bodyPlay = instrumentBodyEnergy();
 		const sceneEnergy = instrumentSceneEnergy();
 		const orientationX = clampNumber(((membrane.tiltX + 1) * 0.5) * 0.68 + instrument.mineX * 0.32, 0, 1);
 		const orientationY = clampNumber(((1 - membrane.tiltY) * 0.5) * 0.62 + instrument.terreY * 0.38, 0, 1);
-		const movement = clampNumber(motionEnergy * 0.46 + membrane.cameraMotion * 0.12 + tiltEnergy * 0.12 + bodyPlay * 0.18 + touchEnergy * 0.14 + shakeLevel * 0.28, 0, 1);
+		const movement = clampNumber(motionEnergy * 0.44 + membrane.cameraMotion * 0.12 + tiltEnergy * 0.12 + bodyPlay * 0.16 + touchEnergy * 0.14 + shakeLevel * 0.26 + lightContrast * 0.08, 0, 1);
 		const harmonicMode = resolveToreMode(lightTone, flavor, movement, ambient, touchEnergy);
 		const scaleProfile = currentScaleProfile(harmonicMode);
 		const presence = clampNumber(
@@ -12087,7 +14022,7 @@ function initXyzCamera() {
 		const bassTrackMix = getMusicTrackMix("bass");
 		const percussionTrackMix = getMusicTrackMix("percu");
 		const activePercussion = percussionTrackMix > 0.001 ? activePercussionKeys().length : 0;
-		const pitchOctaves = 0.28 + orientationX * 1.62 + lightTone * 0.36 + ambient * 0.1 + (instrumentPitchBias() * 0.18);
+		const pitchOctaves = 0.28 + orientationX * 1.62 + lightTone * 0.36 + ambient * 0.1 + (instrumentPitchBias() * 0.18) - (lightDirectionY * 0.16);
 		const rawMidi = toreRootMidi + (pitchOctaves * 12) + (instrumentPitchBias() * 4.2);
 		const quantizedMidi = quantizeToreMidi(rawMidi, harmonicMode);
 		const harmonyMidi = findNearestScaleMidi(quantizedMidi + scaleProfile.harmonyOffset, harmonicMode, { minMidi: 43, maxMidi: 91 });
@@ -12104,6 +14039,8 @@ function initXyzCamera() {
 			+ (ambient * 4)
 			+ (shakeLevel * 5)
 			- (movement * 3)
+			+ (lightDirectionX * 6)
+			- (lightDirectionY * 4)
 			+ (instrumentTextureBias() * 16)
 		) * instrumentProfile.detuneDepth;
 		const droneFloor = audible
@@ -12117,7 +14054,7 @@ function initXyzCamera() {
 			: 0;
 		const targetGain = audible
 			? clampNumber(
-				gate * (handOpen * 0.78 + touchEnergy * 0.26 + sceneEnergy * 0.1) * deviceProfile.volume * feedbackSafety * 0.12
+				gate * (handOpen * 0.74 + touchEnergy * 0.24 + sceneEnergy * 0.1 + lightContrast * 0.14) * deviceProfile.volume * feedbackSafety * 0.12
 					+ droneFloor
 					+ demoPulseFloor,
 				0,
@@ -12126,13 +14063,13 @@ function initXyzCamera() {
 			: 0;
 		const targetMainGain = audible
 			? clampNumber(
-				(0.58 + handOpen * 0.18 + sceneEnergy * 0.1 + (scaleProfile.color === "open" ? 0.08 : 0))
+				(0.54 + handOpen * 0.16 + sceneEnergy * 0.1 + lightProfile.terre * 0.14 + (scaleProfile.color === "open" ? 0.08 : 0))
 				* terreTrackMix,
 				0,
 				1
 			)
 			: 0;
-		const harmonicBlend = instrumentProfile.harmonicMix + lightTone * 0.14 + (scaleProfile.color === "bright" ? 0.08 : 0) + (activePercussion ? 0 : 0.04);
+		const harmonicBlend = instrumentProfile.harmonicMix + lightTone * 0.12 + lightProfile.mine * 0.12 + (scaleProfile.color === "bright" ? 0.08 : 0) + (activePercussion ? 0 : 0.04);
 		const targetHarmonicGain = audible
 			? clampNumber(targetGain * harmonicBlend * mineTrackMix, 0, isMembraneDemo() ? 0.11 : 0.09)
 			: 0;
@@ -12140,13 +14077,15 @@ function initXyzCamera() {
 		const targetSubGain = audible
 			? clampNumber(targetGain * subBlend * bassTrackMix, 0, isMembraneDemo() ? 0.08 : 0.065)
 			: 0;
-		const targetPan = clampNumber(membrane.tiltX * 0.62 + ((instrument.mineX - instrument.terreX) * 0.9) + (orientationX - 0.5) * 0.14, -1, 1);
+		const targetPan = clampNumber(membrane.tiltX * 0.54 + ((instrument.mineX - instrument.terreX) * 0.84) + (orientationX - 0.5) * 0.14 + lightDirectionX * 0.22, -1, 1);
 		const targetFilterFrequency = clampNumber(
 			instrumentProfile.filterBase
 				+ lightTone * instrumentProfile.filterSpan
+				+ lightContrast * 420
 				+ ambient * instrumentProfile.filterAmbient
 				+ movement * instrumentProfile.filterMovement
 				+ shakeLevel * instrumentProfile.filterShake
+				- (lightDirectionY * 160)
 				+ (liftFrequency - targetFrequency) * 0.24,
 			180,
 			4800
@@ -12154,26 +14093,32 @@ function initXyzCamera() {
 		const targetFilterQ = instrumentProfile.qBase
 			+ ambient * instrumentProfile.qAmbient
 			+ movement * instrumentProfile.qMovement
+			+ lightContrast * 0.26
 			+ shakeLevel * instrumentProfile.qShake;
 		const targetLfoFrequency = instrumentProfile.lfoBase
 			+ movement * instrumentProfile.lfoRange
 			+ ambient * instrumentProfile.lfoAmbient
 			+ shakeLevel * instrumentProfile.lfoShake
+			+ lightContrast * 0.36
 			+ lightTone * 0.18;
 		const targetLfoDepth = instrumentProfile.lfoDepthBase
 			+ movement * instrumentProfile.lfoDepthRange
 			+ ambient * 5.6
+			+ lightContrast * 5.2
 			+ shakeLevel * 8.4
 			+ Math.abs(membrane.tiltX) * 4.2;
 		applyMotionInstrumentProfile();
-		renderToreGuide({
-			mode: harmonicMode,
-			noteLabel,
-			shakeLevel,
-			movement,
-			lightTone,
-			ambient,
-		});
+			renderToreGuide({
+				mode: harmonicMode,
+				noteLabel,
+				shakeLevel,
+				movement,
+				lightTone,
+				lightContrast,
+				lightDirectionX,
+				lightDirectionY,
+				ambient,
+			});
 		const now = audioContext.currentTime;
 
 		motionVoiceOscillator.frequency.setTargetAtTime(targetFrequency, now, 0.09);
@@ -12412,7 +14357,11 @@ function initXyzCamera() {
 			"Terre et Mine ouvrent un atelier local a deux mains: Terre porte le champ, Mine y creuse note, accent, harmonie et percussion choisie, puis le tore les rejoue sans capteurs.",
 			"Terre et Mine ouvrent la matière du tore."
 		);
-		setReactiveCssState(0.28, 0.14, [112, 122, 196], "velvet");
+		setReactiveCssState(0.28, 0.14, [112, 122, 196], "velvet", {
+			contrast: 0.18,
+			directionX: -0.18,
+			directionY: -0.12,
+		});
 		membrane.audioLevel = 0.08;
 		membrane.motionSensor = 0.18;
 		membrane.shake = 0.12;
@@ -12457,7 +14406,11 @@ function initXyzCamera() {
 			const tiltX = Math.sin(seconds * (0.42 + motion * 0.72)) * (0.08 + motion * 0.54);
 			const tiltY = Math.cos(seconds * (0.36 + motion * 0.64) + 0.6) * (0.07 + burst * 0.42 + undertow * 0.16);
 
-				setReactiveCssState(luma, motion, rgb, phase.key);
+				setReactiveCssState(luma, motion, rgb, phase.key, {
+					contrast: clampNumber(0.14 + shimmer * 0.28 + burst * 0.22, 0, 1),
+					directionX: clampNumber(Math.sin(seconds * 0.58 + progress * Math.PI * 2) * (0.18 + lift * 0.46), -1, 1),
+					directionY: clampNumber(Math.cos(seconds * 0.44 + 0.8) * (0.16 + undertow * 0.42), -1, 1),
+				});
 				membrane.lightLevel = lightLevel;
 				membrane.audioLevel = audio;
 				membrane.motionSensor = motionSensor;
@@ -12676,22 +14629,33 @@ function initXyzCamera() {
 		const sampleCount = analysisCanvas.width * analysisCanvas.height;
 		const currentSamples = new Float32Array(sampleCount);
 		let totalLuma = 0;
+		let totalLumaSquared = 0;
 		let totalR = 0;
 		let totalG = 0;
 		let totalB = 0;
 		let totalMotion = 0;
+		let totalLightWeight = 0;
+		let weightedLightX = 0;
+		let weightedLightY = 0;
 
 		for (let offset = 0, sampleIndex = 0; offset < data.length; offset += 4, sampleIndex += 1) {
 			const red = data[offset];
 			const green = data[offset + 1];
 			const blue = data[offset + 2];
 			const luma = (red * 0.299 + green * 0.587 + blue * 0.114) / 255;
+			const sampleX = analysisCanvas.width > 1 ? (sampleIndex % analysisCanvas.width) / (analysisCanvas.width - 1) : 0.5;
+			const sampleY = analysisCanvas.height > 1 ? Math.floor(sampleIndex / analysisCanvas.width) / (analysisCanvas.height - 1) : 0.5;
+			const lightWeight = Math.max(0.0001, luma * luma);
 
 			currentSamples[sampleIndex] = luma;
 			totalLuma += luma;
+			totalLumaSquared += luma * luma;
 			totalR += red;
 			totalG += green;
 			totalB += blue;
+			totalLightWeight += lightWeight;
+			weightedLightX += sampleX * lightWeight;
+			weightedLightY += sampleY * lightWeight;
 
 			if (previousSamples) {
 				totalMotion += Math.abs(luma - previousSamples[sampleIndex]);
@@ -12703,14 +14667,24 @@ function initXyzCamera() {
 		const averageMotion = previousSamples
 			? clampNumber((totalMotion / sampleCount) * 3.6, 0, 1)
 			: 0;
+		const lumaVariance = Math.max(0, (totalLumaSquared / sampleCount) - (averageLuma * averageLuma));
+		const lightContrast = clampNumber(Math.sqrt(lumaVariance) * 3.2, 0, 1);
 		const averageRgb = [
 			Math.round(totalR / sampleCount),
 			Math.round(totalG / sampleCount),
 			Math.round(totalB / sampleCount),
 		];
+		const lightCentroidX = totalLightWeight > 0 ? weightedLightX / totalLightWeight : 0.5;
+		const lightCentroidY = totalLightWeight > 0 ? weightedLightY / totalLightWeight : 0.5;
+		const lightDirectionX = clampNumber((lightCentroidX - 0.5) * 2 * (0.9 + lightContrast * 0.6), -1, 1);
+		const lightDirectionY = clampNumber((lightCentroidY - 0.5) * 2 * (0.9 + lightContrast * 0.6), -1, 1);
 
 		const flavor = describeCameraFlavor(averageLuma, averageMotion);
-		setReactiveCssState(averageLuma, averageMotion, averageRgb, flavor.key);
+		setReactiveCssState(averageLuma, averageMotion, averageRgb, flavor.key, {
+			contrast: lightContrast,
+			directionX: lightDirectionX,
+			directionY: lightDirectionY,
+		});
 
 		if (titleNode instanceof HTMLElement) {
 			titleNode.textContent = flavor.title;
@@ -14170,6 +16144,7 @@ runPageInit("deviceBridgePanels", initDeviceBridgePanels);
 runPageInit("labConsole", initLabConsole);
 runPageInit("xyzSurface", initXyzSurface);
 runPageInit("ioSpatialExplorer", initIoSpatialExplorer);
+runPageInit("spatialNativeSimulator", initSpatialNativeSimulator);
 runPageInit("xyzCamera", initXyzCamera);
 
 function writeGuideVoiceSession(session) {
@@ -14360,24 +16335,30 @@ function initSpatialContext() {
 				return null;
 			}
 
-			return {
-				root: context,
-				raNote: context.querySelector("[data-spatial-ra-note]"),
-				raActions: context.querySelector("[data-spatial-ra-actions]"),
-				raPrimary: context.querySelector("[data-spatial-ra-primary]"),
+				return {
+					root: context,
+					raNote: context.querySelector("[data-spatial-ra-note]"),
+					raActions: context.querySelector("[data-spatial-ra-actions]"),
+					raPrimary: context.querySelector("[data-spatial-ra-primary]"),
 				raSecondary: context.querySelector("[data-spatial-ra-secondary]"),
 				worldView: context.querySelector("[data-spatial-world-view]"),
 				worldFocus: context.querySelector("[data-spatial-world-focus]"),
-				worldBody: context.querySelector("[data-spatial-world-body]"),
-				worldHands: context.querySelector("[data-spatial-world-hands]"),
-				worldLight: context.querySelector("[data-spatial-world-light]"),
-				worldCopy: context.querySelector("[data-spatial-world-copy]"),
-				nativeLinks: Array.from(context.querySelectorAll("[data-spatial-link]")),
-				defaultNote: context.querySelector("[data-spatial-ra-note]")?.textContent?.trim() || "",
-				defaultWorldCopy: context.querySelector("[data-spatial-world-copy]")?.textContent?.trim() || "",
-			};
-		})
-		.filter(Boolean);
+					worldBody: context.querySelector("[data-spatial-world-body]"),
+					worldHands: context.querySelector("[data-spatial-world-hands]"),
+					worldLight: context.querySelector("[data-spatial-world-light]"),
+					worldCopy: context.querySelector("[data-spatial-world-copy]"),
+					nativeRuntime: context.querySelector("[data-spatial-native-runtime]"),
+					nativeSpace: context.querySelector("[data-spatial-native-space]"),
+					nativeInput: context.querySelector("[data-spatial-native-input]"),
+					nativeAnchor: context.querySelector("[data-spatial-native-anchor]"),
+					nativeCopy: context.querySelector("[data-spatial-native-copy]"),
+					nativeLinks: Array.from(context.querySelectorAll("[data-spatial-link]")),
+					defaultNote: context.querySelector("[data-spatial-ra-note]")?.textContent?.trim() || "",
+					defaultWorldCopy: context.querySelector("[data-spatial-world-copy]")?.textContent?.trim() || "",
+					defaultNativeCopy: context.querySelector("[data-spatial-native-copy]")?.textContent?.trim() || "",
+				};
+			})
+			.filter(Boolean);
 
 	const setContextActionLink = (node, link) => {
 		if (!(node instanceof HTMLAnchorElement)) {
@@ -14457,8 +16438,8 @@ function initSpatialContext() {
 		});
 	};
 
-	const applyWorldStateToContext = (state) => {
-		contextModels.forEach((model) => {
+		const applyWorldStateToContext = (state) => {
+			contextModels.forEach((model) => {
 			if (!model || !(model.root instanceof HTMLElement)) {
 				return;
 			}
@@ -14488,20 +16469,64 @@ function initSpatialContext() {
 					? state.worldCopy.trim()
 					: (model.defaultWorldCopy || "Le monde reste un instrument.");
 				model.worldCopy.textContent = copy;
-			}
-		});
-	};
+				}
+			});
+		};
 
-	applyRaStateToContext(readRaModulationSession());
-	applyWorldStateToContext(readWorldInstrumentSession());
-	window.addEventListener("o:ra-modulation", (event) => {
-		const detail = event instanceof CustomEvent ? event.detail : null;
-		applyRaStateToContext(detail);
-	});
-	window.addEventListener("o:world-instrument", (event) => {
-		const detail = event instanceof CustomEvent ? event.detail : null;
-		applyWorldStateToContext(detail);
-	});
+		const applySpatialNativeStateToContext = (state) => {
+			contextModels.forEach((model) => {
+				if (!model || !(model.root instanceof HTMLElement)) {
+					return;
+				}
+
+				if (!state || typeof state !== "object" || state.available !== true) {
+					delete model.root.dataset.spatialNativeRuntime;
+					delete model.root.dataset.spatialNativeSpace;
+					delete model.root.dataset.spatialNativePassthrough;
+					setContextText(model.nativeRuntime, "web seul");
+					setContextText(model.nativeSpace, prefersSpatialHeadsetMode() ? "preview stable" : "projection écran");
+					setContextText(model.nativeInput, "pointeur");
+					setContextText(model.nativeAnchor, "aucun");
+					if (model.nativeCopy instanceof HTMLElement) {
+						model.nativeCopy.textContent = model.defaultNativeCopy || "Le futur client spatial pourra injecter ici regard, pinch, ancres, pièce et lumière.";
+					}
+					return;
+				}
+
+				model.root.dataset.spatialNativeRuntime = typeof state.runtimeLabel === "string" ? state.runtimeLabel : "";
+				model.root.dataset.spatialNativeSpace = typeof state.session?.space === "string" ? state.session.space : "";
+				model.root.dataset.spatialNativePassthrough = typeof state.passthrough === "string" ? state.passthrough : "";
+				setContextText(model.nativeRuntime, typeof state.runtimeLabel === "string" && state.runtimeLabel.trim() ? state.runtimeLabel.trim() : "natif");
+				setContextText(model.nativeSpace, typeof state.spaceLabel === "string" && state.spaceLabel.trim() ? state.spaceLabel.trim() : "espace actif");
+				setContextText(model.nativeInput, typeof state.inputLabel === "string" && state.inputLabel.trim() ? state.inputLabel.trim() : "entrée native");
+				setContextText(model.nativeAnchor, typeof state.anchorLabel === "string" && state.anchorLabel.trim() ? state.anchorLabel.trim() : "prise monde");
+				if (model.nativeCopy instanceof HTMLElement) {
+					const passthrough = typeof state.passthrough === "string" && state.passthrough !== ""
+						? `Passthrough ${state.passthrough}. `
+						: "";
+					const anchors = typeof state.anchorLabel === "string" && state.anchorLabel.trim()
+						? `${state.anchorLabel}. `
+						: "";
+					model.nativeCopy.textContent = `${passthrough}${anchors}${state.inputLabel || "Entrée native"} nourrit maintenant le tore sans réécrire la logique produit.`;
+				}
+			});
+		};
+
+		applyRaStateToContext(readRaModulationSession());
+		applyWorldStateToContext(readWorldInstrumentSession());
+		applySpatialNativeStateToContext(getCurrentSpatialBridgeState());
+		window.addEventListener("o:ra-modulation", (event) => {
+			const detail = event instanceof CustomEvent ? event.detail : null;
+			applyRaStateToContext(detail);
+		});
+		window.addEventListener("o:world-instrument", (event) => {
+			const detail = event instanceof CustomEvent ? event.detail : null;
+			applyWorldStateToContext(detail);
+		});
+		window.addEventListener("o:spatial-native-change", (event) => {
+			const detail = event instanceof CustomEvent ? event.detail : null;
+			applySpatialNativeStateToContext(detail);
+		});
 
 	const focusSpatialLink = (link) => {
 		if (!(link instanceof HTMLElement)) {
@@ -14709,6 +16734,16 @@ function registerCornerDock(dock) {
 	dock.dataset.cornerDockRegistered = "1";
 	syncCornerDockAccessibility(dock);
 	dock.addEventListener("toggle", () => {
+		if (dock.open && isCompactCornerDockViewport()) {
+			document.querySelectorAll("[data-corner-dock]").forEach((otherDock) => {
+				if (!(otherDock instanceof HTMLDetailsElement) || otherDock === dock || !otherDock.open) {
+					return;
+				}
+
+				closeCornerDock(otherDock);
+			});
+		}
+
 		syncCornerDockAccessibility(dock);
 	});
 }

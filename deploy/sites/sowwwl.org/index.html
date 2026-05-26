@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,321 +7,1123 @@
   <meta name="description" content="SOWWWL.org explique les rôles de sowwwl.com, sowwwl.cloud et sowwwl.xyz avant toute promotion de structure ou de message.">
   <style>
     :root {
-      --paper: #f3eee4;
-      --ink: #182438;
-      --muted: #5d6776;
-      --line: rgba(24, 36, 56, 0.14);
-      --accent: #114a79;
-      --accent-soft: #d9b36a;
-      --panel: rgba(255, 255, 255, 0.72);
-      --shadow: 0 26px 60px rgba(24, 36, 56, 0.12);
+      --paper: #f4ecde;
+      --paper-rgb: 244 236 222;
+      --ink: #162335;
+      --ink-rgb: 22 35 53;
+      --muted: #5e6775;
+      --muted-strong: #47505d;
+      --line: rgba(22, 35, 53, 0.12);
+      --line-strong: rgba(22, 35, 53, 0.22);
+      --tide: #215b78;
+      --tide-soft: rgba(33, 91, 120, 0.14);
+      --ember: #b1702f;
+      --ember-soft: rgba(177, 112, 47, 0.14);
+      --forest: #29534a;
+      --forest-soft: rgba(41, 83, 74, 0.12);
+      --panel: rgba(255, 250, 243, 0.7);
+      --panel-strong: rgba(255, 251, 246, 0.82);
+      --shadow: 0 22px 64px rgba(22, 35, 53, 0.12);
+      --hero-shadow: 0 34px 88px rgba(22, 35, 53, 0.16);
+      --radius-xl: 32px;
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --radius-sm: 14px;
+      --content-width: min(1180px, calc(100vw - 28px));
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+      min-width: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
 
     body {
       margin: 0;
       color: var(--ink);
       background:
-        radial-gradient(circle at top left, rgba(17, 74, 121, 0.12), transparent 30%),
-        linear-gradient(180deg, #f7f2e9 0%, #eee6d7 100%);
-      font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+        radial-gradient(circle at top left, rgba(33, 91, 120, 0.18), transparent 28%),
+        radial-gradient(circle at 82% 16%, rgba(177, 112, 47, 0.14), transparent 22%),
+        radial-gradient(circle at 74% 74%, rgba(41, 83, 74, 0.12), transparent 20%),
+        linear-gradient(180deg, #f7f0e2 0%, #efe5d4 52%, #eadfce 100%);
+      font-family: "Avenir Next", "Optima", "Segoe UI", sans-serif;
+      letter-spacing: 0.01em;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(22, 35, 53, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(22, 35, 53, 0.04) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: radial-gradient(circle at center, black 34%, transparent 85%);
+      pointer-events: none;
+      opacity: 0.45;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at center, rgba(255, 255, 255, 0.14), transparent 54%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent 30%);
+      pointer-events: none;
+      opacity: 0.6;
     }
 
     main {
-      width: min(1120px, calc(100vw - 28px));
+      width: var(--content-width);
       margin: 0 auto;
-      padding: 30px 0 64px;
+      padding: 28px 0 76px;
+      position: relative;
+      z-index: 1;
     }
 
     h1,
     h2,
-    h3 {
-      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-      font-weight: 600;
-      letter-spacing: -0.03em;
+    h3,
+    h4 {
       margin: 0;
+      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+      font-weight: 600;
+      letter-spacing: -0.035em;
+      text-wrap: balance;
     }
 
-    .hero,
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
+    p,
+    li,
+    span,
+    strong,
+    em,
+    a {
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
-    .hero {
-      border-radius: 28px;
-      padding: 26px;
+    a {
+      color: inherit;
     }
 
-    .eyebrow,
-    .chip {
-      display: inline-flex;
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
       align-items: center;
-      padding: 8px 11px;
-      border-radius: 999px;
-      background: rgba(17, 74, 121, 0.08);
-      color: var(--accent);
-      letter-spacing: 0.18em;
-      font-size: 12px;
+      margin-bottom: 18px;
+      color: var(--muted-strong);
+      font-size: 0.82rem;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
     }
 
+    .topline__brand,
+    .topline__meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.7rem 1rem;
+      border: 1px solid rgba(22, 35, 53, 0.08);
+      border-radius: 999px;
+      background: rgba(255, 251, 246, 0.54);
+      backdrop-filter: blur(12px);
+    }
+
+    .topline__dot {
+      width: 0.52rem;
+      height: 0.52rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--tide), var(--ember));
+      box-shadow: 0 0 0 0.32rem rgba(33, 91, 120, 0.08);
+      animation: pulse-dot 3.2s ease-in-out infinite;
+    }
+
+    .hero,
+    .panel,
+    .band {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(22, 35, 53, 0.09);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .hero {
+      padding: 30px;
+      border-radius: var(--radius-xl);
+      box-shadow: var(--hero-shadow);
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.14)),
+        radial-gradient(circle at top right, rgba(177, 112, 47, 0.14), transparent 28%),
+        radial-gradient(circle at left center, rgba(33, 91, 120, 0.16), transparent 24%),
+        var(--panel-strong);
+    }
+
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+      filter: blur(2px);
+    }
+
+    .hero::before {
+      width: 18rem;
+      height: 18rem;
+      top: -8rem;
+      right: -5rem;
+      background: radial-gradient(circle, rgba(33, 91, 120, 0.16), transparent 68%);
+      animation: drift-a 12s ease-in-out infinite alternate;
+    }
+
+    .hero::after {
+      width: 16rem;
+      height: 16rem;
+      bottom: -8rem;
+      left: -4rem;
+      background: radial-gradient(circle, rgba(177, 112, 47, 0.16), transparent 68%);
+      animation: drift-b 13s ease-in-out infinite alternate;
+    }
+
+    .eyebrow,
+    .chip,
+    .mini-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      width: fit-content;
+      max-width: 100%;
+      padding: 0.62rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid rgba(33, 91, 120, 0.16);
+      background: rgba(255, 255, 255, 0.48);
+      color: var(--tide);
+      font-size: 0.76rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(18rem, 0.95fr);
+      gap: 22px;
+      margin-top: 18px;
+      align-items: start;
+    }
+
     h1 {
-      font-size: clamp(2.8rem, 7vw, 5.2rem);
       margin-top: 18px;
+      font-size: clamp(3.1rem, 8vw, 6rem);
+      line-height: 0.92;
       max-width: 9ch;
-      line-height: 0.96;
     }
 
-    .lede {
-      max-width: 60ch;
+    .hero-copy {
+      max-width: 62ch;
       color: var(--muted);
-      font-size: 1.05rem;
-      line-height: 1.75;
+      font-size: 1.08rem;
+      line-height: 1.78;
       margin-top: 18px;
     }
 
-    .actions {
+    .hero-copy strong {
+      color: var(--ink);
+    }
+
+    .hero-quickline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem;
+      margin-top: 22px;
+    }
+
+    .mini-chip {
+      padding: 0.5rem 0.78rem;
+      font-size: 0.7rem;
+      color: var(--muted-strong);
+      border-color: rgba(22, 35, 53, 0.12);
+      background: rgba(255, 255, 255, 0.44);
+    }
+
+    .cta-row,
+    .button-row {
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
-      margin-top: 22px;
+      margin-top: 24px;
     }
 
-    .actions a {
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.7rem;
+      min-height: 3rem;
+      padding: 0.9rem 1.15rem;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.46);
       text-decoration: none;
-      color: var(--ink);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 12px 16px;
-      background: rgba(255, 255, 255, 0.5);
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
     }
 
-    .actions a.primary {
-      background: linear-gradient(120deg, rgba(17, 74, 121, 0.12), rgba(217, 179, 106, 0.16));
-      border-color: rgba(17, 74, 121, 0.24);
+    .btn:hover,
+    .btn:focus-visible {
+      transform: translateY(-1px);
+      border-color: rgba(22, 35, 53, 0.22);
+      background: rgba(255, 255, 255, 0.68);
+      box-shadow: 0 14px 34px rgba(22, 35, 53, 0.08);
     }
 
-    .status-row {
+    .btn--primary {
+      border-color: rgba(33, 91, 120, 0.22);
+      background: linear-gradient(135deg, rgba(33, 91, 120, 0.16), rgba(177, 112, 47, 0.16));
+    }
+
+    .btn__label {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-      margin-top: 22px;
+      gap: 0.18rem;
     }
 
-    .status {
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      padding: 16px;
-      background: rgba(255, 255, 255, 0.42);
+    .btn__label strong {
+      font-size: 0.98rem;
     }
 
-    .status strong {
-      display: block;
-      margin-top: 10px;
-      font-size: 1.1rem;
+    .btn__label span {
+      font-size: 0.74rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
-    .status p {
-      margin: 10px 0 0;
+    .hero-side {
+      display: grid;
+      gap: 14px;
+    }
+
+    .side-card {
+      position: relative;
+      padding: 1.1rem 1.1rem 1.15rem;
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(22, 35, 53, 0.1);
+      background: rgba(255, 251, 246, 0.64);
+    }
+
+    .side-card h2,
+    .side-card h3 {
+      font-size: 1.2rem;
+      margin-top: 0.55rem;
+    }
+
+    .side-card p {
+      margin: 0.8rem 0 0;
       color: var(--muted);
       line-height: 1.65;
     }
 
-    .section-title {
+    .status-stack {
+      display: grid;
+      gap: 0.8rem;
+      margin-top: 1rem;
+    }
+
+    .status-item {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 0.8rem;
+      align-items: start;
+      padding: 0.85rem 0.9rem;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(22, 35, 53, 0.08);
+    }
+
+    .status-index {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, rgba(33, 91, 120, 0.12), rgba(177, 112, 47, 0.12));
+      color: var(--tide);
+      font-size: 0.84rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .status-copy strong {
+      display: block;
+      font-size: 0.98rem;
+    }
+
+    .status-copy p {
+      margin-top: 0.38rem;
+      font-size: 0.92rem;
+    }
+
+    .hero-rail {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .hero-rail-card {
+      padding: 1rem;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(22, 35, 53, 0.08);
+      background: rgba(255, 255, 255, 0.48);
+    }
+
+    .hero-rail-card span {
+      display: inline-flex;
+      color: var(--muted-strong);
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .hero-rail-card strong {
+      display: block;
+      margin-top: 0.55rem;
+      font-size: 1.02rem;
+    }
+
+    .hero-rail-card p {
+      margin: 0.6rem 0 0;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 0.94rem;
+    }
+
+    .section-head {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
       align-items: end;
-      margin: 30px 0 16px;
+      gap: 1rem;
+      margin: 34px 0 18px;
     }
 
-    .section-title p {
+    .section-head p {
       margin: 0;
-      color: var(--muted);
       max-width: 50ch;
+      color: var(--muted);
+      line-height: 1.65;
     }
 
-    .grid {
+    .band {
+      border-radius: 28px;
+      padding: 24px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.16)),
+        rgba(255, 250, 243, 0.72);
+    }
+
+    .rule-grid {
       display: grid;
-      gap: 16px;
+      grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .rule-quote {
+      margin-top: 1rem;
+      font-size: clamp(1.45rem, 3vw, 2.35rem);
+      line-height: 1.28;
+      max-width: 16ch;
+    }
+
+    .rule-list {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .rule-list li {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 0.85rem;
+      align-items: start;
+      padding: 0.95rem 1rem;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(22, 35, 53, 0.08);
+    }
+
+    .rule-list em {
+      font-style: normal;
+      color: var(--tide);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+    }
+
+    .card-grid {
+      display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
     }
 
     .panel {
-      border-radius: 24px;
-      padding: 20px;
+      border-radius: 28px;
+      padding: 22px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08)),
+        rgba(255, 250, 243, 0.72);
+    }
+
+    .panel h3 {
+      font-size: 1.34rem;
     }
 
     .panel p,
     .panel li {
       color: var(--muted);
-      line-height: 1.7;
+      line-height: 1.68;
     }
 
-    .pillars {
-      counter-reset: pillar;
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .pillars li {
-      position: relative;
-      padding-left: 46px;
-      margin-top: 16px;
-    }
-
-    .pillars li::before {
-      counter-increment: pillar;
-      content: counter(pillar);
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
+    .domain-card {
       display: grid;
-      place-items: center;
-      background: rgba(17, 74, 121, 0.1);
-      color: var(--accent);
-      font-weight: 700;
+      gap: 1rem;
+      min-height: 100%;
     }
 
-    .quote {
-      font-size: clamp(1.4rem, 4vw, 2.2rem);
-      line-height: 1.35;
-      color: var(--ink);
-    }
-
-    .domain-list {
-      display: grid;
-      gap: 10px;
-      padding: 0;
-      margin: 18px 0 0;
-      list-style: none;
-    }
-
-    .domain-list li {
+    .domain-card__top {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
-      border-top: 1px solid var(--line);
-      padding-top: 12px;
+      gap: 0.8rem;
+      align-items: start;
     }
 
-    .domain-list strong {
+    .domain-kicker {
+      color: var(--muted-strong);
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .domain-card__copy {
+      margin: 0;
+      min-height: 6.4em;
+    }
+
+    .domain-card__meta,
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+    }
+
+    .chip {
+      padding: 0.48rem 0.72rem;
+      font-size: 0.7rem;
+      border-color: rgba(22, 35, 53, 0.1);
+      color: var(--muted-strong);
+      background: rgba(255, 255, 255, 0.44);
+    }
+
+    .domain-card__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    .domain-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.85rem 0.98rem;
+      border-radius: 16px;
+      border: 1px solid rgba(22, 35, 53, 0.12);
+      background: rgba(255, 255, 255, 0.5);
+      text-decoration: none;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+    }
+
+    .domain-link:hover,
+    .domain-link:focus-visible {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .protocol-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
+      gap: 16px;
+    }
+
+    .protocol-steps {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: protocol;
+    }
+
+    .protocol-steps li {
+      position: relative;
+      padding: 1rem 1rem 1rem 4rem;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.48);
+      border: 1px solid rgba(22, 35, 53, 0.08);
+    }
+
+    .protocol-steps li::before {
+      counter-increment: protocol;
+      content: counter(protocol);
+      position: absolute;
+      left: 1rem;
+      top: 1rem;
+      width: 2rem;
+      height: 2rem;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(33, 91, 120, 0.14), rgba(177, 112, 47, 0.14));
+      color: var(--tide);
+      font-weight: 700;
+      font-size: 0.88rem;
+    }
+
+    .protocol-steps strong {
+      display: block;
+      font-size: 1rem;
       color: var(--ink);
+    }
+
+    .protocol-steps p {
+      margin: 0.45rem 0 0;
+    }
+
+    .signal-board {
+      display: grid;
+      gap: 12px;
+    }
+
+    .signal-tile {
+      padding: 1rem;
+      border-radius: 18px;
+      border: 1px solid rgba(22, 35, 53, 0.08);
+      background: rgba(255, 255, 255, 0.48);
+    }
+
+    .signal-tile span {
+      display: inline-flex;
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted-strong);
+    }
+
+    .signal-tile strong {
+      display: block;
+      margin-top: 0.55rem;
+      font-size: 1.03rem;
+    }
+
+    .signal-tile p {
+      margin: 0.5rem 0 0;
+      font-size: 0.94rem;
     }
 
     .note {
+      margin: 22px auto 0;
+      max-width: 60ch;
       text-align: center;
       color: var(--muted);
-      margin-top: 22px;
+      line-height: 1.7;
+      font-size: 0.98rem;
     }
 
-    @media (max-width: 900px) {
-      .grid,
-      .status-row {
-        grid-template-columns: 1fr;
+    .footer-mark {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 0.76rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted-strong);
+    }
+
+    @keyframes drift-a {
+      0% {
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      100% {
+        transform: translate3d(-1.2rem, 1.4rem, 0) scale(1.06);
       }
     }
 
-    @media (max-width: 640px) {
+    @keyframes drift-b {
+      0% {
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      100% {
+        transform: translate3d(1rem, -1rem, 0) scale(1.08);
+      }
+    }
+
+    @keyframes pulse-dot {
+      0%,
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0.32rem rgba(33, 91, 120, 0.08);
+      }
+      50% {
+        transform: scale(1.08);
+        box-shadow: 0 0 0 0.48rem rgba(33, 91, 120, 0.12);
+      }
+    }
+
+    @media (max-width: 1040px) {
+      .hero-grid,
+      .rule-grid,
+      .protocol-grid,
+      .card-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-rail {
+        grid-template-columns: 1fr;
+      }
+
+      .domain-card__copy {
+        min-height: 0;
+      }
+    }
+
+    @media (max-width: 720px) {
       main {
         width: min(100vw - 16px, 100vw);
         padding-top: 16px;
       }
 
+      .topline {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
       .hero,
+      .panel,
+      .band {
+        border-radius: 24px;
+      }
+
+      .hero,
+      .band,
       .panel {
-        border-radius: 22px;
+        padding: 20px;
+      }
+
+      h1 {
+        max-width: 10ch;
+        font-size: clamp(2.7rem, 13vw, 4.4rem);
+      }
+
+      .cta-row,
+      .button-row,
+      .domain-card__actions {
+        flex-direction: column;
+      }
+
+      .btn,
+      .domain-link {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .section-head {
+        flex-direction: column;
+        align-items: start;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        transition: none !important;
       }
     }
   </style>
 </head>
 <body>
   <main>
-    <section class="hero">
-      <span class="eyebrow">SOWWWL / carte des rôles</span>
-      <h1>Comprendre les domaines sans se perdre.</h1>
-      <p class="lede">
-        <strong>sowwwl.com</strong> sert à entrer et utiliser O. <strong>sowwwl.org</strong>
-        sert à expliquer cette carte publiquement, à valider les mots, les rôles et
-        l’ordre des portes. Une fois la phrase claire, <strong>sowwwl.cloud</strong>
-        peut devenir le hub canonique.
-      </p>
-      <div class="actions">
-        <a class="primary" href="https://sowwwl.com">Ouvrir sowwwl.com</a>
-        <a href="https://sowwwl.cloud">Voir le hub canonique</a>
-        <a href="https://sowwwl.xyz">Voir la surface torique</a>
+    <div class="topline">
+      <div class="topline__brand">
+        <span class="topline__dot" aria-hidden="true"></span>
+        <span>SOWWWL.org / carte des rôles</span>
       </div>
-
-      <div class="status-row">
-        <article class="status">
-          <span class="chip">utiliser</span>
-          <strong>sowwwl.com</strong>
-          <p>Entrer publiquement, poser une terre, ou demander le bon passage à Owl.</p>
-        </article>
-        <article class="status">
-          <span class="chip">expliquer</span>
-          <strong>sowwwl.org</strong>
-          <p>Rendre lisibles les rôles, la hiérarchie et les passages avant toute promotion.</p>
-        </article>
-        <article class="status">
-          <span class="chip">promouvoir</span>
-          <strong>sowwwl.cloud</strong>
-          <p>Porter la version validée comme hub de référence, une fois le cadre vraiment propre.</p>
-        </article>
-      </div>
-    </section>
-
-    <div class="section-title">
-      <div>
-        <h2>Règle simple</h2>
-        <p>On n’essaie pas de tout dire partout. On explique ici, on utilise là-bas, on promeut ensuite.</p>
+      <div class="topline__meta">
+        <span>Validation publique</span>
+        <span>.com -> .org -> .cloud</span>
       </div>
     </div>
 
-    <section class="grid">
-      <article class="panel">
-        <h3>Ce qu’il faut rendre évident ici</h3>
-        <ol class="pillars">
-          <li><strong>sowwwl.com</strong> est la porte d’usage : on entre, on teste, on navigue.</li>
-          <li><strong>sowwwl.org</strong> est la porte d’explication : on vérifie les mots, l’ordre et le sens.</li>
-          <li><strong>sowwwl.cloud</strong> hérite seulement de ce qui est devenu clair publiquement.</li>
-        </ol>
-      </article>
+    <section class="hero">
+      <span class="eyebrow">SOWWWL / carte des rôles</span>
 
-      <article class="panel">
-        <h3>Les trois portes de sowwwl.com</h3>
+      <div class="hero-grid">
+        <div>
+          <h1>Comprendre les domaines sans se perdre.</h1>
+          <p class="hero-copy">
+            <strong>sowwwl.com</strong> sert a entrer et utiliser O.
+            <strong>sowwwl.org</strong> sert à expliquer cette carte publiquement, à valider
+            les mots, les rôles et l'ordre des portes. Une fois la phrase claire,
+            <strong>sowwwl.cloud</strong> peut devenir le hub canonique sans que la page d'entrée
+            doive tout porter seule.
+          </p>
+
+          <div class="hero-quickline" aria-label="Repères rapides">
+            <span class="mini-chip">utiliser sur .com</span>
+            <span class="mini-chip">expliquer sur .org</span>
+            <span class="mini-chip">promouvoir sur .cloud</span>
+            <span class="mini-chip">sentir la membrane sur .xyz</span>
+          </div>
+
+          <div class="cta-row">
+            <a class="btn btn--primary" href="https://sowwwl.com">
+              <span class="btn__label">
+                <strong>Ouvrir sowwwl.com</strong>
+                <span>entrer, tester, naviguer</span>
+              </span>
+            </a>
+            <a class="btn" href="https://sowwwl.cloud">
+              <span class="btn__label">
+                <strong>Voir sowwwl.cloud</strong>
+                <span>hub canonique quand la phrase tient</span>
+              </span>
+            </a>
+            <a class="btn" href="https://sowwwl.xyz">
+              <span class="btn__label">
+                <strong>Voir sowwwl.xyz</strong>
+                <span>surface torique et membrane</span>
+              </span>
+            </a>
+          </div>
+        </div>
+
+        <aside class="hero-side" aria-label="Résumé de la règle">
+          <article class="side-card">
+            <span class="chip">Règle simple</span>
+            <h2>Ne pas tout dire partout.</h2>
+            <p>
+            Ici on clarifie la carte. Là-bas on utilise. Ensuite seulement on promeut.
+              Ce site sert à rendre l'écosystème lisible avant qu'il soit amplifié.
+            </p>
+            <div class="status-stack">
+              <div class="status-item">
+                <div class="status-index">01</div>
+                <div class="status-copy">
+                  <strong>Utiliser</strong>
+                  <p>sowwwl.com garde l'entrée simple, active et praticable.</p>
+                </div>
+              </div>
+              <div class="status-item">
+                <div class="status-index">02</div>
+                <div class="status-copy">
+                  <strong>Expliquer</strong>
+                  <p>sowwwl.org trie les mots, les rôles et les passages.</p>
+                </div>
+              </div>
+              <div class="status-item">
+                <div class="status-index">03</div>
+                <div class="status-copy">
+                  <strong>Promouvoir</strong>
+                  <p>sowwwl.cloud hérite seulement de ce qui a été compris.</p>
+                </div>
+              </div>
+            </div>
+          </article>
+        </aside>
+      </div>
+
+      <div class="hero-rail" aria-label="Vue rapide des surfaces">
+        <article class="hero-rail-card">
+          <span>Porte produit</span>
+          <strong>sowwwl.com</strong>
+          <p>Trois gestes d'entrée: public, terre, 0wlslw0.</p>
+        </article>
+        <article class="hero-rail-card">
+          <span>Couche d'explication</span>
+          <strong>sowwwl.org</strong>
+          <p>La phrase doit être propre ici avant d'être recopiée ailleurs.</p>
+        </article>
+        <article class="hero-rail-card">
+          <span>Surface sensible</span>
+          <strong>sowwwl.xyz</strong>
+          <p>La membrane, le tore, le monde reel et l'instrument vivent ici.</p>
+        </article>
+      </div>
+    </section>
+
+    <div class="section-head">
+      <div>
+        <h2>Une règle de circulation, pas un slogan.</h2>
         <p>
-          La page d’entrée sur <strong>sowwwl.com</strong> tient aujourd’hui sur trois gestes :
-          <strong>entrer publiquement</strong>, <strong>poser une terre</strong>, ou <strong>demander à Owl</strong>.
-          <strong>sowwwl.org</strong> existe pour expliquer ce triptyque sans obliger la page d’entrée à devenir un manifeste.
+          Le rôle de <strong>sowwwl.org</strong> n'est pas d'être la home produit. Il sert à
+          tenir la logique des domaines, à rendre la carte partageable, puis à laisser
+          les autres surfaces rester nettes.
         </p>
-        <p class="quote">
-          Utiliser d’abord. Expliquer ensuite. Promouvoir seulement quand la phrase tient.
+      </div>
+    </div>
+
+    <section class="band">
+      <div class="rule-grid">
+        <div>
+          <span class="chip">Principe</span>
+          <p class="rule-quote">
+            Utiliser d'abord. Expliquer ensuite. Promouvoir seulement quand la phrase tient.
+          </p>
+        </div>
+        <ol class="rule-list" aria-label="Ce qu'il faut rendre évident ici">
+          <li>
+            <span class="status-index">A</span>
+            <div>
+              <em>usage</em>
+              <strong>sowwwl.com est la porte d'usage.</strong>
+              <p>On y entre, on teste, on pose une terre, on demande un passage à 0wlslw0.</p>
+            </div>
+          </li>
+          <li>
+            <span class="status-index">B</span>
+            <div>
+              <em>sens</em>
+              <strong>sowwwl.org est la porte d'explication.</strong>
+              <p>On y valide l'ordre des portes, la hiérarchie et la lisibilité publique.</p>
+            </div>
+          </li>
+          <li>
+            <span class="status-index">C</span>
+            <div>
+              <em>promotion</em>
+              <strong>sowwwl.cloud devient le hub une fois le cadre stable.</strong>
+              <p>Il ne doit pas devancer la clarté; il doit l'hériter.</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <div class="section-head">
+      <div>
+        <h2>Atlas des domaines</h2>
+        <p>
+          Chaque domaine doit pouvoir être résumé en une phrase, une humeur et un geste.
+          Si l'un d'eux flotte, l'ensemble devient confus.
         </p>
+      </div>
+    </div>
+
+    <section class="card-grid" aria-label="Rôles des domaines">
+      <article class="panel domain-card">
+        <div class="domain-card__top">
+          <div>
+            <span class="domain-kicker">utiliser</span>
+            <h3>sowwwl.com</h3>
+          </div>
+          <span class="chip">porte active</span>
+        </div>
+        <p class="domain-card__copy">
+          Surface publique de produit. L'entrée doit rester simple, décisive et praticable:
+          entrer publiquement, poser une terre, ou demander le bon passage à 0wlslw0.
+        </p>
+        <div class="domain-card__meta">
+          <span class="chip">public</span>
+          <span class="chip">terre</span>
+          <span class="chip">0wlslw0</span>
+        </div>
+        <div class="domain-card__actions">
+          <a class="domain-link" href="https://sowwwl.com">ouvrir</a>
+        </div>
       </article>
 
-      <article class="panel">
-        <h3>Rôles de domaines</h3>
-        <ul class="domain-list">
-          <li><strong>sowwwl.com</strong><span>Surface publique de produit, simple et active</span></li>
-          <li><strong>sowwwl.org</strong><span>Couche d’explication et de validation publique</span></li>
-          <li><strong>sowwwl.cloud</strong><span>Hub canonique quand la structure a été validée</span></li>
-          <li><strong>sowwwl.xyz</strong><span>Surface torique reliée au réel et au plasma</span></li>
-          <li><strong>0.user.o.sowwwl.cloud</strong><span>Shell utilisateur / continuité cloud</span></li>
-          <li><strong>0wlslw0.com</strong><span>Porte d’orientation et de guidage</span></li>
-        </ul>
+      <article class="panel domain-card">
+        <div class="domain-card__top">
+          <div>
+            <span class="domain-kicker">expliquer</span>
+            <h3>sowwwl.org</h3>
+          </div>
+          <span class="chip">validation layer</span>
+        </div>
+        <p class="domain-card__copy">
+          Couche d'explication et de validation publique. On y affine la carte, le langage,
+          l'ordre des domaines et le sens de la navigation avant toute amplification.
+        </p>
+        <div class="domain-card__meta">
+          <span class="chip">rôles</span>
+          <span class="chip">ordre</span>
+          <span class="chip">clarté</span>
+        </div>
+        <div class="domain-card__actions">
+          <a class="domain-link" href="#validation">relire la methode</a>
+        </div>
+      </article>
+
+      <article class="panel domain-card">
+        <div class="domain-card__top">
+          <div>
+            <span class="domain-kicker">promouvoir</span>
+            <h3>sowwwl.cloud</h3>
+          </div>
+          <span class="chip">hub canonique</span>
+        </div>
+        <p class="domain-card__copy">
+          Surface de synthese et de reference. Elle doit donner une vue d'ensemble propre
+          sans se charger de l'explication encore mouvante.
+        </p>
+        <div class="domain-card__meta">
+          <span class="chip">hub</span>
+          <span class="chip">canonique</span>
+          <span class="chip">reference</span>
+        </div>
+        <div class="domain-card__actions">
+          <a class="domain-link" href="https://sowwwl.cloud">ouvrir</a>
+        </div>
+      </article>
+
+      <article class="panel domain-card">
+        <div class="domain-card__top">
+          <div>
+            <span class="domain-kicker">sentir</span>
+            <h3>sowwwl.xyz</h3>
+          </div>
+          <span class="chip">surface torique</span>
+        </div>
+        <p class="domain-card__copy">
+          Surface sensible reliée au tore, au réel, à la membrane et aux capteurs.
+          Elle ouvre une autre qualité de relation au système.
+        </p>
+        <div class="domain-card__meta">
+          <span class="chip">membrane</span>
+          <span class="chip">plasma</span>
+          <span class="chip">instrument</span>
+        </div>
+        <div class="domain-card__actions">
+          <a class="domain-link" href="https://sowwwl.xyz">ouvrir</a>
+        </div>
+      </article>
+
+      <article class="panel domain-card">
+        <div class="domain-card__top">
+          <div>
+            <span class="domain-kicker">orienter</span>
+            <h3>0wlslw0.com</h3>
+          </div>
+          <span class="chip">guide</span>
+        </div>
+        <p class="domain-card__copy">
+          Porte d'accompagnement vocal et textuel. Quand l'utilisateur hésite, c'est la
+          couche qui réduit la confusion et renvoie vers la bonne surface.
+        </p>
+        <div class="domain-card__meta">
+          <span class="chip">guidage</span>
+          <span class="chip">voix</span>
+          <span class="chip">passage</span>
+        </div>
+        <div class="domain-card__actions">
+          <a class="domain-link" href="https://0wlslw0.com">ouvrir</a>
+        </div>
+      </article>
+
+      <article class="panel domain-card">
+        <div class="domain-card__top">
+          <div>
+            <span class="domain-kicker">continuer</span>
+            <h3>0.user.o.sowwwl.cloud</h3>
+          </div>
+          <span class="chip">shell utilisateur</span>
+        </div>
+        <p class="domain-card__copy">
+          Continuité de session, terres, liaisons et surfaces personnelles. Ce n'est pas
+          un domaine d'explication, c'est un domaine de persistance.
+        </p>
+        <div class="domain-card__meta">
+          <span class="chip">session</span>
+          <span class="chip">terre</span>
+          <span class="chip">continuité</span>
+        </div>
+        <div class="domain-card__actions">
+          <a class="domain-link" href="https://sowwwl.cloud">voir le hub</a>
+        </div>
       </article>
     </section>
 
-    <p class="note">Si l’explication n’est pas propre sur <strong>sowwwl.org</strong>, elle ne mérite pas encore d’être promue sur <strong>sowwwl.cloud</strong>.</p>
+    <div class="section-head" id="validation">
+      <div>
+        <h2>Protocole de validation publique</h2>
+        <p>
+          Avant de promouvoir un message ou une architecture, on doit pouvoir vérifier ici
+          que le triptyque reste stable et compréhensible en quelques secondes.
+        </p>
+      </div>
+    </div>
+
+    <section class="protocol-grid">
+      <article class="panel">
+        <h3>Ce que .org doit rendre évident</h3>
+        <ol class="protocol-steps">
+          <li>
+            <strong>Nommer chaque domaine sans hésiter.</strong>
+            <p>Un visiteur doit comprendre en lecture rapide qui sert à l'usage, qui sert à l'explication et qui sert à la promotion.</p>
+          </li>
+          <li>
+            <strong>Montrer l'ordre de passage.</strong>
+            <p>On n'envoie pas l'utilisateur dans le hub si l'entrée n'est pas encore propre ni dans le manifeste si la page produit suffit.</p>
+          </li>
+          <li>
+            <strong>Garder la home produit légère.</strong>
+            <p>.org absorbe la densité conceptuelle pour que .com reste directement actionnable.</p>
+          </li>
+          <li>
+            <strong>Ne promouvoir que le clarifié.</strong>
+            <p>Quand une phrase n'est pas encore stable ici, elle ne doit pas devenir une promesse de surface ailleurs.</p>
+          </li>
+        </ol>
+      </article>
+
+      <aside class="panel signal-board">
+        <h3>Lecture rapide</h3>
+        <article class="signal-tile">
+          <span>triptyque</span>
+          <strong>.com -> .org -> .cloud</strong>
+          <p>Usage, explication, promotion. Cet ordre est la colonne vertébrale.</p>
+        </article>
+        <article class="signal-tile">
+          <span>entrée .com</span>
+          <strong>public / terre / 0wlslw0</strong>
+          <p>Le produit commence par trois gestes nets, pas par une dissertation.</p>
+        </article>
+        <article class="signal-tile">
+          <span>surface sensible</span>
+          <strong>.xyz garde l'autre intensité</strong>
+          <p>Le tore, la membrane et les capteurs ont leur propre grammaire, à part du role-map.</p>
+        </article>
+      </aside>
+    </section>
+
+    <p class="note">
+      Si l'explication n'est pas propre sur <strong>sowwwl.org</strong>, elle ne mérite pas
+      encore d'être promue sur <strong>sowwwl.cloud</strong>. Le but n'est pas d'ajouter une
+      couche de plus, mais de donner à chaque couche son rôle exact.
+    </p>
+    <p class="footer-mark">SOWWWL / role map / validation publique</p>
   </main>
 </body>
 </html>

@@ -175,6 +175,10 @@ Prepared in code:
 - the `sowwwl.io` home surface has a route-backed CSS 3D volume explorer
 - the volume reacts to RA modulation and Terre & Mine state by suggesting the next node
 - the volume is keyboard navigable and remains a web preview, not a native AR promise
+- a first `spatial-core` bridge contract now exists for future native clients: `SPATIAL_CORE_CONTRACT.md`
+- the web shell can already ingest native spatial state for runtime, space, input, anchoring, light and hand energy
+- local `io` preview now ships a native simulator panel to inject visionOS / Quest-like state without a wrapper
+- the simulator can now be replayed from URL and shared as a stable local QA scene
 
 Still intentionally not done:
 

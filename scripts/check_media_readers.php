@@ -9,16 +9,56 @@ if (PHP_SAPI !== 'cli') {
     exit(1);
 }
 
-$options = getopt('', ['host:', 'island-slug:', 'json', 'require-ready']);
+$options = getopt('', ['host:', 'island-slug:', 'base-url:', 'json', 'require-ready']);
 $host = strtolower(trim((string) ($options['host'] ?? 'sowwwl.com')));
-$islandSlug = trim((string) ($options['island-slug'] ?? 'pablo-espallergues'));
+$requestedIslandSlug = trim((string) ($options['island-slug'] ?? ''));
+$baseUrl = media_normalize_base_url((string) ($options['base-url'] ?? 'http://127.0.0.1'));
 $asJson = array_key_exists('json', $options);
 $requireReady = array_key_exists('require-ready', $options);
 
 /**
  * @return array{status_code:int, body:string, headers:list<string>, error:string}
  */
-function media_fetch_local(string $host, string $path): array
+function media_normalize_base_url(string $baseUrl): string
+{
+    $candidate = rtrim(trim($baseUrl), '/');
+    if ($candidate === '') {
+        return 'http://127.0.0.1';
+    }
+
+    if (preg_match('~^https?://~i', $candidate) !== 1) {
+        $candidate = 'http://' . ltrim($candidate, '/');
+    }
+
+    return $candidate;
+}
+
+function media_resolve_default_island_slug(string $requestedSlug): array
+{
+    $requestedSlug = trim($requestedSlug);
+    if ($requestedSlug !== '') {
+        return [$requestedSlug, false];
+    }
+
+    $defaultSlug = 'pablo-espallergues';
+    if (find_land($defaultSlug) !== null) {
+        return [$defaultSlug, false];
+    }
+
+    foreach (land_snapshot() as $land) {
+        $candidate = trim((string) ($land['slug'] ?? ''));
+        if ($candidate !== '') {
+            return [$candidate, true];
+        }
+    }
+
+    return [$defaultSlug, false];
+}
+
+/**
+ * @return array{status_code:int, body:string, headers:list<string>, error:string}
+ */
+function media_fetch_local(string $baseUrl, string $host, string $path): array
 {
     $responseHeaders = [];
     $context = stream_context_create([
@@ -30,7 +70,8 @@ function media_fetch_local(string $host, string $path): array
         ],
     ]);
 
-    $stream = @fopen('http://127.0.0.1' . $path, 'r', false, $context);
+    $url = $baseUrl . (str_starts_with($path, '/') ? $path : ('/' . $path));
+    $stream = @fopen($url, 'r', false, $context);
     $body = '';
     if (is_resource($stream)) {
         $body = stream_get_contents($stream) ?: '';
@@ -64,6 +105,8 @@ function media_fetch_local(string $host, string $path): array
     ];
 }
 
+[$islandSlug, $islandSlugFallbackUsed] = media_resolve_default_island_slug($requestedIslandSlug);
+
 $routes = [
     'str3m' => [
         'path' => '/str3m',
@@ -85,10 +128,16 @@ $routes = [
             'data-continuity-dome',
             'data-island-reader-panel',
             'data-island-reader-nav',
-            'data-str3m-player-engine',
-            'data-str3m-player-listening-preset',
-            'data-str3m-player-open',
-            'data-str3m-player-retry',
+            'data-island-reader-current-label',
+            'data-island-reader-autoplay',
+        ],
+        'conditional_markers' => [
+            'data-str3m-player' => [
+                'data-str3m-player-engine',
+                'data-str3m-player-listening-preset',
+                'data-str3m-player-open',
+                'data-str3m-player-retry',
+            ],
         ],
     ],
     'aza_asset_missing' => [
@@ -101,7 +150,10 @@ $routes = [
 $payload = [
     'generated_at' => gmdate(DATE_ATOM),
     'host' => $host,
+    'base_url' => $baseUrl,
+    'requested_island_slug' => $requestedIslandSlug !== '' ? $requestedIslandSlug : null,
     'island_slug' => $islandSlug,
+    'island_slug_fallback_used' => $islandSlugFallbackUsed,
     'routes' => [],
     'ready' => false,
 ];
@@ -109,7 +161,7 @@ $payload = [
 $issues = [];
 
 foreach ($routes as $name => $route) {
-    $result = media_fetch_local($host, (string) $route['path']);
+    $result = media_fetch_local($baseUrl, $host, (string) $route['path']);
     $routeIssues = [];
     $expectedStatuses = array_map('intval', (array) ($route['expected_statuses'] ?? [200]));
     if (!in_array($result['status_code'], $expectedStatuses, true)) {
@@ -123,6 +175,24 @@ foreach ($routes as $name => $route) {
         }
         if ($result['body'] === '' || strpos($result['body'], $markerValue) === false) {
             $routeIssues[] = 'missing:' . $markerValue;
+        }
+    }
+
+    foreach ((array) ($route['conditional_markers'] ?? []) as $trigger => $markers) {
+        $triggerValue = trim((string) $trigger);
+        if ($triggerValue === '' || $result['body'] === '' || strpos($result['body'], $triggerValue) === false) {
+            continue;
+        }
+
+        foreach ((array) $markers as $marker) {
+            $markerValue = trim((string) $marker);
+            if ($markerValue === '') {
+                continue;
+            }
+
+            if (strpos($result['body'], $markerValue) === false) {
+                $routeIssues[] = 'missing:' . $markerValue;
+            }
         }
     }
 

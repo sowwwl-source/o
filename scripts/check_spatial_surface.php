@@ -9,9 +9,10 @@ if (PHP_SAPI !== 'cli') {
     exit(1);
 }
 
-$options = getopt('', ['host:', 'mode:', 'json', 'require-ready']);
+$options = getopt('', ['host:', 'mode:', 'base-url:', 'json', 'require-ready']);
 $host = strtolower(trim((string) ($options['host'] ?? 'sowwwl.io')));
 $mode = strtolower(trim((string) ($options['mode'] ?? 'headset')));
+$baseUrl = spatial_normalize_base_url((string) ($options['base-url'] ?? 'http://127.0.0.1'));
 $asJson = array_key_exists('json', $options);
 $requireReady = array_key_exists('require-ready', $options);
 
@@ -32,7 +33,24 @@ $queryString = $query !== [] ? ('?' . http_build_query($query, '', '&', PHP_QUER
 /**
  * @return array{status_code:int, body:string, headers:list<string>, error:string}
  */
-function spatial_fetch_local(string $host, string $path): array
+function spatial_normalize_base_url(string $baseUrl): string
+{
+    $candidate = rtrim(trim($baseUrl), '/');
+    if ($candidate === '') {
+        return 'http://127.0.0.1';
+    }
+
+    if (preg_match('~^https?://~i', $candidate) !== 1) {
+        $candidate = 'http://' . ltrim($candidate, '/');
+    }
+
+    return $candidate;
+}
+
+/**
+ * @return array{status_code:int, body:string, headers:list<string>, error:string}
+ */
+function spatial_fetch_local(string $baseUrl, string $host, string $path): array
 {
     $responseHeaders = [];
     $context = stream_context_create([
@@ -45,7 +63,8 @@ function spatial_fetch_local(string $host, string $path): array
     ]);
 
     $body = '';
-    $stream = @fopen('http://127.0.0.1' . $path, 'r', false, $context);
+    $url = $baseUrl . (str_starts_with($path, '/') ? $path : ('/' . $path));
+    $stream = @fopen($url, 'r', false, $context);
     if (is_resource($stream)) {
         $body = stream_get_contents($stream);
         $metadata = stream_get_meta_data($stream);
@@ -139,6 +158,7 @@ $payload = [
     'generated_at' => gmdate(DATE_ATOM),
     'host' => $host,
     'mode' => $mode,
+    'base_url' => $baseUrl,
     'surface_variant' => $surfaceVariant,
     'surface_ready' => $surfaceVariant === 'io',
     'routes' => [],
@@ -151,7 +171,7 @@ $payload = [
 $issues = [];
 
 foreach ($routes as $routeName => $routeConfig) {
-    $result = spatial_fetch_local($host, (string) $routeConfig['path']);
+    $result = spatial_fetch_local($baseUrl, $host, (string) $routeConfig['path']);
     $routeIssues = [];
     if ($result['status_code'] !== 200) {
         $routeIssues[] = 'http-' . ($result['status_code'] ?: 'unreachable');
@@ -184,7 +204,7 @@ foreach ($routes as $routeName => $routeConfig) {
 }
 
 $manifestPath = '/manifest.php?app=io' . ($queryString !== '' ? '&' . ltrim($queryString, '?') : '');
-$manifestResult = spatial_fetch_local($host, $manifestPath);
+$manifestResult = spatial_fetch_local($baseUrl, $host, $manifestPath);
 $manifestIssues = [];
 if ($manifestResult['status_code'] !== 200) {
     $manifestIssues[] = 'http-' . ($manifestResult['status_code'] ?: 'unreachable');
@@ -237,6 +257,7 @@ if ($asJson) {
     echo "=====================\n\n";
     printf("host              : %s\n", $host);
     printf("mode              : %s\n", $mode);
+    printf("base url          : %s\n", $baseUrl);
     printf("surface variant   : %s\n", $surfaceVariant !== '' ? $surfaceVariant : 'unknown');
     printf("surface ready     : %s\n", ($payload['surface_ready'] ?? false) ? 'yes' : 'no');
     echo "\nRoutes\n";

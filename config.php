@@ -968,6 +968,11 @@ function pwa_manifest_version(): string
     return $version;
 }
 
+function spatial_native_contract_version(): string
+{
+    return '2026-05-26';
+}
+
 function pwa_manifest_href(?string $preferred = null, ?string $host = null): string
 {
     $catalog = pwa_app_catalog();
@@ -1008,12 +1013,15 @@ function render_o_page_head_assets(?string $preferred = null, ?string $host = nu
     $disableServiceWorker = o_mount_prefix() !== '' ? 'true' : 'false';
     $faviconHref = h(o_public_href('favicon.svg'));
     $pwaHead = render_pwa_head_tags($preferred, $host);
+    $spatialContractVersion = h(spatial_native_contract_version());
     $stylesHref = h(o_asset_href('styles.css'));
     $scriptHref = h(o_asset_href('main.js'));
 
     return <<<HTML
     <meta name="o-bridge-prefix" content="{$bridgePrefix}">
     <meta name="o-disable-sw" content="{$disableServiceWorker}">
+    <meta name="o-spatial-native-contract" content="{$spatialContractVersion}">
+    <meta name="o-spatial-native-event" content="o:native-spatial-state">
     <link rel="icon" href="{$faviconHref}" type="image/svg+xml">
 {$pwaHead}
     <link rel="stylesheet" href="{$stylesHref}">
@@ -1444,6 +1452,15 @@ function render_spatial_context_bar(string $view = 'surface', ?string $host = nu
                         <p><span>lumière</span><strong data-spatial-world-light>lueur en mémoire</strong></p>
                     </div>
                     <p class="spatial-context__world-copy" data-spatial-world-copy>Le dernier monde instrument rejouable se posera ici quand la membrane aura parlé.</p>
+                </div>
+                <div class="spatial-context__native" data-spatial-native>
+                    <div class="spatial-context__world-grid spatial-context__world-grid--native" aria-label="Pont spatial natif">
+                        <p><span>runtime</span><strong data-spatial-native-runtime>web seul</strong></p>
+                        <p><span>espace</span><strong data-spatial-native-space>preview stable</strong></p>
+                        <p><span>entrée</span><strong data-spatial-native-input>pointeur</strong></p>
+                        <p><span>ancrage</span><strong data-spatial-native-anchor>aucun</strong></p>
+                    </div>
+                    <p class="spatial-context__world-copy" data-spatial-native-copy>Un client visionOS ou Quest pourra injecter ici regard, pinch, ancres, pièce et lumière sans réécrire le tore.</p>
                 </div>
             </article>
             <?php foreach ($routeGroups as $hand => $group): ?>

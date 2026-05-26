@@ -40,6 +40,7 @@ $isSowwwlIo = $surfaceVariant === 'io';
 $isLabSurface = $surfaceVariant === 'lab';
 $isSpatialSurface = $isSowwwlXyz || $isSowwwlIo;
 $isSpatialHeadsetMode = $isSowwwlIo && spatial_preview_mode($host) === 'headset';
+$showSpatialNativeSimulator = $isSowwwlIo && surface_preview_capable_host($host);
 // Spatial surfaces keep their own local preview via ?surface=xyz|io|lab on localhost.
 
 $requestPath = o_request_path('/');
@@ -71,7 +72,7 @@ $form = [
     'lambda_nm' => '',
 ];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $action = (string) ($_POST['action'] ?? 'create');
     $form['username'] = trim((string) ($_POST['username'] ?? ''));
     $form['timezone'] = trim((string) ($_POST['timezone'] ?? ''));
@@ -301,6 +302,96 @@ $homeSurfaceProofs = [
     ['label' => 'terres', 'value' => (string) (int) ($pulse['count'] ?? 0)],
     ['label' => 'fuseaux', 'value' => (string) (int) ($pulse['timezones'] ?? 0)],
 ];
+$homeHeroPrimaryLabel = $authenticatedLand ? 'Rouvrir ma terre' : 'Poser une terre';
+$homeHeroSecondaryHref = $authenticatedLand ? $signalHref : $guideHref;
+$homeHeroSecondaryLabel = $authenticatedLand
+    ? ($unreadSignal > 0 ? 'Écrire · ' . $unreadSignal . ' en attente' : 'Écrire maintenant')
+    : 'Passer par 0wlslw0';
+$homeHeroQuickFacts = [
+    ['label' => 'lambda', 'value' => 'λ ' . $activeLambda . ' nm'],
+    ['label' => 'mood', 'value' => $homeStreamMood],
+    [
+        'label' => $authenticatedLand ? 'signal' : 'terres',
+        'value' => $authenticatedLand ? $homeSignalState : (string) (int) ($pulse['count'] ?? 0),
+    ],
+];
+$homeEntryCards = $authenticatedLand
+    ? [
+        [
+            'href' => $homePrimaryActionHref,
+            'kicker' => '01 · terre',
+            'title' => 'Rouvrir ma terre',
+            'copy' => 'Revenir immédiatement à ton noyau situé.',
+            'hint' => 'Dire : « ouvre ma terre »',
+            'state' => $activeLandSlug !== '' ? '@' . $activeLandSlug : $activeLandLabel,
+            'class' => 'entry-card entry-card--primary entry-card--land',
+        ],
+        [
+            'href' => $signalHref,
+            'kicker' => '02 · adresse',
+            'title' => 'Écrire maintenant',
+            'copy' => 'Aller droit vers Signal' . ($unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : '') . '.',
+            'hint' => 'Dire : « ouvre Signal »',
+            'state' => $homeSignalState,
+            'class' => 'entry-card entry-card--signal',
+        ],
+        [
+            'href' => $str3mHref,
+            'kicker' => '03 · public',
+            'title' => 'Relire le public',
+            'copy' => 'Voir le courant avant de replonger dans ta terre.',
+            'hint' => 'Dire : « ramène-moi vers Str3m »',
+            'state' => $homeStreamMood,
+            'class' => 'entry-card',
+        ],
+        [
+            'href' => $publicInstrumentHref,
+            'kicker' => '04 · instrument',
+            'title' => 'Jouer l’instrument',
+            'copy' => 'Ouvrir sowwwl.io pour Terre, Mine, visage et paysage.',
+            'hint' => 'Dire : « ouvre l’instrument »',
+            'state' => 'sowwwl.io',
+            'class' => 'entry-card entry-card--instrument',
+        ],
+    ]
+    : [
+        [
+            'href' => $str3mHref,
+            'kicker' => '01 · public',
+            'title' => 'Voir d’abord',
+            'copy' => 'Entrer publiquement dans Str3m et sentir le courant.',
+            'hint' => 'Dire : « je veux visiter publiquement »',
+            'state' => $homeStreamMood,
+            'class' => 'entry-card entry-card--primary',
+        ],
+        [
+            'href' => $joinHref,
+            'kicker' => '02 · terre',
+            'title' => 'Poser une terre',
+            'copy' => 'Ouvrir un lieu à toi, situé, avec sa fréquence.',
+            'hint' => 'Dire : « je veux poser une terre »',
+            'state' => 'adresse située',
+            'class' => 'entry-card entry-card--land',
+        ],
+        [
+            'href' => $guideHref,
+            'kicker' => '03 · 0wlslw0',
+            'title' => 'Me faire guider',
+            'copy' => 'Passer par 0wlslw0 pour clarifier vite, puis continuer.',
+            'hint' => 'Dire : « aide-moi à choisir »',
+            'state' => 'guide',
+            'class' => 'entry-card entry-card--guide',
+        ],
+        [
+            'href' => $publicInstrumentHref,
+            'kicker' => '04 · instrument',
+            'title' => 'Jouer l’instrument',
+            'copy' => 'Ouvrir sowwwl.io sans compte pour tester Terre, Mine et le monde.',
+            'hint' => 'Dire : « je veux jouer »',
+            'state' => 'sowwwl.io',
+            'class' => 'entry-card entry-card--instrument',
+        ],
+    ];
 $homeRouteNodes = [
     [
         'index' => '01',
@@ -382,12 +473,12 @@ $spatialGestureCopy = $isSowwwlIo
     ? ($isSpatialHeadsetMode
         ? 'Mode casque web: Tab, flèches, focus large et clic gardent la lecture stable. Le regard, le pinch et l ancrage spatial viendront avec le client natif.'
         : 'Mode écran: glisse ou pointe pour pivoter, puis ouvre les routes avant de basculer en mode casque web. Le centre et le geste en O ouvrent toujours 0wlslw0.')
-    : 'Glisse pour pivoter. Sur mobile, l orientation et le mouvement déplacent aussi la peau. Le centre et le geste en O ouvrent toujours 0wlslw0.';
+    : 'Glisse pour pivoter. Sur mobile, la glisse garde maintenant vraiment la prise du tore; un appui long ouvre les routes cardinales, et l orientation comme le mouvement déplacent aussi la peau. Le centre et le geste en O ouvrent toujours 0wlslw0.';
 $torusAriaLabel = $isSowwwlIo
     ? ($isSpatialHeadsetMode
         ? 'Torus ambiant : tabulation, flèches, focus large et clic gardent la dérive stable en mode casque web. 0wlslw0 reste au centre comme porte rapide.'
         : 'Torus ambiant : pointe ou glisse pour prendre un repère en mode écran, puis flèches pour dériver au clavier. 0wlslw0 reste au centre comme porte rapide.')
-    : 'Torus ambiant : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Sur mobile, un appui long puis une glisse permettent aussi de naviguer. Swipe gauche vers Signal, haut vers Str3m, droite vers aZa, bas vers le noyau. Le centre ou un geste en O ouvrent aussi 0wlslw0.';
+    : 'Torus ambiant : glisser pour pivoter, roulette pour traverser, flèches pour dériver. Sur mobile, la glisse fait pivoter le tore et un appui long arme les routes : gauche vers Signal, haut vers Str3m, droite vers aZa, bas vers le noyau. Le centre ou un geste en O ouvrent aussi 0wlslw0.';
 $spatialModeScreenHref = $isSowwwlIo ? o_current_route_href(['spatial' => null], $host, false) : '';
 $spatialModeHeadsetHref = $isSowwwlIo ? o_current_route_href(['spatial' => 'headset'], $host, false) : '';
 $spatialModeTitle = $isSowwwlIo
@@ -1642,12 +1733,177 @@ $pageDescription = $isLabSurface
                         </div>
                     </details>
                 </article>
+
+                <?php if ($showSpatialNativeSimulator): ?>
+                <article class="xyz-surface-note xyz-surface-note--spatial-sim">
+                    <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-native-sim" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="injecteur natif" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="1" open>
+                        <summary class="xyz-archi-panel__summary">
+                            <span class="summary-label">09 injecteur</span>
+                            <strong>Injecteur natif local</strong>
+                            <span class="xyz-archi-panel__meta">visionos, quest, lumière, ancres</span>
+                        </summary>
+                        <div class="xyz-archi-panel__content">
+                            <div class="xyz-native-sim" data-spatial-native-sim>
+                                <div class="xyz-native-sim__head">
+                                    <div>
+                                        <span class="summary-label">spatial-core</span>
+                                        <strong>Simuler un client casque sans wrapper natif.</strong>
+                                        <p class="xyz-native-sim__copy">Injecte regard, mains, lumière, ancrage et passthrough dans le shell <code>io</code> pour éprouver le tore, Terre &amp; Mine et la modulation RA avant visionOS ou Quest.</p>
+                                    </div>
+                                    <span class="badge badge-glass" data-spatial-native-sim-badge>web seul</span>
+                                </div>
+
+                                <div class="xyz-native-sim__actions" aria-label="Actions injecteur natif">
+                                    <button type="button" class="ghost-link" data-spatial-native-sim-enable>activer</button>
+                                    <button type="button" class="ghost-link" data-spatial-native-sim-disable>couper</button>
+                                    <button type="button" class="ghost-link" data-spatial-native-sim-reset>recaler</button>
+                                    <button type="button" class="copy-button" data-spatial-native-sim-share>copier URL</button>
+                                </div>
+
+                                <div class="xyz-native-sim__group">
+                                    <span class="summary-label">presets runtime</span>
+                                    <div class="xyz-native-sim__toggle-group" aria-label="Presets casque">
+                                        <button type="button" class="ghost-link" data-spatial-native-sim-preset="visionos" aria-pressed="false">visionOS</button>
+                                        <button type="button" class="ghost-link" data-spatial-native-sim-preset="quest" aria-pressed="false">Quest</button>
+                                        <button type="button" class="ghost-link" data-spatial-native-sim-preset="browser" aria-pressed="false">browser</button>
+                                    </div>
+                                </div>
+
+                                <div class="xyz-native-sim__group">
+                                    <span class="summary-label">scénarios</span>
+                                    <div class="xyz-native-sim__toggle-group" aria-label="Scénarios de simulation">
+                                        <button type="button" class="ghost-link" data-spatial-native-sim-scenario="idle" aria-pressed="false">stable</button>
+                                        <button type="button" class="ghost-link" data-spatial-native-sim-scenario="lightSweep" aria-pressed="false">balayage</button>
+                                        <button type="button" class="ghost-link" data-spatial-native-sim-scenario="roomWalk" aria-pressed="false">marche</button>
+                                        <button type="button" class="ghost-link" data-spatial-native-sim-scenario="duetWeave" aria-pressed="false">duet</button>
+                                    </div>
+                                </div>
+
+                                <div class="xyz-native-sim__grid">
+                                    <label class="xyz-native-sim__control">
+                                        <span>espace</span>
+                                        <select data-spatial-native-sim-select="space">
+                                            <option value="window">fenêtre</option>
+                                            <option value="volume">volume</option>
+                                            <option value="shared">shared</option>
+                                            <option value="full">full</option>
+                                        </select>
+                                        <output data-spatial-native-sim-output="space">shared</output>
+                                    </label>
+                                    <label class="xyz-native-sim__control">
+                                        <span>passthrough</span>
+                                        <select data-spatial-native-sim-select="passthrough">
+                                            <option value="none">none</option>
+                                            <option value="mixed">mixed</option>
+                                            <option value="full">full</option>
+                                            <option value="portal">portal</option>
+                                            <option value="progressive">progressive</option>
+                                        </select>
+                                        <output data-spatial-native-sim-output="passthrough">mixed</output>
+                                    </label>
+                                    <label class="xyz-native-sim__control">
+                                        <span>lumière</span>
+                                        <input type="range" min="0" max="100" step="1" value="68" data-spatial-native-sim-range="lightLevel">
+                                        <output data-spatial-native-sim-output="lightLevel">68%</output>
+                                    </label>
+                                    <label class="xyz-native-sim__control">
+                                        <span>contraste</span>
+                                        <input type="range" min="0" max="100" step="1" value="24" data-spatial-native-sim-range="lightContrast">
+                                        <output data-spatial-native-sim-output="lightContrast">24%</output>
+                                    </label>
+                                    <label class="xyz-native-sim__control">
+                                        <span>lumière X</span>
+                                        <input type="range" min="-100" max="100" step="1" value="16" data-spatial-native-sim-range="lightDirectionX">
+                                        <output data-spatial-native-sim-output="lightDirectionX">+16%</output>
+                                    </label>
+                                    <label class="xyz-native-sim__control">
+                                        <span>lumière Y</span>
+                                        <input type="range" min="-100" max="100" step="1" value="-8" data-spatial-native-sim-range="lightDirectionY">
+                                        <output data-spatial-native-sim-output="lightDirectionY">-8%</output>
+                                    </label>
+                                    <label class="xyz-native-sim__control">
+                                        <span>tête</span>
+                                        <input type="range" min="0" max="100" step="1" value="16" data-spatial-native-sim-range="headSpeed">
+                                        <output data-spatial-native-sim-output="headSpeed">16%</output>
+                                    </label>
+                                    <label class="xyz-native-sim__control">
+                                        <span>ancrage</span>
+                                        <input type="range" min="0" max="100" step="1" value="84" data-spatial-native-sim-range="anchorStability">
+                                        <output data-spatial-native-sim-output="anchorStability">84%</output>
+                                    </label>
+                                    <label class="xyz-native-sim__control">
+                                        <span>ancres</span>
+                                        <input type="range" min="0" max="12" step="1" value="5" data-spatial-native-sim-range="anchorsTracked">
+                                        <output data-spatial-native-sim-output="anchorsTracked">5</output>
+                                    </label>
+                                    <label class="xyz-native-sim__control">
+                                        <span>plans</span>
+                                        <input type="range" min="0" max="12" step="1" value="3" data-spatial-native-sim-range="planesTracked">
+                                        <output data-spatial-native-sim-output="planesTracked">3</output>
+                                    </label>
+                                    <label class="xyz-native-sim__control">
+                                        <span>mains actives</span>
+                                        <input type="range" min="0" max="2" step="1" value="2" data-spatial-native-sim-range="activeHands">
+                                        <output data-spatial-native-sim-output="activeHands">2</output>
+                                    </label>
+                                    <label class="xyz-native-sim__control">
+                                        <span>prise gauche</span>
+                                        <input type="range" min="0" max="100" step="1" value="22" data-spatial-native-sim-range="leftPinch">
+                                        <output data-spatial-native-sim-output="leftPinch">22%</output>
+                                    </label>
+                                    <label class="xyz-native-sim__control">
+                                        <span>prise droite</span>
+                                        <input type="range" min="0" max="100" step="1" value="42" data-spatial-native-sim-range="rightPinch">
+                                        <output data-spatial-native-sim-output="rightPinch">42%</output>
+                                    </label>
+                                </div>
+
+                                <div class="xyz-native-sim__group">
+                                    <span class="summary-label">flags</span>
+                                    <div class="xyz-native-sim__toggle-group xyz-native-sim__toggle-group--flags" aria-label="Capacités simulées">
+                                        <button type="button" class="ghost-link" data-spatial-native-sim-flag="gazeAvailable" aria-pressed="false">regard</button>
+                                        <button type="button" class="ghost-link" data-spatial-native-sim-flag="pinchAvailable" aria-pressed="false">pinch</button>
+                                        <button type="button" class="ghost-link" data-spatial-native-sim-flag="handTrackingAvailable" aria-pressed="false">mains</button>
+                                        <button type="button" class="ghost-link" data-spatial-native-sim-flag="roomTracked" aria-pressed="false">pièce</button>
+                                        <button type="button" class="ghost-link" data-spatial-native-sim-flag="meshTracked" aria-pressed="false">mesh</button>
+                                        <button type="button" class="ghost-link" data-spatial-native-sim-flag="spatialAudio" aria-pressed="false">audio 3D</button>
+                                    </div>
+                                </div>
+
+                                <div class="xyz-native-sim__readout" aria-live="polite">
+                                    <p><span>runtime</span><strong data-spatial-native-sim-runtime>web seul</strong></p>
+                                    <p><span>espace</span><strong data-spatial-native-sim-space>projection ecran</strong></p>
+                                    <p><span>entrée</span><strong data-spatial-native-sim-input>pointeur</strong></p>
+                                    <p><span>ancrage</span><strong data-spatial-native-sim-anchor>aucun</strong></p>
+                                    <p><span>monde</span><strong data-spatial-native-sim-world>passthrough none</strong></p>
+                                </div>
+
+                                <div class="xyz-native-sim__trace">
+                                    <div class="xyz-native-sim__trace-head">
+                                        <span class="summary-label">trace locale</span>
+                                        <strong data-spatial-native-sim-trace-title>prête à rejouer</strong>
+                                    </div>
+                                    <ol class="xyz-native-sim__trace-list" data-spatial-native-sim-traces>
+                                        <li>
+                                            <span class="summary-label">veille</span>
+                                            <strong>aucune injection</strong>
+                                            <span>Active un preset ou ouvre une URL de simulation pour garder une passe reproductible.</span>
+                                        </li>
+                                    </ol>
+                                </div>
+
+                                <p class="xyz-native-sim__note" data-spatial-native-sim-note>L injecteur est au repos. Active un preset pour simuler regard, mains, lumière et ancres dans le shell io.</p>
+                            </div>
+                        </div>
+                    </details>
+                </article>
+                <?php endif; ?>
                 <?php endif; ?>
 
                 <article class="xyz-surface-note">
                     <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-routes" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="sorties" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="0">
                         <summary class="xyz-archi-panel__summary">
-                            <span class="summary-label"><?= $isSowwwlIo ? '09 sorties' : '07 sorties' ?></span>
+                            <span class="summary-label"><?= $isSowwwlIo ? ($showSpatialNativeSimulator ? '10 sorties' : '09 sorties') : '07 sorties' ?></span>
                             <strong>Sorties &amp; appareillage</strong>
                             <span class="xyz-archi-panel__meta">matière, guide, membrane</span>
                         </summary>
@@ -1868,6 +2124,18 @@ $pageDescription = $isLabSurface
                 <span class="world-intro-title__line world-intro-title__line--secondary"><?= h($homeHeroLineTwo) ?></span>
             </h1>
             <p class="lead"><?= h($homeLead) ?></p>
+            <div class="home-hero-quickbar" aria-label="Actions immédiates du seuil">
+                <a class="pill-link home-hero-quickbar__primary" href="<?= h($homePrimaryActionHref) ?>"><?= h($homeHeroPrimaryLabel) ?></a>
+                <a class="ghost-link home-hero-quickbar__secondary" href="<?= h($homeHeroSecondaryHref) ?>"><?= h($homeHeroSecondaryLabel) ?></a>
+            </div>
+            <div class="home-hero-proofline" aria-label="État rapide du seuil">
+                <?php foreach ($homeHeroQuickFacts as $fact): ?>
+                    <span class="home-hero-proof">
+                        <strong><?= h((string) $fact['value']) ?></strong>
+                        <small><?= h((string) $fact['label']) ?></small>
+                    </span>
+                <?php endforeach; ?>
+            </div>
             <div class="home-threshold-links" aria-label="Repères du seuil">
                 <a class="ghost-link" href="<?= h($guideHref) ?>">Comprendre avec 0wlslw0</a>
                 <a class="ghost-link" href="<?= h($publicInstrumentHref) ?>">Instrument · sowwwl.io</a>
@@ -1881,58 +2149,26 @@ $pageDescription = $isLabSurface
         </article>
 
         <nav class="entry-grid editorial-nav" aria-label="Entrées principales du noyau">
-            <p class="entry-grid__prompt">Choisir en un geste. Si tu préfères la voix, dis simplement la phrase indiquée à 0wlslw0.</p>
-            <?php if ($authenticatedLand): ?>
-                <a href="<?= h($homePrimaryActionHref) ?>" class="entry-card entry-card--primary">
-                    <span class="summary-label">01 · terre</span>
-                    <strong>Rouvrir ma terre</strong>
-                    <span>Revenir immédiatement à ton noyau situé.</span>
-                    <small class="entry-card__hint">Dire : « ouvre ma terre »</small>
-                </a>
-                <a href="<?= h($signalHref) ?>" class="entry-card">
-                    <span class="summary-label">02 · adresse</span>
-                    <strong>Écrire maintenant</strong>
-                    <span>Aller droit vers Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : '' ?>.</span>
-                    <small class="entry-card__hint">Dire : « ouvre Signal »</small>
-                </a>
-                <a href="<?= h($str3mHref) ?>" class="entry-card">
-                    <span class="summary-label">03 · public</span>
-                    <strong>Relire le public</strong>
-                    <span>Voir le courant avant de replonger dans ta terre.</span>
-                    <small class="entry-card__hint">Dire : « ramène-moi vers Str3m »</small>
-                </a>
-                <a href="<?= h($publicInstrumentHref) ?>" class="entry-card entry-card--instrument">
-                    <span class="summary-label">04 · instrument</span>
-                    <strong>Jouer l’instrument</strong>
-                    <span>Ouvrir sowwwl.io pour Terre, Mine, visage et paysage.</span>
-                    <small class="entry-card__hint">Dire : « ouvre l’instrument »</small>
-                </a>
-            <?php else: ?>
-                <a href="<?= h($str3mHref) ?>" class="entry-card entry-card--primary">
-                    <span class="summary-label">01 · public</span>
-                    <strong>Voir d’abord</strong>
-                    <span>Entrer publiquement dans Str3m et sentir le courant.</span>
-                    <small class="entry-card__hint">Dire : « je veux visiter publiquement »</small>
-                </a>
-                <a href="<?= h($joinHref) ?>" class="entry-card">
-                    <span class="summary-label">02 · terre</span>
-                    <strong>Poser une terre</strong>
-                    <span>Ouvrir un lieu à toi, situé, avec sa fréquence.</span>
-                    <small class="entry-card__hint">Dire : « je veux poser une terre »</small>
-                </a>
-                <a href="<?= h($guideHref) ?>" class="entry-card">
-                    <span class="summary-label">03 · 0wlslw0</span>
-                    <strong>Me faire guider</strong>
-                    <span>Passer par 0wlslw0 pour clarifier vite, puis continuer.</span>
-                    <small class="entry-card__hint">Dire : « aide-moi à choisir »</small>
-                </a>
-                <a href="<?= h($publicInstrumentHref) ?>" class="entry-card entry-card--instrument">
-                    <span class="summary-label">04 · instrument</span>
-                    <strong>Jouer l’instrument</strong>
-                    <span>Ouvrir sowwwl.io sans compte pour tester Terre, Mine et le monde.</span>
-                    <small class="entry-card__hint">Dire : « je veux jouer »</small>
-                </a>
-            <?php endif; ?>
+            <div class="entry-grid__head">
+                <div class="entry-grid__intro">
+                    <span class="summary-label">routes immédiates</span>
+                    <strong>Choisir sans se perdre.</strong>
+                </div>
+                <p class="entry-grid__prompt">Choisir en un geste. Si tu préfères la voix, dis simplement la phrase indiquée à 0wlslw0.</p>
+            </div>
+            <div class="entry-grid__cards">
+                <?php foreach ($homeEntryCards as $card): ?>
+                    <a href="<?= h((string) $card['href']) ?>" class="<?= h((string) $card['class']) ?>">
+                        <span class="entry-card__kicker">
+                            <span class="summary-label"><?= h((string) $card['kicker']) ?></span>
+                            <span class="entry-card__state"><?= h((string) $card['state']) ?></span>
+                        </span>
+                        <strong><?= h((string) $card['title']) ?></strong>
+                        <span class="entry-card__copy"><?= h((string) $card['copy']) ?></span>
+                        <small class="entry-card__hint"><?= h((string) $card['hint']) ?></small>
+                    </a>
+                <?php endforeach; ?>
+            </div>
         </nav>
     </section>
 
