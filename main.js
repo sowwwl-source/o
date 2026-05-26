@@ -15270,12 +15270,35 @@ function initLabConsole() {
 	const runtimeTraceList = root.querySelector("[data-lab-runtime-traces]");
 	const deliveryStatus = root.querySelector("[data-lab-delivery-status]");
 	const sessionTraceList = root.querySelector("[data-lab-session-traces]");
+	const nextStepNode = root.querySelector("[data-lab-next-step]");
+	const presenceCurrent = root.querySelector(".lab-console-presence__current");
+	const presenceBadge = root.querySelector("[data-lab-presence-badge]");
+	const presenceMode = root.querySelector("[data-lab-presence-mode]");
+	const presenceTitle = root.querySelector("[data-lab-presence-title]");
+	const presenceCopy = root.querySelector("[data-lab-presence-copy]");
+	const presenceTorusTitle = root.querySelector("[data-lab-presence-torus-title]");
+	const presenceTorusCopy = root.querySelector("[data-lab-presence-torus-copy]");
+	const presenceRoutePrimary = root.querySelector("[data-lab-presence-route-primary]");
+	const presenceRouteSecondary = root.querySelector("[data-lab-presence-route-secondary]");
+	const presenceRouteCopy = root.querySelector("[data-lab-presence-route-copy]");
+	const presenceVoiceTitle = root.querySelector("[data-lab-presence-voice-title]");
+	const presenceVoiceCopy = root.querySelector("[data-lab-presence-voice-copy]");
+	const presenceVoicePrompt = root.querySelector("[data-lab-presence-voice-prompt]");
+	const presenceCycleButton = root.querySelector("[data-lab-presence-cycle]");
+	const presenceAutoButton = root.querySelector("[data-lab-presence-auto]");
 
 	if (!(activateButton instanceof HTMLElement) || !(replayButton instanceof HTMLElement)) {
 		return;
 	}
 
 	const isAndroidSurface = /\bAndroid\b/i.test(window.navigator?.userAgent || "");
+	const labHrefCatalog = {
+		guide: root.dataset.labGuideUrl || "#",
+		str3m: root.dataset.labStr3mUrl || "#",
+		signal: root.dataset.labSignalUrl || "#",
+		pocket: root.dataset.labPocketUrl || "#",
+		qa: root.dataset.labQaUrl || "#",
+	};
 
 	const cardByName = {
 		sensor: root.querySelector('[data-lab-card="sensor"]'),
@@ -15284,6 +15307,97 @@ function initLabConsole() {
 		plasma: root.querySelector('[data-lab-card="plasma"]'),
 		delivery: root.querySelector('[data-lab-card="delivery"]'),
 	};
+	const phaseByName = {
+		sensor: root.querySelector('[data-lab-phase="sensor"]'),
+		pocket: root.querySelector('[data-lab-phase="pocket"]'),
+		plasma: root.querySelector('[data-lab-phase="plasma"]'),
+		delivery: root.querySelector('[data-lab-phase="delivery"]'),
+	};
+	const phaseStatusByName = {
+		sensor: root.querySelector('[data-lab-phase-status="sensor"]'),
+		pocket: root.querySelector('[data-lab-phase-status="pocket"]'),
+		plasma: root.querySelector('[data-lab-phase-status="plasma"]'),
+		delivery: root.querySelector('[data-lab-phase-status="delivery"]'),
+	};
+	const presenceNodes = Array.from(root.querySelectorAll("[data-lab-presence-node]"));
+	const presenceStateCatalog = {
+		present: {
+			label: "présent",
+			title: "Pocket joignable, passage direct ouvert.",
+			copy: "La terre répond maintenant. Le shore peut relier, écrire et reprendre sans attendre une autre passe.",
+			torusTitle: "Prise directe, tore plus serré.",
+			torusCopy: "La peau se resserre et pulse davantage. Le lab peut tolérer une dérive courte parce que la présence tient vraiment.",
+			routeCopy: "Quand la présence répond, le plus utile est d’ouvrir pocket puis de relire l’île QA pour confirmer la reprise.",
+			primaryRouteKey: "pocket",
+			primaryRouteLabel: "Ouvrir pocket",
+			secondaryRouteKey: "qa",
+			secondaryRouteLabel: "Relire l’île QA",
+			voiceTitle: "Voix de passage direct.",
+			voiceCopy: "0wlslw0 peut ici guider vers pocket ou simplement vérifier qu’une reprise immédiate tient réellement.",
+			voicePrompt: "Guide-moi vers pocket maintenant.",
+		},
+		near: {
+			label: "proche",
+			title: "Présence proche, réveil encore léger.",
+			copy: "Un appareil ou une session située peut réveiller la terre. Le lab sent la proximité, sans passage direct complet.",
+			torusTitle: "Prise légère, tore en veille attentive.",
+			torusCopy: "Le tore reste souple mais s’oriente déjà. Il préfère des gestes courts, de la lumière, et une relance progressive.",
+			routeCopy: "La terre n’est pas encore ouverte. On vérifie d’abord la QA ou on passe par 0wlslw0 avant de forcer pocket.",
+			primaryRouteKey: "qa",
+			primaryRouteLabel: "Ouvrir l’île QA",
+			secondaryRouteKey: "guide",
+			secondaryRouteLabel: "Passer par 0wlslw0",
+			voiceTitle: "Voix de réveil prudent.",
+			voiceCopy: "Le guide doit aider à approcher la terre sans promettre un passage direct tant que la présence n’est pas stabilisée.",
+			voicePrompt: "Aide-moi à réveiller la terre sans forcer le passage.",
+		},
+		asleep: {
+			label: "endormi",
+			title: "Terre endormie, seuil encore lisible.",
+			copy: "Le pocket dort pour l’instant. Le seuil reste public, mais la reprise devra attendre un retour de présence.",
+			torusTitle: "Tore en veille large.",
+			torusCopy: "La peau reste diffuse. Le seuil demeure lisible, mais le tore n’appelle pas encore une prise forte.",
+			routeCopy: "Quand la terre dort, le lab garde un seuil public et une trace légère plutôt qu’une relance forcée.",
+			primaryRouteKey: "guide",
+			primaryRouteLabel: "Passer par 0wlslw0",
+			secondaryRouteKey: "str3m",
+			secondaryRouteLabel: "Ouvrir Str3m",
+			voiceTitle: "Prépare une reprise douce.",
+			voiceCopy: "0wlslw0 doit garder une orientation honnête: seuil public, continuité lisible, pas de promesse de présence directe.",
+			voicePrompt: "Guide-moi vers une reprise différée.",
+		},
+		roaming: {
+			label: "roaming",
+			title: "Terre en mouvement, reprise instable.",
+			copy: "Le pocket se déplace encore entre réseaux ou états. Le lab garde le fil, mais préfère le différé court.",
+			torusTitle: "Tore mobile, dérive assumée.",
+			torusCopy: "La peau accélère et se réchauffe. Le tore accepte davantage de déplacement, mais demande une lecture du roaming avant toute promesse.",
+			routeCopy: "Le bon geste est de suivre pocket de près, puis de garder 0wlslw0 comme filet de lecture si la présence glisse encore.",
+			primaryRouteKey: "pocket",
+			primaryRouteLabel: "Suivre pocket",
+			secondaryRouteKey: "guide",
+			secondaryRouteLabel: "Passer par 0wlslw0",
+			voiceTitle: "Voix de dérive.",
+			voiceCopy: "Le guide doit expliciter que la terre bouge encore et qu’il vaut mieux suivre le roaming que feindre une stabilité.",
+			voicePrompt: "Suis la dérive et dis-moi quand la terre revient.",
+		},
+		split: {
+			label: "split",
+			title: "Shore et pocket divergent encore.",
+			copy: "Les deux côtés ne racontent plus exactement la même chose. Le lab suspend la confiance forte jusqu’à réconciliation.",
+			torusTitle: "Tore tendu, lecture contradictoire.",
+			torusCopy: "La peau se crispe, perd en saturation et force une lecture prudente. Ici, le tore doit rendre la divergence visible, pas la masquer.",
+			routeCopy: "En cas de split, il faut relire l’île QA puis Signal pour comprendre la divergence avant toute reprise forte.",
+			primaryRouteKey: "qa",
+			primaryRouteLabel: "Relire l’île QA",
+			secondaryRouteKey: "signal",
+			secondaryRouteLabel: "Ouvrir Signal",
+			voiceTitle: "Voix de réconciliation.",
+			voiceCopy: "0wlslw0 doit nommer le désaccord entre shore et pocket et pousser vers la trace qui permet de le recoudre.",
+			voicePrompt: "Montre-moi la trace qui diverge entre shore et pocket.",
+		},
+	};
+	const manualPresenceOrder = ["present", "near", "asleep", "roaming", "split"];
 
 	const state = {
 		orientationBound: false,
@@ -15308,6 +15422,9 @@ function initLabConsole() {
 		sensorFeedbackTimer: 0,
 		orientationSeen: false,
 		motionSeen: false,
+		presenceManualKey: "",
+		presenceReplayKey: "asleep",
+		presenceCurrentKey: "asleep",
 	};
 
 	const cameraCanvas = document.createElement("canvas");
@@ -15366,6 +15483,164 @@ function initLabConsole() {
 		}
 
 		card.dataset.labState = nextState;
+		syncLabProtocol();
+	};
+
+	const setPhaseState = (name, nextState, label) => {
+		const phase = phaseByName[name];
+		if (phase instanceof HTMLElement) {
+			phase.dataset.labPhaseState = nextState;
+		}
+		setText(phaseStatusByName[name], label);
+	};
+
+	const setPresenceRouteLink = (node, key, label) => {
+		if (!(node instanceof HTMLAnchorElement)) {
+			return;
+		}
+		node.href = labHrefCatalog[key] || "#";
+		node.textContent = label;
+		node.dataset.labRoute = key;
+	};
+
+	const setPresenceVisualState = (key) => {
+		const safeKey = Object.prototype.hasOwnProperty.call(presenceStateCatalog, key) ? key : "asleep";
+		const meta = presenceStateCatalog[safeKey];
+		root.dataset.labPresenceState = safeKey;
+		if (document.body.classList.contains("lab-console-view")) {
+			document.body.dataset.labPresenceState = safeKey;
+		}
+		state.presenceCurrentKey = safeKey;
+		if (presenceCurrent instanceof HTMLElement) {
+			presenceCurrent.dataset.labPresenceState = safeKey;
+		}
+		if (presenceBadge instanceof HTMLElement) {
+			presenceBadge.textContent = meta.label;
+		}
+		if (presenceTitle instanceof HTMLElement) {
+			presenceTitle.textContent = meta.title;
+		}
+		if (presenceCopy instanceof HTMLElement) {
+			presenceCopy.textContent = meta.copy;
+		}
+		if (presenceTorusTitle instanceof HTMLElement) {
+			presenceTorusTitle.textContent = meta.torusTitle;
+		}
+		if (presenceTorusCopy instanceof HTMLElement) {
+			presenceTorusCopy.textContent = meta.torusCopy;
+		}
+		setPresenceRouteLink(presenceRoutePrimary, meta.primaryRouteKey, meta.primaryRouteLabel);
+		setPresenceRouteLink(presenceRouteSecondary, meta.secondaryRouteKey, meta.secondaryRouteLabel);
+		if (presenceRouteCopy instanceof HTMLElement) {
+			presenceRouteCopy.textContent = meta.routeCopy;
+		}
+		if (presenceVoiceTitle instanceof HTMLElement) {
+			presenceVoiceTitle.textContent = meta.voiceTitle;
+		}
+		if (presenceVoiceCopy instanceof HTMLElement) {
+			presenceVoiceCopy.textContent = meta.voiceCopy;
+		}
+		if (presenceVoicePrompt instanceof HTMLElement) {
+			presenceVoicePrompt.textContent = meta.voicePrompt;
+		}
+		presenceNodes.forEach((node) => {
+			if (!(node instanceof HTMLElement)) {
+				return;
+			}
+			node.dataset.labPresenceActive = node.dataset.labPresenceNode === safeKey ? "1" : "0";
+		});
+	};
+
+	const deriveAutoPresenceState = () => {
+		const sensorState = cardByName.sensor instanceof HTMLElement ? (cardByName.sensor.dataset.labState || "idle") : "idle";
+		const pocketState = cardByName.pocket instanceof HTMLElement ? (cardByName.pocket.dataset.labState || "idle") : "idle";
+		const apiState = cardByName.api instanceof HTMLElement ? (cardByName.api.dataset.labState || "idle") : "idle";
+		const plasmaState = cardByName.plasma instanceof HTMLElement ? (cardByName.plasma.dataset.labState || "idle") : "idle";
+		const deliveryState = cardByName.delivery instanceof HTMLElement ? (cardByName.delivery.dataset.labState || "idle") : "idle";
+
+		if (root.dataset.labReplay === "1") {
+			return state.presenceReplayKey || "roaming";
+		}
+		if (state.presenceManualKey) {
+			return state.presenceManualKey;
+		}
+		if ((apiState === "warning" && plasmaState === "live") || pocketState === "warning" || deliveryState === "warning") {
+			return "split";
+		}
+		if (pocketState === "live" && plasmaState === "live" && apiState !== "warning") {
+			return "present";
+		}
+		if (sensorState === "live" && pocketState === "idle") {
+			return "near";
+		}
+		if (pocketState === "replay" || deliveryState === "replay") {
+			return "roaming";
+		}
+		return "asleep";
+	};
+
+	const syncPresenceState = () => {
+		const currentKey = deriveAutoPresenceState();
+		setPresenceVisualState(currentKey);
+		if (presenceMode instanceof HTMLElement) {
+			presenceMode.textContent = root.dataset.labReplay === "1"
+				? "mode replay"
+				: (state.presenceManualKey ? "mode manuel" : "mode auto");
+		}
+	};
+
+	const syncLabProtocol = () => {
+		const sensorState = cardByName.sensor instanceof HTMLElement ? (cardByName.sensor.dataset.labState || "idle") : "idle";
+		const pocketState = cardByName.pocket instanceof HTMLElement ? (cardByName.pocket.dataset.labState || "idle") : "idle";
+		const apiState = cardByName.api instanceof HTMLElement ? (cardByName.api.dataset.labState || "idle") : "idle";
+		const plasmaState = cardByName.plasma instanceof HTMLElement ? (cardByName.plasma.dataset.labState || "idle") : "idle";
+		const deliveryState = cardByName.delivery instanceof HTMLElement ? (cardByName.delivery.dataset.labState || "idle") : "idle";
+		const replayActive = root.dataset.labReplay === "1";
+
+		setPhaseState(
+			"sensor",
+			sensorState === "warning" ? "warning" : sensorState === "replay" ? "replay" : sensorState === "live" ? "live" : "pending",
+			sensorState === "warning" ? "partielle" : sensorState === "replay" ? "rejouée" : sensorState === "live" ? "ouverte" : "en attente"
+		);
+		setPhaseState(
+			"pocket",
+			pocketState === "warning" ? "warning" : pocketState === "replay" ? "replay" : pocketState === "live" ? "live" : "pending",
+			pocketState === "warning" ? "instable" : pocketState === "replay" ? "dérive" : pocketState === "live" ? "présent" : "veille"
+		);
+		setPhaseState(
+			"plasma",
+			plasmaState === "warning" || apiState === "warning" ? "warning" : plasmaState === "replay" ? "replay" : plasmaState === "live" ? "live" : "pending",
+			plasmaState === "warning" || apiState === "warning" ? "surveiller" : plasmaState === "replay" ? "rejoué" : plasmaState === "live" ? "trace" : "aucune trace"
+		);
+		setPhaseState(
+			"delivery",
+			deliveryState === "warning" ? "warning" : deliveryState === "replay" ? "replay" : deliveryState === "live" ? "live" : "pending",
+			deliveryState === "warning" ? "bloquée" : deliveryState === "replay" ? "simulation" : deliveryState === "live" ? "reprise" : "en attente"
+		);
+
+		if (!(nextStepNode instanceof HTMLElement)) {
+			return;
+		}
+
+		let nextMessage = "Commence par activer les capteurs ou lance le replay pour ouvrir une première passe.";
+		if (sensorState === "warning" && !replayActive) {
+			nextMessage = "Le navigateur ouvre peu de flux. Passe en replay pour continuer la lecture malgré tout.";
+		} else if (replayActive) {
+			nextMessage = "Le replay tourne. Observe pocket et plasma, puis relis l’île QA pour valider la reprise.";
+		} else if (sensorState === "live" && plasmaState !== "live") {
+			nextMessage = "Bouge, parle ou éclaire pour laisser une première trace plasma lisible.";
+		} else if (plasmaState === "live" && pocketState === "idle") {
+			nextMessage = "Ouvre pocket ou laisse le replay tester la présence et le roaming.";
+		} else if ((pocketState === "live" || pocketState === "replay") && deliveryState === "idle") {
+			nextMessage = "Laisse pocket s’endormir ou relance un replay pour préparer la reprise différée.";
+		} else if (deliveryState === "live" || deliveryState === "replay") {
+			nextMessage = "La boucle est lisible. Termine par l’île QA ou Signal pour vérifier la continuité.";
+		} else if (apiState === "warning") {
+			nextMessage = "L’API n’est pas confirmée depuis ce navigateur. Continue le test, mais garde ce point sous surveillance.";
+		}
+
+		nextStepNode.textContent = nextMessage;
+		syncPresenceState();
 	};
 
 	const appendSessionTrace = (eventName, sourceLabel, message) => {
@@ -15441,6 +15716,7 @@ function initLabConsole() {
 		}
 
 		renderRuntimeTraces(Array.isArray(events) ? events : []);
+		syncLabProtocol();
 	};
 
 	const setActivationCopy = (text) => {
@@ -15452,11 +15728,13 @@ function initLabConsole() {
 		setText(pocketNote, noteText);
 		setCardState("pocket", tone);
 		state.lastPocketState = tone;
+		syncLabProtocol();
 	};
 
 	const updateDeliveryState = (text, tone = "idle") => {
 		setText(deliveryStatus, text);
 		setCardState("delivery", tone);
+		syncLabProtocol();
 	};
 
 	const emitTrace = (eventName, sourceLabel, message, { channel = "plasma" } = {}) => {
@@ -15906,6 +16184,7 @@ function initLabConsole() {
 				"idle"
 			);
 		}
+		syncLabProtocol();
 	};
 
 	const startReplay = () => {
@@ -15920,43 +16199,58 @@ function initLabConsole() {
 		setCardState("delivery", "replay");
 		state.lastPocketState = "replay";
 		state.replayTick = 0;
+		syncLabProtocol();
 
 		state.replayTimer = window.setInterval(() => {
 			state.replayTick += 1;
 			const phase = state.replayTick;
 			const wave = (Math.sin(phase / 1.7) + 1) / 2;
 			const drift = (Math.cos(phase / 2.4) + 1) / 2;
-			const pocketState = phase % 6 < 2 ? "présent" : (phase % 6 < 4 ? "roaming" : "endormi");
-			const pocketCopy = pocketState === "présent"
-				? "Pocket revient dans le champ et rouvre une dérive courte."
-				: (pocketState === "roaming"
-					? "Pocket circule encore. Le réseau retient une présence basse mais continue."
-					: "Pocket dort. La livraison glisse vers le différé.");
+			const replayPresenceKey = manualPresenceOrder[phase % manualPresenceOrder.length] || "asleep";
+			state.presenceReplayKey = replayPresenceKey;
+			const pocketCopyByPresence = {
+				present: "Pocket revient dans le champ et rouvre une dérive courte.",
+				near: "Pocket n’est pas encore ouvert, mais le voisinage suffit à préparer un réveil.",
+				asleep: "Pocket dort. La livraison glisse vers le différé.",
+				roaming: "Pocket circule encore. Le réseau retient une présence basse mais continue.",
+				split: "Pocket et shore ne se recouvrent plus bien. Le lab force une réconciliation prudente.",
+			};
+			const deliveryCopyByPresence = {
+				present: "Le passage direct tient. Les paquets n’ont plus besoin d’attendre.",
+				near: "Le seuil sent le retour. Une présence proche peut rouvrir la terre.",
+				asleep: "Le tore garde un paquet en suspens jusqu’au retour du pocket.",
+				roaming: "Le différé respire encore: la terre change de réseau avant de se stabiliser.",
+				split: "Le différé se fige: shore et pocket divergent et demandent une reprise prudente.",
+			};
 
 			updateOrientation(wave * 180, drift * 42 - 21, wave * 28 - 14, { source: "replay" });
-			updateMotion(0.22 + wave * 0.58, pocketState, { source: "replay" });
+			updateMotion(0.22 + wave * 0.58, replayPresenceKey, { source: "replay" });
 			updateLight(`${Math.round(40 + wave * 520)} lux · replay`, { tone: "replay" });
 			updateAudio(0.08 + drift * 0.42, { source: "replay" });
 			updateCamera(0.18 + wave * 0.62, [84 + wave * 120, 110 + drift * 70, 156 + wave * 56], { source: "replay" });
-			updatePocketState(`${pocketState}.`, pocketCopy, "replay");
+			updatePocketState(
+				`${replayPresenceKey}.`,
+				pocketCopyByPresence[replayPresenceKey] || pocketCopyByPresence.asleep,
+				replayPresenceKey === "split" ? "warning" : "replay"
+			);
 			updateDeliveryState(
-				pocketState === "endormi"
-					? "Le tore garde un paquet en suspens jusqu’au retour du pocket."
-					: "Le différé se relâche: le pocket revient assez près pour reprendre le passage.",
-				"replay"
+				deliveryCopyByPresence[replayPresenceKey] || deliveryCopyByPresence.asleep,
+				replayPresenceKey === "split" ? "warning" : "replay"
 			);
 			setText(apiStatus, "API rejouée depuis la console.");
-			setCardState("api", "replay");
+			setCardState("api", replayPresenceKey === "split" ? "warning" : "replay");
 			setText(wakeStatus, "simulé");
 
 				if (phase % 3 === 0) {
 					emitTrace(
-						pocketState === "endormi" ? "deferred" : "replay",
+						replayPresenceKey === "asleep" ? "deferred" : (replayPresenceKey === "split" ? "split" : "replay"),
 						"console",
-						pocketState === "endormi"
+						replayPresenceKey === "asleep"
 							? "Le replay pousse pocket hors champ: le plasma garde la trace pour plus tard."
-							: "Le replay fait revenir pocket: la reprise devient lisible dans le tore.",
-						{ channel: pocketState === "endormi" ? "delivery" : "plasma" }
+							: (replayPresenceKey === "split"
+								? "Le replay force un désaccord shore/pocket: la reprise se suspend jusqu’à réconciliation."
+								: "Le replay remet du mouvement dans la présence: la reprise redevient lisible dans le tore."),
+						{ channel: replayPresenceKey === "asleep" || replayPresenceKey === "split" ? "delivery" : "plasma" }
 					);
 				}
 		}, 1100);
@@ -15981,6 +16275,7 @@ function initLabConsole() {
 			setText(apiStatus, "API non confirmée depuis ce navigateur.");
 			setCardState("api", "warning");
 		}
+		syncLabProtocol();
 	};
 
 	const pollPlasmaFeed = async () => {
@@ -16059,6 +16354,7 @@ function initLabConsole() {
 		"idle"
 	);
 	updateDeliveryState("Réveil non rejoué. Le tore attend encore une première séquence.", "idle");
+	syncLabProtocol();
 	probeApi();
 	void pollPlasmaFeed();
 	state.plasmaPollTimer = window.setInterval(() => {
@@ -16076,6 +16372,58 @@ function initLabConsole() {
 		}
 		startReplay();
 	});
+
+	if (presenceCycleButton instanceof HTMLElement) {
+		presenceCycleButton.addEventListener("click", () => {
+			if (root.dataset.labReplay === "1") {
+				stopReplay({ preserveStatus: true });
+			}
+			const currentIndex = manualPresenceOrder.indexOf(state.presenceManualKey || state.presenceCurrentKey || "asleep");
+			const nextKey = manualPresenceOrder[(currentIndex + 1 + manualPresenceOrder.length) % manualPresenceOrder.length] || "present";
+			state.presenceManualKey = nextKey;
+			if (nextKey === "split") {
+				setCardState("pocket", "warning");
+				setCardState("api", "warning");
+				setCardState("delivery", "warning");
+				updatePocketState("split.", "Shore et pocket ne racontent plus exactement la même reprise. Lecture prudente imposée.", "warning");
+				updateDeliveryState("Réconciliation requise avant reprise forte.", "warning");
+			} else if (nextKey === "present") {
+				setCardState("pocket", "live");
+				setCardState("plasma", "live");
+				setCardState("api", "live");
+				updatePocketState("présent.", "Le pocket répond directement. Le shore peut traverser sans attendre.", "live");
+				updateDeliveryState("La reprise directe tient. Le différé se referme.", "live");
+			} else if (nextKey === "near") {
+				setCardState("sensor", "live");
+				setCardState("pocket", "idle");
+				updatePocketState("proche.", "Le corps n’est pas encore ouvert, mais la proximité prépare déjà le réveil.", "idle");
+				updateDeliveryState("Le seuil sent un retour proche. La reprise reste légère.", "idle");
+			} else if (nextKey === "roaming") {
+				setCardState("pocket", "replay");
+				setCardState("delivery", "replay");
+				updatePocketState("roaming.", "Le pocket change encore de réseau ou de présence avant de se stabiliser.", "replay");
+				updateDeliveryState("La reprise se déplace encore. Le différé reste souple.", "replay");
+			} else {
+				setCardState("pocket", "idle");
+				setCardState("delivery", "idle");
+				updatePocketState("endormi.", "Le pocket dort. Les routes publiques restent lisibles, mais la suite attend.", "idle");
+				updateDeliveryState("Le paquet peut rester en veille jusqu’au prochain retour.", "idle");
+			}
+			syncLabProtocol();
+		});
+	}
+
+	if (presenceAutoButton instanceof HTMLElement) {
+		presenceAutoButton.addEventListener("click", () => {
+			state.presenceManualKey = "";
+			if (cardByName.pocket instanceof HTMLElement && cardByName.pocket.dataset.labState === "warning" && cardByName.api instanceof HTMLElement && cardByName.api.dataset.labState === "warning") {
+				setCardState("pocket", "idle");
+				setCardState("api", "idle");
+				setCardState("delivery", "idle");
+			}
+			syncLabProtocol();
+		});
+	}
 
 	window.addEventListener("beforeunload", () => {
 		if (state.plasmaPollTimer) {

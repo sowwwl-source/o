@@ -90,6 +90,9 @@ cleanup_conflicting_service_containers() {
 	while IFS= read -r line; do
 		container_id=${line%% *}
 		container_name=${line#* }
+		if [[ "$container_name" =~ ^${project_name}-(${service_pattern})-1$ ]]; then
+			continue
+		fi
 		if [[ "$container_name" =~ (^|_)${project_name}-(${service_pattern})-1$ ]]; then
 			conflict_ids+=("$container_id")
 		fi
