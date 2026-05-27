@@ -4,28 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>baco.work</title>
-  <meta name="description" content="Portfolio d'Olivier Baco, brand designer et photographer. Une presence claire pour presenter sa pratique, ses projets et ses points de contact.">
+  <meta name="description" content="Olivier Baco. Brand designer and photographer.">
   <style>
     :root {
-      --sand: #f3ecdf;
-      --sand-strong: #ece1d0;
-      --ink: #1f1a17;
-      --muted: #655c55;
-      --line: rgba(31, 26, 23, 0.12);
-      --line-strong: rgba(31, 26, 23, 0.22);
-      --brick: #8f4f2d;
-      --brick-soft: rgba(143, 79, 45, 0.14);
-      --pine: #315148;
-      --pine-soft: rgba(49, 81, 72, 0.14);
-      --sky: #2f6272;
-      --sky-soft: rgba(47, 98, 114, 0.16);
-      --paper: rgba(255, 251, 245, 0.76);
-      --paper-strong: rgba(255, 253, 250, 0.88);
-      --shadow: 0 28px 90px rgba(31, 26, 23, 0.12);
+      --bg: #060606;
+      --bg-soft: #101010;
+      --bg-panel: rgba(20, 20, 20, 0.82);
+      --bg-panel-strong: rgba(28, 28, 28, 0.92);
+      --ink: #f2e7d6;
+      --muted: rgba(242, 231, 214, 0.68);
+      --muted-strong: rgba(242, 231, 214, 0.84);
+      --line: rgba(242, 231, 214, 0.12);
+      --line-strong: rgba(242, 231, 214, 0.22);
+      --accent: #d9c0a0;
+      --accent-soft: rgba(217, 192, 160, 0.14);
+      --shadow: 0 30px 90px rgba(0, 0, 0, 0.38);
       --radius-xl: 34px;
       --radius-lg: 24px;
       --radius-md: 18px;
-      --radius-sm: 14px;
+      --radius-sm: 12px;
       --width: min(1180px, calc(100vw - 28px));
     }
 
@@ -42,11 +39,11 @@
       margin: 0;
       color: var(--ink);
       background:
-        radial-gradient(circle at top left, rgba(47, 98, 114, 0.18), transparent 26%),
-        radial-gradient(circle at 78% 14%, rgba(143, 79, 45, 0.14), transparent 24%),
-        radial-gradient(circle at 72% 72%, rgba(49, 81, 72, 0.14), transparent 21%),
-        linear-gradient(180deg, #f7f2e8 0%, #f1e7d8 54%, #e8dece 100%);
-      font-family: "Avenir Next", "Segoe UI", sans-serif;
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.06), transparent 26%),
+        radial-gradient(circle at 78% 14%, rgba(217, 192, 160, 0.1), transparent 20%),
+        radial-gradient(circle at 68% 82%, rgba(255, 255, 255, 0.04), transparent 24%),
+        linear-gradient(180deg, #040404 0%, #090909 42%, #060606 100%);
+      font-family: "Avenir Next", "Helvetica Neue", "Segoe UI", sans-serif;
       letter-spacing: 0.01em;
     }
 
@@ -60,17 +57,17 @@
 
     body::before {
       background-image:
-        linear-gradient(rgba(31, 26, 23, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(31, 26, 23, 0.03) 1px, transparent 1px);
-      background-size: 36px 36px;
-      mask-image: radial-gradient(circle at center, black 32%, transparent 85%);
-      opacity: 0.56;
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: radial-gradient(circle at center, black 26%, transparent 84%);
+      opacity: 0.5;
     }
 
     body::after {
       background:
-        radial-gradient(circle at center, rgba(255, 255, 255, 0.18), transparent 56%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 28%);
+        radial-gradient(circle at center, rgba(255, 255, 255, 0.05), transparent 58%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 26%);
     }
 
     main {
@@ -78,12 +75,13 @@
       z-index: 1;
       width: var(--width);
       margin: 0 auto;
-      padding: 28px 0 72px;
+      padding: 24px 0 54px;
     }
 
     h1,
     h2,
-    h3 {
+    h3,
+    strong {
       margin: 0;
       font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
       font-weight: 600;
@@ -92,9 +90,7 @@
     }
 
     p,
-    li,
     span,
-    strong,
     a {
       overflow-wrap: anywhere;
       word-break: break-word;
@@ -105,402 +101,449 @@
       text-decoration: none;
     }
 
-    .topline {
+    .site-top {
       display: flex;
       justify-content: space-between;
       gap: 1rem;
       align-items: center;
       margin-bottom: 18px;
       color: var(--muted);
-      font-size: 0.82rem;
-      letter-spacing: 0.16em;
+      font-size: 0.78rem;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
     }
 
-    .topline__chip {
+    .site-chip {
       display: inline-flex;
       align-items: center;
-      gap: 0.7rem;
-      padding: 0.72rem 1rem;
-      border: 1px solid rgba(31, 26, 23, 0.08);
+      gap: 0.72rem;
+      padding: 0.76rem 1rem;
+      border: 1px solid var(--line);
       border-radius: 999px;
-      background: rgba(255, 252, 247, 0.58);
+      background: rgba(255, 255, 255, 0.03);
       backdrop-filter: blur(12px);
     }
 
-    .topline__dot {
-      width: 0.54rem;
-      height: 0.54rem;
+    .site-dot {
+      width: 0.5rem;
+      height: 0.5rem;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--sky), var(--brick));
-      box-shadow: 0 0 0 0.34rem rgba(47, 98, 114, 0.1);
-      animation: pulse 3.1s ease-in-out infinite;
+      background: var(--accent);
+      box-shadow: 0 0 0 0.32rem rgba(217, 192, 160, 0.09);
+      animation: pulse 3.2s ease-in-out infinite;
     }
 
     .hero,
     .panel,
-    .band {
+    .footer-panel {
       position: relative;
       overflow: hidden;
-      border: 1px solid rgba(31, 26, 23, 0.1);
-      background: var(--paper);
+      border: 1px solid var(--line);
+      background: var(--bg-panel);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(16px);
     }
 
     .hero {
       border-radius: var(--radius-xl);
-      padding: 30px;
+      padding: 28px;
       background:
-        linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.12)),
-        radial-gradient(circle at top right, rgba(143, 79, 45, 0.14), transparent 28%),
-        radial-gradient(circle at left center, rgba(47, 98, 114, 0.18), transparent 26%),
-        var(--paper-strong);
+        radial-gradient(circle at top right, rgba(217, 192, 160, 0.08), transparent 24%),
+        radial-gradient(circle at left 18%, rgba(255, 255, 255, 0.05), transparent 20%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+        var(--bg-panel-strong);
     }
 
     .hero::before,
     .hero::after {
       content: "";
       position: absolute;
-      border-radius: 999px;
       pointer-events: none;
+      border-radius: 50%;
+      filter: blur(8px);
     }
 
     .hero::before {
       width: 18rem;
       height: 18rem;
-      top: -7rem;
-      right: -5rem;
-      background: radial-gradient(circle, rgba(47, 98, 114, 0.18), transparent 70%);
-      animation: drift-a 12s ease-in-out infinite alternate;
+      top: -8rem;
+      right: -4rem;
+      background: radial-gradient(circle, rgba(217, 192, 160, 0.12), transparent 68%);
+      animation: drift-a 13s ease-in-out infinite alternate;
     }
 
     .hero::after {
       width: 15rem;
       height: 15rem;
       bottom: -7rem;
-      left: -4rem;
-      background: radial-gradient(circle, rgba(143, 79, 45, 0.16), transparent 70%);
-      animation: drift-b 13s ease-in-out infinite alternate;
-    }
-
-    .eyebrow,
-    .mini-chip,
-    .meta-pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.45rem;
-      width: fit-content;
-      max-width: 100%;
-      padding: 0.62rem 0.9rem;
-      border-radius: 999px;
-      border: 1px solid rgba(47, 98, 114, 0.14);
-      background: rgba(255, 255, 255, 0.5);
-      color: var(--sky);
-      font-size: 0.75rem;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
+      left: -3rem;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.08), transparent 72%);
+      animation: drift-b 14s ease-in-out infinite alternate;
     }
 
     .hero-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.9fr);
+      grid-template-columns: minmax(18rem, 0.94fr) minmax(0, 1.2fr);
       gap: 24px;
-      margin-top: 18px;
-      align-items: start;
+      align-items: stretch;
+    }
+
+    .mark-panel {
+      position: relative;
+      display: grid;
+      align-content: space-between;
+      gap: 1.2rem;
+      min-height: 100%;
+      padding: 20px;
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(242, 231, 214, 0.1);
+      background:
+        radial-gradient(circle at center, rgba(255, 255, 255, 0.04), transparent 54%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+        rgba(8, 8, 8, 0.9);
+    }
+
+    .mark-panel::after {
+      content: "";
+      position: absolute;
+      inset: auto -8% -18% auto;
+      width: 14rem;
+      height: 14rem;
+      background: radial-gradient(circle, rgba(217, 192, 160, 0.08), transparent 68%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .mark-frame {
+      position: relative;
+      border-radius: calc(var(--radius-lg) - 6px);
+      border: 1px solid rgba(242, 231, 214, 0.08);
+      padding: 0.85rem;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .mark-svg {
+      width: min(19rem, 100%);
+      display: block;
+      height: auto;
+      margin: 0 auto;
+    }
+
+    .wordmark {
+      display: grid;
+      gap: 0.1rem;
+      color: var(--ink);
+    }
+
+    .wordmark strong {
+      font-size: clamp(2.5rem, 5vw, 4.2rem);
+      line-height: 0.88;
+      letter-spacing: -0.11em;
+      text-transform: lowercase;
+    }
+
+    .wordmark span,
+    .wordmark a {
+      color: var(--muted-strong);
+      font-size: 0.96rem;
+      line-height: 1.28;
     }
 
     .hero-copy {
       display: grid;
-      gap: 18px;
+      align-content: center;
+      gap: 1.25rem;
+      padding: 0.3rem 0.2rem;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: fit-content;
+      max-width: 100%;
+      padding: 0.62rem 0.88rem;
+      border-radius: 999px;
+      border: 1px solid rgba(242, 231, 214, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--muted);
+      font-size: 0.76rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
     }
 
     .hero-copy h1 {
-      font-size: clamp(3.1rem, 6vw, 5.6rem);
-      line-height: 0.92;
-      max-width: 11ch;
+      font-size: clamp(3.2rem, 7vw, 6rem);
+      line-height: 0.9;
+      max-width: 10ch;
     }
 
     .hero-copy p {
       margin: 0;
-      font-size: 1.08rem;
-      line-height: 1.72;
-      color: var(--muted);
-      max-width: 58ch;
+      max-width: 42ch;
+      color: var(--muted-strong);
+      font-size: 1.04rem;
+      line-height: 1.62;
     }
 
-    .hero-actions,
-    .proofline,
-    .card-tags,
-    .contact-list {
+    .hero-links,
+    .signal-row,
+    .footer-links {
       display: flex;
       flex-wrap: wrap;
       gap: 0.82rem;
     }
 
-    .button {
+    .hero-link,
+    .footer-link {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       width: fit-content;
       max-width: 100%;
-      min-height: 3.2rem;
-      padding: 0.96rem 1.22rem;
+      min-height: 3.05rem;
+      padding: 0.9rem 1.12rem;
       border-radius: 999px;
-      border: 1px solid transparent;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--ink);
       font-weight: 600;
       line-height: 1.3;
-      transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
     }
 
-    .button:hover,
-    .button:focus-visible {
+    .hero-link:hover,
+    .hero-link:focus-visible,
+    .footer-link:hover,
+    .footer-link:focus-visible {
       transform: translateY(-2px);
+      border-color: var(--line-strong);
+      background: rgba(255, 255, 255, 0.06);
     }
 
-    .button--solid {
-      color: #fff9f2;
-      background: linear-gradient(135deg, #824727, #285a67);
-      box-shadow: 0 16px 36px rgba(31, 26, 23, 0.16);
+    .hero-link--solid {
+      background: linear-gradient(135deg, rgba(242, 231, 214, 0.18), rgba(217, 192, 160, 0.12));
+      border-color: rgba(242, 231, 214, 0.2);
     }
 
-    .button--ghost {
-      border-color: rgba(31, 26, 23, 0.14);
-      background: rgba(255, 255, 255, 0.46);
-      color: var(--ink);
-    }
-
-    .proofline span,
-    .meta-pill {
-      padding: 0.72rem 0.9rem;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.56);
-      border: 1px solid rgba(31, 26, 23, 0.08);
-      color: var(--muted);
-      font-size: 0.88rem;
-    }
-
-    .hero-aside {
-      display: grid;
-      gap: 14px;
-      padding: 20px;
-      border-radius: var(--radius-lg);
-      border: 1px solid rgba(31, 26, 23, 0.1);
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(255, 255, 255, 0.28)),
-        rgba(241, 232, 218, 0.62);
-    }
-
-    .lockup-card {
-      display: grid;
-      gap: 0.95rem;
-      padding: 1rem;
-      border-radius: var(--radius-md);
-      border: 1px solid rgba(31, 26, 23, 0.08);
-      background: rgba(255, 255, 255, 0.76);
-      box-shadow: 0 14px 34px rgba(31, 26, 23, 0.08);
-    }
-
-    .lockup-mark {
-      width: min(11.5rem, 100%);
-      height: auto;
-      display: block;
-    }
-
-    .lockup-lines {
-      display: grid;
-      gap: 0.14rem;
-    }
-
-    .lockup-lines strong {
-      font-size: 2.1rem;
-      line-height: 0.92;
-      letter-spacing: -0.1em;
-      text-transform: lowercase;
-      font-weight: 700;
-    }
-
-    .lockup-lines span,
-    .lockup-lines a {
-      color: var(--ink);
-      font-size: 0.94rem;
-      line-height: 1.28;
-    }
-
-    .lockup-lines a {
+    .signal-row span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       width: fit-content;
       max-width: 100%;
-    }
-
-    .hero-aside h2,
-    .section-head h2 {
-      font-size: clamp(1.75rem, 3vw, 2.5rem);
-    }
-
-    .hero-aside p,
-    .section-head p,
-    .card p,
-    .contact-card p,
-    .footer-note {
-      margin: 0;
+      padding: 0.7rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid rgba(242, 231, 214, 0.08);
+      background: rgba(255, 255, 255, 0.03);
       color: var(--muted);
-      line-height: 1.68;
-    }
-
-    .fill-list {
-      display: grid;
-      gap: 0.85rem;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .fill-list li {
-      display: grid;
-      gap: 0.16rem;
-      padding: 0.9rem 0.96rem;
-      border-radius: var(--radius-md);
-      border: 1px solid rgba(31, 26, 23, 0.08);
-      background: rgba(255, 255, 255, 0.54);
-    }
-
-    .fill-list strong {
-      font-size: 0.83rem;
+      font-size: 0.82rem;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: var(--ink);
     }
 
-    .section {
+    .panel {
       margin-top: 18px;
-      padding: 24px;
+      padding: 20px;
       border-radius: var(--radius-xl);
     }
 
     .section-head {
       display: grid;
-      gap: 0.85rem;
-      margin-bottom: 20px;
-      max-width: 58rem;
+      gap: 0.8rem;
+      margin-bottom: 18px;
+      max-width: 42rem;
     }
 
-    .grid-3,
-    .project-grid,
-    .contact-grid {
+    .section-head h2 {
+      font-size: clamp(1.9rem, 3.6vw, 3rem);
+    }
+
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.64;
+    }
+
+    .mini-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: fit-content;
+      max-width: 100%;
+      padding: 0.6rem 0.86rem;
+      border-radius: 999px;
+      border: 1px solid rgba(242, 231, 214, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--muted);
+      font-size: 0.74rem;
+      letter-spacing: 0.17em;
+      text-transform: uppercase;
+    }
+
+    .works-grid {
       display: grid;
       gap: 16px;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .card,
-    .contact-card {
+    .work-card {
+      position: relative;
+      min-height: 13rem;
       display: grid;
-      gap: 0.85rem;
+      align-content: end;
+      gap: 0.56rem;
       padding: 20px;
       border-radius: var(--radius-lg);
-      border: 1px solid rgba(31, 26, 23, 0.09);
+      border: 1px solid rgba(242, 231, 214, 0.08);
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.3)),
-        rgba(255, 250, 244, 0.64);
+        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.34) 100%),
+        radial-gradient(circle at top right, rgba(217, 192, 160, 0.08), transparent 28%),
+        rgba(12, 12, 12, 0.9);
+      overflow: hidden;
     }
 
-    .card h3,
-    .contact-card h3 {
-      font-size: 1.35rem;
-    }
-
-    .card-emphasis {
-      min-height: 11rem;
-      align-content: end;
-      background:
-        linear-gradient(180deg, rgba(49, 81, 72, 0.08), rgba(49, 81, 72, 0.01)),
-        rgba(255, 251, 245, 0.72);
-    }
-
-    .card-emphasis:nth-child(2) {
-      background:
-        linear-gradient(180deg, rgba(143, 79, 45, 0.1), rgba(143, 79, 45, 0.02)),
-        rgba(255, 251, 245, 0.72);
-    }
-
-    .card-emphasis:nth-child(3) {
-      background:
-        linear-gradient(180deg, rgba(47, 98, 114, 0.1), rgba(47, 98, 114, 0.02)),
-        rgba(255, 251, 245, 0.72);
-    }
-
-    .project-index {
-      font-size: 0.78rem;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    .project-title {
-      font-size: 1.5rem;
-    }
-
-    .note-band {
-      margin-top: 18px;
-      padding: 22px 24px;
-      border-radius: var(--radius-xl);
-      display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(14rem, 0.9fr);
-      gap: 18px;
-      align-items: center;
-      background:
-        linear-gradient(120deg, rgba(31, 26, 23, 0.06), rgba(31, 26, 23, 0.01)),
-        rgba(255, 250, 243, 0.7);
-    }
-
-    .note-band strong {
-      font-size: 1.04rem;
-    }
-
-    .checklist {
-      display: grid;
-      gap: 0.9rem;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .checklist li {
-      display: grid;
-      gap: 0.28rem;
-      padding-left: 1.2rem;
-      position: relative;
-    }
-
-    .checklist li::before {
+    .work-card::before {
       content: "";
       position: absolute;
-      top: 0.55rem;
-      left: 0;
-      width: 0.5rem;
-      height: 0.5rem;
+      inset: auto -8% -16% auto;
+      width: 12rem;
+      height: 12rem;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--brick), var(--sky));
-      box-shadow: 0 0 0 0.26rem rgba(47, 98, 114, 0.08);
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.06), transparent 68%);
+      opacity: 0.7;
+      pointer-events: none;
     }
 
-    .contact-card strong {
-      color: var(--ink);
-      font-size: 0.82rem;
-      letter-spacing: 0.15em;
+    .work-card:nth-child(2)::before,
+    .work-card:nth-child(5)::before {
+      background: radial-gradient(circle, rgba(217, 192, 160, 0.1), transparent 68%);
+    }
+
+    .work-card:nth-child(3)::before,
+    .work-card:nth-child(6)::before {
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.08), transparent 68%);
+    }
+
+    .work-card:nth-child(1) {
+      background:
+        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.38) 100%),
+        radial-gradient(circle at top left, rgba(255, 155, 104, 0.16), transparent 28%),
+        rgba(14, 10, 10, 0.92);
+    }
+
+    .work-card:nth-child(2) {
+      background:
+        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.38) 100%),
+        radial-gradient(circle at top right, rgba(174, 197, 164, 0.12), transparent 26%),
+        rgba(11, 13, 11, 0.92);
+    }
+
+    .work-card:nth-child(3) {
+      background:
+        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.36) 100%),
+        radial-gradient(circle at top center, rgba(236, 236, 236, 0.08), transparent 26%),
+        rgba(15, 15, 15, 0.92);
+    }
+
+    .work-card:nth-child(4) {
+      background:
+        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.36) 100%),
+        radial-gradient(circle at top right, rgba(214, 230, 255, 0.1), transparent 24%),
+        rgba(10, 11, 13, 0.92);
+    }
+
+    .work-card:nth-child(5) {
+      background:
+        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.38) 100%),
+        radial-gradient(circle at top left, rgba(248, 248, 248, 0.1), transparent 28%),
+        rgba(12, 12, 12, 0.92);
+    }
+
+    .work-card:nth-child(6) {
+      background:
+        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.32) 100%),
+        radial-gradient(circle at top left, rgba(255, 206, 52, 0.18), transparent 24%),
+        radial-gradient(circle at top right, rgba(73, 108, 230, 0.14), transparent 26%),
+        rgba(14, 12, 8, 0.92);
+    }
+
+    .work-card span {
+      position: relative;
+      z-index: 1;
+      color: var(--muted);
+      font-size: 0.74rem;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
     }
 
-    .footer-note {
+    .work-card h3 {
+      position: relative;
+      z-index: 1;
+      font-size: 1.48rem;
+    }
+
+    .work-card p {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      color: var(--muted-strong);
+      line-height: 1.58;
+    }
+
+    .work-meta {
+      font-size: 0.88rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .quote-band {
       margin-top: 18px;
-      padding: 0 0.2rem;
-      font-size: 0.94rem;
+      padding: 24px;
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(242, 231, 214, 0.08);
+      background:
+        linear-gradient(120deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+        rgba(14, 14, 14, 0.88);
+      box-shadow: var(--shadow);
+    }
+
+    .quote-band p {
+      margin: 0;
+      max-width: 18ch;
+      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      line-height: 0.96;
+      letter-spacing: -0.05em;
+      color: var(--ink);
+    }
+
+    .footer-panel {
+      margin-top: 18px;
+      padding: 22px;
+      border-radius: var(--radius-xl);
+      display: grid;
+      gap: 1rem;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+        rgba(11, 11, 11, 0.94);
+    }
+
+    .footer-panel h2 {
+      font-size: clamp(1.8rem, 3vw, 2.8rem);
+    }
+
+    .footer-panel p {
+      margin: 0;
+      max-width: 34rem;
+      color: var(--muted);
+      line-height: 1.58;
     }
 
     @keyframes pulse {
       0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.08); opacity: 0.84; }
+      50% { transform: scale(1.08); opacity: 0.82; }
     }
 
     @keyframes drift-a {
@@ -510,264 +553,166 @@
 
     @keyframes drift-b {
       from { transform: translate3d(0, 0, 0); }
-      to { transform: translate3d(16px, -14px, 0); }
+      to { transform: translate3d(16px, -12px, 0); }
     }
 
     @media (max-width: 980px) {
       .hero-grid,
-      .note-band,
-      .grid-3,
-      .project-grid,
-      .contact-grid {
+      .works-grid {
         grid-template-columns: 1fr;
+      }
+
+      .hero-copy h1,
+      .quote-band p {
+        max-width: 100%;
       }
     }
 
     @media (max-width: 720px) {
       main {
-        padding: 18px 0 56px;
+        padding: 18px 0 42px;
       }
 
-      .hero,
-      .section,
-      .note-band {
-        padding: 20px;
-      }
-
-      .topline {
+      .site-top {
         flex-direction: column;
         align-items: stretch;
       }
 
-      .hero-copy h1 {
-        max-width: 100%;
+      .hero,
+      .panel,
+      .quote-band,
+      .footer-panel {
+        padding: 18px;
+      }
+
+      .hero-links,
+      .signal-row,
+      .footer-links {
+        flex-direction: column;
+      }
+
+      .hero-link,
+      .footer-link {
+        width: 100%;
+        justify-content: flex-start;
       }
     }
   </style>
 </head>
 <body>
   <main>
-    <div class="topline">
-      <div class="topline__chip">
-        <span class="topline__dot" aria-hidden="true"></span>
+    <div class="site-top">
+      <div class="site-chip">
+        <span class="site-dot" aria-hidden="true"></span>
         <span>baco.work</span>
       </div>
-      <div class="topline__chip">
-        <span>brand designer</span>
-        <span>photographer</span>
+      <div class="site-chip">
+        <span>olivier baco</span>
+        <span>brand designer - photographer</span>
       </div>
     </div>
 
     <section class="hero">
-      <span class="eyebrow">Olivier Baco</span>
       <div class="hero-grid">
-        <div class="hero-copy">
-          <h1>baco. Brand designer - photographer.</h1>
-          <p>
-            baco.work pose une presence nette pour Olivier Baco: une entree simple, un cadre
-            portfolio separé de sowwwl, et un terrain propre pour montrer les projets, les images
-            et les collaborations a venir sans bruit parasite.
-          </p>
-          <div class="hero-actions">
-            <a class="button button--solid" href="#projets">Voir les projets</a>
-            <a class="button button--ghost" href="tel:+33616096509">+33 (0)6 16 09 65 09</a>
-          </div>
-          <div class="proofline">
-            <span>portfolio dedie</span>
-            <span>brand designer</span>
-            <span>photographer</span>
-          </div>
-        </div>
-        <aside class="hero-aside">
-          <div class="lockup-card" aria-label="Lockup Olivier Baco">
-            <svg class="lockup-mark" viewBox="0 0 320 420" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <g fill="none" stroke="#0f0d0c" stroke-width="34" stroke-linecap="butt" stroke-linejoin="round">
+        <div class="mark-panel">
+          <div class="mark-frame" aria-label="Lockup Olivier Baco">
+            <svg class="mark-svg" viewBox="0 0 320 420" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <g fill="none" stroke="#f2e7d6" stroke-width="34" stroke-linecap="butt" stroke-linejoin="round">
                 <path d="M150 190H72C42 190 20 168 20 138V72C20 42 42 20 72 20H108C132 20 148 36 150 62" />
                 <path d="M170 62C172 36 188 20 212 20H248C278 20 300 42 300 72V138C300 168 278 190 248 190H170" />
                 <path d="M150 190H72C42 190 20 168 20 138V72C20 42 42 20 72 20H108C132 20 148 36 150 62" transform="translate(0 420) scale(1 -1)" />
                 <path d="M170 62C172 36 188 20 212 20H248C278 20 300 42 300 72V138C300 168 278 190 248 190H170" transform="translate(0 420) scale(1 -1)" />
               </g>
             </svg>
-            <div class="lockup-lines">
-              <strong>baco</strong>
-              <span>olivier baco</span>
-              <span>brand designer - photographer</span>
-              <a href="tel:+33616096509">+33 (0)6 16 09 65 09</a>
-              <a href="https://www.baco.work/">www.baco.work</a>
-            </div>
           </div>
-          <span class="mini-chip">Carte</span>
-          <h2>Olivier Baco</h2>
+          <div class="wordmark">
+            <strong>baco</strong>
+            <span>olivier baco</span>
+            <span>brand designer - photographer</span>
+            <a href="mailto:olivierbaco@gmail.com">olivierbaco@gmail.com</a>
+            <a href="tel:+33616096509">+33 (0)6 16 09 65 09</a>
+          </div>
+        </div>
+
+        <div class="hero-copy">
+          <span class="eyebrow">olivier baco</span>
+          <h1>Identity. Image. Public forms.</h1>
           <p>
-            Brand designer - photographer. Cette colonne peut rester sobre: elle porte deja
-            l'identite minimale, le numero de contact et le domaine.
+            Olivier Baco moves between brand design, photography and collective situations with a
+            direct visual language: signs, frames, narration and spatial attention.
           </p>
-          <ul class="fill-list">
-            <li>
-              <strong>Signature</strong>
-              <span>baco</span>
-            </li>
-            <li>
-              <strong>Pratique</strong>
-              <span>brand designer - photographer</span>
-            </li>
-            <li>
-              <strong>Contact</strong>
-              <span><a href="tel:+33616096509">+33 (0)6 16 09 65 09</a></span>
-            </li>
-            <li>
-              <strong>Domaine</strong>
-              <span><a href="https://www.baco.work/">www.baco.work</a></span>
-            </li>
-          </ul>
-        </aside>
+          <div class="hero-links">
+            <a class="hero-link hero-link--solid" href="mailto:olivierbaco@gmail.com">olivierbaco@gmail.com</a>
+            <a class="hero-link" href="tel:+33616096509">+33 (0)6 16 09 65 09</a>
+          </div>
+          <div class="signal-row">
+            <span>identity</span>
+            <span>photography</span>
+            <span>public forms</span>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="panel section" id="repere">
+    <section class="panel">
       <div class="section-head">
-        <span class="mini-chip">Repere</span>
-        <h2>Une base simple pour presenter la pratique sans dispersion.</h2>
-        <p>
-          La page peut maintenant accueillir une selection de travaux, quelques repères de
-          pratique, puis un contact direct. L'essentiel est de garder la lecture concise,
-          visuelle et credible.
-        </p>
+        <span class="mini-chip">Selected works</span>
+        <h2>Selected works.</h2>
+        <p>A selection across territorial identity, civic mediation and collective space.</p>
       </div>
-      <div class="grid-3">
-        <article class="card">
-          <h3>Brand design</h3>
-          <p>Identites, systemes visuels, langages de marque, directions de forme et coherence d'ensemble.</p>
-          <div class="card-tags">
-            <span class="meta-pill">identite</span>
-            <span class="meta-pill">systeme</span>
-            <span class="meta-pill">coherence</span>
-          </div>
+      <div class="works-grid">
+        <article class="work-card">
+          <span>01</span>
+          <h3>Identite communale</h3>
+          <p>La Haye Fouassiere.</p>
+          <div class="work-meta">Designer de marque, concepteur-redacteur</div>
         </article>
-        <article class="card">
-          <h3>Photography</h3>
-          <p>Prises de vue, séries, campagnes ou images de présence, avec une attention nette au ton et au cadre.</p>
-          <div class="card-tags">
-            <span class="meta-pill">image</span>
-            <span class="meta-pill">serie</span>
-            <span class="meta-pill">campagne</span>
-          </div>
+        <article class="work-card">
+          <span>02</span>
+          <h3>Ilot des Iles</h3>
+          <p>Nantes Metropole Habitat.</p>
+          <div class="work-meta">Co-conception de cour interieure, Studio Katra x Atelier Fil</div>
         </article>
-        <article class="card">
-          <h3>Collaborations</h3>
-          <p>La troisieme carte peut ensuite porter les formats de mission, les territoires ou les preuves de parcours.</p>
-          <div class="card-tags">
-            <span class="meta-pill">missions</span>
-            <span class="meta-pill">territoires</span>
-            <span class="meta-pill">preuves</span>
-          </div>
+        <article class="work-card">
+          <span>03</span>
+          <h3>Forums Democratique Jeunes-Adultes</h3>
+          <p>France.</p>
+          <div class="work-meta">Assistant de recherche en anthropologie sociale, facilitateur</div>
         </article>
-      </div>
-    </section>
-
-    <section class="panel section" id="projets">
-      <div class="section-head">
-        <span class="mini-chip">Portfolio</span>
-        <h2>Projets choisis.</h2>
-        <p>
-          Trois entrées suffisent pour une première version: une marque, une campagne ou série, et
-          une pièce plus libre. Chaque carte peut ensuite recevoir un vrai titre, une image, un
-          contexte et le rôle précis d'Olivier.
-        </p>
-      </div>
-      <div class="project-grid">
-        <article class="card card-emphasis">
-          <span class="project-index">Selection 01</span>
-          <h3 class="project-title">Identite de marque</h3>
-          <p>Un premier projet pour montrer le langage visuel, la structure de marque et la qualité de finition.</p>
-          <div class="card-tags">
-            <span class="meta-pill">identite</span>
-            <span class="meta-pill">direction</span>
-            <span class="meta-pill">application</span>
-          </div>
+        <article class="work-card">
+          <span>04</span>
+          <h3>Ateliers Anthropographiques</h3>
+          <p>Paris &amp; Couronne.</p>
+          <div class="work-meta">Mediation citoyenne, co-concepteur, auteur, facilitateur</div>
         </article>
-        <article class="card card-emphasis">
-          <span class="project-index">Selection 02</span>
-          <h3 class="project-title">Campagne ou serie photo</h3>
-          <p>Une entree image pour faire sentir le regard, la lumière, le ton et la précision des prises de vue.</p>
-          <div class="card-tags">
-            <span class="meta-pill">photography</span>
-            <span class="meta-pill">cadre</span>
-            <span class="meta-pill">ton</span>
-          </div>
+        <article class="work-card">
+          <span>05</span>
+          <h3>Totem erige</h3>
+          <p>Soisy sur Seine.</p>
+          <div class="work-meta">Association citoyenne &amp; interculturelle, co-fondateur &amp; president adjoint</div>
         </article>
-        <article class="card card-emphasis">
-          <span class="project-index">Selection 03</span>
-          <h3 class="project-title">Collaboration a mettre en avant</h3>
-          <p>Une troisieme piece pour montrer l'etendue de la pratique sans perdre la cohérence d'ensemble.</p>
-          <div class="card-tags">
-            <span class="meta-pill">commande</span>
-            <span class="meta-pill">collaboration</span>
-            <span class="meta-pill">impact</span>
-          </div>
+        <article class="work-card">
+          <span>06</span>
+          <h3>Identite // Nantes</h3>
+          <p>Signalisation, narration, plastique.</p>
+          <div class="work-meta">Designer de marque, concepteur-redacteur, deambulation poetique</div>
         </article>
       </div>
     </section>
 
-    <section class="band note-band">
-      <div class="section-head">
-        <span class="mini-chip">Methode</span>
-        <h2>Une base deja propre pour une vraie mise en ligne.</h2>
-        <p>
-          `baco.work` est maintenant pensé comme un lieu autonome: il ne redirige pas vers sowwwl,
-          ne dépend pas du lab, et peut évoluer comme un portfolio classique, éditorial ou plus
-          image selon ce qu'Olivier veut montrer.
-        </p>
-      </div>
-      <ul class="checklist">
-        <li>
-          <strong>Etape 1</strong>
-          <span>renseigner la phrase d'ouverture et les coordonnees reelles</span>
-        </li>
-        <li>
-          <strong>Etape 2</strong>
-          <span>remplacer les trois cartes par de vrais projets avec images optimisees</span>
-        </li>
-        <li>
-          <strong>Etape 3</strong>
-          <span>ajouter ensuite une page a propos ou une page projet si Olivier en a besoin</span>
-        </li>
-      </ul>
+    <section class="quote-band">
+      <p>Signs, images, situations. No excess.</p>
     </section>
 
-    <section class="panel section" id="contact">
-      <div class="section-head">
-        <span class="mini-chip">Contact</span>
-        <h2>Entrer en contact.</h2>
-        <p>
-          Cette section peut déjà être utile telle quelle: le numéro est là, le domaine aussi. Il
-          restera simplement à ajouter le bon email et les liens de travail si besoin.
-        </p>
-      </div>
-      <div class="contact-grid">
-        <article class="contact-card">
-          <strong>Telephone</strong>
-          <h3><a href="tel:+33616096509">+33 (0)6 16 09 65 09</a></h3>
-          <p>Point d'entree direct déjà disponible pour les premiers échanges.</p>
-        </article>
-        <article class="contact-card">
-          <strong>Domaine</strong>
-          <h3><a href="https://www.baco.work/">www.baco.work</a></h3>
-          <p>Le site est désormais séparé et prêt à recevoir les vrais contenus portfolio.</p>
-        </article>
-        <article class="contact-card">
-          <strong>Suite</strong>
-          <h3>Email, Instagram, PDF</h3>
-          <p>Ajouter ensuite les liens utiles d'Olivier: mail, réseaux, dossier ou rendez-vous.</p>
-        </article>
+    <section class="footer-panel" id="contact">
+      <h2>Contact</h2>
+      <p>For commissions, collaborations and direct exchange.</p>
+      <div class="footer-links">
+        <a class="footer-link" href="mailto:olivierbaco@gmail.com">olivierbaco@gmail.com</a>
+        <a class="footer-link" href="tel:+33616096509">+33 (0)6 16 09 65 09</a>
+        <a class="footer-link" href="https://www.baco.work/">www.baco.work</a>
       </div>
     </section>
-
-    <p class="footer-note">
-      Cette version de <strong>baco.work</strong> pose maintenant une vraie présence Olivier Baco:
-      nom, pratique, téléphone et structure portfolio dédiée, sans mélange avec le système public
-      de sowwwl.
-    </p>
   </main>
 </body>
 </html>
