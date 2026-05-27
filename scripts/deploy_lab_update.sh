@@ -260,11 +260,25 @@ deploy_service_bundle() {
 	shift
 	local output
 	local retried_on_conflict=0
+	local -a refresh_targets=()
+	local service
+
+	for service in "$@"; do
+		case "$service" in
+			app|pocket|api)
+				refresh_targets+=("$service")
+				;;
+		esac
+	done
 
 	echo "==> Rebuilding lab stack ($label)"
 	while true; do
 		if output=$(compose_lab up --build -d "$@" 2>&1); then
 			printf '%s\n' "$output"
+			if [[ ${#refresh_targets[@]} -gt 0 ]]; then
+				echo "==> Forcing refreshed lab services (${refresh_targets[*]})"
+				compose_lab up -d --no-deps --force-recreate "${refresh_targets[@]}"
+			fi
 			return 0
 		fi
 
