@@ -95,6 +95,17 @@ sowwwl.org {
 	file_server
 }
 
+www.baco.work {
+	redir https://baco.work{uri} 308
+}
+
+baco.work {
+	import common_headers
+	import permissions_static
+	root * /srv/sites/baco.work
+	file_server
+}
+
 www.0wlslw0.com {
 	redir https://0wlslw0.com{uri} 308
 }
