@@ -4,26 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>baco.work</title>
-  <meta name="description" content="Olivier Baco. Brand designer and photographer.">
+  <meta name="description" content="baco.work / brand designer - Photographier">
   <style>
     :root {
-      --bg: #060606;
-      --bg-soft: #101010;
-      --bg-panel: rgba(20, 20, 20, 0.82);
-      --bg-panel-strong: rgba(28, 28, 28, 0.92);
-      --ink: #f2e7d6;
-      --muted: rgba(242, 231, 214, 0.68);
-      --muted-strong: rgba(242, 231, 214, 0.84);
-      --line: rgba(242, 231, 214, 0.12);
-      --line-strong: rgba(242, 231, 214, 0.22);
-      --accent: #d9c0a0;
-      --accent-soft: rgba(217, 192, 160, 0.14);
-      --shadow: 0 30px 90px rgba(0, 0, 0, 0.38);
-      --radius-xl: 34px;
-      --radius-lg: 24px;
-      --radius-md: 18px;
-      --radius-sm: 12px;
-      --width: min(1180px, calc(100vw - 28px));
+      --bg: #030303;
+      --bg-soft: #0a0a0a;
+      --ink: #f6efe4;
+      --muted: rgba(246, 239, 228, 0.72);
+      --line: rgba(246, 239, 228, 0.12);
+      --accent: rgba(246, 239, 228, 0.08);
     }
 
     * {
@@ -31,688 +20,127 @@
       min-width: 0;
     }
 
-    html {
-      scroll-behavior: smooth;
+    html,
+    body {
+      min-height: 100%;
     }
 
     body {
       margin: 0;
       color: var(--ink);
       background:
-        radial-gradient(circle at top left, rgba(255, 255, 255, 0.06), transparent 26%),
-        radial-gradient(circle at 78% 14%, rgba(217, 192, 160, 0.1), transparent 20%),
-        radial-gradient(circle at 68% 82%, rgba(255, 255, 255, 0.04), transparent 24%),
-        linear-gradient(180deg, #040404 0%, #090909 42%, #060606 100%);
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.04), transparent 24%),
+        radial-gradient(circle at 80% 22%, rgba(255, 255, 255, 0.05), transparent 20%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 55%, #000 100%);
       font-family: "Avenir Next", "Helvetica Neue", "Segoe UI", sans-serif;
       letter-spacing: 0.01em;
     }
 
-    body::before,
-    body::after {
+    body::before {
       content: "";
       position: fixed;
       inset: 0;
-      pointer-events: none;
-    }
-
-    body::before {
       background-image:
-        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-      background-size: 44px 44px;
-      mask-image: radial-gradient(circle at center, black 26%, transparent 84%);
-      opacity: 0.5;
-    }
-
-    body::after {
-      background:
-        radial-gradient(circle at center, rgba(255, 255, 255, 0.05), transparent 58%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 26%);
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: radial-gradient(circle at center, black 24%, transparent 82%);
+      pointer-events: none;
+      opacity: 0.45;
     }
 
     main {
-      position: relative;
-      z-index: 1;
-      width: var(--width);
-      margin: 0 auto;
-      padding: 24px 0 54px;
-    }
-
-    h1,
-    h2,
-    h3,
-    strong {
-      margin: 0;
-      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
-      font-weight: 600;
-      letter-spacing: -0.035em;
-      text-wrap: balance;
-    }
-
-    p,
-    span,
-    a {
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    .site-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 1rem;
-      align-items: center;
-      margin-bottom: 18px;
-      color: var(--muted);
-      font-size: 0.78rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-    }
-
-    .site-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.72rem;
-      padding: 0.76rem 1rem;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.03);
-      backdrop-filter: blur(12px);
-    }
-
-    .site-dot {
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 0 0.32rem rgba(217, 192, 160, 0.09);
-      animation: pulse 3.2s ease-in-out infinite;
-    }
-
-    .hero,
-    .panel,
-    .footer-panel {
-      position: relative;
-      overflow: hidden;
-      border: 1px solid var(--line);
-      background: var(--bg-panel);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(16px);
-    }
-
-    .hero {
-      border-radius: var(--radius-xl);
-      padding: 28px;
-      background:
-        radial-gradient(circle at top right, rgba(217, 192, 160, 0.08), transparent 24%),
-        radial-gradient(circle at left 18%, rgba(255, 255, 255, 0.05), transparent 20%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
-        var(--bg-panel-strong);
-    }
-
-    .hero::before,
-    .hero::after {
-      content: "";
-      position: absolute;
-      pointer-events: none;
-      border-radius: 50%;
-      filter: blur(8px);
-    }
-
-    .hero::before {
-      width: 18rem;
-      height: 18rem;
-      top: -8rem;
-      right: -4rem;
-      background: radial-gradient(circle, rgba(217, 192, 160, 0.12), transparent 68%);
-      animation: drift-a 13s ease-in-out infinite alternate;
-    }
-
-    .hero::after {
-      width: 15rem;
-      height: 15rem;
-      bottom: -7rem;
-      left: -3rem;
-      background: radial-gradient(circle, rgba(255, 255, 255, 0.08), transparent 72%);
-      animation: drift-b 14s ease-in-out infinite alternate;
-    }
-
-    .hero-grid {
+      min-height: 100vh;
       display: grid;
-      grid-template-columns: minmax(18rem, 0.94fr) minmax(0, 1.2fr);
-      gap: 24px;
-      align-items: stretch;
+      place-items: center;
+      padding: 24px;
     }
 
-    .mark-panel {
-      position: relative;
+    .stage {
+      width: min(720px, 100%);
       display: grid;
-      align-content: space-between;
-      gap: 1.2rem;
-      min-height: 100%;
-      padding: 20px;
-      border-radius: var(--radius-lg);
-      border: 1px solid rgba(242, 231, 214, 0.1);
+      gap: 1.4rem;
+      justify-items: center;
+      text-align: center;
+      padding: clamp(1.6rem, 4vw, 2.8rem);
+      border: 1px solid var(--line);
+      border-radius: 28px;
       background:
-        radial-gradient(circle at center, rgba(255, 255, 255, 0.04), transparent 54%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
-        rgba(8, 8, 8, 0.9);
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+        rgba(8, 8, 8, 0.78);
+      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(14px);
     }
 
-    .mark-panel::after {
-      content: "";
-      position: absolute;
-      inset: auto -8% -18% auto;
-      width: 14rem;
-      height: 14rem;
-      background: radial-gradient(circle, rgba(217, 192, 160, 0.08), transparent 68%);
-      border-radius: 50%;
-      pointer-events: none;
-    }
-
-    .mark-frame {
-      position: relative;
-      border-radius: calc(var(--radius-lg) - 6px);
-      border: 1px solid rgba(242, 231, 214, 0.08);
-      padding: 0.85rem;
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .lockup-svg {
-      width: min(20.5rem, 100%);
+    .logo {
+      width: min(240px, 100%);
       display: block;
       height: auto;
-      margin: 0 auto;
     }
 
-    .wordmark {
-      display: grid;
-      gap: 0.22rem;
-      color: var(--ink);
-    }
-
-    .wordmark span,
-    .wordmark a {
-      color: var(--muted-strong);
-      font-size: 0.92rem;
-      line-height: 1.26;
-    }
-
-    .hero-copy {
-      display: grid;
-      align-content: center;
-      gap: 1.25rem;
-      padding: 0.3rem 0.2rem;
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      width: fit-content;
-      max-width: 100%;
-      padding: 0.62rem 0.88rem;
-      border-radius: 999px;
-      border: 1px solid rgba(242, 231, 214, 0.1);
-      background: rgba(255, 255, 255, 0.03);
-      color: var(--muted);
-      font-size: 0.76rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-    }
-
-    .hero-copy h1 {
-      font-size: clamp(3.2rem, 7vw, 6rem);
-      line-height: 0.9;
-      max-width: 10ch;
-    }
-
-    .hero-copy p {
+    .title {
       margin: 0;
-      max-width: 42ch;
-      color: var(--muted-strong);
-      font-size: 1.04rem;
-      line-height: 1.62;
-    }
-
-    .hero-links,
-    .signal-row,
-    .footer-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.82rem;
-    }
-
-    .hero-link,
-    .footer-link {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: fit-content;
-      max-width: 100%;
-      min-height: 3.05rem;
-      padding: 0.9rem 1.12rem;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.03);
-      color: var(--ink);
-      font-weight: 600;
-      line-height: 1.3;
-      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
-    }
-
-    .hero-link:hover,
-    .hero-link:focus-visible,
-    .footer-link:hover,
-    .footer-link:focus-visible {
-      transform: translateY(-2px);
-      border-color: var(--line-strong);
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .hero-link--solid {
-      background: linear-gradient(135deg, rgba(242, 231, 214, 0.18), rgba(217, 192, 160, 0.12));
-      border-color: rgba(242, 231, 214, 0.2);
-    }
-
-    .signal-row span {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: fit-content;
-      max-width: 100%;
-      padding: 0.7rem 0.9rem;
-      border-radius: 999px;
-      border: 1px solid rgba(242, 231, 214, 0.08);
-      background: rgba(255, 255, 255, 0.03);
       color: var(--muted);
-      font-size: 0.82rem;
+      font-size: clamp(0.95rem, 2vw, 1.08rem);
+      line-height: 1.45;
       letter-spacing: 0.14em;
       text-transform: uppercase;
     }
 
-    .panel {
-      margin-top: 18px;
-      padding: 20px;
-      border-radius: var(--radius-xl);
-    }
-
-    .section-head {
+    .contacts {
       display: grid;
-      gap: 0.8rem;
-      margin-bottom: 18px;
-      max-width: 42rem;
+      gap: 0.72rem;
+      width: 100%;
+      justify-items: center;
     }
 
-    .section-head h2 {
-      font-size: clamp(1.9rem, 3.6vw, 3rem);
-    }
-
-    .section-head p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.64;
-    }
-
-    .mini-chip {
+    .contact {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       width: fit-content;
       max-width: 100%;
-      padding: 0.6rem 0.86rem;
+      padding: 0.92rem 1.12rem;
+      border: 1px solid var(--line);
       border-radius: 999px;
-      border: 1px solid rgba(242, 231, 214, 0.08);
-      background: rgba(255, 255, 255, 0.03);
-      color: var(--muted);
-      font-size: 0.74rem;
-      letter-spacing: 0.17em;
-      text-transform: uppercase;
-    }
-
-    .works-grid {
-      display: grid;
-      gap: 16px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .work-card {
-      position: relative;
-      min-height: 13rem;
-      display: grid;
-      align-content: end;
-      gap: 0.56rem;
-      padding: 20px;
-      border-radius: var(--radius-lg);
-      border: 1px solid rgba(242, 231, 214, 0.08);
-      background:
-        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.34) 100%),
-        radial-gradient(circle at top right, rgba(217, 192, 160, 0.08), transparent 28%),
-        rgba(12, 12, 12, 0.9);
-      overflow: hidden;
-    }
-
-    .work-card::before {
-      content: "";
-      position: absolute;
-      inset: auto -8% -16% auto;
-      width: 12rem;
-      height: 12rem;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(255, 255, 255, 0.06), transparent 68%);
-      opacity: 0.7;
-      pointer-events: none;
-    }
-
-    .work-card:nth-child(2)::before,
-    .work-card:nth-child(5)::before {
-      background: radial-gradient(circle, rgba(217, 192, 160, 0.1), transparent 68%);
-    }
-
-    .work-card:nth-child(3)::before,
-    .work-card:nth-child(6)::before {
-      background: radial-gradient(circle, rgba(255, 255, 255, 0.08), transparent 68%);
-    }
-
-    .work-card:nth-child(1) {
-      background:
-        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.38) 100%),
-        radial-gradient(circle at top left, rgba(255, 155, 104, 0.16), transparent 28%),
-        rgba(14, 10, 10, 0.92);
-    }
-
-    .work-card:nth-child(2) {
-      background:
-        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.38) 100%),
-        radial-gradient(circle at top right, rgba(174, 197, 164, 0.12), transparent 26%),
-        rgba(11, 13, 11, 0.92);
-    }
-
-    .work-card:nth-child(3) {
-      background:
-        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.36) 100%),
-        radial-gradient(circle at top center, rgba(236, 236, 236, 0.08), transparent 26%),
-        rgba(15, 15, 15, 0.92);
-    }
-
-    .work-card:nth-child(4) {
-      background:
-        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.36) 100%),
-        radial-gradient(circle at top right, rgba(214, 230, 255, 0.1), transparent 24%),
-        rgba(10, 11, 13, 0.92);
-    }
-
-    .work-card:nth-child(5) {
-      background:
-        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.38) 100%),
-        radial-gradient(circle at top left, rgba(248, 248, 248, 0.1), transparent 28%),
-        rgba(12, 12, 12, 0.92);
-    }
-
-    .work-card:nth-child(6) {
-      background:
-        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.32) 100%),
-        radial-gradient(circle at top left, rgba(255, 206, 52, 0.18), transparent 24%),
-        radial-gradient(circle at top right, rgba(73, 108, 230, 0.14), transparent 26%),
-        rgba(14, 12, 8, 0.92);
-    }
-
-    .work-card span {
-      position: relative;
-      z-index: 1;
-      color: var(--muted);
-      font-size: 0.74rem;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-    }
-
-    .work-card h3 {
-      position: relative;
-      z-index: 1;
-      font-size: 1.48rem;
-    }
-
-    .work-card p {
-      position: relative;
-      z-index: 1;
-      margin: 0;
-      color: var(--muted-strong);
-      line-height: 1.58;
-    }
-
-    .work-meta {
-      font-size: 0.88rem;
-      color: var(--muted);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .quote-band {
-      margin-top: 18px;
-      padding: 24px;
-      border-radius: var(--radius-xl);
-      border: 1px solid rgba(242, 231, 214, 0.08);
-      background:
-        linear-gradient(120deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
-        rgba(14, 14, 14, 0.88);
-      box-shadow: var(--shadow);
-    }
-
-    .quote-band p {
-      margin: 0;
-      max-width: 18ch;
-      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
-      font-size: clamp(2rem, 4vw, 3.5rem);
-      line-height: 0.96;
-      letter-spacing: -0.05em;
+      background: var(--accent);
       color: var(--ink);
+      text-decoration: none;
+      font-size: clamp(0.96rem, 2vw, 1.04rem);
+      line-height: 1.3;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
     }
 
-    .footer-panel {
-      margin-top: 18px;
-      padding: 22px;
-      border-radius: var(--radius-xl);
-      display: grid;
-      gap: 1rem;
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
-        rgba(11, 11, 11, 0.94);
+    .contact:hover,
+    .contact:focus-visible {
+      transform: translateY(-2px);
+      border-color: rgba(246, 239, 228, 0.24);
+      background: rgba(246, 239, 228, 0.12);
     }
 
-    .footer-panel h2 {
-      font-size: clamp(1.8rem, 3vw, 2.8rem);
-    }
-
-    .footer-panel p {
-      margin: 0;
-      max-width: 34rem;
-      color: var(--muted);
-      line-height: 1.58;
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.08); opacity: 0.82; }
-    }
-
-    @keyframes drift-a {
-      from { transform: translate3d(0, 0, 0); }
-      to { transform: translate3d(-18px, 16px, 0); }
-    }
-
-    @keyframes drift-b {
-      from { transform: translate3d(0, 0, 0); }
-      to { transform: translate3d(16px, -12px, 0); }
-    }
-
-    @media (max-width: 980px) {
-      .hero-grid,
-      .works-grid {
-        grid-template-columns: 1fr;
+    @media (max-width: 560px) {
+      .stage {
+        border-radius: 22px;
       }
 
-      .hero-copy h1,
-      .quote-band p {
-        max-width: 100%;
-      }
-    }
-
-    @media (max-width: 720px) {
-      main {
-        padding: 18px 0 42px;
-      }
-
-      .site-top {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .hero,
-      .panel,
-      .quote-band,
-      .footer-panel {
-        padding: 18px;
-      }
-
-      .hero-links,
-      .signal-row,
-      .footer-links {
-        flex-direction: column;
-      }
-
-      .hero-link,
-      .footer-link {
+      .contact {
         width: 100%;
-        justify-content: flex-start;
       }
     }
   </style>
 </head>
 <body>
   <main>
-    <div class="site-top">
-      <div class="site-chip">
-        <span class="site-dot" aria-hidden="true"></span>
-        <span>baco.work</span>
-      </div>
-      <div class="site-chip">
-        <span>olivier baco</span>
-        <span>brand designer - photographer</span>
+    <div class="stage">
+      <img class="logo" src="./signature-mail.jpg" alt="Signature Baco">
+
+      <p class="title">baco.work / brand designer - Photographier</p>
+
+      <div class="contacts">
+        <a class="contact" href="mailto:olivierbaco@gmail.com">olivierbaco@gmail.com</a>
+        <a class="contact" href="tel:+33616096509">+33 (0)6 16 09 65 09</a>
       </div>
     </div>
-
-    <section class="hero">
-      <div class="hero-grid">
-        <div class="mark-panel">
-          <div class="mark-frame" aria-label="Lockup Olivier Baco">
-            <svg class="lockup-svg" viewBox="0 0 420 190" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <g fill="none" stroke="#f2e7d6" stroke-width="16" stroke-linecap="butt" stroke-linejoin="round">
-                <g transform="translate(2 0) scale(0.42)">
-                  <path d="M150 190H72C42 190 20 168 20 138V72C20 42 42 20 72 20H108C132 20 148 36 150 62" />
-                </g>
-                <g transform="translate(93 0) scale(0.42)">
-                  <path d="M170 62C172 36 188 20 212 20H248C278 20 300 42 300 72V138C300 168 278 190 248 190H170" />
-                </g>
-                <g transform="translate(203 0) scale(0.42)">
-                  <path d="M150 190H72C42 190 20 168 20 138V72C20 42 42 20 72 20H108C132 20 148 36 150 62" transform="translate(0 210) scale(1 -1)" />
-                </g>
-                <g transform="translate(295 0) scale(0.42)">
-                  <path d="M170 62C172 36 188 20 212 20H248C278 20 300 42 300 72V138C300 168 278 190 248 190H170" transform="translate(0 210) scale(1 -1)" />
-                </g>
-              </g>
-            </svg>
-          </div>
-          <div class="wordmark">
-            <span>olivier baco</span>
-            <span>brand designer - photographer</span>
-            <a href="mailto:olivierbaco@gmail.com">olivierbaco@gmail.com</a>
-            <a href="tel:+33616096509">+33 (0)6 16 09 65 09</a>
-          </div>
-        </div>
-
-        <div class="hero-copy">
-          <span class="eyebrow">olivier baco</span>
-          <h1>Identity. Image. Public forms.</h1>
-          <p>
-            Olivier Baco moves between brand design, photography and collective situations with a
-            direct visual language: signs, frames, narration and spatial attention.
-          </p>
-          <div class="hero-links">
-            <a class="hero-link hero-link--solid" href="mailto:olivierbaco@gmail.com">olivierbaco@gmail.com</a>
-            <a class="hero-link" href="tel:+33616096509">+33 (0)6 16 09 65 09</a>
-          </div>
-          <div class="signal-row">
-            <span>identity</span>
-            <span>photography</span>
-            <span>public forms</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="section-head">
-        <span class="mini-chip">Selected works</span>
-        <h2>Selected works.</h2>
-        <p>A selection across territorial identity, civic mediation and collective space.</p>
-      </div>
-      <div class="works-grid">
-        <article class="work-card">
-          <span>01</span>
-          <h3>Identite communale</h3>
-          <p>La Haye Fouassiere.</p>
-          <div class="work-meta">Designer de marque, concepteur-redacteur</div>
-        </article>
-        <article class="work-card">
-          <span>02</span>
-          <h3>Ilot des Iles</h3>
-          <p>Nantes Metropole Habitat.</p>
-          <div class="work-meta">Co-conception de cour interieure, Studio Katra x Atelier Fil</div>
-        </article>
-        <article class="work-card">
-          <span>03</span>
-          <h3>Forums Democratique Jeunes-Adultes</h3>
-          <p>France.</p>
-          <div class="work-meta">Assistant de recherche en anthropologie sociale, facilitateur</div>
-        </article>
-        <article class="work-card">
-          <span>04</span>
-          <h3>Ateliers Anthropographiques</h3>
-          <p>Paris &amp; Couronne.</p>
-          <div class="work-meta">Mediation citoyenne, co-concepteur, auteur, facilitateur</div>
-        </article>
-        <article class="work-card">
-          <span>05</span>
-          <h3>Totem erige</h3>
-          <p>Soisy sur Seine.</p>
-          <div class="work-meta">Association citoyenne &amp; interculturelle, co-fondateur &amp; president adjoint</div>
-        </article>
-        <article class="work-card">
-          <span>06</span>
-          <h3>Identite // Nantes</h3>
-          <p>Signalisation, narration, plastique.</p>
-          <div class="work-meta">Designer de marque, concepteur-redacteur, deambulation poetique</div>
-        </article>
-      </div>
-    </section>
-
-    <section class="quote-band">
-      <p>Signs, images, situations. No excess.</p>
-    </section>
-
-    <section class="footer-panel" id="contact">
-      <h2>Contact</h2>
-      <p>For commissions, collaborations and direct exchange.</p>
-      <div class="footer-links">
-        <a class="footer-link" href="mailto:olivierbaco@gmail.com">olivierbaco@gmail.com</a>
-        <a class="footer-link" href="tel:+33616096509">+33 (0)6 16 09 65 09</a>
-        <a class="footer-link" href="https://www.baco.work/">www.baco.work</a>
-      </div>
-    </section>
   </main>
 </body>
 </html>
