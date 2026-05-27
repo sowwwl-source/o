@@ -40,7 +40,7 @@ api.lab.sowwwl.cloud {
 	}
 	@preflight method OPTIONS
 	respond @preflight 204
-	reverse_proxy api:80
+	reverse_proxy sowwwl-o-lab-api-1:80
 }
 
 pocket.lab.sowwwl.cloud {
