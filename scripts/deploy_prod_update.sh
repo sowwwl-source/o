@@ -175,7 +175,7 @@ compose_prod_up_retry_conflicts() {
 	local -a services=("$@")
 
 	while true; do
-		if output=$(compose_prod up -d "${services[@]}" 2>&1); then
+		if output=$(compose_prod up -d --force-recreate "${services[@]}" 2>&1); then
 			printf '%s\n' "$output"
 			return 0
 		fi
@@ -190,6 +190,24 @@ compose_prod_up_retry_conflicts() {
 
 		return 1
 	done
+}
+
+verify_service_container_image() {
+	local service=$1
+	local image_name="${project_name}-${service}"
+	local container_name="${project_name}-${service}-1"
+	local expected_id
+	local running_id
+
+	expected_id=$(docker image inspect "$image_name" --format '{{.Id}}')
+	running_id=$(docker inspect "$container_name" --format '{{.Image}}')
+
+	if [[ -z "$expected_id" || -z "$running_id" || "$expected_id" != "$running_id" ]]; then
+		echo "Running ${service} container image does not match freshly built image." >&2
+		echo "Expected: ${expected_id:-missing}" >&2
+		echo "Running:  ${running_id:-missing}" >&2
+		exit 1
+	fi
 }
 
 reload_live_caddy_config() {
@@ -310,7 +328,6 @@ validate_static_sites_source() {
 
 	validate_static_site_file "$source_dir" "sowwwl.cloud/index.html"
 	validate_static_site_file "$source_dir" "sowwwl.org/index.html"
-	validate_static_site_file "$source_dir" "0.user.o.sowwwl.cloud/index.html"
 	validate_static_site_file "$source_dir" "0wlslw0.com/index.html"
 }
 
@@ -480,7 +497,6 @@ else
 	rsync -a --delete-delay --delay-updates "$prod_root/deploy/sites/" "$static_sites_dir/"
 	validate_static_site_file "$static_sites_dir" "sowwwl.cloud/index.html"
 	validate_static_site_file "$static_sites_dir" "sowwwl.org/index.html"
-	validate_static_site_file "$static_sites_dir" "0.user.o.sowwwl.cloud/index.html"
 	validate_static_site_file "$static_sites_dir" "0wlslw0.com/index.html"
 fi
 
@@ -500,6 +516,9 @@ if [[ $verify -eq 0 ]]; then
 fi
 
 echo "==> Verifying critical files inside app container"
+verify_service_container_image app
+verify_service_container_image api
+docker exec "${project_name}-app-1" php -m | grep -qi '^pdo_sqlite$'
 docker exec "${project_name}-app-1" test -s /var/www/html/main.js
 docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon.svg
 docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon-192.png

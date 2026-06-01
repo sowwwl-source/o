@@ -1,5 +1,7 @@
 RewriteEngine On
 
+RewriteRule ^docs/?$ index.php [L]
+
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]

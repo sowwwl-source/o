@@ -49,6 +49,8 @@ Start here depending on the situation:
 - `OPS_INDEX.md` — master entry point
 - `3TERNET_ARCHITECTURE.md` — target architecture note for pocket lands / carried data centers
 - `3TERNET_LAB_BOOTSTRAP.md` — exact bootstrap path for `164.92.220.248`
+- `PI5_AI_HAT_PLUS_BOOTSTRAP.md` — physical Raspberry Pi 5 + AI HAT+ bring-up for the first pocket land
+- `PI2_CAMERA_NODE_BOOTSTRAP.md` — separate Raspberry Pi 2 / 3 camera-node path when the Pi 5 hosts the public shore
 - `SESSION_RITUAL.md` — begin a session cleanly
 - `COMMIT_PROTOCOL.md` — prepare commits and pushes
 - `DEPLOY_QUICKREF.md` — shortest deploy path

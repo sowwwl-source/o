@@ -10,6 +10,8 @@ services:
         condition: service_started
     environment:
       ACME_EMAIL: ${ACME_EMAIL:-ops@sowwwl.cloud}
+      PI3_CAMERA_STREAM_UPSTREAM: ${PI3_CAMERA_STREAM_UPSTREAM:-127.0.0.1:9}
+      PI3_CAMERA_STREAM_TOKEN: ${PI3_CAMERA_STREAM_TOKEN:-}
     ports:
       - "80:80"
       - "443:443"
@@ -40,6 +42,15 @@ services:
       SOWWWL_MEMBRANE_BRIDGE_URL: ${SOWWWL_MEMBRANE_BRIDGE_URL:-}
       SOWWWL_PLASMA_FEED_URL: ${SOWWWL_PLASMA_FEED_URL:-}
       SOWWWL_PLASMA_ALLOWED_ORIGINS: ${SOWWWL_PLASMA_ALLOWED_ORIGINS:-}
+      SOWWWL_SURFACE_PREVIEW_HOSTS: ${SOWWWL_SURFACE_PREVIEW_HOSTS:-}
+      SOWWWL_PI_TOKEN: ${SOWWWL_PI_TOKEN:-}
+      SOWWWL_PI_AI_TOKEN: ${SOWWWL_PI_AI_TOKEN:-}
+      SOWWWL_SCEPTRE_TOKEN: ${SOWWWL_SCEPTRE_TOKEN:-}
+      SOWWWL_SENSOR_LOG_DIR: ${SOWWWL_SENSOR_LOG_DIR:-/var/www/runtime/plasma}
+      SOWWWL_SCEPTRE_DIR: ${SOWWWL_SCEPTRE_DIR:-/var/www/runtime/sceptre}
+      SOWWWL_SCEPTRE_PRIMARY_DEVICE: ${SOWWWL_SCEPTRE_PRIMARY_DEVICE:-ensemble}
+      SOWWWL_SCEPTRE_TOKENS_FILE: ${SOWWWL_SCEPTRE_TOKENS_FILE:-}
+      SOWWWL_SCEPTRE_STALE_AFTER_SECONDS: ${SOWWWL_SCEPTRE_STALE_AFTER_SECONDS:-14}
       SOWWWL_STORAGE_DIR: /var/www/runtime/lands
       SOWWWL_RATE_LIMIT_DIR: /var/www/runtime/rate-limit
       SOWWWL_SESSION_DIR: /var/www/runtime/sessions
@@ -115,7 +126,7 @@ services:
       dockerfile: api/Dockerfile
     environment:
       API_BEARER_TOKEN: ${AZA_API_TOKEN:-CHANGE_ME_API_TOKEN}
-      API_PUBLIC_BASE_URL: https://api.sowwwl.cloud
+      API_PUBLIC_BASE_URL: ${API_PUBLIC_BASE_URL:-https://api.sowwwl.cloud}
       API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-https://sowwwl.com,https://www.sowwwl.com,https://sowwwl.io,https://www.sowwwl.io,https://sowwwl.cloud,https://www.sowwwl.cloud,https://api.sowwwl.cloud,https://lab.sowwwl.cloud,https://www.lab.sowwwl.cloud,https://api.lab.sowwwl.cloud}
       SOWWWL_TRUSTED_PROXY_CIDRS: ${SOWWWL_TRUSTED_PROXY_CIDRS:-127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7,fe80::/10}
     expose:

@@ -15,6 +15,10 @@
 /storage/aza/
 /storage/runtime/rate-limit/*.json
 !/storage/runtime/rate-limit/.gitignore
+/storage/runtime/sessions/
+/storage/runtime/plasma/
+/storage/runtime/camera-ai/
+/storage/runtime/*.jsonl
 /storage/signals/
 
 # OS / editor

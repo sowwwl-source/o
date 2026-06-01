@@ -36,11 +36,22 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 $limit = (int) ($_GET['limit'] ?? 6);
 $limit = max(1, min(12, $limit));
-$events = plasma_recent_events($limit);
+$cameraSlug = trim((string) ($_GET['land_slug'] ?? $_GET['camera_slug'] ?? $_GET['camera'] ?? ''));
+$scanLimit = $limit;
+
+if ($cameraSlug !== '') {
+    $requestedScanLimit = (int) ($_GET['scan'] ?? 48);
+    $scanLimit = max($limit, min(120, max($requestedScanLimit, $limit * 4)));
+}
+
+$events = plasma_recent_events($scanLimit, $cameraSlug !== '' ? $cameraSlug : null);
+$events = array_slice($events, 0, $limit);
 $weather = plasma_weather_from_events($events);
+$freshness = plasma_events_freshness($events);
 
 plasma_recent_json(200, [
     'ok' => true,
     'weather' => $weather,
     'events' => $events,
+    'freshness' => $freshness,
 ], $origin);

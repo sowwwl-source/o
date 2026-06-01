@@ -1,0 +1,26 @@
+services:
+  caddy_lan:
+    image: caddy:2.8
+    depends_on:
+      app:
+        condition: service_started
+      api:
+        condition: service_started
+    environment:
+      PI3_CAMERA_STREAM_UPSTREAM: ${PI3_CAMERA_STREAM_UPSTREAM:-127.0.0.1:9}
+      PI3_CAMERA_STREAM_TOKEN: ${PI3_CAMERA_STREAM_TOKEN:-}
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile.lan:/etc/caddy/Caddyfile:ro
+    restart: unless-stopped
+    networks:
+      - sowwwl-edge
+
+  app:
+    ports:
+      - "${SOWWWL_LAN_APP_PORT:-8080}:80"
+
+  api:
+    ports:
+      - "${SOWWWL_LAN_API_PORT:-8081}:80"

@@ -34,6 +34,10 @@ $serviceLabel = is_string($parsedBaseHost) && $parsedBaseHost !== ''
     : trim((string) ($_SERVER['HTTP_HOST'] ?? 'api.sowwwl.cloud'));
 header('X-Content-Type-Options: nosniff');
 
+if ($path === '/docs/') {
+    $path = '/docs';
+}
+
 function json_response(int $status, array $payload): void
 {
     http_response_code($status);
@@ -204,7 +208,7 @@ if (!in_array($path, $publicPaths, true)) {
 
 if ($path === '/') {
     $safeServiceLabel = htmlspecialchars($serviceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-    html_response(200, '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' . $safeServiceLabel . '</title><style>body{margin:0;background:#08111b;color:#e9f2ff;font-family:Menlo,Consolas,monospace}main{max-width:860px;margin:0 auto;padding:56px 24px}a{color:#9cd0ff}code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px}</style></head><body><main><h1>' . $safeServiceLabel . '</h1><p>Minimal AzA API stub running.</p><p>Health: <a href="/healthz">/healthz</a></p><p>Docs: <a href="/docs">/docs</a></p><p>Status: <a href="/v1/status">/v1/status</a></p><p>Protected endpoints return <code>501 not_implemented</code> until the production service is wired.</p></main></body></html>');
+    html_response(200, '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' . $safeServiceLabel . '</title><style>body{margin:0;background:#08111b;color:#e9f2ff;font-family:Menlo,Consolas,monospace}main{max-width:860px;margin:0 auto;padding:56px 24px}a{color:#9cd0ff}code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px}</style></head><body><main><h1>' . $safeServiceLabel . '</h1><p>Minimal AzA API stub running.</p><p>Health: <a href="/healthz">/healthz</a></p><p>Docs: <a href="/docs/">/docs/</a></p><p>Status: <a href="/v1/status">/v1/status</a></p><p>Protected endpoints return <code>501 not_implemented</code> until the production service is wired.</p></main></body></html>');
 }
 
 if ($path === '/healthz') {
@@ -221,7 +225,7 @@ if ($path === '/v1/status') {
         'ok' => true,
         'service' => $serviceLabel,
         'mode' => 'stub',
-        'docs' => $baseUrl . '/docs',
+        'docs' => $baseUrl . '/docs/',
         'openapi' => $baseUrl . '/docs/AzA_v0.7_openapi.min.yaml',
         'time' => gmdate(DATE_ATOM),
     ]);

@@ -1,0 +1,42 @@
+{
+	auto_https off
+	admin off
+}
+
+:80 {
+	encode zstd gzip
+	redir /docs /docs/ 308
+	redir /camera/pi3-camera-01/ /camera/pi3-camera-01 308
+
+	@camera_page path /camera/pi3-camera-01
+	handle @camera_page {
+		reverse_proxy app:80
+	}
+
+	handle_path /camera/pi3-camera-01/* {
+		reverse_proxy {$PI3_CAMERA_STREAM_UPSTREAM:127.0.0.1:9} {
+			header_up X-Sowwwl-Stream-Token "{$PI3_CAMERA_STREAM_TOKEN:}"
+		}
+	}
+
+	@o_root host o.sowwwl.cloud
+	redir @o_root https://sowwwl.cloud{uri} 308
+
+	@user_cloud host *.o.sowwwl.cloud
+	handle @user_cloud {
+		reverse_proxy app:80
+	}
+
+	handle_path /api/* {
+		reverse_proxy api:80
+	}
+
+	@api path /healthz /v1/* /docs /docs/*
+	handle @api {
+		reverse_proxy api:80
+	}
+
+	handle {
+		reverse_proxy app:80
+	}
+}

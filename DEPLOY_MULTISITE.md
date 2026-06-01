@@ -9,7 +9,7 @@ This stack covers:
 - `sowwwl.xyz` as the user ingress app
 - `sowwwl.cloud` as the hub
 - `api.sowwwl.cloud` as the minimal API host
-- `0.user.o.sowwwl.cloud` as the SPA shell with fallback routing
+- `*.o.sowwwl.cloud` as the user host wildcard
 - `sowwwl.org` as the public-facing static site
 - `0wlslw0.com` as the alternate landing page
 - `sowwwl.com` as a temporary product shell
@@ -27,7 +27,7 @@ This stack covers:
 
 - `sowwwl.org` is the validation layer for copy, structure, and domain roles
 - `sowwwl.cloud` becomes the canonical hub only after that frame is approved
-- `sowwwl.xyz` and `0.user.o.sowwwl.cloud` inherit the approved framing, but keep their user-ingress roles
+- `sowwwl.xyz` and `user.o.sowwwl.cloud/0` inherit the approved framing, but keep their user-ingress roles
 
 ## Deploy
 
@@ -51,7 +51,7 @@ Point these hosts to the VPS:
 - `sowwwl.cloud`
 - `www.sowwwl.cloud`
 - `api.sowwwl.cloud`
-- `0.user.o.sowwwl.cloud`
+- `*.o.sowwwl.cloud`
 - `sowwwl.org`
 - `www.sowwwl.org`
 - `0wlslw0.com`
@@ -73,6 +73,6 @@ Point these hosts to the VPS:
 - `sowwwl.io` resolves to the spatial ingress app surface
 - `sowwwl.cloud` gets a real home page
 - `api.sowwwl.cloud` resolves and responds
-- `0.user.o.sowwwl.cloud` gets SPA fallback routing
+- `user.o.sowwwl.cloud/` resolves to the user island and `/0` to the membrane chamber
 - `sowwwl.org` becomes a real static site
 - `0wlslw0.com` gets a valid HTTPS-ready landing

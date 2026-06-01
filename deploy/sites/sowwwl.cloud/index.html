@@ -383,13 +383,13 @@
       </article>
 
       <article class="panel domain-card">
-        <h3>0.user.o.sowwwl.cloud</h3>
-        <p>User cloud shell with SPA fallback enabled. Deep links such as <code>/0</code> and <code>/login</code> can now resolve through <code>index.html</code>.</p>
+        <h3>user.o.sowwwl.cloud</h3>
+        <p>Each user gets a dedicated host under <code>o.sowwwl.cloud</code>. The root opens the island for that slug, and <code>/0</code> becomes the membrane and camera chamber.</p>
         <div class="domain-meta">
-          <span class="chip">spa</span>
-          <span class="chip">fallback</span>
+          <span class="chip">user host</span>
+          <span class="chip">membrane</span>
         </div>
-        <div class="card-actions"><a href="https://0.user.o.sowwwl.cloud">Open</a></div>
+        <div class="card-actions"><a href="https://demo.o.sowwwl.cloud/0">Open /0</a></div>
       </article>
 
       <article class="panel domain-card">
@@ -458,7 +458,7 @@
         <p>Every domain in this stack should point to the same VPS origin. Add the apex records plus the subdomains below.</p>
         <ul>
           <li><code>sowwwl.cloud</code>, <code>0wlslw0.com</code>, <code>sowwwl.org</code>, <code>sowwwl.com</code>, <code>sowwwl.art</code></li>
-          <li><code>api.sowwwl.cloud</code>, <code>0.user.o.sowwwl.cloud</code></li>
+          <li><code>api.sowwwl.cloud</code>, <code>*.o.sowwwl.cloud</code></li>
           <li>Redirect <code>www</code> variants at the proxy level, not in DNS only.</li>
         </ul>
       </article>

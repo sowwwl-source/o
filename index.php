@@ -43,7 +43,20 @@ $isSpatialHeadsetMode = $isSowwwlIo && spatial_preview_mode($host) === 'headset'
 $showSpatialNativeSimulator = $isSowwwlIo && surface_preview_capable_host($host);
 // Spatial surfaces keep their own local preview via ?surface=xyz|io|lab on localhost.
 
+$requestMethod = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $requestPath = o_request_path('/');
+$userCloudSlug = sowwwl_user_cloud_slug($host);
+$userCloudChamberFlag = (string) ($_GET['o_chamber'] ?? '');
+$isUserCloudChamberEntry = $userCloudSlug !== null
+    && ($requestPath === USER_CLOUD_CHAMBER_PATH || $userCloudChamberFlag === '1');
+
+if ($userCloudSlug !== null && in_array($requestMethod, ['GET', 'HEAD'], true)) {
+    if (($requestPath === '/' || $requestPath === '/index.php') && !$isUserCloudChamberEntry) {
+        header('Location: ' . sowwwl_user_cloud_home_href($userCloudSlug), true, 302);
+        exit;
+    }
+}
+
 if (($host === '0wlslw0.com' || $host === 'www.0wlslw0.com') && ($requestPath === '/' || $requestPath === '/index.php')) {
     header('Location: ' . o_route_href('/0wlslw0'), true, 302);
     exit;
@@ -441,6 +454,14 @@ $homeRouteNodes = [
 $membraneBridgeHref = plasma_bridge_url();
 $labSensorEndpointHref = o_route_href('/ingest/sensor');
 $labPublicPlasmaFeedHref = plasma_feed_url();
+$pocketCameraStreamHref = pocket_camera_stream_url();
+$pocketCameraSnapshotHref = pocket_camera_snapshot_url();
+$pocketCameraLabel = pocket_camera_label();
+$pocketCameraAvailable = $pocketCameraStreamHref !== '' || $pocketCameraSnapshotHref !== '';
+$sceptreDeviceSlug = sceptre_primary_device_slug();
+$sceptreFeedHref = sceptre_feed_href($sceptreDeviceSlug, $host);
+$sceptreConstellationFeedHref = sceptre_constellation_feed_href($host);
+$sceptreViewHref = sceptre_view_href($sceptreDeviceSlug, $host);
 $labQaIslandHref = o_route_href('/island', ['u' => 'qa-multimatiere']);
 $labPocketHref = 'https://pocket.lab.sowwwl.cloud/';
 $labApiHealthHref = 'https://api.lab.sowwwl.cloud/healthz';
@@ -616,6 +637,17 @@ $pageDescription = $isLabSurface
     <meta name="theme-color" content="#09090b">
     <title><?= h($pageTitle) ?></title>
 <?= render_o_page_head_assets($pageHeadVariant) ?>
+<?php if ($isUserCloudChamberEntry): ?>
+    <script>
+        if (!window.location.hash) {
+            if (window.history && typeof window.history.replaceState === "function") {
+                window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#atelier`);
+            } else {
+                window.location.hash = "#atelier";
+            }
+        }
+    </script>
+<?php endif; ?>
 </head>
 <body
     class="experience home<?= $isSpatialSurface ? ' xyz-surface-view' : '' ?><?= $isSowwwlIo ? ' io-surface-view' : '' ?><?= $isSpatialHeadsetMode ? ' io-headset-mode' : '' ?><?= $isLabSurface ? ' lab-console-view' : '' ?>"
@@ -623,6 +655,9 @@ $pageDescription = $isLabSurface
     data-land-label="<?= h($activeLandLabel) ?>"
     data-land-lambda="<?= h((string) $activeLambda) ?>"
     data-land-tone="<?= h($activeLandTone) ?>"
+    data-user-cloud-host="<?= $userCloudSlug !== null ? '1' : '0' ?>"
+    data-user-cloud-slug="<?= h($userCloudSlug ?? '') ?>"
+    data-user-chamber-entry="<?= $isUserCloudChamberEntry ? '1' : '0' ?>"
 >
 <?= render_skip_link() ?>
 <?= render_nucleus_banner($isLabSurface ? 'atelier' : 'noyau') ?>
@@ -711,6 +746,9 @@ $pageDescription = $isLabSurface
         data-xyz-camera-root
         data-xyz-plasma-bridge="<?= h($membraneBridgeHref) ?>"
         data-xyz-plasma-land="<?= h($activeLandSlug) ?>"
+        data-xyz-sceptre-feed="<?= h($sceptreFeedHref) ?>"
+        data-xyz-sceptre-constellation-feed="<?= h($sceptreConstellationFeedHref) ?>"
+        data-xyz-sceptre-device="<?= h($sceptreDeviceSlug) ?>"
     >
         <video
             class="xyz-camera-layer__video"
@@ -720,6 +758,7 @@ $pageDescription = $isLabSurface
             playsinline
             aria-hidden="true"
         ></video>
+        <div class="xyz-camera-layer__sceptre" data-xyz-sceptre-veil aria-hidden="true"></div>
         <div class="xyz-camera-layer__fallback" data-xyz-camera-fallback aria-hidden="true"></div>
     </div>
     <?php endif; ?>
@@ -738,6 +777,20 @@ $pageDescription = $isLabSurface
 </div>
 
 <main <?= main_landmark_attrs() ?> class="layout ui-overlay">
+    <?php if ($isUserCloudChamberEntry && $pocketCameraAvailable): ?>
+    <?= render_pocket_camera_panel([
+        'id' => 'atelier',
+        'context' => 'chamber',
+        'class' => 'panel reveal pocket-camera-panel pocket-camera-panel--chamber',
+        'title' => 'Chambre membrane / œil pocket',
+        'lead' => 'Le Raspberry Pi 3 regarde déjà pour cette terre. Ici, le seuil relit son cadre sans détour.',
+        'copy' => 'Le snapshot arrive d abord, puis le live MJPEG prend la main si le navigateur le tient bien. Le flux reste dans le cluster sowwwl, derrière le Pi 5.',
+        'stream_url' => $pocketCameraStreamHref,
+        'snapshot_url' => $pocketCameraSnapshotHref,
+        'label' => $pocketCameraLabel,
+        'autostart' => true,
+    ]) ?>
+    <?php endif; ?>
     <?php if ($isSpatialSurface): ?>
     <section class="xyz-surface-shell reveal" data-xyz-surface>
         <div class="xyz-surface-shell__veil" aria-hidden="true">
@@ -928,6 +981,20 @@ $pageDescription = $isLabSurface
                                 <p><span>ambiance</span><strong data-xyz-sensor-audio>en attente</strong></p>
                                 <p><span>caméra</span><strong data-xyz-sensor-camera>en attente</strong></p>
                                 <p><span>veille</span><strong data-xyz-sensor-wake>en attente</strong></p>
+                                <p><span>sceptre</span><strong data-xyz-sensor-sceptre>veille</strong></p>
+                                <p><span>rituel</span><strong data-xyz-sensor-ritual>veille</strong></p>
+                                <p><span>climat</span><strong data-xyz-sensor-climate>neutre</strong></p>
+                                <p><span>écran</span><strong data-xyz-sensor-screen>veille</strong></p>
+                            </div>
+                            <div class="xyz-archi-callout xyz-archi-callout--sceptre">
+                                <span class="summary-label">sceptre</span>
+                                <strong data-xyz-sceptre-state>Le sceptre dort encore dans le tore.</strong>
+                                <p class="panel-copy" data-xyz-sceptre-copy>Le Pi 3 B+ et son Sensor HAT peuvent devenir une main, un climat et un rythme pour la surface.</p>
+                                <p class="panel-copy" data-xyz-sceptre-roster>Le premier sceptre attend encore sa levée.</p>
+                                <div class="action-row">
+                                    <a class="ghost-link" data-xyz-sceptre-console href="<?= h($sceptreViewHref) ?>">Ouvrir la console</a>
+                                    <a class="ghost-link" data-xyz-sceptre-active href="<?= h($sceptreViewHref) ?>">Actif</a>
+                                </div>
                             </div>
                         </div>
                     </details>
@@ -2152,6 +2219,20 @@ $pageDescription = $isLabSurface
                     <video class="lab-console-camera-preview" data-lab-camera-preview playsinline muted aria-hidden="true"></video>
                     <div class="lab-console-camera-preview-fallback" data-lab-camera-fallback>aperçu local</div>
                 </div>
+                <?php if ($pocketCameraAvailable): ?>
+                <?= render_pocket_camera_panel([
+                    'tag' => 'div',
+                    'context' => 'lab',
+                    'class' => 'pocket-camera-panel pocket-camera-panel--lab',
+                    'title' => 'Œil pocket distant',
+                    'lead' => 'Le Pi 3 caméra pousse déjà ses traces. Ici, on relit aussi son cadre via le Pi 5.',
+                    'copy' => 'Le navigateur peut garder l aperçu local du téléphone en haut, puis ce second panneau lit la caméra matérielle séparée.',
+                    'stream_url' => $pocketCameraStreamHref,
+                    'snapshot_url' => $pocketCameraSnapshotHref,
+                    'label' => $pocketCameraLabel,
+                    'autostart' => true,
+                ]) ?>
+                <?php endif; ?>
                 <div class="device-bridge-panel device-bridge-panel--lab" data-device-bridge-root data-device-context="lab">
                     <span class="summary-label">appareil</span>
                     <div class="device-bridge-grid" aria-label="État téléphone">

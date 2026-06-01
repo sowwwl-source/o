@@ -49,6 +49,17 @@ Use it for:
 - distinguishing stale image vs wrong proxy vs wrong content
 - the reusable refresh script `scripts/deploy_lab_update.sh`
 
+### I am preparing the physical Raspberry Pi pocket land
+Open:
+- `PI5_AI_HAT_PLUS_BOOTSTRAP.md`
+- `PI2_CAMERA_NODE_BOOTSTRAP.md` if the camera lives on a separate Raspberry Pi 2 or 3
+
+Use it for:
+- Raspberry Pi 5 + AI HAT+ assembly order
+- Hailo and camera package installation
+- `sowwwl-pi-vision.py` boot service install
+- first uplink to the lab or future public shore
+
 ### Production is worse and I may need to revert
 Open:
 - `ROLLBACK_PROTOCOL.md`
@@ -80,6 +91,10 @@ Start with:
 ### “I want to turn 164.92.220.248 into the lab droplet”
 Start with:
 - `3TERNET_LAB_BOOTSTRAP.md`
+
+### “I want to bring up the first Raspberry Pi 5 + AI HAT+ node”
+Start with:
+- `PI5_AI_HAT_PLUS_BOOTSTRAP.md`
 
 ### “The code is pushed, now how do I roll it out?”
 Start with:
@@ -116,6 +131,7 @@ Only when needed:
 
 - `3TERNET_ARCHITECTURE.md`
 - `3TERNET_LAB_BOOTSTRAP.md`
+- `PI5_AI_HAT_PLUS_BOOTSTRAP.md`
 
 ## Short map
 
@@ -125,6 +141,7 @@ Only when needed:
 - **just before / just after prod** → `PROD_CHECKLIST.md`
 - **after deploy** → `LIVE_VERIFICATION.md`
 - **for the lab droplet** → `3TERNET_LAB_BOOTSTRAP.md`
+- **for the physical Pi node** → `PI5_AI_HAT_PLUS_BOOTSTRAP.md`
 - **if DB feels stale** → `DB_MIGRATION_PROTOCOL.md`
 - **if production is degraded** → `ROLLBACK_PROTOCOL.md`
 

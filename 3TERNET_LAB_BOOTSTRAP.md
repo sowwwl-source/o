@@ -324,6 +324,20 @@ curl -sS -X POST https://lab.sowwwl.cloud/ingest/sensor \
 docker exec sowwwl-o-lab-app-1 sh -lc 'tail -n 5 /var/www/runtime/plasma/sensor-events.jsonl'
 ```
 
+The SQLite buffer is now the primary plasma store. `sensor-events.jsonl` remains a rolling fallback tail, kept small on purpose.
+
+For a fuller check:
+
+```bash
+docker exec sowwwl-o-lab-app-1 sh -lc 'ls -lh /var/www/runtime/plasma && echo "--- jsonl fallback ---" && tail -n 5 /var/www/runtime/plasma/sensor-events.jsonl'
+```
+
+`sensor-events.jsonl` is no longer reimported automatically when the app boots. If you deliberately need to repopulate an empty SQLite buffer from that fallback tail, run:
+
+```bash
+docker exec sowwwl-o-lab-app-1 php /var/www/html/scripts/plasma_backfill_from_jsonl.php
+```
+
 Run the Pi daemon with environment variables, never hard-coded secrets:
 
 ```bash
@@ -331,8 +345,10 @@ export SOWWWL_PI_ENDPOINT=https://lab.sowwwl.cloud/ingest/sensor
 export SOWWWL_PI_TOKEN=replace-with-lab-token
 export SOWWWL_PI_LAND_SLUG=lab-pocket
 export SOWWWL_PI_CAMERAS=0,1
-python3 scripts/sowwwl-pi.py
+python3 scripts/sowwwl-pi-vision.py
 ```
+
+For the full Raspberry Pi 5 + AI HAT+ assembly, package install, and systemd path, use `PI5_AI_HAT_PLUS_BOOTSTRAP.md`.
 
 ## Step 14 — the first real 3ternet experiment
 

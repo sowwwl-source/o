@@ -76,12 +76,24 @@ api.sowwwl.cloud {
 	reverse_proxy api:80
 }
 
-0.user.o.sowwwl.cloud {
+o.sowwwl.cloud {
+	redir https://sowwwl.cloud{uri} 308
+}
+
+*.o.sowwwl.cloud {
 	import common_headers
-	import permissions_static
-	root * /srv/sites/0.user.o.sowwwl.cloud
-	try_files {path} {path}/ /index.html
-	file_server
+	import permissions_surface
+	redir /camera/pi3-camera-01/ /camera/pi3-camera-01 308
+	@camera_page path /camera/pi3-camera-01
+	handle @camera_page {
+		reverse_proxy app:80
+	}
+	handle_path /camera/pi3-camera-01/* {
+		reverse_proxy {$PI3_CAMERA_STREAM_UPSTREAM:127.0.0.1:9} {
+			header_up X-Sowwwl-Stream-Token "{$PI3_CAMERA_STREAM_TOKEN:}"
+		}
+	}
+	reverse_proxy app:80
 }
 
 www.sowwwl.org {

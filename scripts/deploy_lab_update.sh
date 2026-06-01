@@ -311,7 +311,7 @@ run_sensor_smoke() {
 		-H "Content-Type: application/json" \
 		-d "{\"event\":\"lab_deploy_ping\",\"camera\":\"deploy\",\"message\":\"$sensor_message\"}" >/dev/null
 
-	docker exec "${project_name}-app-1" sh -lc 'test -f /var/www/runtime/plasma/sensor-events.jsonl && tail -n 5 /var/www/runtime/plasma/sensor-events.jsonl || true'
+	docker exec "${project_name}-app-1" sh -lc 'ls -lh /var/www/runtime/plasma || true; echo "--- jsonl fallback ---"; test -f /var/www/runtime/plasma/sensor-events.jsonl && tail -n 5 /var/www/runtime/plasma/sensor-events.jsonl || true'
 }
 
 while [[ $# -gt 0 ]]; do

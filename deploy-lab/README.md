@@ -34,6 +34,8 @@ Use only lab domains:
 The `pocket` service is intentionally a stand-in.
 Later it should be replaced by a Pi-backed route or tunnel target.
 
+For the physical Raspberry Pi 5 + AI HAT+ path, use `../PI5_AI_HAT_PLUS_BOOTSTRAP.md`.
+
 ## Files
 
 - `docker-compose.lab.yml`
@@ -216,8 +218,20 @@ curl -sS -X POST https://lab.sowwwl.cloud/ingest/sensor \
 docker exec sowwwl-o-lab-app-1 sh -lc 'tail -n 5 /var/www/runtime/plasma/sensor-events.jsonl'
 ```
 
+Or, if you want to inspect the whole runtime state in one shot:
+
+```bash
+docker exec sowwwl-o-lab-app-1 sh -lc 'ls -lh /var/www/runtime/plasma && echo "--- jsonl fallback ---" && tail -n 5 /var/www/runtime/plasma/sensor-events.jsonl'
+```
+
 The deploy helper can perform a smaller version of that smoke test automatically with `--smoke-sensor`.
-It sends a `lab_deploy_ping` event through the public lab endpoint, then tails the latest plasma log lines inside the app container.
+It sends a `lab_deploy_ping` event through the public lab endpoint, then inspects `/var/www/runtime/plasma` and tails the rolling `sensor-events.jsonl` fallback inside the app container. The main feed now lives in `sensor-events.sqlite3`.
+
+The app no longer reimports `sensor-events.jsonl` automatically at boot. If you ever need to rehydrate an empty SQLite buffer from the rolling fallback on purpose, run:
+
+```bash
+docker exec sowwwl-o-lab-app-1 php /var/www/html/scripts/plasma_backfill_from_jsonl.php
+```
 
 Run the Pi daemon:
 
@@ -226,10 +240,11 @@ export SOWWWL_PI_ENDPOINT=https://lab.sowwwl.cloud/ingest/sensor
 export SOWWWL_PI_TOKEN=replace-with-lab-token
 export SOWWWL_PI_LAND_SLUG=lab-pocket
 export SOWWWL_PI_CAMERAS=0,1
-python3 scripts/sowwwl-pi.py
+python3 scripts/sowwwl-pi-vision.py
 ```
 
 ## See also
 
 - `../3TERNET_ARCHITECTURE.md`
 - `../3TERNET_LAB_BOOTSTRAP.md`
+- `../PI5_AI_HAT_PLUS_BOOTSTRAP.md`

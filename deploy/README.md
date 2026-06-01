@@ -6,7 +6,7 @@ This directory adds a production-oriented stack for:
 - `sowwwl.io`
 - `sowwwl.cloud`
 - `api.sowwwl.cloud`
-- `0.user.o.sowwwl.cloud`
+- `*.o.sowwwl.cloud`
 - `sowwwl.org`
 - `0wlslw0.com`
 - `sowwwl.com`
@@ -21,7 +21,7 @@ It uses one VPS, one Caddy reverse proxy, one PHP app container for the `o/` exp
 
 - `sowwwl.org` is the validation surface: approve wording, structure, and domain hierarchy there first
 - `sowwwl.cloud` is the canonical hub: promote the approved frame there once it is validated
-- `sowwwl.xyz` and `0.user.o.sowwwl.cloud` remain user-entry surfaces that follow the approved frame
+- `sowwwl.xyz` and `user.o.sowwwl.cloud/0` remain user-entry surfaces that follow the approved frame
 
 ## Files
 
@@ -35,7 +35,7 @@ It uses one VPS, one Caddy reverse proxy, one PHP app container for the `o/` exp
 - `../migrations/005_flows.sql` - fl0w schema mounted into MySQL on first boot
 - `../migrations/2026_05_02_signal_mail.sql` - Signal mailbox/message schema mounted as `006_signal_mail.sql` on first boot
 - `../migrations/007_query_indexes.sql` - additive query indexes mounted into MySQL on first boot
-- `sites/` - static sites for the hub, org, alternate landing, SPA shell, and temporary product shell
+- `sites/` - static sites for the hub, org, alternate landing, and temporary product shell
 
 ## Prepare
 
@@ -71,10 +71,16 @@ Required subdomain records:
 - `www.sowwwl.com`
 - `www.sowwwl.art`
 - `api.sowwwl.cloud`
-- `0.user.o.sowwwl.cloud`
+- `*.o.sowwwl.cloud`
 - `upload.sowwwl.com`
 
 `upload.sowwwl.com` should stay DNS-only if you want aZa direct uploads to bypass proxy upload limits.
+If you also publish the bare helper host, point `o.sowwwl.cloud` at the same edge and keep it as a redirect only.
+
+Wildcard user hosts are handled by the PHP app itself:
+
+- `user.o.sowwwl.cloud/` redirects to `island?u=user`
+- `user.o.sowwwl.cloud/0` opens the membrane / camera chamber for that user
 
 For large aZa imports, the live `app` image must also carry PHP upload limits compatible with the app-level 2GB ceiling. If `upload.sowwwl.com` still fails after DNS is correct, verify the running container values for `upload_max_filesize` and `post_max_size`, then recreate both `app` and `caddy` so the current image and host blocks are actually live.
 
@@ -103,6 +109,124 @@ bash scripts/deploy_prod_update.sh --preflight-only
 ```
 
 That path validates the served static-sites directory, checks the Compose config, and builds `app` + `api` without restarting the live stack.
+
+## LAN smoke test on a Pi before public cutover
+
+If the Pi is ready locally but DNS / router / tunnel work is not finished yet, you can expose the first instance on the LAN first:
+
+```bash
+cd deploy
+cp .env.production .env.lan
+```
+
+Then set at least:
+
+```dotenv
+SOWWWL_PUBLIC_ORIGIN=http://192.168.1.36
+SOWWWL_AZA_DIRECT_ORIGIN=http://192.168.1.36
+API_PUBLIC_BASE_URL=http://192.168.1.36
+API_ALLOWED_ORIGINS=http://192.168.1.36,http://sowwwl-pi.local,http://192.168.1.36:8080,http://sowwwl-pi.local:8080
+```
+
+Bring up the LAN overlay:
+
+```bash
+docker compose -p sowwwl-o --env-file .env.lan -f docker-compose.prod.yml -f docker-compose.lan.yml up -d db app api caddy_lan
+```
+
+Then verify from the same network:
+
+```bash
+curl -I http://192.168.1.36/
+curl -I http://192.168.1.36/str3m
+curl -I 'http://192.168.1.36/island?u=qa-multimatiere'
+curl -I http://192.168.1.36/healthz
+curl -sL http://192.168.1.36/v1/status
+```
+
+Ports `8080` and `8081` can stay exposed too as direct debug paths for `app` and `api`.
+
+If the same Pi is then published through a hostname or tunnel such as
+`https://pi.sowwwl.cloud`, update these values before restarting the stack:
+
+```dotenv
+SOWWWL_PUBLIC_ORIGIN=https://pi.sowwwl.cloud
+SOWWWL_AZA_DIRECT_ORIGIN=https://pi.sowwwl.cloud
+API_PUBLIC_BASE_URL=https://pi.sowwwl.cloud
+API_ALLOWED_ORIGINS=http://192.168.1.36,http://sowwwl-pi.local,http://192.168.1.36:8080,http://sowwwl-pi.local:8080,https://pi.sowwwl.cloud
+```
+
+If a separate Raspberry Pi camera node will feed this host, also set:
+
+```dotenv
+SOWWWL_PI_TOKEN=replace-with-long-random-ingest-token
+SOWWWL_SENSOR_LOG_DIR=/var/www/runtime/plasma
+PI3_CAMERA_STREAM_UPSTREAM=192.168.1.62:8082
+PI3_CAMERA_STREAM_TOKEN=replace-with-the-pi3-viewer-token
+```
+
+Then the public ingest lives at:
+
+```text
+https://pi.sowwwl.cloud/ingest/sensor
+```
+
+If that separate camera node also enables the optional MJPEG helper, the Pi 5 edge can proxy it here:
+
+```text
+https://pi.sowwwl.cloud/camera/pi3-camera-01
+http://192.168.1.36/camera/pi3-camera-01/stream.mjpg
+http://192.168.1.36/camera/pi3-camera-01/snapshot.jpg
+https://pi.sowwwl.cloud/camera/pi3-camera-01/stream.mjpg
+https://pi.sowwwl.cloud/camera/pi3-camera-01/snapshot.jpg
+```
+
+The first URL is the integrated page in the app itself. The Pi 5 proxy forwards the private viewer token upstream as a header, so the browser URL itself does not need to contain the token.
+
+If the Pi 5 should also run Hailo analysis against that proxied camera, add these host-side values to `/etc/sowwwl/pocket-land.env` and install `sowwwl-pi-ai-bridge`:
+
+```dotenv
+SOWWWL_PI_AI_CAMERA_SLUG=pi3-camera-01
+SOWWWL_PI_AI_SNAPSHOT_URL=http://127.0.0.1/camera/pi3-camera-01/snapshot.jpg
+SOWWWL_PI_AI_ENDPOINT=http://127.0.0.1/ingest/camera-ai
+# Optional. Leave empty to reuse SOWWWL_PI_TOKEN.
+# SOWWWL_PI_AI_TOKEN=
+```
+
+If several sceptres will later feed `sowwwl.io`, the host can keep one primary
+device while accepting many nodes:
+
+```dotenv
+SOWWWL_SCEPTRE_PRIMARY_DEVICE=ensemble
+SOWWWL_SCEPTRE_TOKENS_FILE=/var/www/runtime/sceptre/tokens.json
+```
+
+Then expose the roster through:
+
+```text
+https://pi.sowwwl.cloud/sceptre/constellation.json
+```
+
+If you also want a public preview of the future spatial surfaces on the Pi host
+itself, allow that host to use `?surface=xyz|io|lab`:
+
+```dotenv
+SOWWWL_SURFACE_PREVIEW_HOSTS=pi.sowwwl.cloud
+```
+
+Then for example:
+
+```text
+https://pi.sowwwl.cloud/?surface=io
+```
+
+Then on the Pi 5:
+
+```bash
+sudo bash scripts/install_pi_ai_bridge_service.sh --user "$USER"
+```
+
+This is intentionally not the public deployment. It is only the shortest honest path for validating the first Pi-backed instance on a local network.
 
 On a fresh MySQL volume, `init.sql` and migrations `003` through `007` are imported automatically in filename order.
 
@@ -241,7 +365,7 @@ The production deploy helper now rebuilds `api` alongside `app` and verifies tha
 ## Customization
 
 - Replace `sites/sowwwl.com/` with the real product origin or change the `sowwwl.com` host block back to a reverse proxy.
-- Replace `sites/0.user.o.sowwwl.cloud/` with the real SPA build when it is ready.
+- Keep `*.o.sowwwl.cloud` on the app proxy path so the user slug can resolve dynamically inside PHP.
 - `0wlslw0.com` now points to the live `0wlslw0` guide inside the PHP app, so domain visitors land on the real onboarding experience instead of the old static placeholder.
 - Keep `sites/0wlslw0.com/` only as archive/reference material unless you intentionally switch that host back to a static landing.
 - Remove any host block from `Caddyfile` if that domain should continue to use another origin.

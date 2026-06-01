@@ -18,8 +18,11 @@ import threading
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import parse_qs, urlparse
 
 import cv2
 import numpy as np
@@ -29,7 +32,7 @@ try:
     from picamera2 import Picamera2
 except ImportError as exc:  # pragma: no cover - only true off the Raspberry Pi.
     raise SystemExit(
-        "Picamera2 is required on Raspberry Pi 5. Install python3-picamera2 with apt."
+        "Picamera2 is required on the Raspberry Pi camera node. Install python3-picamera2 with apt and verify rpicam-hello --list-cameras."
     ) from exc
 
 
@@ -47,6 +50,13 @@ def env_float(name: str, default: float) -> float:
     return float(value) if value else default
 
 
+def env_bool(name: str, default: bool = False) -> bool:
+    value = env_str(name).lower()
+    if value == "":
+        return default
+    return value in {"1", "true", "yes", "on"}
+
+
 def parse_camera_ids(raw_value: str) -> list[int]:
     camera_ids: list[int] = []
     for fragment in raw_value.split(","):
@@ -58,6 +68,24 @@ def parse_camera_ids(raw_value: str) -> list[int]:
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def open_picamera(camera_id: int) -> Picamera2:
+    """Support both older and newer Picamera2 constructor spellings."""
+
+    last_error: TypeError | None = None
+    for kwargs in ({"camera_num": camera_id}, {"camera": camera_id}):
+        try:
+            return Picamera2(**kwargs)
+        except TypeError as exc:
+            last_error = exc
+
+    try:
+        return Picamera2(camera_id)
+    except TypeError as exc:
+        last_error = exc
+
+    raise RuntimeError(f"Unable to open Picamera2 camera {camera_id}: {last_error}")
 
 
 @dataclass(frozen=True)
@@ -75,6 +103,234 @@ class VisionConfig:
     request_timeout_seconds: float = field(default_factory=lambda: env_float("SOWWWL_PI_TIMEOUT_SECONDS", 2.5))
     plasma_replay_interval_seconds: float = field(default_factory=lambda: env_float("SOWWWL_PI_REPLAY_INTERVAL_SECONDS", 20.0))
     max_replay_batch: int = field(default_factory=lambda: env_int("SOWWWL_PI_MAX_REPLAY_BATCH", 24))
+    stream_enabled: bool = field(default_factory=lambda: env_bool("SOWWWL_PI_STREAM_ENABLED", False))
+    stream_bind: str = field(default_factory=lambda: env_str("SOWWWL_PI_STREAM_BIND", "127.0.0.1"))
+    stream_port: int = field(default_factory=lambda: env_int("SOWWWL_PI_STREAM_PORT", 8082))
+    stream_token: str = field(default_factory=lambda: env_str("SOWWWL_PI_STREAM_TOKEN"))
+    stream_max_fps: float = field(default_factory=lambda: env_float("SOWWWL_PI_STREAM_MAX_FPS", 4.0))
+    stream_jpeg_quality: int = field(default_factory=lambda: max(30, min(95, env_int("SOWWWL_PI_STREAM_JPEG_QUALITY", 72))))
+
+
+class LiveFrameHub:
+    """Keeps the latest compressed frame per camera for snapshot and MJPEG readers."""
+
+    def __init__(self, config: VisionConfig) -> None:
+        self.config = config
+        self.lock = threading.Lock()
+        self.condition = threading.Condition(self.lock)
+        self.frames: dict[int, bytes] = {}
+        self.timestamps: dict[int, float] = {}
+
+    def publish(self, camera_id: int, frame: np.ndarray) -> None:
+        if not self.config.stream_enabled:
+            return
+
+        now = time.monotonic()
+        min_interval = 1.0 / max(0.5, self.config.stream_max_fps)
+
+        with self.condition:
+            previous = self.timestamps.get(camera_id, 0.0)
+            if now - previous < min_interval:
+                return
+
+        bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        encoded_ok, encoded = cv2.imencode(
+            ".jpg",
+            bgr,
+            [int(cv2.IMWRITE_JPEG_QUALITY), int(self.config.stream_jpeg_quality)],
+        )
+        if not encoded_ok:
+            return
+
+        payload = encoded.tobytes()
+        with self.condition:
+            self.frames[camera_id] = payload
+            self.timestamps[camera_id] = now
+            self.condition.notify_all()
+
+    def latest(self, camera_id: int) -> tuple[bytes | None, float]:
+        with self.lock:
+            return self.frames.get(camera_id), self.timestamps.get(camera_id, 0.0)
+
+    def wait_for_newer(self, camera_id: int, previous_timestamp: float, timeout: float = 10.0) -> tuple[bytes | None, float]:
+        with self.condition:
+            self.condition.wait_for(
+                lambda: self.timestamps.get(camera_id, 0.0) > previous_timestamp,
+                timeout=timeout,
+            )
+            return self.frames.get(camera_id), self.timestamps.get(camera_id, 0.0)
+
+
+class PiCameraStreamServer(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        handler_class: type[BaseHTTPRequestHandler],
+        *,
+        frame_hub: LiveFrameHub,
+        stop_event: threading.Event,
+        token: str,
+        default_camera_id: int,
+    ) -> None:
+        self.frame_hub = frame_hub
+        self.stop_event = stop_event
+        self.token = token
+        self.default_camera_id = default_camera_id
+        super().__init__(server_address, handler_class)
+
+
+class PiCameraStreamHandler(BaseHTTPRequestHandler):
+    server_version = "sowwwl-pi-stream/0.1"
+
+    def do_GET(self) -> None:  # noqa: N802 - handler API
+        parsed = urlparse(self.path)
+        if not self.authorized(parsed.query):
+            self.respond_text(HTTPStatus.UNAUTHORIZED, "stream authorization required\n")
+            return
+
+        if parsed.path == "/healthz":
+            self.respond_json(HTTPStatus.OK, b'{"ok":true,"stream":true}')
+            return
+
+        camera_id = self.resolve_camera_id(parsed.path)
+        if camera_id is None:
+            self.respond_text(HTTPStatus.NOT_FOUND, "not found\n")
+            return
+
+        if parsed.path.endswith("/snapshot.jpg") or parsed.path == "/snapshot.jpg":
+            self.serve_snapshot(camera_id)
+            return
+
+        if parsed.path.endswith("/stream.mjpg") or parsed.path == "/stream.mjpg":
+            self.serve_stream(camera_id)
+            return
+
+        self.respond_text(HTTPStatus.NOT_FOUND, "not found\n")
+
+    def log_message(self, format: str, *args: object) -> None:  # noqa: A003 - handler API
+        return
+
+    @property
+    def stream_server(self) -> PiCameraStreamServer:
+        assert isinstance(self.server, PiCameraStreamServer)
+        return self.server
+
+    def authorized(self, raw_query: str) -> bool:
+        server = self.stream_server
+        if server.token == "":
+            return True
+
+        query_token = parse_qs(raw_query).get("token", [""])[0].strip()
+        header_token = self.headers.get("X-Sowwwl-Stream-Token", "").strip()
+        authorization = self.headers.get("Authorization", "").strip()
+        bearer_token = authorization[7:].strip() if authorization.lower().startswith("bearer ") else ""
+
+        return any(candidate == server.token for candidate in (query_token, header_token, bearer_token) if candidate)
+
+    def resolve_camera_id(self, path: str) -> int | None:
+        normalized = path.rstrip("/") or "/"
+        if normalized in {"/snapshot.jpg", "/stream.mjpg"}:
+            return self.stream_server.default_camera_id
+
+        parts = [fragment for fragment in normalized.split("/") if fragment]
+        if len(parts) != 2 or not parts[0].startswith("cam-"):
+            return None
+
+        try:
+            return int(parts[0].split("-", 1)[1])
+        except ValueError:
+            return None
+
+    def serve_snapshot(self, camera_id: int) -> None:
+        frame, timestamp = self.stream_server.frame_hub.latest(camera_id)
+        if frame is None or timestamp <= 0:
+            self.respond_text(HTTPStatus.SERVICE_UNAVAILABLE, "camera frame not ready\n")
+            return
+
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "image/jpeg")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(frame)))
+        self.end_headers()
+        self.wfile.write(frame)
+
+    def serve_stream(self, camera_id: int) -> None:
+        boundary = "frame"
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Age", "0")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Connection", "close")
+        self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={boundary}")
+        self.end_headers()
+
+        latest, previous_timestamp = self.stream_server.frame_hub.latest(camera_id)
+        if latest is not None and previous_timestamp > 0:
+            self.write_mjpeg_part(boundary, latest)
+
+        try:
+            while not self.stream_server.stop_event.is_set():
+                frame, next_timestamp = self.stream_server.frame_hub.wait_for_newer(camera_id, previous_timestamp, timeout=10.0)
+                if frame is None or next_timestamp <= previous_timestamp:
+                    continue
+
+                previous_timestamp = next_timestamp
+                self.write_mjpeg_part(boundary, frame)
+        except (BrokenPipeError, ConnectionResetError):
+            return
+
+    def write_mjpeg_part(self, boundary: str, frame: bytes) -> None:
+        self.wfile.write(f"--{boundary}\r\n".encode("ascii"))
+        self.wfile.write(b"Content-Type: image/jpeg\r\n")
+        self.wfile.write(f"Content-Length: {len(frame)}\r\n\r\n".encode("ascii"))
+        self.wfile.write(frame)
+        self.wfile.write(b"\r\n")
+        self.wfile.flush()
+
+    def respond_text(self, status: HTTPStatus, body: str) -> None:
+        payload = body.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def respond_json(self, status: HTTPStatus, payload: bytes) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+
+class PiCameraStreamThread(threading.Thread):
+    def __init__(self, config: VisionConfig, frame_hub: LiveFrameHub, stop_event: threading.Event) -> None:
+        super().__init__(name="pi-camera-stream", daemon=True)
+        self.config = config
+        self.server = PiCameraStreamServer(
+            (config.stream_bind, config.stream_port),
+            PiCameraStreamHandler,
+            frame_hub=frame_hub,
+            stop_event=stop_event,
+            token=config.stream_token,
+            default_camera_id=config.camera_ids[0] if config.camera_ids else 0,
+        )
+
+    def run(self) -> None:
+        print(
+            f"[stream] mjpeg on http://{self.config.stream_bind}:{self.config.stream_port}/stream.mjpg"
+            + (" (token protected)" if self.config.stream_token else "")
+        )
+        self.server.serve_forever(poll_interval=0.5)
+
+    def stop(self) -> None:
+        self.server.shutdown()
+        self.server.server_close()
 
 
 @dataclass(frozen=True)
@@ -201,16 +457,24 @@ class PlasmaEmitter:
 class PocketEye(threading.Thread):
     """One MIPI eye watching locally without extracting video from the wearer."""
 
-    def __init__(self, camera_id: int, config: VisionConfig, emitter: PlasmaEmitter, stop_event: threading.Event) -> None:
+    def __init__(
+        self,
+        camera_id: int,
+        config: VisionConfig,
+        emitter: PlasmaEmitter,
+        frame_hub: LiveFrameHub,
+        stop_event: threading.Event,
+    ) -> None:
         super().__init__(name=f"pocket-eye-{camera_id}", daemon=True)
         self.camera_id = camera_id
         self.config = config
         self.emitter = emitter
+        self.frame_hub = frame_hub
         self.stop_event = stop_event
         self.last_trace_at = 0.0
 
     def run(self) -> None:
-        camera = Picamera2(camera=self.camera_id)
+        camera = open_picamera(self.camera_id)
         camera.configure(
             camera.create_video_configuration(
                 main={"size": (self.config.width, self.config.height), "format": "RGB888"},
@@ -230,6 +494,7 @@ class PocketEye(threading.Thread):
         try:
             while not self.stop_event.is_set():
                 frame = camera.capture_array()
+                self.frame_hub.publish(self.camera_id, frame)
                 trace = self.listen_for_presence(frame, subtractor)
                 if trace is not None:
                     self.emitter.feed_plasma(trace)
@@ -275,10 +540,12 @@ class PocketLandDaemon:
         self.stop_event = threading.Event()
         self.spool = OfflineSpool(config.trace_spool)
         self.emitter = PlasmaEmitter(config, self.spool)
+        self.frame_hub = LiveFrameHub(config)
         self.eyes = [
-            PocketEye(camera_id, config, self.emitter, self.stop_event)
+            PocketEye(camera_id, config, self.emitter, self.frame_hub, self.stop_event)
             for camera_id in config.camera_ids
         ]
+        self.stream_thread = PiCameraStreamThread(config, self.frame_hub, self.stop_event) if config.stream_enabled else None
 
     def start(self) -> None:
         print("=== O. pocket land vision ===")
@@ -286,6 +553,13 @@ class PocketLandDaemon:
         print(f"land: {self.config.land_slug}")
         print(f"eyes: {self.config.camera_ids}")
         print(f"spool: {self.config.trace_spool}")
+        if self.config.stream_enabled:
+            print(f"stream: http://{self.config.stream_bind}:{self.config.stream_port}/stream.mjpg")
+            if self.config.stream_token:
+                print("stream auth: token required")
+
+        if self.stream_thread is not None:
+            self.stream_thread.start()
 
         for eye in self.eyes:
             eye.start()
@@ -298,6 +572,8 @@ class PocketLandDaemon:
     def stop(self, *_: object) -> None:
         print("[daemon] land entering asleep state")
         self.stop_event.set()
+        if self.stream_thread is not None:
+            self.stream_thread.stop()
 
 
 def main() -> None:

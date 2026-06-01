@@ -8771,6 +8771,15 @@ function initXyzCamera() {
 	const audioNode = document.querySelector("[data-xyz-sensor-audio]");
 	const cameraNode = document.querySelector("[data-xyz-sensor-camera]");
 	const wakeNode = document.querySelector("[data-xyz-sensor-wake]");
+	const sceptreNode = document.querySelector("[data-xyz-sensor-sceptre]");
+	const ritualNode = document.querySelector("[data-xyz-sensor-ritual]");
+	const climateNode = document.querySelector("[data-xyz-sensor-climate]");
+	const screenNode = document.querySelector("[data-xyz-sensor-screen]");
+	const sceptreStateNode = document.querySelector("[data-xyz-sceptre-state]");
+	const sceptreCopyNode = document.querySelector("[data-xyz-sceptre-copy]");
+	const sceptreRosterNode = document.querySelector("[data-xyz-sceptre-roster]");
+	const sceptreConsoleLink = document.querySelector("[data-xyz-sceptre-console]");
+	const sceptreActiveLink = document.querySelector("[data-xyz-sceptre-active]");
 	const musicModeNode = document.querySelector("[data-xyz-music-mode]");
 	const musicNoteNode = document.querySelector("[data-xyz-music-note]");
 	const musicTimbreNode = document.querySelector("[data-xyz-music-timbre]");
@@ -8941,6 +8950,9 @@ function initXyzCamera() {
 
 	const plasmaBridgeUrl = root.dataset.xyzPlasmaBridge || "";
 	const membraneLandSlug = root.dataset.xyzPlasmaLand || "";
+	const sceptreFeedUrl = root.dataset.xyzSceptreFeed || "";
+	const sceptreConstellationFeedUrl = root.dataset.xyzSceptreConstellationFeed || "";
+	const sceptrePrimaryDevice = (root.dataset.xyzSceptreDevice || "ensemble").trim() || "ensemble";
 	const isAndroidSurface = /\bAndroid\b/i.test(window.navigator?.userAgent || "");
 	const isSpatialHeadsetSurface = prefersSpatialHeadsetMode();
 	const arModeKeys = ["anchor", "translate", "loop", "weave"];
@@ -9123,7 +9135,27 @@ function initXyzCamera() {
 			tiltY: 0,
 			motionSensor: 0,
 			shake: 0,
+			visionTerreX: 0.3,
+			visionTerreY: 0.62,
+			visionTerreEnergy: 0,
+			visionMineX: 0.72,
+			visionMineY: 0.38,
+			visionMineEnergy: 0,
+			visionActiveHands: 0,
+			visionPercussionLabel: "",
 		};
+	const visionPercussionState = {
+		leftStrikeAt: 0,
+		rightStrikeAt: 0,
+		lastGestureAt: 0,
+	};
+	const sceptre = {
+		state: normalizeSceptreState({ device: sceptrePrimaryDevice }),
+		constellation: normalizeSceptreConstellation(null, sceptrePrimaryDevice),
+		pollTimer: 0,
+		inFlight: false,
+		triggerSignature: "",
+	};
 	const instrument = {
 		pointers: new Map(),
 		terreX: 0.3,
@@ -9139,12 +9171,116 @@ function initXyzCamera() {
 	};
 
 	const cameraFacingLabel = () => cameraFacingMode === "environment" ? "paysage" : "visage";
+	const sceptreFresh = () => sceptre.state.freshness === "fresh" && !sceptre.state.stale;
+	const sceptreMotionLevel = () => sceptreFresh()
+		? clampNumber(Math.max(sceptre.state.motion.sway, sceptre.state.motion.shake, Math.abs(sceptre.state.motion.pitch) * 0.42), 0, 1)
+		: 0;
+	const sceptreHaloLevel = () => sceptreFresh() ? clampNumber(sceptre.state.visual.halo, 0, 1) : 0;
+	const sceptrePercussionLevel = () => sceptreFresh()
+		? clampNumber(Math.max(sceptre.state.music.percussionBias, sceptre.state.triggers.accent, sceptre.state.triggers.kick * 0.86), 0, 1)
+		: 0;
+	const formatSignedPercent = (value) => {
+		const safeValue = clampNumber(Number(value) || 0, -1, 1);
+		const percent = Math.round(Math.abs(safeValue) * 100);
+		if (percent === 0) {
+			return "0%";
+		}
+		return `${safeValue > 0 ? "+" : "−"}${percent}%`;
+	};
+	const formatPercent = (value) => `${Math.round(clampNumber(Number(value) || 0, 0, 1) * 100)}%`;
+	const formatSceptreClimate = () => {
+		if (!sceptreFresh()) {
+			return "neutre";
+		}
+		const temperature = Number(sceptre.state.climate.temperature_c);
+		const humidity = Number(sceptre.state.climate.humidity_percent);
+		const pressure = Number(sceptre.state.climate.pressure_hpa);
+		const parts = [];
+		if (Number.isFinite(temperature)) {
+			parts.push(`${Math.round(temperature)}°`);
+		}
+		if (Number.isFinite(humidity)) {
+			parts.push(`${Math.round(humidity)}%`);
+		}
+		if (Number.isFinite(pressure)) {
+			parts.push(`${Math.round(pressure)}hPa`);
+		}
+		return parts.length ? parts.join(" · ") : "respire";
+	};
+	const sceptreViewHref = (device) => `/sceptre/${encodeURIComponent((device || sceptrePrimaryDevice).trim() || sceptrePrimaryDevice)}`;
+	const formatSceptreRoster = () => {
+		const total = Math.max(0, Number(sceptre.constellation.count) || 0);
+		const freshCount = Math.max(0, Number(sceptre.constellation.freshCount) || 0);
+		const staleCount = Math.max(0, Number(sceptre.constellation.staleCount) || 0);
+		const activeDevice = (sceptre.constellation.activeDevice || sceptre.state.device || sceptrePrimaryDevice).trim() || sceptrePrimaryDevice;
+		if (total <= 1) {
+			if (freshCount > 0) {
+				return `Sceptre actif · ${activeDevice}`;
+			}
+			if (staleCount > 0) {
+				return `Sceptre suspendu · ${activeDevice}`;
+			}
+			return "Le premier sceptre attend encore sa levee.";
+		}
+
+		if (freshCount > 0) {
+			return `${freshCount}/${total} sceptres vivants · actif ${activeDevice}`;
+		}
+
+		return `${total} sceptres relies · actif ${activeDevice}`;
+	};
+	const setSceptreText = () => {
+		const freshness = sceptre.state.freshness;
+		const scene = freshness === "fresh" ? sceptre.state.scene : (freshness === "stale" ? "attente" : "veille");
+		const activeDevice = (sceptre.constellation.activeDevice || sceptre.state.device || sceptrePrimaryDevice).trim() || sceptrePrimaryDevice;
+		const activeHref = sceptreViewHref(activeDevice);
+		setSensorText(sceptreNode, scene);
+		setSensorText(ritualNode, sceptre.state.ritualMode || "veille");
+		setSensorText(climateNode, formatSceptreClimate());
+		setSensorText(screenNode, sceptre.state.screen.label || sceptre.state.screen.page || "veille");
+		setSensorText(sceptreStateNode, sceptre.state.lead);
+		setSensorText(sceptreCopyNode, sceptre.state.summary);
+		setSensorText(sceptreRosterNode, formatSceptreRoster());
+		if (sceptreConsoleLink instanceof HTMLAnchorElement) {
+			sceptreConsoleLink.href = activeHref;
+		}
+		if (sceptreActiveLink instanceof HTMLAnchorElement) {
+			sceptreActiveLink.href = activeHref;
+			sceptreActiveLink.textContent = sceptre.constellation.count > 1 ? `Actif · ${activeDevice}` : "Actif";
+		}
+	};
+	const syncSceptreReactiveState = () => {
+		const fresh = sceptreFresh();
+		document.body.dataset.sceptreFreshness = sceptre.state.freshness;
+		document.body.dataset.sceptreScene = sceptre.state.scene || "veille";
+		document.body.dataset.sceptreRitual = sceptre.state.ritualMode || "veille";
+		document.body.dataset.sceptreActiveDevice = sceptre.constellation.activeDevice || sceptre.state.device || sceptrePrimaryDevice;
+		document.body.dataset.sceptreColony = (Number(sceptre.constellation.count) || 0) > 1 ? "swarm" : "solo";
+		document.body.style.setProperty("--sceptre-presence", (fresh ? sceptreMotionLevel() : 0).toFixed(3));
+		document.body.style.setProperty("--sceptre-tilt-x", (fresh ? clampNumber(sceptre.state.motion.tiltX, -1, 1) : 0).toFixed(3));
+		document.body.style.setProperty("--sceptre-tilt-y", (fresh ? clampNumber(sceptre.state.motion.tiltY, -1, 1) : 0).toFixed(3));
+		document.body.style.setProperty("--sceptre-halo", sceptreHaloLevel().toFixed(3));
+		document.body.style.setProperty("--sceptre-negative", (fresh ? clampNumber(sceptre.state.visual.negativeBias, 0, 1) : 0).toFixed(3));
+		document.body.style.setProperty("--sceptre-spin", (fresh ? clampNumber(sceptre.state.visual.torusSpin, -1, 1) : 0).toFixed(3));
+		document.body.style.setProperty("--sceptre-warmth", (fresh ? clampNumber(sceptre.state.visual.tintWarmth, -1, 1) : 0).toFixed(3));
+		document.body.style.setProperty("--sceptre-brightness", (fresh ? clampNumber(sceptre.state.visual.brightness, -1, 1) : 0).toFixed(3));
+		setSceptreText();
+	};
+	const ambientVisionTouchEnergy = () => clampNumber(
+		(
+			Math.max(membrane.visionTerreEnergy, membrane.visionMineEnergy) * 0.72
+			+ Math.min(membrane.visionTerreEnergy, membrane.visionMineEnergy) * 0.34
+		),
+		0,
+		1
+	);
 	const instrumentTouchEnergy = () => clampNumber(
 		(
 			Math.max(instrument.terreEnergy, instrument.mineEnergy) * 0.68
 			+ Math.min(instrument.terreEnergy, instrument.mineEnergy) * 0.32
 		) * (instrument.pointers.size > 0 ? 1 : 0.82)
-		+ readNativeSpatialTouchEnergy() * (instrument.pointers.size > 0 ? 0.28 : 0.74),
+		+ readNativeSpatialTouchEnergy() * (instrument.pointers.size > 0 ? 0.28 : 0.74)
+		+ ambientVisionTouchEnergy() * (instrument.pointers.size > 0 ? 0.18 : 0.82),
 		0,
 		1
 	);
@@ -9159,8 +9295,8 @@ function initXyzCamera() {
 	);
 	const instrumentSceneEnergy = () => clampNumber(
 		cameraFacingMode === "environment"
-			? membrane.cameraMotion * 0.38 + membrane.motionSensor * 0.22 + membrane.lightLevel * 0.16 + membrane.lightContrast * 0.24 + Math.abs(membrane.lightDirectionX) * 0.08 + instrumentTouchEnergy() * 0.1
-			: membrane.audioLevel * 0.26 + membrane.luma * 0.16 + membrane.lightContrast * 0.14 + instrumentTouchEnergy() * 0.32 + Math.abs(membrane.tiltY) * 0.12,
+			? membrane.cameraMotion * 0.38 + membrane.motionSensor * 0.22 + membrane.lightLevel * 0.16 + membrane.lightContrast * 0.24 + Math.abs(membrane.lightDirectionX) * 0.08 + instrumentTouchEnergy() * 0.1 + sceptreMotionLevel() * 0.12 + sceptreHaloLevel() * 0.06
+			: membrane.audioLevel * 0.26 + membrane.luma * 0.16 + membrane.lightContrast * 0.14 + instrumentTouchEnergy() * 0.32 + Math.abs(membrane.tiltY) * 0.12 + sceptreMotionLevel() * 0.1 + sceptrePercussionLevel() * 0.06,
 		0,
 		1
 	);
@@ -9210,6 +9346,7 @@ function initXyzCamera() {
 					0.3
 					+ (light.directionX * 0.1 * environmentBias)
 					+ (membrane.tiltX * 0.04)
+					+ (sceptreFresh() ? (sceptre.state.motion.roll * 0.08) : 0)
 					+ ((light.contrast - 0.5) * 0.02),
 					0.08,
 					0.92
@@ -9218,6 +9355,7 @@ function initXyzCamera() {
 					0.62
 					+ (light.directionY * 0.11 * environmentBias)
 					+ (membrane.tiltY * 0.03)
+					+ (sceptreFresh() ? (sceptre.state.motion.pitch * 0.08) : 0)
 					- (light.contrast * 0.05),
 					0.08,
 					0.92
@@ -9229,7 +9367,8 @@ function initXyzCamera() {
 			x: clampNumber(
 				0.72
 				+ (light.directionX * 0.18 * environmentBias)
-				+ (membrane.tiltX * 0.06),
+				+ (membrane.tiltX * 0.06)
+				+ (sceptreFresh() ? (sceptre.state.motion.roll * 0.12) : 0),
 				0.08,
 				0.92
 			),
@@ -9237,6 +9376,7 @@ function initXyzCamera() {
 				0.38
 				+ (light.directionY * 0.13 * environmentBias)
 				- (membrane.tiltY * 0.04)
+				- (sceptreFresh() ? (sceptre.state.motion.pitch * 0.1) : 0)
 				- (light.contrast * 0.02),
 				0.08,
 				0.92
@@ -9248,12 +9388,26 @@ function initXyzCamera() {
 			return;
 		}
 
+		if (membrane.visionActiveHands > 0) {
+			instrument.terreX = clampNumber(membrane.visionTerreX, 0.08, 0.92);
+			instrument.terreY = clampNumber(membrane.visionTerreY, 0.08, 0.92);
+			instrument.mineX = clampNumber(membrane.visionMineX, 0.08, 0.92);
+			instrument.mineY = clampNumber(membrane.visionMineY, 0.08, 0.92);
+			instrument.terreEnergy = clampNumber(membrane.visionTerreEnergy, 0, 1);
+			instrument.mineEnergy = clampNumber(membrane.visionMineEnergy, 0, 1);
+			instrument.activeHands = membrane.visionActiveHands;
+			return;
+		}
+
 		const terrePose = resolveAmbientInstrumentPose("terre");
 		const minePose = resolveAmbientInstrumentPose("mine");
 		instrument.terreX = terrePose.x;
 		instrument.terreY = terrePose.y;
 		instrument.mineX = minePose.x;
 		instrument.mineY = minePose.y;
+		instrument.terreEnergy = 0;
+		instrument.mineEnergy = 0;
+		instrument.activeHands = 0;
 	};
 
 	const renderWorldInstrument = () => {
@@ -9263,9 +9417,17 @@ function initXyzCamera() {
 		const sceneEnergy = instrumentSceneEnergy();
 		const lightTone = clampNumber(Math.max(membrane.lightLevel, membrane.luma), 0, 1);
 		const light = membraneLightProfile();
-			const activeHands = Math.max(instrument.activeHands, readNativeSpatialActiveHands());
+		const visionHands = membrane.visionActiveHands;
+		const sceptreLive = sceptreFresh();
+		const sceptreScene = sceptre.state.scene || "veille";
+		const activeHands = Math.max(instrument.activeHands, readNativeSpatialActiveHands(), visionHands);
 		const viewLabel = cameraFacingLabel();
 		let focusLabel = cameraFacingMode === "environment" ? "horizon tenu" : "souffle proche";
+		if (visionHands >= 2) {
+			focusLabel = cameraFacingMode === "environment" ? "mains / paysage" : "mains / visage";
+		} else if (visionHands === 1) {
+			focusLabel = cameraFacingMode === "environment" ? "main / frappe" : "main / proximité";
+		}
 		if (cameraFacingMode === "environment") {
 			focusLabel = membrane.cameraMotion > 0.44
 				? "marche / paysage"
@@ -9282,13 +9444,25 @@ function initXyzCamera() {
 			focusLabel = "proximité / peau";
 		}
 
+		if (visionHands >= 2) {
+			focusLabel = cameraFacingMode === "environment" ? "mains / percussion" : "mains / cadence";
+		} else if (visionHands === 1) {
+			focusLabel = cameraFacingMode === "environment" ? "main / kick" : "main / cadence";
+		} else if (sceptreLive && sceptrePercussionLevel() > 0.34) {
+			focusLabel = "sceptre / pulsation";
+		} else if (sceptreLive && sceptreMotionLevel() > 0.22) {
+			focusLabel = "sceptre / inclinaison";
+		}
+
 		const bodyLabel = bodyEnergy > 0.68
 			? "corps en traversée"
 			: (bodyEnergy > 0.34 ? "corps en torsion" : "corps tenu");
 		const touchLabel = activeHands >= 2
-			? "terre + mine"
+			? (visionHands >= 2 && instrument.pointers.size === 0 ? "terre + mine vision" : "terre + mine")
 			: (activeHands === 1
-				? (instrument.terreEnergy >= instrument.mineEnergy ? "terre seule" : "mine seule")
+				? ((visionHands > 0 && instrument.pointers.size === 0)
+					? (membrane.visionTerreEnergy >= membrane.visionMineEnergy ? "terre vision" : "mine vision")
+					: (instrument.terreEnergy >= instrument.mineEnergy ? "terre seule" : "mine seule"))
 				: "aucune prise");
 		const lightLabel = light.contrast > 0.42
 			? (light.directionX < -0.16
@@ -9303,16 +9477,31 @@ function initXyzCamera() {
 			? "Retourne la caméra et laisse le dehors jouer. Glisse pour orienter le tore. La lumière incline maintenant aussi Terre et Mine: Terre prend le champ, Mine mord le détail, le reflet ou la route. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage."
 			: "Approche visage, mains ou torse. Glisse pour orienter le tore. Terre pose le fond, Mine ouvre l accent, puis l air et la lumière déplacent aussi la partition. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage.";
 		let worldCopy = "Le monde reste un instrument: visage, corps, lumière, paysage et toucher peuvent tous nourrir le tore.";
+		if (visionHands >= 2) {
+			worldCopy = "La vision lit maintenant deux mains. Terre lance le kick, Mine ouvre hh ou snare, et le tore prend leurs écarts comme une percussion vivante.";
+		} else if (visionHands === 1) {
+			worldCopy = "La vision accroche déjà une main. Ouvre le cadre, frappe, relâche, puis laisse le tore transformer ce geste en pulsation.";
+		}
 		if (cameraFacingMode === "environment") {
 			worldCopy = touchEnergy > 0.24
 				? "Le paysage répond maintenant à tes mains. Tu peux marcher, viser, pivoter et laisser les reflets, la rue ou le ciel nourrir le tore comme un instrument vivant."
 				: (light.contrast > 0.3
 					? "Passe en paysage pour faire jouer le dehors. L incidence lumineuse pousse déjà Terre et Mine: la nappe prend le champ, le détail perce, puis le tore suit."
 					: "Passe en paysage pour faire jouer le dehors. Le monde devient matière: horizon, marche, reflets, façades, arbres, vitesse et lumière.");
+			if (visionHands >= 2) {
+				worldCopy = "Le paysage répond maintenant à tes mains. Gauche pour le kick, droite pour hh ou snare, double frappe pour relancer tout le set pendant que Terre et Mine déplacent le tore.";
+			} else if (visionHands === 1) {
+				worldCopy = "Le paysage voit déjà une main. Cherche une frappe nette et la percussion partira directement du cadre.";
+			}
 		} else if (touchEnergy > 0.26 || membrane.audioLevel > 0.16) {
 			worldCopy = "Le visage, le souffle et les mains sont maintenant dans la boucle. Le tore peut tenir une note, ouvrir un rythme puis colorer la lumière autour de toi.";
 		} else if (light.contrast > 0.26) {
 			worldCopy = "Même sans toucher, l incidence lumineuse commence à pencher la partition: Terre ouvre ou retient le champ, Mine taille la clarté et la nervure.";
+		}
+		if (sceptreLive && visionHands === 0) {
+			worldCopy = sceptrePercussionLevel() > 0.34
+				? `Le sceptre ${sceptreScene} incline maintenant le tore. Sa secousse ouvre la percussion, son roulis pousse Terre et Mine, et la surface prend une allure de rite portable.`
+				: `Le sceptre ${sceptreScene} tient une magie douce. Climat, angle et halo glissent déjà dans le tore comme une main distante.`;
 		}
 
 		document.body.dataset.cameraFacing = cameraFacingMode;
@@ -12117,6 +12306,11 @@ function initXyzCamera() {
 			const scaleProfile = currentScaleProfile(mode);
 			const instrumentProfile = currentInstrumentProfile();
 			const percussionLabel = formatPercussionLabel();
+			const visionHands = membrane.visionActiveHands;
+			const visionPercussionLabel = membrane.visionPercussionLabel;
+			const sceptreLive = sceptreFresh();
+			const sceptreScene = sceptre.state.scene || "veille";
+			const sceptreSpell = sceptre.state.magic.spell || "silence tenu";
 			const pattern = getMusicPatternState();
 			const patternStepCount = countMusicPatternSteps(pattern);
 			const patternLabel = formatMusicPatternLabel(pattern);
@@ -12243,6 +12437,42 @@ function initXyzCamera() {
 				duetPhase = "repeat";
 				duetDominant = "mine";
 			}
+			if (isMembraneAudible() && visionHands > 0) {
+				guideText = visionHands >= 2
+					? `La vision lit maintenant les deux mains. Terre lance le kick, Mine ouvre hh ou snare, et la double frappe relance ${percussionLabel}.`
+					: `La vision lit une main en direct. Cherche une frappe nette pour rejouer ${visionPercussionLabel || percussionLabel} sans quitter le cadre.`;
+				terreTitle = visionHands >= 1 ? "Elle frappe le sol." : terreTitle;
+				mineTitle = visionHands >= 2 ? "Elle ouvre l éclat." : mineTitle;
+				terreCopy = visionHands >= 1
+					? "Terre devient une frappe visible. Son entrée déclenche le kick et pousse le tore depuis le cadre."
+					: terreCopy;
+				mineCopy = visionHands >= 2
+					? "Mine découpe hh ou snare selon la hauteur du geste, puis garde l accent mobile dans l image."
+					: mineCopy;
+				duetCopy = visionHands >= 2
+					? "Les deux mains jouent maintenant directement par vision."
+					: "Une main est déjà prise dans la lecture vision.";
+				duetPhase = visionHands >= 2 ? "strike" : "flow";
+				duetDominant = visionHands >= 2 ? "mine" : "terre";
+			}
+			if (isMembraneAudible() && sceptreLive && visionHands === 0) {
+				guideText = sceptrePercussionLevel() > 0.34
+					? `Le sceptre ${sceptreScene} pousse maintenant le rythme. Sa secousse relance ${percussionLabel}, son roulis plie le filtre, et ${sceptreSpell} garde le tout dans une même magie.`
+					: `Le sceptre ${sceptreScene} agit en douceur. Son climat et son angle colorent la note pendant que ${sceptreSpell} garde la lecture tenue.`;
+				terreTitle = sceptrePercussionLevel() > 0.34 ? "Elle répond au sceptre." : "Elle reçoit le sceptre.";
+				mineTitle = sceptrePercussionLevel() > 0.34 ? "Elle claque au geste." : "Elle ouvre le halo.";
+				terreCopy = sceptrePercussionLevel() > 0.34
+					? "Terre reprend la poussée du sceptre pour garder le kick compact et lisible."
+					: "Terre absorbe l inclinaison et garde la base stable sous le rite.";
+				mineCopy = sceptrePercussionLevel() > 0.34
+					? "Mine laisse entrer hh ou snare au moment ou le sceptre secoue le champ."
+					: "Mine recueille le halo, le negatif et la teinte avant de les rendre au tore.";
+				duetCopy = sceptrePercussionLevel() > 0.34
+					? "Le sceptre devient la troisieme main du duo."
+					: "Le sceptre verse un climat lent entre Terre et Mine.";
+				duetPhase = sceptrePercussionLevel() > 0.34 ? "strike" : "flow";
+				duetDominant = sceptrePercussionLevel() > 0.34 ? "mine" : "terre";
+			}
 			document.body.dataset.musicalMode = scaleProfile.color;
 			document.body.dataset.musicalScale = mode;
 			document.body.dataset.duetPhase = duetPhase;
@@ -12255,6 +12485,11 @@ function initXyzCamera() {
 			renderMusicControls();
 			setSensorText(musicModeNode, scaleProfile.label);
 			setSensorText(musicNoteNode, noteLabel);
+			setSensorText(musicPercussionNode, visionHands > 0
+				? `${percussionLabel} · ${visionPercussionLabel || "vision"}`
+				: (sceptreLive && sceptrePercussionLevel() > 0.16
+					? `${percussionLabel} · sceptre`
+					: percussionLabel));
 			setSensorText(musicRhythmNode, rhythmLabel);
 			setSensorText(handTerreStateNode, terreState);
 			setSensorText(handMineStateNode, mineState);
@@ -13497,6 +13732,151 @@ function initXyzCamera() {
 		}
 		return played;
 	};
+	const resetVisionPercussionState = () => {
+		membrane.visionTerreX = 0.3;
+		membrane.visionTerreY = 0.62;
+		membrane.visionTerreEnergy = 0;
+		membrane.visionMineX = 0.72;
+		membrane.visionMineY = 0.38;
+		membrane.visionMineEnergy = 0;
+		membrane.visionActiveHands = 0;
+		membrane.visionPercussionLabel = "";
+		visionPercussionState.leftStrikeAt = 0;
+		visionPercussionState.rightStrikeAt = 0;
+		visionPercussionState.lastGestureAt = 0;
+	};
+	const triggerVisionPercussion = async ({
+		leftStrike = false,
+		rightStrike = false,
+		pairStrike = false,
+		leftEnergy = 0,
+		rightEnergy = 0,
+		leftY = 0.62,
+		rightY = 0.38,
+	} = {}) => {
+		if ((!leftStrike && !rightStrike && !pairStrike) || document.hidden || !isMembraneAudible()) {
+			return false;
+		}
+
+		const context = await ensureReactiveAudioContext();
+		if (!context) {
+			return false;
+		}
+
+		ensureMusicMasterBus(context);
+		const deviceProfile = readDeviceAudioProfile();
+		if (deviceProfile.muted) {
+			return false;
+		}
+
+		const now = context.currentTime;
+		const leftIntensity = clampNumber(leftEnergy * 0.92 + (pairStrike ? 0.18 : 0), 0, 1);
+		const rightIntensity = clampNumber(rightEnergy * 0.94 + (pairStrike ? 0.12 : 0), 0, 1);
+		let played = false;
+
+		if (pairStrike) {
+			membrane.visionPercussionLabel = "kick + snare";
+			if (musicSettings.percussion.kick) {
+				played = triggerKick(context, deviceProfile, clampNumber(Math.max(leftIntensity, rightIntensity), 0, 1), now, { bypassGap: true }) || played;
+			}
+			if (musicSettings.percussion.snare) {
+				played = triggerSnare(context, deviceProfile, clampNumber((leftIntensity * 0.42) + (rightIntensity * 0.88), 0, 1), now + 0.022, { bypassGap: true }) || played;
+			}
+			if (musicSettings.percussion.hihat) {
+				played = triggerHiHat(context, deviceProfile, clampNumber((leftIntensity * 0.36) + (rightIntensity * 0.62), 0, 1), now + 0.046, { bypassGap: true }) || played;
+			}
+			return played;
+		}
+
+		if (leftStrike) {
+			membrane.visionPercussionLabel = "kick";
+			if (musicSettings.percussion.kick) {
+				played = triggerKick(context, deviceProfile, leftIntensity, now) || played;
+			}
+			if (musicSettings.percussion.hihat && rightEnergy > 0.28) {
+				played = triggerHiHat(context, deviceProfile, clampNumber((leftIntensity * 0.4) + (rightEnergy * 0.44), 0, 1), now + 0.032) || played;
+			}
+		}
+
+		if (rightStrike) {
+			const rightIsHigh = rightY < 0.54;
+			membrane.visionPercussionLabel = rightIsHigh ? "hh" : "snare";
+			if (rightIsHigh) {
+				if (musicSettings.percussion.hihat) {
+					played = triggerHiHat(context, deviceProfile, rightIntensity, now) || played;
+				} else if (musicSettings.percussion.snare) {
+					played = triggerSnare(context, deviceProfile, clampNumber(rightIntensity * 0.82, 0, 1), now) || played;
+				}
+			} else if (musicSettings.percussion.snare) {
+				played = triggerSnare(context, deviceProfile, rightIntensity, now) || played;
+			} else if (musicSettings.percussion.hihat) {
+				played = triggerHiHat(context, deviceProfile, clampNumber(rightIntensity * 0.86, 0, 1), now) || played;
+			}
+		}
+
+		return played;
+	};
+	const updateVisionPercussionState = ({
+		leftEnergy = 0,
+		leftX = membrane.visionTerreX,
+		leftY = membrane.visionTerreY,
+		rightEnergy = 0,
+		rightX = membrane.visionMineX,
+		rightY = membrane.visionMineY,
+	} = {}) => {
+		const previousLeft = clampNumber(membrane.visionTerreEnergy, 0, 1);
+		const previousRight = clampNumber(membrane.visionMineEnergy, 0, 1);
+		const smoothEnergy = (previous, next) => clampNumber(
+			previous + ((next - previous) * (next > previous ? 0.62 : 0.24)),
+			0,
+			1
+		);
+		const smoothedLeft = smoothEnergy(previousLeft, clampNumber(leftEnergy, 0, 1));
+		const smoothedRight = smoothEnergy(previousRight, clampNumber(rightEnergy, 0, 1));
+		const leftDetected = smoothedLeft > 0.12;
+		const rightDetected = smoothedRight > 0.12;
+		const now = performance.now();
+		const leftStrike = leftDetected && smoothedLeft > 0.2 && (smoothedLeft - previousLeft) > 0.11;
+		const rightStrike = rightDetected && smoothedRight > 0.2 && (smoothedRight - previousRight) > 0.11;
+
+		membrane.visionTerreEnergy = smoothedLeft;
+		membrane.visionMineEnergy = smoothedRight;
+		membrane.visionTerreX = leftDetected ? clampNumber(leftX, 0.08, 0.92) : 0.3;
+		membrane.visionTerreY = leftDetected ? clampNumber(leftY, 0.08, 0.92) : 0.62;
+		membrane.visionMineX = rightDetected ? clampNumber(rightX, 0.08, 0.92) : 0.72;
+		membrane.visionMineY = rightDetected ? clampNumber(rightY, 0.08, 0.92) : 0.38;
+		membrane.visionActiveHands = (leftDetected ? 1 : 0) + (rightDetected ? 1 : 0);
+		if (!leftDetected && !rightDetected && now - visionPercussionState.lastGestureAt > 900) {
+			membrane.visionPercussionLabel = "";
+		}
+
+		if (leftStrike) {
+			visionPercussionState.leftStrikeAt = now;
+			visionPercussionState.lastGestureAt = now;
+		}
+		if (rightStrike) {
+			visionPercussionState.rightStrikeAt = now;
+			visionPercussionState.lastGestureAt = now;
+		}
+
+		const pairStrike = (
+			(leftStrike && rightStrike)
+			|| (leftStrike && (now - visionPercussionState.rightStrikeAt) < 160)
+			|| (rightStrike && (now - visionPercussionState.leftStrikeAt) < 160)
+		);
+
+		if (pairStrike || leftStrike || rightStrike) {
+			void triggerVisionPercussion({
+				leftStrike,
+				rightStrike,
+				pairStrike,
+				leftEnergy: smoothedLeft,
+				rightEnergy: smoothedRight,
+				leftY,
+				rightY,
+			});
+		}
+	};
 	renderToreGuide();
 
 	const demoPhasePalette = (key) => {
@@ -13752,6 +14132,7 @@ function initXyzCamera() {
 
 	const resetReactiveCssState = () => {
 		previousSamples = null;
+		resetVisionPercussionState();
 		setReactiveCssState(0, 0, [180, 180, 180], "neutral");
 		resetMembraneReactiveState();
 	};
@@ -13828,6 +14209,124 @@ function initXyzCamera() {
 			title: "Le monde nourrit maintenant la surface.",
 			message: "La peau caméra est ouverte. Le tore lit maintenant la lumière réelle comme une matière presque comestible : grain, souffle, reflets, présence.",
 		};
+	};
+
+	const applySceptreTrigger = async () => {
+		if (!sceptreFresh()) {
+			return;
+		}
+
+		const triggerValue = clampNumber(
+			Math.max(
+				sceptre.state.triggers.accent,
+				sceptre.state.triggers.kick * 0.92,
+				sceptre.state.triggers.snare * 0.76,
+				sceptre.state.triggers.hihat * 0.58,
+				sceptre.state.motion.shake * 0.66
+			),
+			0,
+			1
+		);
+		if (triggerValue < 0.22) {
+			return;
+		}
+
+		const signature = [
+			sceptre.state.updatedAt || "",
+			sceptre.state.scene || "",
+			Math.round(sceptre.state.triggers.kick * 10),
+			Math.round(sceptre.state.triggers.snare * 10),
+			Math.round(sceptre.state.triggers.hihat * 10),
+			Math.round(sceptre.state.triggers.accent * 10),
+			Math.round(sceptre.state.motion.shake * 10),
+		].join(":");
+		if (signature === sceptre.triggerSignature) {
+			return;
+		}
+		sceptre.triggerSignature = signature;
+
+		await triggerPercussionAccent(0.28 + (triggerValue * 0.54));
+	};
+
+	const setSceptreState = (payload) => {
+		sceptre.constellation = normalizeSceptreConstellation({
+			ok: true,
+			primary_device: sceptrePrimaryDevice,
+			active_device: payload && typeof payload === "object" ? payload.device : sceptrePrimaryDevice,
+			active: payload,
+			devices: [payload],
+		}, sceptrePrimaryDevice);
+		sceptre.state = sceptre.constellation.active;
+		syncSceptreReactiveState();
+		renderWorldInstrument();
+		updateMotionVoice();
+		void applySceptreTrigger();
+	};
+
+	const setSceptreConstellation = (payload) => {
+		sceptre.constellation = normalizeSceptreConstellation(payload, sceptrePrimaryDevice);
+		sceptre.state = sceptre.constellation.active;
+		syncSceptreReactiveState();
+		renderWorldInstrument();
+		updateMotionVoice();
+		void applySceptreTrigger();
+	};
+
+	const fetchSceptreState = async () => {
+		const feedUrl = sceptreConstellationFeedUrl || sceptreFeedUrl;
+		if (!feedUrl) {
+			return sceptre.state;
+		}
+
+		const response = await fetch(feedUrl, {
+			cache: "no-store",
+			headers: { Accept: "application/json" },
+		});
+		if (!response.ok) {
+			throw new Error(`sceptre feed ${response.status}`);
+		}
+
+		const payload = await response.json();
+		if (sceptreConstellationFeedUrl) {
+			setSceptreConstellation(payload);
+		} else {
+			setSceptreState(payload);
+		}
+		return sceptre.state;
+	};
+
+	const clearSceptrePoll = () => {
+		if (sceptre.pollTimer) {
+			window.clearTimeout(sceptre.pollTimer);
+			sceptre.pollTimer = 0;
+		}
+	};
+
+	const scheduleSceptrePoll = (delay = 2400) => {
+		clearSceptrePoll();
+		if (!(sceptreConstellationFeedUrl || sceptreFeedUrl)) {
+			return;
+		}
+
+		sceptre.pollTimer = window.setTimeout(async () => {
+			if (document.hidden) {
+				scheduleSceptrePoll(4200);
+				return;
+			}
+
+			if (!sceptre.inFlight) {
+				sceptre.inFlight = true;
+				try {
+					await fetchSceptreState();
+				} catch {
+					// Keep the last stable sceptre state.
+				} finally {
+					sceptre.inFlight = false;
+				}
+			}
+
+			scheduleSceptrePoll(2400);
+		}, delay);
 	};
 
 	const stopAnalysis = () => {
@@ -13980,7 +14479,22 @@ function initXyzCamera() {
 		const shakeLevel = clampNumber(membrane.shake, 0, 1);
 		const motionEnergy = clampNumber(Math.max(membrane.motionSensor, membrane.cameraMotion * 0.92), 0, 1);
 		const tiltEnergy = clampNumber((Math.abs(membrane.tiltX) + Math.abs(membrane.tiltY)) * 0.5, 0, 1);
-		const lightTone = clampNumber(membrane.lightLevel * 0.58 + membrane.luma * 0.42, 0, 1);
+		const sceptreLive = sceptreFresh();
+		const sceptreTempoBias = sceptreLive ? clampNumber(sceptre.state.music.tempoBias, -1, 1) : 0;
+		const sceptreFilterBias = sceptreLive ? clampNumber(sceptre.state.music.filterBias, -1, 1) : 0;
+		const sceptreDroneBias = sceptreLive ? clampNumber(sceptre.state.music.droneBias, 0, 1) : 0;
+		const sceptreVolumeBias = sceptreLive ? clampNumber(sceptre.state.music.volumeBias, 0, 1) : 0;
+		const sceptreBrightness = sceptreLive ? clampNumber(sceptre.state.visual.brightness, -1, 1) : 0;
+		const sceptreContrast = sceptreLive ? clampNumber(sceptre.state.visual.contrastBias, 0, 1) : 0;
+		const sceptreSpin = sceptreLive ? clampNumber(sceptre.state.visual.torusSpin, -1, 1) : 0;
+		const lightTone = clampNumber(
+			membrane.lightLevel * 0.58
+			+ membrane.luma * 0.42
+			+ (sceptreBrightness * 0.18)
+			+ (sceptreLive ? (sceptre.state.climate.temperature - 0.5) * 0.12 : 0),
+			0,
+			1
+		);
 		const lightContrast = clampNumber(membrane.lightContrast, 0, 1);
 		const lightDirectionX = clampNumber(membrane.lightDirectionX, -1, 1);
 		const lightDirectionY = clampNumber(membrane.lightDirectionY, -1, 1);
@@ -13991,7 +14505,7 @@ function initXyzCamera() {
 		const sceneEnergy = instrumentSceneEnergy();
 		const orientationX = clampNumber(((membrane.tiltX + 1) * 0.5) * 0.68 + instrument.mineX * 0.32, 0, 1);
 		const orientationY = clampNumber(((1 - membrane.tiltY) * 0.5) * 0.62 + instrument.terreY * 0.38, 0, 1);
-		const movement = clampNumber(motionEnergy * 0.44 + membrane.cameraMotion * 0.12 + tiltEnergy * 0.12 + bodyPlay * 0.16 + touchEnergy * 0.14 + shakeLevel * 0.26 + lightContrast * 0.08, 0, 1);
+		const movement = clampNumber(motionEnergy * 0.44 + membrane.cameraMotion * 0.12 + tiltEnergy * 0.12 + bodyPlay * 0.16 + touchEnergy * 0.14 + shakeLevel * 0.26 + lightContrast * 0.08 + sceptreMotionLevel() * 0.2 + sceptrePercussionLevel() * 0.08, 0, 1);
 		const harmonicMode = resolveToreMode(lightTone, flavor, movement, ambient, touchEnergy);
 		const scaleProfile = currentScaleProfile(harmonicMode);
 		const presence = clampNumber(
@@ -14042,10 +14556,11 @@ function initXyzCamera() {
 			+ (lightDirectionX * 6)
 			- (lightDirectionY * 4)
 			+ (instrumentTextureBias() * 16)
+			+ (sceptreSpin * 12)
 		) * instrumentProfile.detuneDepth;
 		const droneFloor = audible
 			? clampNumber(
-				(0.015 + handOpen * 0.012 + touchEnergy * 0.012 + sceneEnergy * 0.008 + lightTone * 0.006 + (activePercussion ? 0 : 0.006))
+				(0.015 + handOpen * 0.012 + touchEnergy * 0.012 + sceneEnergy * 0.008 + lightTone * 0.006 + (activePercussion ? 0 : 0.006) + (sceptreDroneBias * 0.01))
 				* deviceProfile.volume
 				* feedbackSafety,
 				0,
@@ -14054,7 +14569,7 @@ function initXyzCamera() {
 			: 0;
 		const targetGain = audible
 			? clampNumber(
-				gate * (handOpen * 0.74 + touchEnergy * 0.24 + sceneEnergy * 0.1 + lightContrast * 0.14) * deviceProfile.volume * feedbackSafety * 0.12
+				gate * (handOpen * 0.74 + touchEnergy * 0.24 + sceneEnergy * 0.1 + lightContrast * 0.14 + sceptrePercussionLevel() * 0.12) * deviceProfile.volume * feedbackSafety * (0.12 + (sceptreVolumeBias * 0.03))
 					+ droneFloor
 					+ demoPulseFloor,
 				0,
@@ -14086,7 +14601,9 @@ function initXyzCamera() {
 				+ movement * instrumentProfile.filterMovement
 				+ shakeLevel * instrumentProfile.filterShake
 				- (lightDirectionY * 160)
-				+ (liftFrequency - targetFrequency) * 0.24,
+				+ (liftFrequency - targetFrequency) * 0.24
+				+ (sceptreFilterBias * 520)
+				+ (sceptreContrast * 180),
 			180,
 			4800
 		);
@@ -14100,7 +14617,8 @@ function initXyzCamera() {
 			+ ambient * instrumentProfile.lfoAmbient
 			+ shakeLevel * instrumentProfile.lfoShake
 			+ lightContrast * 0.36
-			+ lightTone * 0.18;
+			+ lightTone * 0.18
+			+ Math.abs(sceptreTempoBias) * 0.26;
 		const targetLfoDepth = instrumentProfile.lfoDepthBase
 			+ movement * instrumentProfile.lfoDepthRange
 			+ ambient * 5.6
@@ -14637,6 +15155,16 @@ function initXyzCamera() {
 		let totalLightWeight = 0;
 		let weightedLightX = 0;
 		let weightedLightY = 0;
+		let leftMotion = 0;
+		let leftMotionWeight = 0;
+		let leftWeightedX = 0;
+		let leftWeightedY = 0;
+		let leftSamples = 0;
+		let rightMotion = 0;
+		let rightMotionWeight = 0;
+		let rightWeightedX = 0;
+		let rightWeightedY = 0;
+		let rightSamples = 0;
 
 		for (let offset = 0, sampleIndex = 0; offset < data.length; offset += 4, sampleIndex += 1) {
 			const red = data[offset];
@@ -14656,9 +15184,30 @@ function initXyzCamera() {
 			totalLightWeight += lightWeight;
 			weightedLightX += sampleX * lightWeight;
 			weightedLightY += sampleY * lightWeight;
+			const frameBias = sampleY < 0.18 ? 0.42 : (sampleY < 0.54 ? 0.88 : 1.12);
 
 			if (previousSamples) {
-				totalMotion += Math.abs(luma - previousSamples[sampleIndex]);
+				const motionDelta = Math.abs(luma - previousSamples[sampleIndex]);
+				totalMotion += motionDelta;
+				if (sampleX <= 0.5) {
+					leftSamples += frameBias;
+					leftMotion += motionDelta * frameBias;
+					if (motionDelta > 0.028) {
+						const weightedMotion = motionDelta * frameBias;
+						leftMotionWeight += weightedMotion;
+						leftWeightedX += sampleX * weightedMotion;
+						leftWeightedY += sampleY * weightedMotion;
+					}
+				} else {
+					rightSamples += frameBias;
+					rightMotion += motionDelta * frameBias;
+					if (motionDelta > 0.028) {
+						const weightedMotion = motionDelta * frameBias;
+						rightMotionWeight += weightedMotion;
+						rightWeightedX += sampleX * weightedMotion;
+						rightWeightedY += sampleY * weightedMotion;
+					}
+				}
 			}
 		}
 
@@ -14678,6 +15227,21 @@ function initXyzCamera() {
 		const lightCentroidY = totalLightWeight > 0 ? weightedLightY / totalLightWeight : 0.5;
 		const lightDirectionX = clampNumber((lightCentroidX - 0.5) * 2 * (0.9 + lightContrast * 0.6), -1, 1);
 		const lightDirectionY = clampNumber((lightCentroidY - 0.5) * 2 * (0.9 + lightContrast * 0.6), -1, 1);
+		const leftEnergy = clampNumber((leftMotion / Math.max(leftSamples, 1)) * 14.5, 0, 1);
+		const rightEnergy = clampNumber((rightMotion / Math.max(rightSamples, 1)) * 14.5, 0, 1);
+		const leftX = leftMotionWeight > 0 ? (leftWeightedX / leftMotionWeight) : membrane.visionTerreX;
+		const leftY = leftMotionWeight > 0 ? (leftWeightedY / leftMotionWeight) : membrane.visionTerreY;
+		const rightX = rightMotionWeight > 0 ? (rightWeightedX / rightMotionWeight) : membrane.visionMineX;
+		const rightY = rightMotionWeight > 0 ? (rightWeightedY / rightMotionWeight) : membrane.visionMineY;
+
+		updateVisionPercussionState({
+			leftEnergy,
+			leftX,
+			leftY,
+			rightEnergy,
+			rightX,
+			rightY,
+		});
 
 		const flavor = describeCameraFlavor(averageLuma, averageMotion);
 		setReactiveCssState(averageLuma, averageMotion, averageRgb, flavor.key, {
@@ -15214,6 +15778,7 @@ function initXyzCamera() {
 				URL.revokeObjectURL(take.url);
 			}
 		});
+		clearSceptrePoll();
 		stopStream();
 	});
 
@@ -15223,6 +15788,10 @@ function initXyzCamera() {
 
 	document.addEventListener("visibilitychange", () => {
 		updateMotionVoice(document.hidden);
+		if (!document.hidden && sceptreFeedUrl) {
+			void fetchSceptreState().catch(() => {});
+			scheduleSceptrePoll(2400);
+		}
 	});
 
 	setSensorText(orientationNode, isSpatialHeadsetSurface ? "geste a venir" : "prête");
@@ -15231,7 +15800,12 @@ function initXyzCamera() {
 	setSensorText(audioNode, isSpatialHeadsetSurface ? "air local" : "prêt");
 	setSensorText(cameraNode, `${isSpatialHeadsetSurface ? "preview locale" : "prête"} · ${cameraFacingLabel()}`);
 	setSensorText(wakeNode, "sur demande");
+	setSceptreState(null);
 	resetMembraneReactiveState();
+	if (sceptreFeedUrl) {
+		void fetchSceptreState().catch(() => {});
+		scheduleSceptrePoll(2400);
+	}
 
 	try {
 		const params = new URL(window.location.href).searchParams;
@@ -15241,6 +15815,1650 @@ function initXyzCamera() {
 	} catch {
 		// Ignore malformed runtime URLs.
 	}
+}
+
+function normalizeCameraAiState(payload) {
+	const normalized = {
+		ok: true,
+		camera: "",
+		scene: "veille",
+		lead: "IA du Pi 5 en veille douce.",
+		summary: "Aucune détection IA récente. Le paysage garde encore sa propre respiration.",
+		model: "",
+		dominantLabel: "",
+		dominantScore: 0,
+		attention: 0,
+		movement: 0,
+		density: 0,
+		objectCount: 0,
+		personCount: 0,
+		vehicleCount: 0,
+		animalCount: 0,
+		detections: [],
+		updatedAt: "",
+		freshness: "idle",
+		stale: false,
+		ageSeconds: null,
+		staleAfterSeconds: 18,
+	};
+
+	if (!payload || typeof payload !== "object") {
+		return normalized;
+	}
+
+	normalized.ok = payload.ok !== false;
+	normalized.camera = typeof payload.camera === "string" ? payload.camera.trim() : "";
+	normalized.scene = typeof payload.scene === "string" && payload.scene.trim() ? payload.scene.trim() : normalized.scene;
+	normalized.lead = typeof payload.lead === "string" && payload.lead.trim() ? payload.lead.trim() : normalized.lead;
+	normalized.summary = typeof payload.summary === "string" && payload.summary.trim() ? payload.summary.trim() : normalized.summary;
+	normalized.model = typeof payload.model === "string" ? payload.model.trim() : "";
+	normalized.dominantLabel = typeof payload.dominant_label === "string"
+		? payload.dominant_label.trim()
+		: (typeof payload.dominantLabel === "string" ? payload.dominantLabel.trim() : "");
+	normalized.dominantScore = clampNumber(Number(payload.dominant_score ?? payload.dominantScore) || 0, 0, 1);
+	normalized.attention = clampNumber(Number(payload.attention) || 0, 0, 1);
+	normalized.movement = clampNumber(Number(payload.movement) || 0, 0, 1);
+	normalized.density = clampNumber(Number(payload.density) || 0, 0, 1);
+	normalized.objectCount = Math.max(0, Number(payload.object_count ?? payload.objectCount) || 0);
+	normalized.personCount = Math.max(0, Number(payload.person_count ?? payload.personCount) || 0);
+	normalized.vehicleCount = Math.max(0, Number(payload.vehicle_count ?? payload.vehicleCount) || 0);
+	normalized.animalCount = Math.max(0, Number(payload.animal_count ?? payload.animalCount) || 0);
+	normalized.updatedAt = typeof payload.updated_at === "string"
+		? payload.updated_at.trim()
+		: (typeof payload.updatedAt === "string" ? payload.updatedAt.trim() : "");
+	normalized.freshness = typeof payload.freshness === "string" && payload.freshness.trim()
+		? payload.freshness.trim()
+		: normalized.freshness;
+	const ageSeconds = Number(payload.age_seconds ?? payload.ageSeconds);
+	normalized.ageSeconds = Number.isFinite(ageSeconds) && ageSeconds >= 0 ? Math.round(ageSeconds) : null;
+	const staleAfterSeconds = Number(payload.stale_after_seconds ?? payload.staleAfterSeconds);
+	normalized.staleAfterSeconds = Number.isFinite(staleAfterSeconds) && staleAfterSeconds > 0
+		? Math.round(staleAfterSeconds)
+		: normalized.staleAfterSeconds;
+	normalized.stale = payload.stale === true || normalized.freshness === "stale";
+	normalized.detections = Array.isArray(payload.detections)
+		? payload.detections.map((detection) => {
+			if (!detection || typeof detection !== "object") {
+				return null;
+			}
+
+			return {
+				label: typeof detection.label === "string" ? detection.label.trim() : "",
+				score: clampNumber(Number(detection.score) || 0, 0, 1),
+				area: clampNumber(Number(detection.area) || 0, 0, 1),
+				center: Array.isArray(detection.center)
+					? detection.center.slice(0, 2).map((value) => clampNumber(Number(value) || 0, 0, 1))
+					: [],
+				bbox: Array.isArray(detection.bbox)
+					? detection.bbox.slice(0, 4).map((value) => clampNumber(Number(value) || 0, 0, 1))
+					: [],
+			};
+		}).filter(Boolean)
+		: [];
+
+	if (normalized.stale) {
+		normalized.freshness = "stale";
+		normalized.dominantLabel = "";
+		normalized.dominantScore = 0;
+		normalized.attention = 0;
+		normalized.movement = 0;
+		normalized.density = 0;
+		normalized.objectCount = 0;
+		normalized.personCount = 0;
+		normalized.vehicleCount = 0;
+		normalized.animalCount = 0;
+		normalized.detections = [];
+	} else if (normalized.updatedAt) {
+		normalized.freshness = "fresh";
+	}
+
+	return normalized;
+}
+
+function normalizeSceptreState(payload) {
+	const normalized = {
+		ok: true,
+		device: "ensemble",
+		source: "pi3-bplus-sceptre",
+		scene: "veille",
+		ritualMode: "veille",
+		lead: "Le sceptre dort encore dans le tore.",
+		summary: "Le Pi 3 B+ et son Sensor HAT peuvent deja devenir une main, un climat et un rythme pour la surface.",
+		updatedAt: "",
+		freshness: "idle",
+		stale: false,
+		ageSeconds: null,
+		staleAfterSeconds: 14,
+		motion: {
+			pitch: 0,
+			roll: 0,
+			yaw: 0,
+			tiltX: 0,
+			tiltY: 0,
+			sway: 0,
+			shake: 0,
+			stillness: 1,
+			heading: 0,
+		},
+		climate: {
+			temperature: 0.5,
+			humidity: 0.5,
+			pressure: 0.5,
+			temperature_c: null,
+			humidity_percent: null,
+			pressure_hpa: null,
+		},
+		music: {
+			tempoBias: 0,
+			swingBias: 0,
+			droneBias: 0,
+			filterBias: 0,
+			percussionBias: 0,
+			volumeBias: 0,
+		},
+		visual: {
+			brightness: 0,
+			negativeBias: 0,
+			torusSpin: 0,
+			halo: 0,
+			contrastBias: 0,
+			tintWarmth: 0,
+		},
+		triggers: {
+			kick: 0,
+			snare: 0,
+			hihat: 0,
+			accent: 0,
+		},
+		screen: {
+			page: "veille",
+			mode: "listen",
+			label: "veille",
+		},
+		magic: {
+			sigil: "lune",
+			palette: "ardoise",
+			spell: "silence tenu",
+		},
+	};
+
+	if (!payload || typeof payload !== "object") {
+		return normalized;
+	}
+
+	normalized.ok = payload.ok !== false;
+	normalized.device = typeof payload.device === "string" && payload.device.trim() ? payload.device.trim() : normalized.device;
+	normalized.source = typeof payload.source === "string" && payload.source.trim() ? payload.source.trim() : normalized.source;
+	normalized.scene = typeof payload.scene === "string" && payload.scene.trim() ? payload.scene.trim() : normalized.scene;
+	normalized.ritualMode = typeof payload.ritual_mode === "string"
+		? (payload.ritual_mode.trim() || normalized.ritualMode)
+		: (typeof payload.ritualMode === "string" && payload.ritualMode.trim() ? payload.ritualMode.trim() : normalized.ritualMode);
+	normalized.lead = typeof payload.lead === "string" && payload.lead.trim() ? payload.lead.trim() : normalized.lead;
+	normalized.summary = typeof payload.summary === "string" && payload.summary.trim() ? payload.summary.trim() : normalized.summary;
+	normalized.updatedAt = typeof payload.updated_at === "string"
+		? payload.updated_at.trim()
+		: (typeof payload.updatedAt === "string" ? payload.updatedAt.trim() : "");
+	normalized.freshness = typeof payload.freshness === "string" && payload.freshness.trim()
+		? payload.freshness.trim()
+		: normalized.freshness;
+	const ageSeconds = Number(payload.age_seconds ?? payload.ageSeconds);
+	normalized.ageSeconds = Number.isFinite(ageSeconds) && ageSeconds >= 0 ? Math.round(ageSeconds) : null;
+	const staleAfterSeconds = Number(payload.stale_after_seconds ?? payload.staleAfterSeconds);
+	normalized.staleAfterSeconds = Number.isFinite(staleAfterSeconds) && staleAfterSeconds > 0
+		? Math.round(staleAfterSeconds)
+		: normalized.staleAfterSeconds;
+	normalized.stale = payload.stale === true || normalized.freshness === "stale";
+
+	const motion = payload.motion && typeof payload.motion === "object" ? payload.motion : {};
+	normalized.motion.pitch = clampNumber(Number(motion.pitch) || 0, -1, 1);
+	normalized.motion.roll = clampNumber(Number(motion.roll) || 0, -1, 1);
+	normalized.motion.yaw = clampNumber(Number(motion.yaw) || 0, -1, 1);
+	normalized.motion.tiltX = clampNumber(Number(motion.tilt_x ?? motion.tiltX) || 0, -1, 1);
+	normalized.motion.tiltY = clampNumber(Number(motion.tilt_y ?? motion.tiltY) || 0, -1, 1);
+	normalized.motion.sway = clampNumber(Number(motion.sway) || 0, 0, 1);
+	normalized.motion.shake = clampNumber(Number(motion.shake) || 0, 0, 1);
+	normalized.motion.stillness = clampNumber(Number(motion.stillness) || 0, 0, 1);
+	normalized.motion.heading = clampNumber(Number(motion.heading) || 0, 0, 1);
+
+	const climate = payload.climate && typeof payload.climate === "object" ? payload.climate : {};
+	normalized.climate.temperature = clampNumber(Number(climate.temperature) || 0.5, 0, 1);
+	normalized.climate.humidity = clampNumber(Number(climate.humidity) || 0.5, 0, 1);
+	normalized.climate.pressure = clampNumber(Number(climate.pressure) || 0.5, 0, 1);
+	normalized.climate.temperature_c = Number.isFinite(Number(climate.temperature_c)) ? Number(climate.temperature_c) : null;
+	normalized.climate.humidity_percent = Number.isFinite(Number(climate.humidity_percent)) ? Number(climate.humidity_percent) : null;
+	normalized.climate.pressure_hpa = Number.isFinite(Number(climate.pressure_hpa)) ? Number(climate.pressure_hpa) : null;
+
+	const music = payload.music && typeof payload.music === "object" ? payload.music : {};
+	normalized.music.tempoBias = clampNumber(Number(music.tempo_bias ?? music.tempoBias) || 0, -1, 1);
+	normalized.music.swingBias = clampNumber(Number(music.swing_bias ?? music.swingBias) || 0, -1, 1);
+	normalized.music.droneBias = clampNumber(Number(music.drone_bias ?? music.droneBias) || 0, 0, 1);
+	normalized.music.filterBias = clampNumber(Number(music.filter_bias ?? music.filterBias) || 0, -1, 1);
+	normalized.music.percussionBias = clampNumber(Number(music.percussion_bias ?? music.percussionBias) || 0, 0, 1);
+	normalized.music.volumeBias = clampNumber(Number(music.volume_bias ?? music.volumeBias) || 0, 0, 1);
+
+	const visual = payload.visual && typeof payload.visual === "object" ? payload.visual : {};
+	normalized.visual.brightness = clampNumber(Number(visual.brightness) || 0, -1, 1);
+	normalized.visual.negativeBias = clampNumber(Number(visual.negative_bias ?? visual.negativeBias) || 0, 0, 1);
+	normalized.visual.torusSpin = clampNumber(Number(visual.torus_spin ?? visual.torusSpin) || 0, -1, 1);
+	normalized.visual.halo = clampNumber(Number(visual.halo) || 0, 0, 1);
+	normalized.visual.contrastBias = clampNumber(Number(visual.contrast_bias ?? visual.contrastBias) || 0, 0, 1);
+	normalized.visual.tintWarmth = clampNumber(Number(visual.tint_warmth ?? visual.tintWarmth) || 0, -1, 1);
+
+	const triggers = payload.triggers && typeof payload.triggers === "object" ? payload.triggers : {};
+	normalized.triggers.kick = clampNumber(Number(triggers.kick) || 0, 0, 1);
+	normalized.triggers.snare = clampNumber(Number(triggers.snare) || 0, 0, 1);
+	normalized.triggers.hihat = clampNumber(Number(triggers.hihat) || 0, 0, 1);
+	normalized.triggers.accent = clampNumber(Number(triggers.accent) || 0, 0, 1);
+
+	const screen = payload.screen && typeof payload.screen === "object" ? payload.screen : {};
+	normalized.screen.page = typeof screen.page === "string" && screen.page.trim() ? screen.page.trim() : normalized.screen.page;
+	normalized.screen.mode = typeof screen.mode === "string" && screen.mode.trim() ? screen.mode.trim() : normalized.screen.mode;
+	normalized.screen.label = typeof screen.label === "string" && screen.label.trim() ? screen.label.trim() : normalized.screen.label;
+
+	const magic = payload.magic && typeof payload.magic === "object" ? payload.magic : {};
+	normalized.magic.sigil = typeof magic.sigil === "string" && magic.sigil.trim() ? magic.sigil.trim() : normalized.magic.sigil;
+	normalized.magic.palette = typeof magic.palette === "string" && magic.palette.trim() ? magic.palette.trim() : normalized.magic.palette;
+	normalized.magic.spell = typeof magic.spell === "string" && magic.spell.trim() ? magic.spell.trim() : normalized.magic.spell;
+
+	if (normalized.stale) {
+		normalized.freshness = "stale";
+		normalized.motion.pitch = 0;
+		normalized.motion.roll = 0;
+		normalized.motion.yaw = 0;
+		normalized.motion.tiltX = 0;
+		normalized.motion.tiltY = 0;
+		normalized.motion.sway = 0;
+		normalized.motion.shake = 0;
+		normalized.music.tempoBias = 0;
+		normalized.music.swingBias = 0;
+		normalized.music.droneBias = 0;
+		normalized.music.filterBias = 0;
+		normalized.music.percussionBias = 0;
+		normalized.music.volumeBias = 0;
+		normalized.visual.brightness = 0;
+		normalized.visual.negativeBias = 0;
+		normalized.visual.torusSpin = 0;
+		normalized.visual.halo = 0;
+		normalized.visual.contrastBias = 0;
+		normalized.visual.tintWarmth = 0;
+		normalized.triggers.kick = 0;
+		normalized.triggers.snare = 0;
+		normalized.triggers.hihat = 0;
+		normalized.triggers.accent = 0;
+	}
+
+	return normalized;
+}
+
+function normalizeSceptreConstellation(payload, fallbackPrimaryDevice = "ensemble") {
+	const primaryDevice = typeof fallbackPrimaryDevice === "string" && fallbackPrimaryDevice.trim()
+		? fallbackPrimaryDevice.trim()
+		: "ensemble";
+	const normalized = {
+		ok: true,
+		primaryDevice,
+		activeDevice: primaryDevice,
+		count: 0,
+		freshCount: 0,
+		staleCount: 0,
+		idleCount: 0,
+		devices: [],
+		active: normalizeSceptreState({ device: primaryDevice }),
+	};
+
+	if (!payload || typeof payload !== "object") {
+		return normalized;
+	}
+
+	normalized.ok = payload.ok !== false;
+	normalized.primaryDevice = typeof payload.primary_device === "string" && payload.primary_device.trim()
+		? payload.primary_device.trim()
+		: (typeof payload.primaryDevice === "string" && payload.primaryDevice.trim()
+			? payload.primaryDevice.trim()
+			: normalized.primaryDevice);
+
+	const makeEntry = (entryPayload) => {
+		const state = normalizeSceptreState(entryPayload);
+		return {
+			device: state.device,
+			freshness: state.freshness,
+			stale: state.stale,
+			scene: state.scene,
+			ritualMode: state.ritualMode,
+			lead: state.lead,
+			summary: state.summary,
+			updatedAt: state.updatedAt,
+			ageSeconds: state.ageSeconds,
+			motionLevel: clampNumber(Math.max(state.motion.sway, state.motion.shake, Math.abs(state.motion.pitch) * 0.42), 0, 1),
+			percussionLevel: clampNumber(Math.max(state.music.percussionBias, state.triggers.accent, state.triggers.kick * 0.86), 0, 1),
+			haloLevel: clampNumber(state.visual.halo, 0, 1),
+			screen: { ...state.screen },
+			magic: { ...state.magic },
+			isPrimary: state.device === normalized.primaryDevice,
+			state,
+		};
+	};
+
+	const rawDevices = Array.isArray(payload.devices) ? payload.devices : [];
+	normalized.devices = rawDevices
+		.map((entry) => makeEntry(entry))
+		.filter((entry) => entry && entry.device);
+	normalized.count = normalized.devices.length;
+	normalized.freshCount = normalized.devices.filter((entry) => entry.freshness === "fresh").length;
+	normalized.staleCount = normalized.devices.filter((entry) => entry.freshness === "stale").length;
+	normalized.idleCount = Math.max(0, normalized.count - normalized.freshCount - normalized.staleCount);
+
+	const activePayload = payload.active && typeof payload.active === "object" ? normalizeSceptreState(payload.active) : null;
+	const activeDeviceHint = typeof payload.active_device === "string" && payload.active_device.trim()
+		? payload.active_device.trim()
+		: (typeof payload.activeDevice === "string" && payload.activeDevice.trim() ? payload.activeDevice.trim() : "");
+	const activeFromRoster = normalized.devices.find((entry) => entry.device === activeDeviceHint)?.state
+		|| normalized.devices.find((entry) => entry.device === normalized.primaryDevice && entry.state.freshness === "fresh")?.state
+		|| normalized.devices.find((entry) => entry.state.freshness === "fresh")?.state
+		|| normalized.devices.find((entry) => entry.device === normalized.primaryDevice)?.state
+		|| normalized.devices[0]?.state
+		|| normalizeSceptreState({ device: normalized.primaryDevice });
+
+	normalized.active = activePayload || activeFromRoster;
+	normalized.activeDevice = normalized.active.device || activeDeviceHint || normalized.primaryDevice;
+	if (!normalized.count) {
+		const fallbackEntry = makeEntry(normalized.active);
+		normalized.devices = [fallbackEntry];
+		normalized.count = 1;
+		normalized.freshCount = fallbackEntry.freshness === "fresh" ? 1 : 0;
+		normalized.staleCount = fallbackEntry.freshness === "stale" ? 1 : 0;
+		normalized.idleCount = fallbackEntry.freshness === "idle" ? 1 : 0;
+	}
+
+	return normalized;
+}
+
+function initSceptreConsole() {
+	const root = document.querySelector("[data-sceptre-console-root]");
+	if (!(root instanceof HTMLElement)) {
+		return;
+	}
+
+	const feedUrl = (root.dataset.sceptreFeed || "").trim();
+	const badgeNode = root.querySelector("[data-sceptre-console-badge]");
+	const leadNode = root.querySelector("[data-sceptre-console-lead]");
+	const summaryNode = root.querySelector("[data-sceptre-console-summary]");
+	const spellNode = root.querySelector("[data-sceptre-console-spell]");
+	const ritualNode = root.querySelector("[data-sceptre-console-ritual]");
+	const screenNode = root.querySelector("[data-sceptre-console-screen]");
+	const motionNode = root.querySelector("[data-sceptre-console-motion]");
+	const climateNode = root.querySelector("[data-sceptre-console-climate]");
+	const percussionNode = root.querySelector("[data-sceptre-console-percussion]");
+	const haloNode = root.querySelector("[data-sceptre-console-halo]");
+	const tempoNode = root.querySelector("[data-sceptre-console-tempo]");
+	const filterNode = root.querySelector("[data-sceptre-console-filter]");
+	const negativeNode = root.querySelector("[data-sceptre-console-negative]");
+	const spinNode = root.querySelector("[data-sceptre-console-spin]");
+	const state = {
+		payload: normalizeSceptreState(null),
+		timer: 0,
+		inFlight: false,
+	};
+
+	const setText = (node, value) => {
+		if (node instanceof HTMLElement) {
+			node.textContent = value;
+		}
+	};
+	const formatPercent = (value) => `${Math.round(clampNumber(Number(value) || 0, 0, 1) * 100)}%`;
+	const formatSignedPercent = (value) => {
+		const safeValue = clampNumber(Number(value) || 0, -1, 1);
+		const percent = Math.round(Math.abs(safeValue) * 100);
+		if (percent === 0) {
+			return "0%";
+		}
+		return `${safeValue > 0 ? "+" : "−"}${percent}%`;
+	};
+	const climateLabel = (payload) => {
+		const parts = [];
+		if (Number.isFinite(payload.climate.temperature_c)) {
+			parts.push(`${Math.round(payload.climate.temperature_c)}°`);
+		}
+		if (Number.isFinite(payload.climate.humidity_percent)) {
+			parts.push(`${Math.round(payload.climate.humidity_percent)}%`);
+		}
+		if (Number.isFinite(payload.climate.pressure_hpa)) {
+			parts.push(`${Math.round(payload.climate.pressure_hpa)}hPa`);
+		}
+		return parts.length ? parts.join(" · ") : "respire";
+	};
+
+	const render = () => {
+		const payload = state.payload;
+		const motionLevel = clampNumber(Math.max(payload.motion.sway, payload.motion.shake, Math.abs(payload.motion.pitch) * 0.4), 0, 1);
+		setText(badgeNode, payload.freshness === "fresh" ? payload.scene : (payload.freshness === "stale" ? "attente" : "veille"));
+		setText(leadNode, payload.lead);
+		setText(summaryNode, payload.summary);
+		setText(spellNode, payload.magic.spell || "silence tenu");
+		setText(ritualNode, payload.ritualMode || "veille");
+		setText(screenNode, payload.screen.label || payload.screen.page || "veille");
+		setText(motionNode, formatPercent(motionLevel));
+		setText(climateNode, climateLabel(payload));
+		setText(percussionNode, formatPercent(Math.max(payload.music.percussionBias, payload.triggers.accent)));
+		setText(haloNode, formatPercent(payload.visual.halo));
+		setText(tempoNode, formatSignedPercent(payload.music.tempoBias));
+		setText(filterNode, formatSignedPercent(payload.music.filterBias));
+		setText(negativeNode, formatPercent(payload.visual.negativeBias));
+		setText(spinNode, formatSignedPercent(payload.visual.torusSpin));
+
+		root.dataset.sceptreFreshness = payload.freshness;
+		root.style.setProperty("--sceptre-presence", motionLevel.toFixed(3));
+		root.style.setProperty("--sceptre-halo", payload.visual.halo.toFixed(3));
+		root.style.setProperty("--sceptre-negative", payload.visual.negativeBias.toFixed(3));
+		root.style.setProperty("--sceptre-spin", payload.visual.torusSpin.toFixed(3));
+		root.style.setProperty("--sceptre-warmth", payload.visual.tintWarmth.toFixed(3));
+	};
+
+	const fetchState = async () => {
+		if (!feedUrl) {
+			return;
+		}
+		const response = await fetch(feedUrl, {
+			cache: "no-store",
+			headers: { Accept: "application/json" },
+		});
+		if (!response.ok) {
+			throw new Error(`sceptre console feed ${response.status}`);
+		}
+		state.payload = normalizeSceptreState(await response.json());
+		render();
+	};
+
+	const clearPoll = () => {
+		if (state.timer) {
+			window.clearTimeout(state.timer);
+			state.timer = 0;
+		}
+	};
+
+	const schedulePoll = (delay = 2800) => {
+		clearPoll();
+		if (!feedUrl) {
+			return;
+		}
+		state.timer = window.setTimeout(async () => {
+			if (!document.hidden && !state.inFlight) {
+				state.inFlight = true;
+				try {
+					await fetchState();
+				} catch {
+					// Keep the last stable console state.
+				} finally {
+					state.inFlight = false;
+				}
+			}
+			schedulePoll(document.hidden ? 5200 : 2800);
+		}, delay);
+	};
+
+	render();
+	if (feedUrl) {
+		void fetchState().catch(() => {});
+		schedulePoll(1200);
+	}
+
+	window.addEventListener("beforeunload", clearPoll);
+}
+
+function initPocketCameraPanels() {
+	const roots = Array.from(document.querySelectorAll("[data-pocket-camera-root]"));
+	if (!roots.length) {
+		return;
+	}
+
+	const withCacheBust = (url) => {
+		if (typeof url !== "string" || url.trim() === "") {
+			return "";
+		}
+
+		try {
+			const resolved = new URL(url, window.location.href);
+			resolved.searchParams.set("_t", `${Date.now()}`);
+			return resolved.toString();
+		} catch {
+			return `${url}${url.includes("?") ? "&" : "?"}_t=${Date.now()}`;
+		}
+	};
+
+	roots.forEach((root) => {
+		if (!(root instanceof HTMLElement)) {
+			return;
+		}
+
+			const frame = root.querySelector("[data-pocket-camera-frame]");
+			const fallback = root.querySelector("[data-pocket-camera-fallback]");
+			const overlay = root.querySelector("[data-pocket-camera-overlay]");
+		const status = root.querySelector("[data-pocket-camera-status]");
+		const badge = root.querySelector("[data-pocket-camera-badge]");
+		const mode = root.querySelector("[data-pocket-camera-mode]");
+		const presence = root.querySelector("[data-pocket-camera-presence]");
+		const aiLine = root.querySelector("[data-pocket-camera-ai-line]");
+		const vision = root.querySelector("[data-pocket-camera-vision]");
+		const liveButton = root.querySelector("[data-pocket-camera-live]");
+		const snapshotButton = root.querySelector("[data-pocket-camera-snapshot]");
+		const openLink = root.querySelector("[data-pocket-camera-open]");
+
+			if (!(frame instanceof HTMLImageElement)) {
+				return;
+			}
+
+		const streamUrl = (root.dataset.pocketCameraStream || "").trim();
+		const snapshotUrl = (root.dataset.pocketCameraSnapshot || "").trim();
+		const aiFeedUrl = (root.dataset.pocketCameraAiFeed || "").trim();
+		const cameraLabel = (root.dataset.pocketCameraLabel || "camera").trim();
+		const autostart = root.dataset.pocketCameraAutostart === "1";
+
+			const state = {
+				mode: snapshotUrl ? "snapshot" : "live",
+				pendingMode: "",
+			liveTimeout: 0,
+			snapshotLoopTimer: 0,
+			aiPollTimer: 0,
+				ai: normalizeCameraAiState(null),
+			};
+			let aiPollInFlight = false;
+
+			const clearLiveTimeout = () => {
+			if (state.liveTimeout) {
+				window.clearTimeout(state.liveTimeout);
+				state.liveTimeout = 0;
+			}
+		};
+
+		const clearSnapshotLoop = () => {
+			if (state.snapshotLoopTimer) {
+				window.clearTimeout(state.snapshotLoopTimer);
+				state.snapshotLoopTimer = 0;
+			}
+		};
+
+			const clearAiPoll = () => {
+				if (state.aiPollTimer) {
+					window.clearTimeout(state.aiPollTimer);
+					state.aiPollTimer = 0;
+				}
+			};
+
+		const setText = (node, text) => {
+			if (node instanceof HTMLElement) {
+				node.textContent = text;
+			}
+		};
+
+		const setFallbackVisible = (visible) => {
+			if (!(fallback instanceof HTMLElement)) {
+				return;
+			}
+			fallback.hidden = !visible;
+			fallback.setAttribute("aria-hidden", visible ? "false" : "true");
+		};
+
+		const renderAiOverlay = () => {
+			const detections = Array.isArray(state.ai.detections) ? state.ai.detections.slice(0, 4) : [];
+			const dominant = detections[0] || null;
+			const center = Array.isArray(dominant?.center) && dominant.center.length >= 2
+				? dominant.center
+				: [0.5, 0.46];
+			const area = clampNumber(Number(dominant?.area) || 0, 0, 1);
+			const presenceLevel = clampNumber(state.ai.objectCount / 4, 0, 1);
+			const staleAi = state.ai.stale === true;
+
+			root.style.setProperty("--camera-ai-focus-x", `${(center[0] * 100).toFixed(2)}%`);
+			root.style.setProperty("--camera-ai-focus-y", `${(center[1] * 100).toFixed(2)}%`);
+			root.style.setProperty("--camera-ai-spread", `${(28 + (area * 44)).toFixed(2)}%`);
+			root.style.setProperty("--camera-ai-score", state.ai.dominantScore.toFixed(3));
+			root.style.setProperty("--camera-ai-presence", presenceLevel.toFixed(3));
+			root.dataset.pocketCameraAiFreshness = state.ai.freshness;
+
+			if (vision instanceof HTMLElement) {
+				if (staleAi) {
+					vision.textContent = "IA en attente.";
+				} else if (!detections.length) {
+					vision.textContent = "IA veille.";
+				} else {
+					const leadLabel = dominant && dominant.label ? dominant.label : "forme";
+					const score = Math.round((dominant?.score || 0) * 100);
+					const count = state.ai.objectCount > 1 ? ` · ${state.ai.objectCount}` : "";
+					vision.textContent = `${state.ai.scene} · ${leadLabel} ${score}%${count}`;
+				}
+			}
+
+			if (presence instanceof HTMLElement) {
+				if (state.ai.objectCount > 0) {
+					presence.textContent = `${state.ai.objectCount} forme${state.ai.objectCount > 1 ? "s" : ""}`;
+				} else if (staleAi) {
+					presence.textContent = "attente";
+				}
+			}
+
+			if (!(overlay instanceof HTMLElement)) {
+				return;
+			}
+
+			const fragment = document.createDocumentFragment();
+			detections.forEach((detection) => {
+				if (!Array.isArray(detection.bbox) || detection.bbox.length < 4) {
+					return;
+				}
+
+				const [xMin, yMin, xMax, yMax] = detection.bbox;
+				const mark = document.createElement("div");
+				mark.className = "camera-negative-layer__detection";
+				mark.style.setProperty("--camera-box-left", clampNumber(xMin, 0, 1).toFixed(4));
+				mark.style.setProperty("--camera-box-top", clampNumber(yMin, 0, 1).toFixed(4));
+				mark.style.setProperty("--camera-box-width", clampNumber(xMax - xMin, 0.02, 1).toFixed(4));
+				mark.style.setProperty("--camera-box-height", clampNumber(yMax - yMin, 0.02, 1).toFixed(4));
+				mark.style.setProperty("--camera-box-alpha", clampNumber(detection.score, 0, 1).toFixed(4));
+
+				const label = document.createElement("span");
+				label.className = "camera-negative-layer__detection-label";
+				label.append(document.createTextNode(detection.label || "forme"));
+
+				const score = document.createElement("strong");
+				score.textContent = `${Math.round(clampNumber(detection.score, 0, 1) * 100)}%`;
+				label.append(score);
+
+				mark.append(label);
+				fragment.append(mark);
+			});
+
+			overlay.replaceChildren(fragment);
+		};
+
+		const setAiState = (payload) => {
+			state.ai = normalizeCameraAiState(payload);
+			root.dataset.pocketCameraAiScene = state.ai.scene;
+			root.dataset.pocketCameraAiLabel = state.ai.dominantLabel || "";
+			root.style.setProperty("--camera-ai-attention", state.ai.attention.toFixed(3));
+			root.style.setProperty("--camera-ai-movement", state.ai.movement.toFixed(3));
+			root.style.setProperty("--camera-ai-density", state.ai.density.toFixed(3));
+			if (aiLine instanceof HTMLElement) {
+				aiLine.textContent = [state.ai.lead, state.ai.summary].filter(Boolean).join(" ");
+			}
+			renderAiOverlay();
+		};
+
+		const setPanelState = ({ statusText, badgeText, modeText, presenceText, ready = false }) => {
+			setText(status, statusText);
+			setText(badge, badgeText);
+			setText(mode, modeText);
+			setText(presence, presenceText);
+			root.dataset.pocketCameraReady = ready ? "1" : "0";
+			root.dataset.pocketCameraVisualState = state.pendingMode || state.mode;
+		};
+
+			const setFrameSource = (url) => {
+				const resolved = withCacheBust(url);
+				frame.src = resolved;
+			};
+
+			const fetchAiState = async () => {
+			if (!aiFeedUrl) {
+				return state.ai;
+			}
+
+			const response = await fetch(aiFeedUrl, {
+				cache: "no-store",
+				headers: { Accept: "application/json" },
+			});
+			if (!response.ok) {
+				throw new Error(`camera ai feed ${response.status}`);
+			}
+
+				const payload = await response.json();
+				setAiState(payload);
+				return state.ai;
+			};
+
+			const scheduleAiPoll = (delay = 6200) => {
+				clearAiPoll();
+				if (!aiFeedUrl) {
+					return;
+				}
+
+				state.aiPollTimer = window.setTimeout(async () => {
+					if (document.hidden) {
+						scheduleAiPoll(2800);
+						return;
+					}
+
+					if (!aiPollInFlight) {
+						aiPollInFlight = true;
+						try {
+							await fetchAiState();
+						} catch {
+							// Ignore polling failures and keep the last stable state.
+						} finally {
+							aiPollInFlight = false;
+						}
+					}
+
+					scheduleAiPoll(6200);
+				}, delay);
+			};
+
+		const loadSnapshot = (statusText = "Image fixe.") => {
+			if (!snapshotUrl) {
+				setPanelState({
+					statusText: "Pas de snapshot.",
+					badgeText: "offline",
+					modeText: "indisponible",
+					presenceText: "absent",
+					ready: false,
+				});
+				setFallbackVisible(true);
+				return;
+			}
+
+			clearLiveTimeout();
+			clearSnapshotLoop();
+			state.mode = "snapshot";
+			state.pendingMode = "snapshot";
+			setFallbackVisible(true);
+			setPanelState({
+				statusText,
+				badgeText: "image",
+				modeText: "image",
+				presenceText: "lecture",
+				ready: false,
+			});
+			setFrameSource(snapshotUrl);
+		};
+
+		const startSnapshotCadence = (statusText = "Cadence.") => {
+			if (!snapshotUrl) {
+				loadSnapshot("Live absent.");
+				return;
+			}
+
+			clearLiveTimeout();
+			clearSnapshotLoop();
+			state.mode = "cadence";
+			state.pendingMode = "cadence";
+			setFallbackVisible(true);
+			setPanelState({
+				statusText,
+				badgeText: "cadence",
+				modeText: "images",
+				presenceText: "mouvement",
+				ready: false,
+			});
+
+			const tick = () => {
+				setFrameSource(snapshotUrl);
+					if (document.hidden) {
+						state.snapshotLoopTimer = window.setTimeout(tick, 2200);
+						return;
+					}
+					const cadenceMs = Math.max(720, 1480 - Math.round((state.ai.attention * 320) + (state.ai.movement * 220) + (state.ai.density * 140)));
+					state.snapshotLoopTimer = window.setTimeout(tick, cadenceMs);
+				};
+
+			tick();
+		};
+
+		const loadLive = () => {
+			if (!streamUrl) {
+				loadSnapshot("Live absent.");
+				return;
+			}
+
+			clearLiveTimeout();
+			clearSnapshotLoop();
+			state.mode = "live";
+			state.pendingMode = "live";
+			setFallbackVisible(true);
+			setPanelState({
+				statusText: "Ouverture.",
+				badgeText: "live",
+				modeText: "live",
+				presenceText: "attente",
+				ready: false,
+			});
+			setFrameSource(streamUrl);
+			state.liveTimeout = window.setTimeout(() => {
+				if (state.pendingMode !== "live") {
+					return;
+				}
+				startSnapshotCadence("Cadence auto.");
+			}, 4200);
+		};
+
+		frame.addEventListener("load", () => {
+			clearLiveTimeout();
+			setFallbackVisible(false);
+			if (state.pendingMode === "live") {
+				setPanelState({
+					statusText: "Direct.",
+					badgeText: "live",
+					modeText: "live",
+					presenceText: "actif",
+					ready: true,
+				});
+				return;
+			}
+
+			if (state.pendingMode === "cadence") {
+				setPanelState({
+					statusText: "Cadence.",
+					badgeText: "cadence",
+					modeText: "images",
+					presenceText: "mobile",
+					ready: true,
+				});
+				return;
+			}
+
+			setPanelState({
+				statusText: "Image fixe.",
+				badgeText: "image",
+				modeText: "image",
+				presenceText: "stable",
+				ready: true,
+			});
+		});
+
+		frame.addEventListener("error", () => {
+			clearLiveTimeout();
+			setFallbackVisible(true);
+			if (state.pendingMode === "live" && snapshotUrl) {
+				startSnapshotCadence("Cadence auto.");
+				return;
+			}
+
+			if (state.pendingMode === "cadence") {
+				setPanelState({
+					statusText: "Attente.",
+					badgeText: "cadence",
+					modeText: "attente",
+					presenceText: "attente",
+					ready: false,
+				});
+				return;
+			}
+
+			setPanelState({
+				statusText: "Flux indisponible.",
+				badgeText: "offline",
+				modeText: "erreur",
+				presenceText: "erreur",
+				ready: false,
+			});
+		});
+
+		if (liveButton instanceof HTMLButtonElement) {
+			liveButton.addEventListener("click", () => {
+				loadLive();
+			});
+		}
+
+		if (snapshotButton instanceof HTMLButtonElement) {
+			snapshotButton.addEventListener("click", () => {
+				loadSnapshot("Image fixe.");
+			});
+		}
+
+		if (openLink instanceof HTMLAnchorElement) {
+			openLink.href = streamUrl || snapshotUrl || "#";
+		}
+
+		if (autostart && streamUrl) {
+			loadSnapshot("Image.");
+			window.setTimeout(() => {
+				loadLive();
+			}, 320);
+		} else {
+			loadSnapshot("Image.");
+		}
+
+			setAiState(null);
+			if (aiFeedUrl) {
+				void fetchAiState().catch(() => {});
+				scheduleAiPoll(6200);
+			}
+
+		window.addEventListener("beforeunload", () => {
+			clearLiveTimeout();
+			clearSnapshotLoop();
+			clearAiPoll();
+		});
+	});
+}
+
+function initLandscapeChoirs() {
+	const roots = Array.from(document.querySelectorAll("[data-landscape-choir-root]"));
+	if (!roots.length) {
+		return;
+	}
+
+	const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+	const choirModes = {
+		soft: {
+			label: "chant doux",
+			badge: "doux",
+			idleCopy: "Souffle lent.",
+			activeCopy: "Souffle ouvert.",
+			droneType: "sine",
+			harmonyType: "triangle",
+			shimmerType: "sine",
+			bellType: "sine",
+			masterScale: 1.18,
+			droneScale: 0.9,
+			harmonyScale: 0.82,
+			shimmerScale: 1.2,
+			filterScale: 1.08,
+			filterOffset: 120,
+			lfoScale: 0.88,
+			lfoDepthScale: 0.82,
+			bellGainScale: 1.08,
+			bellSweepScale: 1.08,
+			bellDuration: 1.55,
+		},
+		ritual: {
+			label: "chant rituel",
+			badge: "rituel",
+			idleCopy: "Veille dense.",
+			activeCopy: "Rituel dense.",
+			droneType: "sawtooth",
+			harmonyType: "square",
+			shimmerType: "triangle",
+			bellType: "triangle",
+			masterScale: 1.32,
+			droneScale: 1.2,
+			harmonyScale: 1.26,
+			shimmerScale: 0.72,
+			filterScale: 0.88,
+			filterOffset: -40,
+			lfoScale: 1.18,
+			lfoDepthScale: 1.28,
+			bellGainScale: 1.44,
+			bellSweepScale: 0.94,
+			bellDuration: 1.22,
+		},
+	};
+	const formatPercent = (value) => `${Math.round(clampNumber(Number.isFinite(value) ? value : 0, 0, 1) * 100)}%`;
+	const parseMetric = (metrics, key) => {
+		if (!metrics || typeof metrics !== "object" || !(key in metrics)) {
+			return 0;
+		}
+
+		const value = Number(metrics[key]);
+		return Number.isFinite(value) ? value : 0;
+	};
+	const parseSeed = (root) => {
+		const node = root.querySelector("[data-landscape-choir-seed]");
+		if (!(node instanceof HTMLScriptElement)) {
+			return { weather: {}, events: [] };
+		}
+
+		try {
+			const parsed = JSON.parse(node.textContent || "{}");
+			return parsed && typeof parsed === "object" ? parsed : { weather: {}, events: [] };
+		} catch {
+			return { weather: {}, events: [] };
+		}
+	};
+	const eventTimeMs = (event) => {
+		if (!event || typeof event !== "object") {
+			return 0;
+		}
+
+		const rawValue = typeof event.timestamp === "string" && event.timestamp
+			? event.timestamp
+			: (typeof event.received_at === "string" ? event.received_at : "");
+		if (!rawValue) {
+			return 0;
+		}
+
+		const timestamp = Date.parse(rawValue);
+		return Number.isFinite(timestamp) ? timestamp : 0;
+	};
+	const readCameraEvents = (events, cameraSlug) => {
+		const slug = typeof cameraSlug === "string" ? cameraSlug.trim().toLowerCase() : "";
+		const list = Array.isArray(events) ? events : [];
+		if (!slug) {
+			return list;
+		}
+
+		return list.filter((event) => {
+			if (!event || typeof event !== "object") {
+				return false;
+			}
+
+			const landSlug = typeof event.land_slug === "string" ? event.land_slug.trim().toLowerCase() : "";
+			const source = typeof event.source === "string" ? event.source.trim().toLowerCase() : "";
+			const camera = typeof event.camera === "string" ? event.camera.trim().toLowerCase() : "";
+
+			return landSlug === slug || source === slug || camera === slug;
+		});
+	};
+	const summarizeSnapshot = (snapshot) => {
+		if (!snapshot.latestEvent) {
+			return "veille basse";
+		}
+
+		if (snapshot.intensity >= 0.72) {
+			return "surge chantant";
+		}
+		if (snapshot.intensity >= 0.46) {
+			return "marche sensible";
+		}
+		if (snapshot.intensity >= 0.2) {
+			return "veille vibrante";
+		}
+
+		return "souffle ténu";
+	};
+	const computeSnapshot = (events, weather = {}) => {
+		const list = Array.isArray(events) ? events : [];
+		const latestEvent = list[0] && typeof list[0] === "object" ? list[0] : null;
+		const metrics = latestEvent && latestEvent.metrics && typeof latestEvent.metrics === "object"
+			? latestEvent.metrics
+			: {};
+		const largestArea = Math.max(0, parseMetric(metrics, "largest_area"));
+		const contourCount = Math.max(0, parseMetric(metrics, "contour_count"));
+		const frameLuma = clampNumber(parseMetric(metrics, "frame_luma"), 0, 1);
+		const safeWeather = weather && typeof weather === "object" ? weather : {};
+		const weatherStale = safeWeather.stale === true || safeWeather.freshness === "stale";
+		const weatherAgeSeconds = Number(safeWeather.age_seconds ?? safeWeather.ageSeconds);
+		const ageSeconds = Number.isFinite(weatherAgeSeconds) && weatherAgeSeconds >= 0
+			? weatherAgeSeconds
+			: null;
+		const weatherStaleAfter = Number(safeWeather.stale_after_seconds ?? safeWeather.staleAfterSeconds);
+		const staleAfterSeconds = Number.isFinite(weatherStaleAfter) && weatherStaleAfter > 0
+			? weatherStaleAfter
+			: 90;
+		let area = clampNumber(Math.sqrt(largestArea / 48000), 0, 1);
+		let contours = clampNumber(contourCount / 6, 0, 1);
+		let density = clampNumber((list.length - 1) / 5, 0, 1);
+		const ageMs = latestEvent ? Math.max(0, Date.now() - eventTimeMs(latestEvent)) : Number.POSITIVE_INFINITY;
+		let recency = Number.isFinite(ageMs) ? clampNumber(1 - (ageMs / 120000), 0, 1) : 0;
+		let intensity = clampNumber((area * 0.44) + (contours * 0.18) + (frameLuma * 0.16) + (density * 0.1) + (recency * 0.12), 0, 1);
+		if (weatherStale) {
+			const staleOverrun = ageSeconds !== null ? Math.max(0, ageSeconds - staleAfterSeconds) : staleAfterSeconds;
+			const staleFade = clampNumber(1 - (staleOverrun / Math.max(staleAfterSeconds * 3, 45)), 0.14, 0.48);
+			area *= staleFade;
+			contours *= 0.44;
+			density *= 0.28;
+			recency = 0;
+			intensity = Math.min(intensity * (0.22 + (staleFade * 0.18)), 0.18);
+		}
+		const scale = [130.81, 146.83, 164.81, 174.61, 196.0, 220.0, 246.94, 293.66];
+		const scaleIndex = Math.round(frameLuma * (scale.length - 1));
+		const baseFreq = scale[scaleIndex] * (1 + ((area - 0.5) * 0.14));
+		const harmonyRatio = contours >= 0.66 ? 1.5 : contours >= 0.33 ? 1.333 : 1.25;
+		const harmonyFreq = baseFreq * harmonyRatio;
+		const shimmerFreq = baseFreq * (2 + (density * 0.8) + (frameLuma * 0.4));
+		const filterCutoff = 420 + (frameLuma * 2400) + (intensity * 760);
+		let latestMessage = latestEvent && typeof latestEvent.message === "string" && latestEvent.message
+			? latestEvent.message
+			: "Le prochain passage du Pi 3 donnera une voix au paysage.";
+		const latestLabel = latestEvent && typeof latestEvent.timestamp === "string" && latestEvent.timestamp
+			? latestEvent.timestamp
+			: "veille";
+		let statusLabel = summarizeSnapshot({
+			latestEvent,
+			intensity,
+		});
+		if (weatherStale) {
+			statusLabel = "trace froide";
+			if (typeof safeWeather.detail === "string" && safeWeather.detail) {
+				latestMessage = safeWeather.detail;
+			}
+		}
+
+		return {
+			events: list,
+			latestEvent,
+			weather: safeWeather,
+			intensity,
+			area,
+			contours,
+			luma: frameLuma,
+			density,
+			recency,
+			baseFreq,
+			harmonyFreq,
+			shimmerFreq,
+			filterCutoff,
+			statusLabel,
+			latestMessage,
+			latestLabel,
+		};
+	};
+
+	roots.forEach((root) => {
+		if (!(root instanceof HTMLElement)) {
+			return;
+		}
+
+		const statusNode = root.querySelector("[data-landscape-choir-status]");
+		const copyNode = root.querySelector("[data-landscape-choir-copy]");
+		const badgeNode = root.querySelector("[data-landscape-choir-badge]");
+		const lumaNode = root.querySelector("[data-landscape-choir-luma]");
+		const contourNode = root.querySelector("[data-landscape-choir-contours]");
+		const intensityNode = root.querySelector("[data-landscape-choir-intensity]");
+		const lumaBar = root.querySelector("[data-landscape-choir-luma-bar]");
+		const contourBar = root.querySelector("[data-landscape-choir-contours-bar]");
+		const intensityBar = root.querySelector("[data-landscape-choir-intensity-bar]");
+		const toggleButton = root.querySelector("[data-landscape-choir-toggle]");
+		const volumeInput = root.querySelector("[data-landscape-choir-volume]");
+		const volumeLabel = root.querySelector("[data-landscape-choir-volume-label]");
+		const lastNode = root.querySelector("[data-landscape-choir-last]");
+		const modeButtons = Array.from(root.querySelectorAll("[data-landscape-choir-mode]")).filter((node) => node instanceof HTMLButtonElement);
+		const cameraSlug = (root.dataset.landscapeChoirCamera || "").trim();
+		const cameraLabel = (root.dataset.landscapeChoirLabel || cameraSlug || "pocket").trim();
+		const feedUrl = (root.dataset.landscapeChoirFeed || "").trim();
+		const aiFeedUrl = (root.dataset.landscapeChoirAiFeed || "").trim();
+		const seed = parseSeed(root);
+		const state = {
+			running: false,
+			pollTimer: 0,
+			volume: 0.58,
+			audioContext: null,
+			nodes: null,
+			rawSnapshot: null,
+			snapshot: null,
+			lastEventId: "",
+			mode: "soft",
+			ai: normalizeCameraAiState(null),
+			aiPollTimer: 0,
+		};
+
+		const currentModeProfile = () => choirModes[state.mode] || choirModes.soft;
+
+		const setText = (node, text) => {
+			if (node instanceof HTMLElement) {
+				node.textContent = text;
+			}
+		};
+
+		const setMeter = (labelNode, barNode, value) => {
+			const normalized = clampNumber(Number.isFinite(value) ? value : 0, 0, 1);
+			setText(labelNode, formatPercent(normalized));
+			if (barNode instanceof HTMLElement) {
+				barNode.style.setProperty("--landscape-choir-fill", `${Math.round(normalized * 100)}%`);
+			}
+		};
+
+		const setToggleState = () => {
+			if (!(toggleButton instanceof HTMLButtonElement)) {
+				return;
+			}
+
+			toggleButton.setAttribute("aria-pressed", state.running ? "true" : "false");
+			toggleButton.textContent = state.running ? "Couper" : "Écouter";
+		};
+
+		const syncModeButtons = () => {
+			root.dataset.landscapeChoirMode = state.mode;
+			modeButtons.forEach((button) => {
+				const nextMode = (button.dataset.landscapeChoirMode || "").trim();
+				button.setAttribute("aria-pressed", nextMode === state.mode ? "true" : "false");
+			});
+		};
+
+		const mergeSnapshotWithAi = (snapshot, aiPayload) => {
+			const safeSnapshot = snapshot && typeof snapshot === "object"
+				? { ...snapshot }
+				: computeSnapshot([], {});
+			const ai = normalizeCameraAiState(aiPayload);
+			const objectEnergy = clampNumber((ai.objectCount / 6), 0, 1);
+			const personBias = clampNumber(ai.personCount * 0.22, 0, 1);
+			const vehicleBias = clampNumber(ai.vehicleCount * 0.18, 0, 1);
+			const animalBias = clampNumber(ai.animalCount * 0.22, 0, 1);
+			const aiEnergy = clampNumber((ai.attention * 0.44) + (ai.movement * 0.32) + (ai.density * 0.24), 0, 1);
+
+			return {
+				...safeSnapshot,
+				intensity: clampNumber((safeSnapshot.intensity * 0.8) + (aiEnergy * 0.2) + (personBias * 0.06), 0, 1),
+				contours: clampNumber((safeSnapshot.contours * 0.84) + (ai.movement * 0.08) + (ai.density * 0.14), 0, 1),
+				density: clampNumber((safeSnapshot.density * 0.76) + (ai.density * 0.14) + (objectEnergy * 0.1), 0, 1),
+				baseFreq: safeSnapshot.baseFreq * (1 + (personBias * 0.04) - (vehicleBias * 0.03)),
+				harmonyFreq: safeSnapshot.harmonyFreq * (1 + (animalBias * 0.06) + (personBias * 0.03)),
+				shimmerFreq: safeSnapshot.shimmerFreq * (1 + (ai.density * 0.1) + (animalBias * 0.08)),
+				filterCutoff: Math.max(220, (safeSnapshot.filterCutoff * (0.9 + (ai.attention * 0.18))) - (vehicleBias * 180)),
+				ai,
+			};
+		};
+
+		const renderSnapshot = (snapshot) => {
+			const safeSnapshot = snapshot && typeof snapshot === "object"
+				? snapshot
+				: computeSnapshot([], {});
+			const modeProfile = currentModeProfile();
+			const ai = safeSnapshot.ai && typeof safeSnapshot.ai === "object"
+				? normalizeCameraAiState(safeSnapshot.ai)
+				: normalizeCameraAiState(null);
+			const weather = safeSnapshot.weather && typeof safeSnapshot.weather === "object"
+				? safeSnapshot.weather
+				: {};
+			const weatherStale = weather.stale === true || weather.freshness === "stale";
+			const aiStale = ai.stale === true || ai.freshness === "stale";
+			const toneBadge = typeof weather.badge === "string" && weather.badge
+				? weather.badge
+				: (safeSnapshot.latestEvent ? safeSnapshot.statusLabel : "veille");
+			const aiBadge = ai.objectCount > 0 && ai.dominantLabel
+				? `ia ${ai.dominantLabel}`
+				: (aiStale ? "ia attente" : "")
+			;
+			const lead = ai.objectCount > 0
+				? [toneBadge, ai.dominantLabel || ai.scene, `${Math.round(ai.attention * 100)}%`].filter(Boolean).join(" · ")
+				: (aiStale
+					? [toneBadge, "attente IA"].filter(Boolean).join(" · ")
+					: toneBadge);
+			const weatherDetail = typeof weather.detail === "string" && weather.detail
+				? weather.detail
+				: "";
+			const detail = [
+				state.running ? modeProfile.activeCopy : modeProfile.idleCopy,
+				weatherDetail,
+				ai.summary,
+			].filter(Boolean).join(" ");
+			const latestLine = safeSnapshot.latestEvent
+				? `${safeSnapshot.latestLabel} · ${weatherStale ? "Trace refroidie." : safeSnapshot.latestMessage}`
+				: (weatherStale ? "Traces refroidies." : "Aucune trace récente.");
+
+			root.dataset.landscapeChoirState = state.running ? "singing" : "idle";
+			root.dataset.landscapeChoirFreshness = typeof weather.freshness === "string" && weather.freshness
+				? weather.freshness
+				: (safeSnapshot.latestEvent ? "fresh" : "idle");
+			root.dataset.landscapeChoirAiFreshness = ai.freshness;
+			root.style.setProperty("--landscape-choir-energy", safeSnapshot.intensity.toFixed(3));
+			root.style.setProperty("--landscape-choir-luma", safeSnapshot.luma.toFixed(3));
+			root.style.setProperty("--camera-ai-attention", ai.attention.toFixed(3));
+			root.style.setProperty("--camera-ai-movement", ai.movement.toFixed(3));
+			setText(statusNode, state.running ? [modeProfile.badge, lead].filter(Boolean).join(" · ") : lead);
+			setText(copyNode, detail);
+			setText(badgeNode, state.running
+				? `${modeProfile.badge} · ${aiBadge || toneBadge}`
+				: (aiBadge ? `${aiBadge} · ${toneBadge}` : toneBadge));
+			setText(lastNode, latestLine);
+			setMeter(lumaNode, lumaBar, safeSnapshot.luma);
+			setMeter(contourNode, contourBar, safeSnapshot.contours);
+			setMeter(intensityNode, intensityBar, safeSnapshot.intensity);
+		};
+
+		const buildAudioGraph = () => {
+			if (!AudioContextClass) {
+				return null;
+			}
+
+			const context = new AudioContextClass();
+			const masterGain = context.createGain();
+			masterGain.gain.value = 0.0001;
+			masterGain.connect(context.destination);
+
+			const filter = context.createBiquadFilter();
+			filter.type = "lowpass";
+			filter.frequency.value = 900;
+			filter.Q.value = 0.72;
+			filter.connect(masterGain);
+
+			const drone = context.createOscillator();
+			drone.type = "sine";
+			const droneGain = context.createGain();
+			droneGain.gain.value = 0.0001;
+			drone.connect(droneGain);
+			droneGain.connect(filter);
+
+			const harmony = context.createOscillator();
+			harmony.type = "triangle";
+			const harmonyGain = context.createGain();
+			harmonyGain.gain.value = 0.0001;
+			harmony.connect(harmonyGain);
+			harmonyGain.connect(filter);
+
+			const shimmer = context.createOscillator();
+			shimmer.type = "sine";
+			const shimmerGain = context.createGain();
+			shimmerGain.gain.value = 0.0001;
+			shimmer.connect(shimmerGain);
+			shimmerGain.connect(filter);
+
+			const lfo = context.createOscillator();
+			lfo.type = "sine";
+			lfo.frequency.value = 0.16;
+			const lfoDepth = context.createGain();
+			lfoDepth.gain.value = 0.02;
+			lfo.connect(lfoDepth);
+			lfoDepth.connect(droneGain.gain);
+			lfoDepth.connect(harmonyGain.gain);
+
+			drone.start();
+			harmony.start();
+			shimmer.start();
+			lfo.start();
+
+			return {
+				context,
+				masterGain,
+				filter,
+				drone,
+				droneGain,
+				harmony,
+				harmonyGain,
+				shimmer,
+				shimmerGain,
+				lfo,
+				lfoDepth,
+			};
+		};
+
+		const ringBell = (snapshot, accent = 1) => {
+			if (!state.nodes || !state.audioContext || !state.running) {
+				return;
+			}
+
+			const context = state.audioContext;
+			const bell = context.createOscillator();
+			const bellGain = context.createGain();
+			const now = context.currentTime;
+			const modeProfile = currentModeProfile();
+			const ai = snapshot.ai && typeof snapshot.ai === "object" ? normalizeCameraAiState(snapshot.ai) : normalizeCameraAiState(null);
+			const level = (0.018 + (snapshot.intensity * 0.05)) * state.volume * accent * modeProfile.bellGainScale * (1 + (ai.attention * 0.22));
+
+			bell.type = modeProfile.bellType;
+			bell.frequency.setValueAtTime(snapshot.harmonyFreq * (1 + (snapshot.luma * 0.3)), now);
+			bell.frequency.exponentialRampToValueAtTime(Math.max(80, snapshot.shimmerFreq * modeProfile.bellSweepScale), now + 0.9);
+			bellGain.gain.setValueAtTime(0.0001, now);
+			bellGain.gain.exponentialRampToValueAtTime(Math.max(0.0002, level), now + 0.04);
+			bellGain.gain.exponentialRampToValueAtTime(0.0001, now + modeProfile.bellDuration);
+
+			bell.connect(bellGain);
+			bellGain.connect(state.nodes.filter);
+			bell.start(now);
+			bell.stop(now + modeProfile.bellDuration + 0.1);
+		};
+
+		const applySnapshotToAudio = (snapshot, { ring = false } = {}) => {
+			if (!state.nodes || !state.audioContext || !snapshot) {
+				return;
+			}
+
+			const now = state.audioContext.currentTime;
+			const modeProfile = currentModeProfile();
+			const ai = snapshot.ai && typeof snapshot.ai === "object" ? normalizeCameraAiState(snapshot.ai) : normalizeCameraAiState(null);
+			const masterTarget = Math.max(0.0001, (0.026 + (snapshot.intensity * 0.11)) * state.volume * modeProfile.masterScale * (1 + (ai.attention * 0.18)));
+			const droneTarget = (0.032 + (snapshot.intensity * 0.17)) * modeProfile.droneScale;
+			const harmonyTarget = (0.018 + (snapshot.contours * 0.09)) * modeProfile.harmonyScale;
+			const shimmerTarget = (0.008 + (snapshot.luma * 0.056) + (ai.animalCount * 0.01)) * modeProfile.shimmerScale;
+
+			state.nodes.drone.type = modeProfile.droneType;
+			state.nodes.harmony.type = modeProfile.harmonyType;
+			state.nodes.shimmer.type = modeProfile.shimmerType;
+
+			state.nodes.masterGain.gain.cancelScheduledValues(now);
+			state.nodes.masterGain.gain.setTargetAtTime(masterTarget, now, 0.42);
+			state.nodes.filter.frequency.cancelScheduledValues(now);
+			state.nodes.filter.frequency.setTargetAtTime(
+				Math.max(220, (snapshot.filterCutoff * modeProfile.filterScale) + modeProfile.filterOffset),
+				now,
+				0.46,
+			);
+			state.nodes.drone.frequency.cancelScheduledValues(now);
+			state.nodes.drone.frequency.setTargetAtTime(snapshot.baseFreq, now, 0.52);
+			state.nodes.harmony.frequency.cancelScheduledValues(now);
+			state.nodes.harmony.frequency.setTargetAtTime(snapshot.harmonyFreq, now, 0.6);
+			state.nodes.shimmer.frequency.cancelScheduledValues(now);
+			state.nodes.shimmer.frequency.setTargetAtTime(snapshot.shimmerFreq, now, 0.58);
+			state.nodes.droneGain.gain.cancelScheduledValues(now);
+			state.nodes.droneGain.gain.setTargetAtTime(droneTarget, now, 0.5);
+			state.nodes.harmonyGain.gain.cancelScheduledValues(now);
+			state.nodes.harmonyGain.gain.setTargetAtTime(harmonyTarget, now, 0.56);
+			state.nodes.shimmerGain.gain.cancelScheduledValues(now);
+			state.nodes.shimmerGain.gain.setTargetAtTime(shimmerTarget, now, 0.62);
+			state.nodes.lfo.frequency.cancelScheduledValues(now);
+			state.nodes.lfo.frequency.setTargetAtTime(
+				(0.08 + (snapshot.intensity * 0.54) + (snapshot.density * 0.18)) * modeProfile.lfoScale,
+				now,
+				0.7,
+			);
+			state.nodes.lfoDepth.gain.cancelScheduledValues(now);
+			state.nodes.lfoDepth.gain.setTargetAtTime(
+				(0.012 + (snapshot.intensity * 0.038)) * modeProfile.lfoDepthScale,
+				now,
+				0.6,
+			);
+
+			if (ring) {
+				ringBell(snapshot, 1);
+			}
+		};
+
+		const stopPolling = () => {
+			if (state.pollTimer) {
+				window.clearInterval(state.pollTimer);
+				state.pollTimer = 0;
+			}
+		};
+
+		const stopAiPolling = () => {
+			if (state.aiPollTimer) {
+				window.clearInterval(state.aiPollTimer);
+				state.aiPollTimer = 0;
+			}
+		};
+
+		const refreshFromCurrentState = () => {
+			state.snapshot = mergeSnapshotWithAi(state.rawSnapshot, state.ai);
+			renderSnapshot(state.snapshot);
+			if (state.running && state.snapshot) {
+				applySnapshotToAudio(state.snapshot);
+			}
+		};
+
+		const fetchRecent = async ({ ringOnFresh = false } = {}) => {
+			if (!feedUrl) {
+				return state.snapshot;
+			}
+
+			const response = await fetch(feedUrl, {
+				cache: "no-store",
+				headers: { Accept: "application/json" },
+			});
+			if (!response.ok) {
+				throw new Error(`landscape choir feed ${response.status}`);
+			}
+
+			const payload = await response.json();
+			const events = readCameraEvents(payload?.events, cameraSlug);
+			const snapshot = computeSnapshot(events, payload?.weather);
+			const nextEventId = snapshot.latestEvent && typeof snapshot.latestEvent.id === "string"
+				? snapshot.latestEvent.id
+				: "";
+			const isFreshEvent = nextEventId !== "" && nextEventId !== state.lastEventId;
+
+			state.rawSnapshot = snapshot;
+			state.snapshot = mergeSnapshotWithAi(snapshot, state.ai);
+			if (nextEventId !== "") {
+				state.lastEventId = nextEventId;
+			}
+
+			renderSnapshot(state.snapshot);
+			if (state.running) {
+				applySnapshotToAudio(state.snapshot, { ring: ringOnFresh && isFreshEvent });
+			}
+
+			return state.snapshot;
+		};
+
+		const fetchAi = async () => {
+			if (!aiFeedUrl) {
+				return state.ai;
+			}
+
+			const response = await fetch(aiFeedUrl, {
+				cache: "no-store",
+				headers: { Accept: "application/json" },
+			});
+			if (!response.ok) {
+				throw new Error(`camera ai feed ${response.status}`);
+			}
+
+			state.ai = normalizeCameraAiState(await response.json());
+			refreshFromCurrentState();
+			return state.ai;
+		};
+
+		const ensureAudio = async () => {
+			if (!AudioContextClass) {
+				return false;
+			}
+
+			if (!state.nodes) {
+				state.nodes = buildAudioGraph();
+				state.audioContext = state.nodes?.context || null;
+			}
+
+			if (!state.audioContext) {
+				return false;
+			}
+
+			if (state.audioContext.state === "suspended") {
+				await state.audioContext.resume().catch(() => {});
+			}
+
+			return true;
+		};
+
+		const startChoir = async () => {
+			const audioReady = await ensureAudio();
+			if (!audioReady) {
+				setText(statusNode, "Le navigateur ne peut pas ouvrir le chant Web Audio ici.");
+				setText(copyNode, "Essaie depuis Safari, Chrome ou un autre navigateur qui laisse le geste ouvrir la sortie audio.");
+				if (toggleButton instanceof HTMLButtonElement) {
+					toggleButton.disabled = true;
+				}
+				return;
+			}
+
+			state.running = true;
+			setToggleState();
+			root.dataset.landscapeChoirState = "singing";
+
+			if (state.snapshot) {
+				applySnapshotToAudio(state.snapshot, { ring: true });
+				renderSnapshot(state.snapshot);
+			}
+
+			stopPolling();
+			await fetchRecent({ ringOnFresh: false }).catch(() => {});
+			state.pollTimer = window.setInterval(() => {
+				if (document.hidden) {
+					return;
+				}
+				void fetchRecent({ ringOnFresh: true }).catch(() => {});
+			}, 6400);
+		};
+
+		const stopChoir = () => {
+			state.running = false;
+			setToggleState();
+			stopPolling();
+			root.dataset.landscapeChoirState = "idle";
+
+			if (state.nodes && state.audioContext) {
+				const now = state.audioContext.currentTime;
+				state.nodes.masterGain.gain.cancelScheduledValues(now);
+				state.nodes.masterGain.gain.setTargetAtTime(0.0001, now, 0.28);
+			}
+
+			renderSnapshot(state.snapshot);
+			if (state.audioContext && typeof state.audioContext.suspend === "function") {
+				window.setTimeout(() => {
+					if (!state.running) {
+						state.audioContext.suspend().catch(() => {});
+					}
+				}, 380);
+			}
+		};
+
+		if (toggleButton instanceof HTMLButtonElement) {
+			toggleButton.addEventListener("click", () => {
+				if (state.running) {
+					stopChoir();
+					return;
+				}
+
+				void startChoir();
+			});
+		}
+
+		if (volumeInput instanceof HTMLInputElement) {
+			const syncVolume = () => {
+				const nextVolume = clampNumber(Number(volumeInput.value) / 100, 0, 1);
+				state.volume = nextVolume;
+				setText(volumeLabel, `${Math.round(nextVolume * 100)}%`);
+				if (state.running && state.snapshot) {
+					applySnapshotToAudio(state.snapshot);
+				}
+			};
+
+			volumeInput.addEventListener("input", syncVolume);
+			syncVolume();
+		}
+
+		modeButtons.forEach((button) => {
+			button.addEventListener("click", () => {
+				const nextMode = (button.dataset.landscapeChoirMode || "").trim();
+				if (!(nextMode in choirModes) || nextMode === state.mode) {
+					return;
+				}
+
+				state.mode = nextMode;
+				syncModeButtons();
+				renderSnapshot(state.snapshot);
+				if (state.running && state.snapshot) {
+					applySnapshotToAudio(state.snapshot, { ring: true });
+				}
+			});
+		});
+
+		const seedEvents = readCameraEvents(seed?.events, cameraSlug);
+		state.rawSnapshot = computeSnapshot(seedEvents, seed?.weather);
+		state.snapshot = mergeSnapshotWithAi(state.rawSnapshot, state.ai);
+		state.lastEventId = state.snapshot.latestEvent && typeof state.snapshot.latestEvent.id === "string"
+			? state.snapshot.latestEvent.id
+			: "";
+		setToggleState();
+		syncModeButtons();
+		renderSnapshot(state.snapshot);
+		void fetchRecent({ ringOnFresh: false }).catch(() => {});
+		if (aiFeedUrl) {
+			void fetchAi().catch(() => {});
+			state.aiPollTimer = window.setInterval(() => {
+				if (document.hidden) {
+					return;
+				}
+				void fetchAi().catch(() => {});
+			}, 6200);
+		}
+
+		document.addEventListener("visibilitychange", () => {
+			if (document.hidden) {
+				return;
+			}
+
+			void fetchRecent({ ringOnFresh: false }).catch(() => {});
+			if (aiFeedUrl) {
+				void fetchAi().catch(() => {});
+			}
+		});
+
+		window.addEventListener("beforeunload", () => {
+			stopPolling();
+			stopAiPolling();
+			if (state.audioContext && typeof state.audioContext.close === "function") {
+				state.audioContext.close().catch(() => {});
+			}
+		});
+	});
 }
 
 function initLabConsole() {
@@ -16489,6 +18707,9 @@ let cornerDocksBooted = false;
 
 runPageInit("mappingGenie", initMappingGenie);
 runPageInit("deviceBridgePanels", initDeviceBridgePanels);
+runPageInit("pocketCameraPanels", initPocketCameraPanels);
+runPageInit("sceptreConsole", initSceptreConsole);
+runPageInit("landscapeChoirs", initLandscapeChoirs);
 runPageInit("labConsole", initLabConsole);
 runPageInit("xyzSurface", initXyzSurface);
 runPageInit("ioSpatialExplorer", initIoSpatialExplorer);
