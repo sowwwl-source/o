@@ -32,15 +32,22 @@ if ($signal && !empty($signal['land_slug'])) {
 }
 
 $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collective_profile('dense');
+$pageTitle = $signal
+    ? (string) $signal['title'] . ' — Signal · ' . SITE_TITLE
+    : 'Signal introuvable — ' . SITE_TITLE;
+$pageDescription = $signal
+    ? 'Signal — transmission ' . (string) $signal['kind'] . ' depuis ' . (string) $signal['land_username'] . ' dans ' . SITE_TITLE . '.'
+    : "Signal introuvable — cette transmission n'est pas lisible ici.";
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Signal — détail d'une transmission dans <?= h(SITE_TITLE) ?>.">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title><?= $signal ? h((string) $signal['title']) . ' — Signal · ' . h(SITE_TITLE) : 'Signal introuvable — ' . h(SITE_TITLE) ?></title>
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host, ['canonical_params' => ['id']]) ?>
 <?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience signal-view">
@@ -76,6 +83,8 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
                 <?php endif; ?>
             </div>
         </header>
+
+        <?= render_spatial_context_bar('signal', $host) ?>
 
         <section class="panel reveal signal-detail-shell" aria-labelledby="signal-detail-title">
             <div class="section-topline">
@@ -117,6 +126,7 @@ $ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collecti
                 <a class="pill-link" href="<?= h($signalHref) ?>">Retour au flux</a>
             </div>
         </section>
+        <?= render_spatial_context_bar('signal', $host) ?>
     <?php endif; ?>
 </main>
 </body>

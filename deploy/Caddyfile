@@ -30,6 +30,19 @@
 	}
 }
 
+(pi_camera_proxy) {
+	redir /camera/pi3-camera-01/ /camera/pi3-camera-01 308
+	@camera_page path /camera/pi3-camera-01
+	handle @camera_page {
+		reverse_proxy app:80
+	}
+	handle_path /camera/pi3-camera-01/* {
+		reverse_proxy {$PI3_CAMERA_STREAM_UPSTREAM:127.0.0.1:9} {
+			header_up X-Sowwwl-Stream-Token "{$PI3_CAMERA_STREAM_TOKEN:}"
+		}
+	}
+}
+
 www.sowwwl.cloud {
 	redir https://sowwwl.cloud{uri} 308
 }
@@ -80,19 +93,24 @@ o.sowwwl.cloud {
 	redir https://sowwwl.cloud{uri} 308
 }
 
+pi.sowwwl.cloud {
+	import common_headers
+	import permissions_surface
+	import pi_camera_proxy
+	handle_path /api/* {
+		reverse_proxy api:80
+	}
+	@api path /healthz /v1/* /docs /docs/*
+	handle @api {
+		reverse_proxy api:80
+	}
+	reverse_proxy app:80
+}
+
 *.o.sowwwl.cloud {
 	import common_headers
 	import permissions_surface
-	redir /camera/pi3-camera-01/ /camera/pi3-camera-01 308
-	@camera_page path /camera/pi3-camera-01
-	handle @camera_page {
-		reverse_proxy app:80
-	}
-	handle_path /camera/pi3-camera-01/* {
-		reverse_proxy {$PI3_CAMERA_STREAM_UPSTREAM:127.0.0.1:9} {
-			header_up X-Sowwwl-Stream-Token "{$PI3_CAMERA_STREAM_TOKEN:}"
-		}
-	}
+	import pi_camera_proxy
 	reverse_proxy app:80
 }
 

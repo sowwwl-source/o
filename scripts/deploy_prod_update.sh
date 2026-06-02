@@ -456,6 +456,16 @@ should_verify_0wlslw0_agent() {
 	[[ -n "$endpoint" ]]
 }
 
+should_verify_pi_host() {
+	local public_origin
+	local api_origin
+
+	public_origin=$(origin_from_url "$(read_env_value "SOWWWL_PUBLIC_ORIGIN")")
+	api_origin=$(origin_from_url "$(read_env_value "API_PUBLIC_BASE_URL")")
+
+	[[ "$public_origin" == "pi.sowwwl.cloud" || "$api_origin" == "pi.sowwwl.cloud" ]]
+}
+
 echo "==> Updating production checkout"
 cd "$prod_root"
 git fetch origin
@@ -556,6 +566,8 @@ main_js_url=$(resolve_versioned_asset_url https://sowwwl.com/ main.js)
 curl -fsSI https://sowwwl.com/
 curl -fsSI https://sowwwl.io/
 curl -fsSI https://www.sowwwl.io/
+curl -fsSI https://sowwwl.cloud/
+curl -fsSI https://www.sowwwl.cloud/
 curl -fsSI https://sowwwl.xyz/
 curl -fsSI https://sowwwl.xyz/map
 curl -fsSI https://sowwwl.com/signal
@@ -579,6 +591,8 @@ assert_body_matches https://sowwwl.io/ 'Perspective caméra|data-xyz-camera-faci
 assert_body_matches 'https://sowwwl.io/manifest.php?app=io&spatial=headset' '"name"[[:space:]]*:[[:space:]]*"SOWWWL IO"'
 assert_body_matches 'https://sowwwl.io/manifest.php?app=io&spatial=headset' 'spatial=headset'
 assert_header_contains https://www.sowwwl.io location '^https://sowwwl\.io/'
+assert_body_matches https://sowwwl.cloud/ 'One network\. Accueil des fleurs\.|Open the product|Review validation layer'
+assert_header_contains https://www.sowwwl.cloud location '^https://sowwwl\.cloud/'
 assert_body_matches https://sowwwl.xyz/ 'Le tore écoute le monde réel|Activer la membrane|Silence web|Partager'
 assert_body_matches https://sowwwl.xyz/ 'data-xyz-plasma-bridge="https://sowwwl\.xyz(?:/o)?/ingest/membrane"'
 assert_body_absent https://sowwwl.xyz/ 'data-xyz-plasma-bridge="https://lab\.sowwwl\.cloud'
@@ -586,6 +600,17 @@ assert_body_matches https://sowwwl.xyz/map 'Le tore des terres actives|Console l
 assert_body_matches https://sowwwl.org/ 'Comprendre les domaines sans se perdre|carte des rôles|Ouvrir sowwwl\.com'
 assert_body_matches https://api.sowwwl.cloud/v1/status '"service"[[:space:]]*:[[:space:]]*"api\.sowwwl\.cloud"'
 assert_body_matches https://api.sowwwl.cloud/v1/status '"openapi"[[:space:]]*:[[:space:]]*"https://api\.sowwwl\.cloud/docs/AzA_v0\.7_openapi\.min\.yaml"'
+if should_verify_pi_host; then
+	curl -fsSI https://pi.sowwwl.cloud/
+	curl -fsSI https://pi.sowwwl.cloud/healthz
+	curl -fsSI https://pi.sowwwl.cloud/v1/status
+	curl -fsSI https://pi.sowwwl.cloud/camera/pi3-camera-01
+	curl -fsSI https://pi.sowwwl.cloud/sceptre/ensemble
+	assert_body_matches https://pi.sowwwl.cloud/v1/status '"service"[[:space:]]*:[[:space:]]*"pi\.sowwwl\.cloud"'
+	assert_body_matches https://pi.sowwwl.cloud/v1/status '"openapi"[[:space:]]*:[[:space:]]*"https://pi\.sowwwl\.cloud/docs/AzA_v0\.7_openapi\.min\.yaml"'
+	assert_body_matches https://pi.sowwwl.cloud/camera/pi3-camera-01 'Fen.tre harmonique'
+	assert_body_matches https://pi.sowwwl.cloud/sceptre/ensemble 'Sceptre harmonique|pi\.sowwwl\.cloud'
+fi
 assert_single_header https://sowwwl.com/ cross-origin-opener-policy
 assert_single_header https://sowwwl.com/ cross-origin-resource-policy
 assert_single_header https://sowwwl.com/ x-permitted-cross-domain-policies

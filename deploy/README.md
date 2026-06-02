@@ -35,6 +35,7 @@ It uses one VPS, one Caddy reverse proxy, one PHP app container for the `o/` exp
 - `../migrations/005_flows.sql` - fl0w schema mounted into MySQL on first boot
 - `../migrations/2026_05_02_signal_mail.sql` - Signal mailbox/message schema mounted as `006_signal_mail.sql` on first boot
 - `../migrations/007_query_indexes.sql` - additive query indexes mounted into MySQL on first boot
+- `../migrations/008_port_constraints.sql` - additive relational constraints for existing p0rt/fl0w tables
 - `sites/` - static sites for the hub, org, alternate landing, and temporary product shell
 
 ## Prepare
@@ -43,7 +44,7 @@ It uses one VPS, one Caddy reverse proxy, one PHP app container for the `o/` exp
 2. Copy `.env.production.example` to `.env.production`.
 3. Replace the `CHANGE_ME_*` values, especially `DB_PASS`, `DB_ROOT_PASSWORD`, `AZA_API_TOKEN`, `SOWWWL_MAGIC_LINK_SECRET`, and SMTP credentials if Signal identity emails should be delivered.
 4. Prefer `SOWWWL_ADMIN_PIN_HASH` over `SOWWWL_ADMIN_PIN` when password login must stay enabled, and keep `SOWWWL_TRUSTED_PROXY_CIDRS` aligned with the real proxy path.
-4. Point DNS records at the VPS public IP.
+5. Point DNS records at the VPS public IP.
 
 Keep `SOWWWL_MEMBRANE_BRIDGE_URL` and `SOWWWL_PLASMA_FEED_URL` empty unless you intentionally want the browser membrane/plasma flow to cross origins.
 Only set `SOWWWL_PLASMA_ALLOWED_ORIGINS` when that cross-origin routing is deliberate.
@@ -156,6 +157,10 @@ API_PUBLIC_BASE_URL=https://pi.sowwwl.cloud
 API_ALLOWED_ORIGINS=http://192.168.1.36,http://sowwwl-pi.local,http://192.168.1.36:8080,http://sowwwl-pi.local:8080,https://pi.sowwwl.cloud
 ```
 
+The production Caddyfile serves `pi.sowwwl.cloud` as a mixed host on purpose:
+regular app routes stay on `app`, while `/healthz`, `/v1/*`, `/docs`, and the
+camera proxy stay on the same public origin for Raspberry-facing tools.
+
 If a separate Raspberry Pi camera node will feed this host, also set:
 
 ```dotenv
@@ -228,7 +233,7 @@ sudo bash scripts/install_pi_ai_bridge_service.sh --user "$USER"
 
 This is intentionally not the public deployment. It is only the shortest honest path for validating the first Pi-backed instance on a local network.
 
-On a fresh MySQL volume, `init.sql` and migrations `003` through `007` are imported automatically in filename order.
+On a fresh MySQL volume, `init.sql` and migrations `003` through `008` are imported automatically in filename order.
 
 If the database already exists, mounted init scripts are not replayed automatically. Apply missing migrations manually, in order:
 
@@ -238,6 +243,7 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../migrations/005_flows.sql
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../migrations/2026_05_02_signal_mail.sql
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../migrations/007_query_indexes.sql
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../migrations/008_port_constraints.sql
 ```
 
 Then restart the PHP app:
@@ -248,16 +254,25 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 
 After deploy, verify at least:
 
+- `https://sowwwl.io/`
+- `https://sowwwl.cloud/`
 - `https://sowwwl.com/`
 - `https://sowwwl.com/0wlslw0`
 - `https://sowwwl.com/signal`
 - `https://sowwwl.com/str3m`
 - `https://sowwwl.com/echo.php`
 - `https://sowwwl.xyz/` and confirm the membrane bridge stays on `sowwwl.xyz`
-- `https://sowwwl.io/` and confirm the spatial surface answers from the same app
 - `https://sowwwl.xyz/map`
 - `https://api.sowwwl.cloud/healthz`
 - `https://api.sowwwl.cloud/v1/status`
+
+If the production env publishes the Pi edge directly on `https://pi.sowwwl.cloud`, also verify:
+
+- `https://pi.sowwwl.cloud/`
+- `https://pi.sowwwl.cloud/healthz`
+- `https://pi.sowwwl.cloud/v1/status`
+- `https://pi.sowwwl.cloud/camera/pi3-camera-01`
+- `https://pi.sowwwl.cloud/sceptre/ensemble`
 
 For the bridge specifically, the live HTML on `sowwwl.xyz` should expose a same-host endpoint, not the lab:
 
@@ -265,8 +280,19 @@ For the bridge specifically, the live HTML on `sowwwl.xyz` should expose a same-
 curl -sL https://sowwwl.xyz/ | grep -E 'data-xyz-plasma-bridge="https://sowwwl\.xyz(/o)?/ingest/membrane"'
 curl -sL https://sowwwl.xyz/ | grep -E 'data-xyz-plasma-bridge="https://lab\.sowwwl\.cloud' && false || true
 curl -I https://sowwwl.io/
+curl -I https://sowwwl.cloud/
 curl -sL https://sowwwl.xyz/map | grep -E 'Le tore des terres actives|Console lexicale de la map|courants actifs'
 curl -sL https://api.sowwwl.cloud/v1/status | grep -E '"service": ?"api.sowwwl.cloud"|AzA_v0.7_openapi.min.yaml'
+```
+
+When `SOWWWL_PUBLIC_ORIGIN` and `API_PUBLIC_BASE_URL` both point to `https://pi.sowwwl.cloud`, the production deploy helper also checks the mixed host itself:
+
+```bash
+curl -I https://pi.sowwwl.cloud/
+curl -I https://pi.sowwwl.cloud/healthz
+curl -sL https://pi.sowwwl.cloud/v1/status | grep -E '"service": ?"pi.sowwwl.cloud"|AzA_v0.7_openapi.min.yaml'
+curl -I https://pi.sowwwl.cloud/camera/pi3-camera-01
+curl -I https://pi.sowwwl.cloud/sceptre/ensemble
 ```
 
 For Signal identity validation specifically, check the runtime from inside the live app container:
@@ -360,7 +386,7 @@ The `api.sowwwl.cloud` service now provides:
 
 Protected write endpoints return `501 not_implemented` with JSON. This is deliberate: the host resolves and responds, but it does not pretend the production AzA service exists yet.
 
-The production deploy helper now rebuilds `api` alongside `app` and verifies that `/v1/status` still reports `api.sowwwl.cloud` before it declares success.
+The production deploy helper now rebuilds `api` alongside `app`, verifies that `/v1/status` still reports `api.sowwwl.cloud`, and also checks `pi.sowwwl.cloud` when the live env publishes the mixed Raspberry-facing host there.
 
 ## Customization
 

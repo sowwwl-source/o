@@ -115,15 +115,22 @@ if ($land && $visualProfile) {
     $landIdentitySummary .= ' · ' . (string) ($visualProfile['label'] ?? 'collectif') . ' · λ ' . (string) ($visualProfile['lambda_nm'] ?? '548') . ' nm';
 }
 $landContextOpen = $created || ($sessionBound && $isAuthenticatedHere);
+$pageTitle = $land
+    ? (string) $land['username'] . ' — ' . SITE_TITLE
+    : 'Terre introuvable — ' . SITE_TITLE;
+$pageDescription = $land
+    ? (string) $land['username'] . ' — terre active, adresse tenue, mémoire située et passages de présence dans ' . SITE_TITLE . '.'
+    : 'Terre introuvable — aucune terre lisible ici dans ' . SITE_TITLE . '.';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="<?= $land ? h((string) $land['username']) . ' — espace personnel dans ' . h(SITE_TITLE) : 'Terre introuvable — ' . h(SITE_TITLE) ?>">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title><?= $land ? h((string) $land['username']) . ' — ' . h(SITE_TITLE) : 'Terre introuvable — ' . h(SITE_TITLE) ?></title>
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host, ['canonical_params' => ['u']]) ?>
 <?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience land-view">
@@ -142,7 +149,7 @@ $landContextOpen = $created || ($sessionBound && $isAuthenticatedHere);
                 <span>I inverse + voix</span>
             </h1>
             <p class="lead">
-                Terre posée. Fuseau gardé.
+                Terre posée. Adresse tenue.
             </p>
 
             <div class="land-meta">
@@ -163,6 +170,8 @@ $landContextOpen = $created || ($sessionBound && $isAuthenticatedHere);
             </div>
         </header>
 
+        <?= render_spatial_context_bar('land', $host) ?>
+
         <?= render_continuity_dome('land', [
             'host' => $host,
             'land' => $land,
@@ -176,7 +185,7 @@ $landContextOpen = $created || ($sessionBound && $isAuthenticatedHere);
                 <div class="section-topline">
                     <div>
                         <h2 id="ritual-title">Passages</h2>
-                        <p class="panel-copy">Continuer ici, montrer la terre, ou gérer la présence.</p>
+                        <p class="panel-copy">Terre pour l adresse, mémoire pour la relecture, présence pour les passages.</p>
                     </div>
                     <span class="badge"><?= h($landViewLabel) ?></span>
                 </div>

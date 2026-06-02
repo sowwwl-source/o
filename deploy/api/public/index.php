@@ -104,6 +104,7 @@ function api_allowed_origins(): array
             'https://sowwwl.cloud',
             'https://www.sowwwl.cloud',
             'https://api.sowwwl.cloud',
+            'https://pi.sowwwl.cloud',
             'https://lab.sowwwl.cloud',
             'https://www.lab.sowwwl.cloud',
             'https://api.lab.sowwwl.cloud',

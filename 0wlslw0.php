@@ -107,6 +107,8 @@ $guidePassageStateLong = match ($voiceUpstreamState) {
     'auth-missing' => 'Le relais est repéré, mais l’autorisation reste incomplète. 0wlslw0 reste utilisable ici.',
     default => 'Le guidage local reste actif. Si l’amont manque, 0wlslw0 garde le seuil ouvert ici.',
 };
+$pageTitle = '0wlslw0 — ' . $siteTitle;
+$pageDescription = '0wlslw0 — guide d entree pour comprendre ' . $siteTitle . ' et trouver la bonne porte sans se perdre.';
 $owlDoors = [
     [
         'label' => '01 · ici',
@@ -150,10 +152,11 @@ $guideVoiceNotes = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="0wlslw0 — guide d entree pour comprendre <?= h($siteTitle) ?> et trouver la bonne porte sans se perdre.">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title>0wlslw0 — <?= h($siteTitle) ?></title>
-<?= render_o_page_head_assets('owl') ?>
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host) ?>
+<?= render_o_page_head_assets('owl', $host) ?>
 </head>
 <body
     class="experience guide-view<?= $isSpatialMappingHost ? ' mapping-host-view' : '' ?><?= $surfaceVariant === 'io' ? ' io-surface-view' : '' ?><?= $isSpatialHeadsetMode ? ' io-headset-mode' : '' ?>"

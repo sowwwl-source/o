@@ -7048,7 +7048,9 @@ function initMappingGenie() {
 			if (detail.live || detail.demo) {
 				raNote.textContent = `${detail.dominantLabel || "La couche"} mène en régime ${detail.modeLabel || detail.mode || "actif"}. ${primaryLabel ? `${primaryLabel} prolonge la lecture.` : "La cartographie suit cette couche pour garder la prise."}`;
 			} else {
-				raNote.textContent = "Quand la membrane s ouvre, la couche dominante peut reprendre la main ici pour garder la lecture située.";
+				raNote.textContent = isIoSurfaceView()
+					? "Quand la couche spatiale s ouvre, la couche dominante peut reprendre la main ici pour garder la lecture située."
+					: "Quand la membrane s ouvre, la couche dominante peut reprendre la main ici pour garder la lecture située.";
 			}
 		}
 
@@ -7345,7 +7347,9 @@ function initDeviceBridgePanels() {
 			panel.shareButton.addEventListener("click", () => {
 				const text = panel.context === "lab"
 					? "Le lab du tore écoute ce téléphone et rejoue ses capteurs."
-					: "La membrane du tore lit ce téléphone en direct.";
+					: (isIoSurfaceView()
+						? "La couche spatiale du tore lit ce téléphone en direct."
+						: "La membrane du tore lit ce téléphone en direct.");
 				void shareCurrentDeviceSurface({ text });
 			});
 		}
@@ -9473,35 +9477,58 @@ function initXyzCamera() {
 			: (lightTone > 0.68
 				? "clair ouvert"
 				: (lightTone < 0.32 ? "ombre douce" : "lueur mixte"));
+		const ioSurface = isIoSurfaceView();
 		const stageCopy = cameraFacingMode === "environment"
-			? "Retourne la caméra et laisse le dehors jouer. Glisse pour orienter le tore. La lumière incline maintenant aussi Terre et Mine: Terre prend le champ, Mine mord le détail, le reflet ou la route. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage."
-			: "Approche visage, mains ou torse. Glisse pour orienter le tore. Terre pose le fond, Mine ouvre l accent, puis l air et la lumière déplacent aussi la partition. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage.";
-		let worldCopy = "Le monde reste un instrument: visage, corps, lumière, paysage et toucher peuvent tous nourrir le tore.";
+			? (ioSurface
+				? "Retourne la caméra et laisse le dehors jouer. Glisse pour orienter le volume. La lumière incline maintenant aussi Terre et Mine: Terre prend le champ, Mine mord le détail, le reflet ou la route. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage."
+				: "Retourne la caméra et laisse le dehors jouer. Glisse pour orienter le tore. La lumière incline maintenant aussi Terre et Mine: Terre prend le champ, Mine mord le détail, le reflet ou la route. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage.")
+			: (ioSurface
+				? "Approche visage, mains ou torse. Glisse pour orienter le volume. Terre pose le fond, Mine ouvre l accent, puis l air et la lumière déplacent aussi la partition. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage."
+				: "Approche visage, mains ou torse. Glisse pour orienter le tore. Terre pose le fond, Mine ouvre l accent, puis l air et la lumière déplacent aussi la partition. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage.");
+		let worldCopy = ioSurface
+			? "Le monde devient présence jouable: visage, corps, lumière, paysage et toucher peuvent tous nourrir le volume."
+			: "Le monde reste un instrument: visage, corps, lumière, paysage et toucher peuvent tous nourrir le tore.";
 		if (visionHands >= 2) {
-			worldCopy = "La vision lit maintenant deux mains. Terre lance le kick, Mine ouvre hh ou snare, et le tore prend leurs écarts comme une percussion vivante.";
+			worldCopy = ioSurface
+				? "La vision lit maintenant deux mains. Terre lance le kick, Mine ouvre hh ou snare, et le volume prend leurs écarts comme une percussion vivante."
+				: "La vision lit maintenant deux mains. Terre lance le kick, Mine ouvre hh ou snare, et le tore prend leurs écarts comme une percussion vivante.";
 		} else if (visionHands === 1) {
-			worldCopy = "La vision accroche déjà une main. Ouvre le cadre, frappe, relâche, puis laisse le tore transformer ce geste en pulsation.";
+			worldCopy = ioSurface
+				? "La vision accroche déjà une main. Ouvre le cadre, frappe, relâche, puis laisse le volume transformer ce geste en pulsation."
+				: "La vision accroche déjà une main. Ouvre le cadre, frappe, relâche, puis laisse le tore transformer ce geste en pulsation.";
 		}
 		if (cameraFacingMode === "environment") {
 			worldCopy = touchEnergy > 0.24
-				? "Le paysage répond maintenant à tes mains. Tu peux marcher, viser, pivoter et laisser les reflets, la rue ou le ciel nourrir le tore comme un instrument vivant."
+				? (ioSurface
+					? "Le paysage répond maintenant à tes mains. Tu peux marcher, viser, pivoter et laisser les reflets, la rue ou le ciel nourrir le volume comme une présence vivante."
+					: "Le paysage répond maintenant à tes mains. Tu peux marcher, viser, pivoter et laisser les reflets, la rue ou le ciel nourrir le tore comme un instrument vivant.")
 				: (light.contrast > 0.3
-					? "Passe en paysage pour faire jouer le dehors. L incidence lumineuse pousse déjà Terre et Mine: la nappe prend le champ, le détail perce, puis le tore suit."
+					? (ioSurface
+						? "Passe en paysage pour faire jouer le dehors. L incidence lumineuse pousse déjà Terre et Mine: la nappe prend le champ, le détail perce, puis le volume suit."
+						: "Passe en paysage pour faire jouer le dehors. L incidence lumineuse pousse déjà Terre et Mine: la nappe prend le champ, le détail perce, puis le tore suit.")
 					: "Passe en paysage pour faire jouer le dehors. Le monde devient matière: horizon, marche, reflets, façades, arbres, vitesse et lumière.");
 			if (visionHands >= 2) {
-				worldCopy = "Le paysage répond maintenant à tes mains. Gauche pour le kick, droite pour hh ou snare, double frappe pour relancer tout le set pendant que Terre et Mine déplacent le tore.";
+				worldCopy = ioSurface
+					? "Le paysage répond maintenant à tes mains. Gauche pour le kick, droite pour hh ou snare, double frappe pour relancer tout le set pendant que Terre et Mine déplacent le volume."
+					: "Le paysage répond maintenant à tes mains. Gauche pour le kick, droite pour hh ou snare, double frappe pour relancer tout le set pendant que Terre et Mine déplacent le tore.";
 			} else if (visionHands === 1) {
 				worldCopy = "Le paysage voit déjà une main. Cherche une frappe nette et la percussion partira directement du cadre.";
 			}
 		} else if (touchEnergy > 0.26 || membrane.audioLevel > 0.16) {
-			worldCopy = "Le visage, le souffle et les mains sont maintenant dans la boucle. Le tore peut tenir une note, ouvrir un rythme puis colorer la lumière autour de toi.";
+			worldCopy = ioSurface
+				? "Le visage, le souffle et les mains sont maintenant dans la boucle. Le volume peut tenir une note, ouvrir un rythme puis colorer la lumière autour de toi."
+				: "Le visage, le souffle et les mains sont maintenant dans la boucle. Le tore peut tenir une note, ouvrir un rythme puis colorer la lumière autour de toi.";
 		} else if (light.contrast > 0.26) {
 			worldCopy = "Même sans toucher, l incidence lumineuse commence à pencher la partition: Terre ouvre ou retient le champ, Mine taille la clarté et la nervure.";
 		}
 		if (sceptreLive && visionHands === 0) {
 			worldCopy = sceptrePercussionLevel() > 0.34
-				? `Le sceptre ${sceptreScene} incline maintenant le tore. Sa secousse ouvre la percussion, son roulis pousse Terre et Mine, et la surface prend une allure de rite portable.`
-				: `Le sceptre ${sceptreScene} tient une magie douce. Climat, angle et halo glissent déjà dans le tore comme une main distante.`;
+				? (ioSurface
+					? `Le sceptre ${sceptreScene} incline maintenant le volume. Sa secousse ouvre la percussion, son roulis pousse Terre et Mine, et la surface prend une allure de rite portable.`
+					: `Le sceptre ${sceptreScene} incline maintenant le tore. Sa secousse ouvre la percussion, son roulis pousse Terre et Mine, et la surface prend une allure de rite portable.`)
+				: (ioSurface
+					? `Le sceptre ${sceptreScene} tient une magie douce. Climat, angle et halo glissent déjà dans le volume comme une main distante.`
+					: `Le sceptre ${sceptreScene} tient une magie douce. Climat, angle et halo glissent déjà dans le tore comme une main distante.`);
 		}
 
 		document.body.dataset.cameraFacing = cameraFacingMode;
@@ -9802,30 +9829,40 @@ function initXyzCamera() {
 	const arModeCatalog = {
 			anchor: {
 				label: "ancrer",
-				title: "Le tore se pose sur le monde.",
-				status: "La réalité garde le plan principal. Le plasma annote, le tore n incise qu une fois les bords stabilisés.",
+				title: isIoSurfaceView() ? "Le volume se pose sur le monde." : "Le tore se pose sur le monde.",
+				status: isIoSurfaceView()
+					? "La réalité garde le plan principal. Le plasma annote, le volume n incise qu une fois les bords stabilisés."
+					: "La réalité garde le plan principal. Le plasma annote, le tore n incise qu une fois les bords stabilisés.",
 				usage: "Usage RA: garder les plans, les corps et les obstacles lisibles avant d ouvrir des seuils plus denses.",
 				bias: { real: 0.18, plasma: -0.03, torus: -0.08 },
 			},
 			translate: {
 				label: "traduire",
 				title: "Le plasma prend la traduction.",
-				status: "Les signes, la mémoire, la météo et la voix gagnent du terrain. Le tore reste au contact sans recouvrir le monde.",
+				status: isIoSurfaceView()
+					? "Les signes, la mémoire, la météo et la voix gagnent du terrain. Le volume reste au contact sans recouvrir le monde."
+					: "Les signes, la mémoire, la météo et la voix gagnent du terrain. Le tore reste au contact sans recouvrir le monde.",
 				usage: "Usage RA: laisser monter les flux, les annotations, les traces sonores et les directions avant d ouvrir la route.",
 				bias: { real: -0.06, plasma: 0.22, torus: -0.04 },
 			},
 			loop: {
 				label: "boucler",
-				title: "Le tore replie le lieu en interface.",
-				status: "Les seuils, les routes et la prise spatiale passent devant. La réalité reste visible, mais le tore mène la lecture.",
+				title: isIoSurfaceView() ? "Le volume replie le lieu en interface." : "Le tore replie le lieu en interface.",
+				status: isIoSurfaceView()
+					? "Les seuils, les routes et la prise spatiale passent devant. La réalité reste visible, mais le volume mène la lecture."
+					: "Les seuils, les routes et la prise spatiale passent devant. La réalité reste visible, mais le tore mène la lecture.",
 				usage: "Usage RA: ouvrir des routes, zones, prises et nœuds directement dans l espace perçu.",
 				bias: { real: -0.12, plasma: -0.04, torus: 0.24 },
 			},
 			weave: {
 				label: "tresser",
 				title: "Les trois couches se tiennent ensemble.",
-				status: "La réalité porte, le plasma relie, le tore boucle: aucun plan ne doit écraser les deux autres.",
-				usage: "Usage RA: faire tenir le monde, ses flux et la surface dans une même lecture sans rupture.",
+				status: isIoSurfaceView()
+					? "La réalité porte, le plasma relie, le volume boucle: aucun plan ne doit écraser les deux autres."
+					: "La réalité porte, le plasma relie, le tore boucle: aucun plan ne doit écraser les deux autres.",
+				usage: isIoSurfaceView()
+					? "Usage RA: faire tenir le monde, ses flux et le volume dans une même lecture sans rupture."
+					: "Usage RA: faire tenir le monde, ses flux et la surface dans une même lecture sans rupture.",
 				bias: { real: 0.04, plasma: 0.05, torus: 0.05 },
 			},
 		};
@@ -11175,12 +11212,16 @@ function initXyzCamera() {
 		if (fxPresetKey === "bare") {
 			setSensorText(
 				musicDawFxCopyNode,
-				"Le master reste proche et lisible. Un peu d espace, peu d echo, juste assez de grain et d air pour garder la peau de la membrane au premier plan."
+				isIoSurfaceView()
+					? "Le master reste proche et lisible. Un peu d espace, peu d echo, juste assez de grain et d air pour garder la couche spatiale au premier plan."
+					: "Le master reste proche et lisible. Un peu d espace, peu d echo, juste assez de grain et d air pour garder la peau de la membrane au premier plan."
 			);
 		} else if (fxPresetKey === "mist") {
 			setSensorText(
 				musicDawFxCopyNode,
-				"La membrane flotte plus loin. L espace s ouvre, l echo respire entre les pas et l air laisse les aigus passer comme une brume claire."
+				isIoSurfaceView()
+					? "La couche spatiale flotte plus loin. L espace s ouvre, l echo respire entre les pas et l air laisse les aigus passer comme une brume claire."
+					: "La membrane flotte plus loin. L espace s ouvre, l echo respire entre les pas et l air laisse les aigus passer comme une brume claire."
 			);
 		} else if (fxPresetKey === "glass") {
 			setSensorText(
@@ -11432,14 +11473,18 @@ function initXyzCamera() {
 			setSensorText(musicDawArrangementStateNode, "aucun voyage");
 			setSensorText(
 				musicDawArrangementCopyNode,
-				"Enchaîne des scènes mémorisées sur plusieurs mesures pour transformer la membrane en forme jouable et enregistrable."
+				isIoSurfaceView()
+					? "Enchaîne des scènes mémorisées sur plusieurs mesures pour transformer la couche spatiale en forme jouable et enregistrable."
+					: "Enchaîne des scènes mémorisées sur plusieurs mesures pour transformer la membrane en forme jouable et enregistrable."
 			);
 		}
 		if (musicPerformanceCaptureState === "recording") {
 			setSensorText(musicDawRecordingStateNode, `performance en cours · ${formatMusicDuration(performanceElapsedMs)}`);
 			setSensorText(
 				musicDawRecordingCopyNode,
-				"La membrane compose maintenant une video de performance avec le tore, le champ camera et le master audio. Stoppe quand la prise a la bonne densite."
+				isIoSurfaceView()
+					? "La couche spatiale compose maintenant une video de performance avec le tore, le champ camera et le master audio. Stoppe quand la prise a la bonne densite."
+					: "La membrane compose maintenant une video de performance avec le tore, le champ camera et le master audio. Stoppe quand la prise a la bonne densite."
 			);
 		} else if (musicStemExportState === "recording") {
 			setSensorText(
@@ -11463,13 +11508,17 @@ function initXyzCamera() {
 			setSensorText(musicDawRecordingStateNode, `prise en cours · ${formatMusicDuration(recordingElapsedMs)}`);
 			setSensorText(
 				musicDawRecordingCopyNode,
-				"Le master sort en direct vers une prise locale. Coupe ou relance des pistes sans perdre la couleur de la membrane, son humanize et sa derive."
+				isIoSurfaceView()
+					? "Le master sort en direct vers une prise locale. Coupe ou relance des pistes sans perdre la couleur de la couche spatiale, son humanize et sa derive."
+					: "Le master sort en direct vers une prise locale. Coupe ou relance des pistes sans perdre la couleur de la membrane, son humanize et sa derive."
 			);
 		} else if (!mediaRecorderSupported) {
 			setSensorText(musicDawRecordingStateNode, "enregistrement indisponible");
 			setSensorText(
 				musicDawRecordingCopyNode,
-				"Ce navigateur ne propose pas MediaRecorder. La membrane reste jouable, mais les prises locales audio ne peuvent pas partir d ici."
+				isIoSurfaceView()
+					? "Ce navigateur ne propose pas MediaRecorder. La couche spatiale reste jouable, mais les prises locales audio ne peuvent pas partir d ici."
+					: "Ce navigateur ne propose pas MediaRecorder. La membrane reste jouable, mais les prises locales audio ne peuvent pas partir d ici."
 			);
 		} else if (musicTakes.length) {
 			const lastTake = musicTakes[musicTakes.length - 1];
@@ -11947,6 +11996,7 @@ function initXyzCamera() {
 
 	const arLayerCopyFor = (layer, weight, { live = false, demo = false } = {}) => {
 		const percent = Math.round(clampNumber(weight, 0, 1) * 100);
+		const ioSurface = isIoSurfaceView();
 		switch (layer) {
 			case "real":
 				return percent >= 42
@@ -11956,17 +12006,25 @@ function initXyzCamera() {
 						: "La réalité garde encore le cadre minimal avant la montée des autres couches.");
 			case "plasma":
 				return percent >= 40
-					? "Le plasma devient lisible: mémoire, météo, voix, respiration et signes relient déjà le lieu au tore."
+					? (ioSurface
+						? "Le plasma devient lisible: mémoire, météo, voix, respiration et signes relient déjà le lieu au volume."
+						: "Le plasma devient lisible: mémoire, météo, voix, respiration et signes relient déjà le lieu au tore.")
 					: (demo
 						? "Le plasma prépare la traduction, même si la montée reste encore rejouée localement."
 						: "Le plasma reste discret: il annote sans encore prendre le dessus.");
 			case "torus":
 			default:
 				return percent >= 40
-					? "Le tore prend la main: seuils, routes, zones et points d accroche deviennent déjà des objets spatiaux."
+					? (ioSurface
+						? "Le volume prend la main: seuils, routes, zones et points d accroche deviennent déjà des objets spatiaux."
+						: "Le tore prend la main: seuils, routes, zones et points d accroche deviennent déjà des objets spatiaux.")
 					: (live
-						? "Le tore s installe sans recouvrir tout le monde: il ouvre des prises plutôt qu une peau totale."
-					: "Le tore reste en veille haute: il attend d ouvrir des prises plus nettes dans l espace.");
+						? (ioSurface
+							? "Le volume s installe sans recouvrir tout le monde: il ouvre des prises plutôt qu une peau totale."
+							: "Le tore s installe sans recouvrir tout le monde: il ouvre des prises plutôt qu une peau totale.")
+					: (ioSurface
+						? "Le volume reste en veille haute: il attend d ouvrir des prises plus nettes dans l espace."
+						: "Le tore reste en veille haute: il attend d ouvrir des prises plus nettes dans l espace."));
 		}
 	};
 
@@ -11983,10 +12041,13 @@ function initXyzCamera() {
 	};
 
 	const arPilotStateFor = ({ mode, dominant, live, demo }) => {
+		const ioSurface = isIoSurfaceView();
 		if (!live && !demo) {
 			return {
 				title: "Prise active: préparer le champ.",
-				copy: "Cadre d abord le volume et les plans. Le tore n ouvre pas encore de prise forte tant que la membrane ne tient pas vraiment.",
+				copy: ioSurface
+					? "Cadre d abord le volume et les plans. Le tore n ouvre pas encore de prise forte tant que la couche spatiale ne tient pas vraiment."
+					: "Cadre d abord le volume et les plans. Le tore n ouvre pas encore de prise forte tant que la membrane ne tient pas vraiment.",
 				primary: { label: "Ouvrir Map", href: withSurfaceContext("/map") },
 				secondary: { label: "Passer par 0wlslw0", href: withSurfaceContext("/0wlslw0") },
 			};
@@ -11995,7 +12056,9 @@ function initXyzCamera() {
 		if (mode === "anchor") {
 			return {
 				title: "Prise active: ancrer le monde.",
-				copy: "Le régime d ancrage garde les bords, corps, obstacles et orientations au premier plan avant toute densification du tore.",
+				copy: ioSurface
+					? "Le régime d ancrage garde les bords, corps, obstacles et orientations au premier plan avant toute densification du volume."
+					: "Le régime d ancrage garde les bords, corps, obstacles et orientations au premier plan avant toute densification du tore.",
 				primary: { label: "Ouvrir Map", href: withSurfaceContext("/map") },
 				secondary: { label: "Passer par 0wlslw0", href: withSurfaceContext("/0wlslw0") },
 			};
@@ -12013,7 +12076,9 @@ function initXyzCamera() {
 		if (mode === "loop") {
 			return {
 				title: "Prise active: ouvrir une prise située.",
-				copy: "Le tore replie le lieu en interface. On peut maintenant entrer dans un fil, une zone ou une accroche sans perdre le plan.",
+				copy: ioSurface
+					? "Le volume replie le lieu en interface. On peut maintenant entrer dans un fil, une zone ou une accroche sans perdre le plan."
+					: "Le tore replie le lieu en interface. On peut maintenant entrer dans un fil, une zone ou une accroche sans perdre le plan.",
 				primary: { label: "Ouvrir Signal", href: withSurfaceContext("/signal") },
 				secondary: { label: "Relire Map", href: withSurfaceContext("/map") },
 			};
@@ -12022,7 +12087,9 @@ function initXyzCamera() {
 		if (dominant === "real") {
 			return {
 				title: "Prise active: tresser depuis la réalité.",
-				copy: "La réalité porte encore le tressage. Garde le terrain lisible, puis laisse le plasma et le tore monter par touches.",
+				copy: ioSurface
+					? "La réalité porte encore le tressage. Garde le terrain lisible, puis laisse le plasma et le volume monter par touches."
+					: "La réalité porte encore le tressage. Garde le terrain lisible, puis laisse le plasma et le tore monter par touches.",
 				primary: { label: "Ouvrir Map", href: withSurfaceContext("/map") },
 				secondary: { label: "Lire Str3m", href: withSurfaceContext("/str3m") },
 			};
@@ -12031,15 +12098,19 @@ function initXyzCamera() {
 		if (dominant === "plasma") {
 			return {
 				title: "Prise active: tresser depuis le plasma.",
-				copy: "Le flux devient la couture principale: annotations, rythmes, mémoire et voix relient maintenant le lieu au tore.",
+				copy: ioSurface
+					? "Le flux devient la couture principale: annotations, rythmes, mémoire et voix relient maintenant le lieu au volume."
+					: "Le flux devient la couture principale: annotations, rythmes, mémoire et voix relient maintenant le lieu au tore.",
 				primary: { label: "Lire Str3m", href: withSurfaceContext("/str3m") },
 				secondary: { label: "Passer par 0wlslw0", href: withSurfaceContext("/0wlslw0") },
 			};
 		}
 
 		return {
-			title: "Prise active: tresser depuis le tore.",
-			copy: "Le tore prend le relief: seuils, routes et prises deviennent assez nets pour orienter une action située.",
+			title: ioSurface ? "Prise active: tresser depuis le volume." : "Prise active: tresser depuis le tore.",
+			copy: ioSurface
+				? "Le volume prend le relief: seuils, routes et prises deviennent assez nets pour orienter une action située."
+				: "Le tore prend le relief: seuils, routes et prises deviennent assez nets pour orienter une action située.",
 			primary: { label: "Ouvrir Signal", href: withSurfaceContext("/signal") },
 			secondary: { label: "Relire Map", href: withSurfaceContext("/map") },
 		};
@@ -12109,8 +12180,12 @@ function initXyzCamera() {
 		const directive = dominant === "real"
 			? "Directive: garder le plan du monde stable, puis faire monter les signes et les seuils seulement là où ils s accrochent vraiment."
 			: (dominant === "plasma"
-				? "Directive: laisser le plasma traduire voix, mémoire, météo et trajectoires, puis donner au tore juste assez de prise pour guider."
-				: "Directive: ouvrir le tore comme peau active du lieu, mais sans casser la lecture des corps, bords et flux déjà présents.");
+				? (isIoSurfaceView()
+					? "Directive: laisser le plasma traduire voix, mémoire, météo et trajectoires, puis donner au volume juste assez de prise pour guider."
+					: "Directive: laisser le plasma traduire voix, mémoire, météo et trajectoires, puis donner au tore juste assez de prise pour guider.")
+				: (isIoSurfaceView()
+					? "Directive: ouvrir le volume comme couche active du lieu, mais sans casser la lecture des corps, bords et flux déjà présents."
+					: "Directive: ouvrir le tore comme peau active du lieu, mais sans casser la lecture des corps, bords et flux déjà présents."));
 
 		document.body.dataset.raMode = arModulationMode;
 		document.body.dataset.raDominantLayer = dominant;
@@ -12360,7 +12435,9 @@ function initXyzCamera() {
 				duetPhase = "prepare";
 				duetDominant = "terre";
 			} else if (!percussionActive) {
-				guideText = `La membrane joue en drone nu. Terre tient ${scaleProfile.shortLabel}, Mine fait respirer la note, et le timbre ${instrumentProfile.label} garde l harmonie ouverte.`;
+				guideText = isIoSurfaceView()
+					? `La couche spatiale joue en drone nu. Terre tient ${scaleProfile.shortLabel}, Mine fait respirer la note, et le timbre ${instrumentProfile.label} garde l harmonie ouverte.`
+					: `La membrane joue en drone nu. Terre tient ${scaleProfile.shortLabel}, Mine fait respirer la note, et le timbre ${instrumentProfile.label} garde l harmonie ouverte.`;
 				terreTitle = "Elle tient le ciel.";
 				mineTitle = "Elle respire.";
 				terreCopy = "Terre garde la base et la lumière sans rien marteler. Le champ reste doux et continu.";
@@ -13018,7 +13095,7 @@ function initXyzCamera() {
 		context.strokeRect(34.5, 34.5, Math.min(width - 69, 519), 145);
 		context.fillStyle = "rgba(238, 244, 255, 0.92)";
 		context.font = '600 34px "Georgia", "Times New Roman", serif';
-		context.fillText("membrane performance", 58, 82);
+		context.fillText(isIoSurfaceView() ? "performance spatiale" : "membrane performance", 58, 82);
 		context.font = '500 20px "Helvetica Neue", Arial, sans-serif';
 		context.fillStyle = "rgba(238, 244, 255, 0.72)";
 		context.fillText(
@@ -13145,7 +13222,7 @@ function initXyzCamera() {
 					createdAt: startedAt,
 					kind: "video",
 					name: `performance ${String((musicTakeSerial || 0) + 1).padStart(2, "0")}`,
-					filenamePrefix: "membrane-performance",
+					filenamePrefix: isIoSurfaceView() ? "spatial-performance" : "membrane-performance",
 				});
 			} else {
 				renderMusicDesk();
@@ -13288,7 +13365,7 @@ function initXyzCamera() {
 						assetMap.set(key, {
 							key,
 							label: key === "bass" ? "basse" : key,
-							filename: `membrane-stem-${String((musicTakeSerial || 0) + 1).padStart(2, "0")}-${key}-${buildMusicFileStamp(startedAt)}.${extensionFromMimeType(trackMimeType)}`,
+							filename: `${isIoSurfaceView() ? "spatial" : "membrane"}-stem-${String((musicTakeSerial || 0) + 1).padStart(2, "0")}-${key}-${buildMusicFileStamp(startedAt)}.${extensionFromMimeType(trackMimeType)}`,
 							url: URL.createObjectURL(blob),
 							bytes: blob.size,
 							mimeType: trackMimeType,
@@ -13569,7 +13646,7 @@ function initXyzCamera() {
 			})),
 		};
 		const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" });
-		downloadBlob(blob, `membrane-project-${buildMusicFileStamp()}.json`);
+		downloadBlob(blob, `${isIoSurfaceView() ? "spatial" : "membrane"}-project-${buildMusicFileStamp()}.json`);
 	};
 	const applyMotionInstrumentProfile = () => {
 		const profile = currentInstrumentProfile();
@@ -15268,7 +15345,7 @@ function initXyzCamera() {
 			stopButton.classList.toggle("hidden", !isLiveLike);
 			demoButton.setAttribute("aria-pressed", isDemo ? "true" : "false");
 			demoButton.textContent = isDemo ? "Quitter Terre & Mine" : "Terre & Mine";
-			stopButton.textContent = isDemo ? "Couper Terre & Mine" : "Relâcher la membrane";
+			stopButton.textContent = isDemo ? "Couper Terre & Mine" : (isIoSurfaceView() ? "Relâcher la couche" : "Relâcher la membrane");
 
 		if (statusNode instanceof HTMLElement && message) {
 			statusNode.textContent = message;
@@ -15922,8 +15999,10 @@ function normalizeSceptreState(payload) {
 		source: "pi3-bplus-sceptre",
 		scene: "veille",
 		ritualMode: "veille",
-		lead: "Le sceptre dort encore dans le tore.",
-		summary: "Le Pi 3 B+ et son Sensor HAT peuvent deja devenir une main, un climat et un rythme pour la surface.",
+		lead: isIoSurfaceView() ? "Le sceptre attend encore sa première levée." : "Le sceptre attend encore son premier souffle.",
+		summary: isIoSurfaceView()
+			? "Le Pi 3 B+ et son Sensor HAT donnent au volume une main, un climat et un rythme."
+			: "Le Pi 3 B+ et son Sensor HAT peuvent deja devenir une main, un climat et un rythme pour la surface.",
 		updatedAt: "",
 		freshness: "idle",
 		stale: false,
@@ -16417,9 +16496,9 @@ function initPocketCameraPanels() {
 
 			if (vision instanceof HTMLElement) {
 				if (staleAi) {
-					vision.textContent = "IA en attente.";
+					vision.textContent = "Lecture en attente.";
 				} else if (!detections.length) {
-					vision.textContent = "IA veille.";
+					vision.textContent = "Lecture en veille.";
 				} else {
 					const leadLabel = dominant && dominant.label ? dominant.label : "forme";
 					const score = Math.round((dominant?.score || 0) * 100);

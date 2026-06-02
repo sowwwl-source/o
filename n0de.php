@@ -157,15 +157,18 @@ if ($authenticatedLand) {
 $ambientProfile = $authenticatedLand
     ? land_visual_profile($authenticatedLand)
     : land_collective_profile('nocturnal');
+$pageTitle = 'N0des — ' . SITE_TITLE;
+$pageDescription = 'N0des — objets physiques porteurs, QR, NFC et SD pour faire sortir le passage dans la matière.';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="N0des — objets physiques porteurs dans <?= h(SITE_TITLE) ?>.">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title>N0des — <?= h(SITE_TITLE) ?></title>
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host) ?>
 <?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
     <script defer src="<?= h($qrScriptHref) ?>"></script>
 </head>
@@ -195,6 +198,8 @@ $ambientProfile = $authenticatedLand
             <a class="meta-pill meta-pill-link" href="<?= h($str3mHref) ?>">Str3m</a>
         </div>
     </header>
+
+    <?= render_spatial_context_bar('n0de', $host) ?>
 
     <?php if ($message !== ''): ?>
         <div class="flash flash-<?= h($messageType) ?>" aria-live="polite"><p><?= $message ?></p></div>

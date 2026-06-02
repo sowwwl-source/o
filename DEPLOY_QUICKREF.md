@@ -19,7 +19,7 @@ That helper:
 - only mutates the live stack after that preflight succeeds
 - keeps `deploy/sites/` aligned with the directory actually mounted by `sowwwl-o-caddy-1`
 - refreshes `sowwwl-o-app-1`, `sowwwl-o-api-1`, and Caddy
-- verifies `sowwwl.com`, `sowwwl.org`, `api.sowwwl.cloud`, Signal readiness, and the real `0wlslw0` relay when it is configured
+- verifies `sowwwl.com`, `sowwwl.io`, `sowwwl.cloud`, `sowwwl.org`, `api.sowwwl.cloud`, and also `pi.sowwwl.cloud` when the live env points there, plus Signal readiness and the real `0wlslw0` relay when it is configured
 - refuses a membrane/plasma override back toward `*.lab.sowwwl.cloud` unless you pass `--allow-cross-origin-plasma`
 
 ## 2. Sync VPS source manually
@@ -49,6 +49,7 @@ docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < /root/O_installation_FRESH/o/migrations/005_flows.sql
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < /root/O_installation_FRESH/o/migrations/2026_05_02_signal_mail.sql
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < /root/O_installation_FRESH/o/migrations/007_query_indexes.sql
+docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml exec -T db sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < /root/O_installation_FRESH/o/migrations/008_port_constraints.sql
 docker compose -p sowwwl-o --env-file .env.production -f docker-compose.prod.yml restart app
 ```
 
@@ -88,10 +89,22 @@ curl -sL https://sowwwl.com/0wlslw0 | grep -E 'Accompagnement vocal|voice only|g
 curl -I https://sowwwl.com/signal
 curl -I https://sowwwl.com/str3m
 curl -I https://sowwwl.com/map
+curl -I https://sowwwl.io/
+curl -I https://sowwwl.cloud/
 curl -I https://api.sowwwl.cloud/healthz
 curl -sL https://api.sowwwl.cloud/v1/status | grep -E '"service": ?"api.sowwwl.cloud"|AzA_v0.7_openapi.min.yaml'
 curl -I 'https://sowwwl.com/island?u=<slug-connu>'
 curl -sL 'https://sowwwl.com/island?u=<slug-connu>' | grep -E 'île classique|Relief|Finder mémoire|Dernières traces'
+```
+
+When the live env publishes the Pi edge directly on `https://pi.sowwwl.cloud`, add:
+
+```bash
+curl -I https://pi.sowwwl.cloud/
+curl -I https://pi.sowwwl.cloud/healthz
+curl -sL https://pi.sowwwl.cloud/v1/status | grep -E '"service": ?"pi.sowwwl.cloud"|AzA_v0.7_openapi.min.yaml'
+curl -I https://pi.sowwwl.cloud/camera/pi3-camera-01
+curl -I https://pi.sowwwl.cloud/sceptre/ensemble
 ```
 
 ### 5b. Verify island video compatibility when a land has multiple video formats

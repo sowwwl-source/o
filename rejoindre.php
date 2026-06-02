@@ -190,15 +190,18 @@ $journeyStatusAside = match (true) {
     $currentPortal !== null => 'La lecture reste libre.',
     default => 'Tu peux encore relire avant de sceller.',
 };
+$pageTitle = "Rejoindre le peuple de l'O — " . SITE_TITLE;
+$pageDescription = "Rejoindre le peuple de l'O — lecture AzA, passages d'entrée et configuration complète de la terre.";
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Rejoindre le peuple de l'O — lecture AzA et configuration complète de la terre.">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title>Rejoindre le peuple de l'O — <?= h(SITE_TITLE) ?></title>
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host) ?>
 <?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body
@@ -237,6 +240,8 @@ $journeyStatusAside = match (true) {
             <p><?= h($journeyStatusAside) ?></p>
         </div>
     </header>
+
+    <?= render_spatial_context_bar('join', $host) ?>
 
     <?= render_continuity_dome('join', [
         'host' => $host,

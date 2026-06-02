@@ -157,19 +157,19 @@ Minimum values to set:
 - `SOWWWL_PI_TOKEN`
 - `SOWWWL_PI_LAND_SLUG`
 
-Recommended first lab values:
+Recommended first Pi edge values:
 
 ```dotenv
-SOWWWL_PI_ENDPOINT=https://lab.sowwwl.cloud/ingest/sensor
-SOWWWL_PI_TOKEN=replace-with-long-random-lab-token
+SOWWWL_PI_ENDPOINT=https://pi.sowwwl.cloud/ingest/sensor
+SOWWWL_PI_TOKEN=replace-with-long-random-pi-token
 SOWWWL_PI_LAND_SLUG=pi-pocket-01
 SOWWWL_PI_CAMERAS=0
 ```
 
-When the public shore node is ready for physical ingest, this endpoint can move to:
+If this node later uplinks into another public shore, change only the endpoint:
 
 ```dotenv
-SOWWWL_PI_ENDPOINT=https://sowwwl.cloud/ingest/sensor
+SOWWWL_PI_ENDPOINT=https://your-public-host/ingest/sensor
 ```
 
 ## 6. Install the daemon as a boot service

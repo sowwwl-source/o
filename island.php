@@ -283,15 +283,22 @@ $islandTraitCount = is_array(($islandProjection['traits'] ?? null)) ? count((arr
 $islandContextOpen = $islandReaderCount === 0;
 $islandAtlasOpen = false;
 $islandSourcePreview = implode(' · ', array_slice(array_map(static fn (array $group): string => (string) $group['label'], $islandSourceGroups), 0, 3));
+$pageTitle = $land
+    ? (string) $land['username'] . ' — Île classique — ' . SITE_TITLE
+    : 'Île introuvable — ' . SITE_TITLE;
+$pageDescription = $land
+    ? ((string) ($islandProjection['title'] ?? $land['username'])) . ' — île classique, lecture située et mémoire visible dans ' . SITE_TITLE . '.'
+    : 'Île introuvable — aucune île lisible ici dans ' . SITE_TITLE . '.';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="<?= $land ? h((string) $land['username']) . ' — île classique en devenir dans ' . h(SITE_TITLE) : 'Île introuvable — ' . h(SITE_TITLE) ?>">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title><?= $land ? h((string) $land['username']) . ' — Île classique — ' . h(SITE_TITLE) : 'Île introuvable — ' . h(SITE_TITLE) ?></title>
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host, ['canonical_params' => ['u']]) ?>
 <?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 <?php if ($islandNeedsModelViewer): ?>
     <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>

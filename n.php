@@ -159,15 +159,22 @@ if ($t0k) {
         $nSupportLinkLabel = 'Comprendre n0de';
     }
 }
+$pageTitle = $t0k
+    ? 'T0k · ' . t0k_format_token((string) $t0k['token']) . ' — ' . SITE_TITLE
+    : 'T0k introuvable — ' . SITE_TITLE;
+$pageDescription = $t0k
+    ? 'T0k — fragment du n0us, état ' . $statusLabel . ' dans ' . SITE_TITLE . '.'
+    : 'T0k introuvable — ce fragment du n0us ne répond pas ici.';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="T0k — fragment du n0us dans <?= h(SITE_TITLE) ?>.">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title>T0k<?= $t0k ? ' · ' . h(t0k_format_token((string) $t0k['token'])) : '' ?> — <?= h(SITE_TITLE) ?></title>
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host, ['canonical_params' => ['t']]) ?>
 <?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience n-view">
@@ -225,6 +232,8 @@ if ($t0k) {
             </div>
         <?php endif; ?>
     </header>
+
+    <?= render_spatial_context_bar('n', $host) ?>
 
     <section class="panel reveal n-mode-panel" aria-labelledby="n-mode-title">
         <div class="section-topline">

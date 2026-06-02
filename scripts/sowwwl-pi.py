@@ -24,7 +24,7 @@ except ImportError:
     Picamera2 = None
 
 
-ENDPOINT_URL = os.getenv("SOWWWL_PI_ENDPOINT", "https://lab.sowwwl.cloud/ingest/sensor")
+ENDPOINT_URL = os.getenv("SOWWWL_PI_ENDPOINT", "https://pi.sowwwl.cloud/ingest/sensor")
 AUTH_TOKEN = os.getenv("SOWWWL_PI_TOKEN", "")
 LAND_SLUG = os.getenv("SOWWWL_PI_LAND_SLUG", "")
 CAMERA_IDS = os.getenv("SOWWWL_PI_CAMERAS", "0,1")

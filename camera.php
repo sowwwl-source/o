@@ -5,6 +5,7 @@ require __DIR__ . '/config.php';
 
 $host = request_host();
 $surfaceVariant = current_surface_variant($host);
+$isSpatialSurface = $surfaceVariant === 'io';
 $isSpatialHeadsetMode = $surfaceVariant === 'io' && spatial_preview_mode($host) === 'headset';
 $pageHeadVariant = pwa_default_app_id($host);
 $cameraSlug = trim((string) ($_GET['camera'] ?? ''));
@@ -26,7 +27,9 @@ $cameraWeather = $cameraFound
         'tone' => 'idle',
         'badge' => '404',
         'lead' => 'Aucune camera ne repond pour ce slug.',
-        'detail' => 'Le tore garde la place, mais la source n existe pas.',
+        'detail' => $isSpatialSurface
+            ? 'Le volume garde la place, mais la source n existe pas.'
+            : 'Le tore garde la place, mais la source n existe pas.',
         'energy' => 0.0,
         'count' => 0,
         'freshness' => 'idle',
@@ -60,13 +63,13 @@ $cameraInitialBadge = $cameraFound
     : 'absente';
 $cameraOpenHref = $cameraStreamHref !== '' ? $cameraStreamHref : ($cameraSnapshotHref !== '' ? $cameraSnapshotHref : '#');
 $pageDescription = $cameraFound
-    ? 'Œil pocket public — flux intégré et traces récentes du nœud caméra ' . $cameraLabel . '.'
-    : 'Fenêtre harmonique publique — cette caméra n existe pas ou n est plus disponible.';
-$pageTitle = 'Fenêtre harmonique — ' . SITE_TITLE;
+    ? 'Fenetre — prise réelle publique, lumière et traces récentes du nœud caméra ' . $cameraLabel . '.'
+    : 'Fenetre — cette prise réelle n existe pas ou n est plus disponible.';
+$pageTitle = 'Fenetre — ' . SITE_TITLE;
 $cameraAutostart = $cameraFound && $cameraStreamHref !== '';
-$cameraStatusText = $cameraFound ? 'Image.' : 'Caméra absente.';
-$cameraVisionText = $cameraFound ? 'IA veille.' : 'Aucune source pour ce slug.';
-$cameraPresenceText = $cameraFound ? 'chargement' : 'introuvable';
+$cameraStatusText = $cameraFound ? 'Prise réelle.' : 'Caméra absente.';
+$cameraVisionText = $cameraFound ? 'Lecture en veille.' : 'Aucune source pour ce slug.';
+$cameraPresenceText = $cameraFound ? 'ouverture' : 'introuvable';
 $choirStatusText = $cameraFound ? (string) ($cameraWeather['badge'] ?? 'veille') : 'silence';
 ?>
 <!DOCTYPE html>
@@ -77,6 +80,7 @@ $choirStatusText = $cameraFound ? (string) ($cameraWeather['badge'] ?? 'veille')
     <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
     <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host) ?>
 <?= render_o_page_head_assets($pageHeadVariant, $host) ?>
 </head>
 <body class="experience camera-view camera-negative-view<?= $surfaceVariant === 'io' ? ' io-surface-view' : '' ?><?= $isSpatialHeadsetMode ? ' io-headset-mode' : '' ?>">
@@ -125,7 +129,7 @@ $choirStatusText = $cameraFound ? (string) ($cameraWeather['badge'] ?? 'veille')
         <div class="camera-negative-layer__hud panel reveal">
             <div class="camera-negative-layer__topline">
                 <div>
-                    <h2 id="camera-negative-title">Fenêtre harmonique</h2>
+                    <h2 id="camera-negative-title">Fenetre</h2>
                 </div>
                 <span class="badge badge-glass" data-pocket-camera-badge><?= h($cameraInitialBadge) ?></span>
             </div>
@@ -145,6 +149,10 @@ $choirStatusText = $cameraFound ? (string) ($cameraWeather['badge'] ?? 'veille')
     </section>
 
 <main <?= main_landmark_attrs() ?> class="layout ui-overlay camera-page-shell camera-page-shell--minimal">
+    <?= render_spatial_context_bar('camera', $host, $isSpatialSurface
+        ? 'Fenetre tient ici le capteur du réel: paysage, lumière, cadence des événements et reprise douce vers le volume.'
+        : 'Fenetre garde ici une prise réelle: paysage, lumière, cadence des événements et reprise douce vers le tore.') ?>
+
     <section
         class="panel reveal landscape-choir landscape-choir--compact camera-choir-dock"
         data-landscape-choir-root
@@ -155,7 +163,7 @@ $choirStatusText = $cameraFound ? (string) ($cameraWeather['badge'] ?? 'veille')
         aria-labelledby="landscape-choir-title"
     >
         <div class="landscape-choir__head landscape-choir__head--compact">
-            <h2 id="landscape-choir-title">Chant</h2>
+            <h2 id="landscape-choir-title">Chant du paysage</h2>
             <span class="badge badge-glass" data-landscape-choir-badge><?= h((string) ($cameraWeather['badge'] ?? 'veille')) ?></span>
         </div>
         <strong class="landscape-choir__lead landscape-choir__lead--compact" data-landscape-choir-status>
