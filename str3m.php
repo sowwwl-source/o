@@ -118,11 +118,13 @@ function str3m_compact_copy(string $text, int $limit = 160): string
 $host = request_host();
 $surfaceVariant = current_surface_variant($host);
 $isSpatialHeadsetMode = $surfaceVariant === 'io' && spatial_preview_mode($host) === 'headset';
+$pageTitle = 'Str3m — ' . SITE_TITLE;
+$pageDescription = 'Str3m — explorer le courant quotidien et les îles dans ' . SITE_TITLE . '.';
 
 $brandDomain = current_brand_domain($host);
 
 $authenticatedLand = current_authenticated_land();
-$guideHref = o_route_href('/0wlslw0', [], $host);
+$guideHref = guide_public_href($host);
 $signalHref = o_route_href('/signal', [], $host);
 $joinHref = o_route_href('/rejoindre', [], $host);
 $landHref = o_route_href('/land', [], $host);
@@ -384,9 +386,10 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Str3m — explorer le courant quotidien et les îles dans <?= h(SITE_TITLE) ?>.">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title>Str3m — <?= h(SITE_TITLE) ?></title>
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host) ?>
 <?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience str3m-view<?= $surfaceVariant === 'io' ? ' io-surface-view' : '' ?><?= $isSpatialHeadsetMode ? ' io-headset-mode' : '' ?>">

@@ -12,7 +12,7 @@ $ownerLand = null;
 $directHost = aza_direct_host();
 $isDirectRequest = aza_is_direct_request($host);
 $authenticatedLand = current_authenticated_land();
-$guideHref = o_route_path('/0wlslw0');
+$guideHref = guide_public_href($host);
 $homeHref = o_route_path('/');
 $landHref = o_route_path('/land');
 $echoHref = o_route_path('/echo');
@@ -266,15 +266,22 @@ $azaCurrentViewLabel = $memoryViews[$memoryView] ?? 'Chronologie';
 
 $ambientLand    = $ownerLand ?: $authenticatedLand;
 $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collective_profile('nocturnal');
+$pageTitle = $activeOwnerSlug !== ''
+    ? 'aZa · ' . $activeOwnerSlug . ' — ' . SITE_TITLE
+    : 'Fichiers (aZa) — ' . SITE_TITLE;
+$pageDescription = $activeOwnerSlug !== ''
+    ? 'aZa garde la mémoire de ' . $activeOwnerSlug . ' — ' . (string) ($memoryTotals['all'] ?? 0) . ' trace' . ((int) ($memoryTotals['all'] ?? 0) > 1 ? 's' : '') . ' entre dépôt, relecture et projection.'
+    : 'aZa — dépôt, mémoire et relecture dans ' . SITE_TITLE . '.';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Ferry 03 — fichiers et sédimentation d'archives dans <?= h(SITE_TITLE) ?>.">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title>Fichiers (aZa) — <?= h(SITE_TITLE) ?></title>
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host, ['canonical_params' => ['u']]) ?>
 <?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience aza-view">
@@ -286,13 +293,13 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
 
 <main <?= main_landmark_attrs() ?> class="layout page-shell">
     <header class="hero page-header reveal">
-        <p class="eyebrow"><strong>ferry 03</strong> <span>Fichiers / mémoire légère</span></p>
+        <p class="eyebrow"><strong>aZa</strong> <span>memoire / depot / relecture</span></p>
         <h1 class="land-title">
-            <strong>Déposer sans algorithme.</strong>
+            <strong>Déposer, puis relire.</strong>
             <span>I inverse + voix</span>
         </h1>
         <p class="lead">
-            Déposer ce qui compte, sans rejouer le bruit.
+            aZa garde la mémoire hors du flux, puis la rend relisible.
         </p>
 
         <div class="land-meta">
@@ -335,6 +342,8 @@ $ambientProfile = $ambientLand ? land_visual_profile($ambientLand) : land_collec
             </p>
         <?php endif; ?>
     </header>
+
+    <?= render_spatial_context_bar('aza', $host) ?>
 
     <?= render_continuity_dome('aza', [
         'host' => $host,

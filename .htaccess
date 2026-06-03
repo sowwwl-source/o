@@ -55,6 +55,10 @@ Options -Indexes
   RewriteRule ^0wlslw0\.php$ https://%{HTTP_HOST}/0wlslw0 [R=302,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*sitemap\.php(?:\?|\s) [NC]
+  RewriteRule ^sitemap\.php$ https://%{HTTP_HOST}/sitemap.xml [R=302,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*sh0re\.php(?:\?|\s) [NC]
   RewriteRule ^sh0re\.php$ https://%{HTTP_HOST}/sh0re [R=302,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
@@ -138,6 +142,7 @@ Options -Indexes
   RewriteRule ^plasma/recent$ plasma_recent.php [L,NC,QSA]
   RewriteRule ^0wlslw0/voice$ 0wlslw0_voice.php [L,NC,QSA]
   RewriteRule ^0wlslw0$ 0wlslw0.php [L,NC,QSA]
+  RewriteRule ^sitemap\.xml$ sitemap.php [L,NC,QSA]
   RewriteRule ^aza/asset$ aza_asset.php [L,NC,QSA]
   RewriteRule ^aza/0*([0-9]{1,2})$ aza.php?p=$1 [L,NC,QSA]
 </IfModule>

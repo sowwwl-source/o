@@ -58,7 +58,7 @@ if ($userCloudSlug !== null && in_array($requestMethod, ['GET', 'HEAD'], true)) 
 }
 
 if (($host === '0wlslw0.com' || $host === 'www.0wlslw0.com') && ($requestPath === '/' || $requestPath === '/index.php')) {
-    header('Location: ' . o_route_href('/0wlslw0'), true, 302);
+    require __DIR__ . '/0wlslw0.php';
     exit;
 }
 
@@ -246,7 +246,7 @@ $homeLead = $authenticatedLand
 $homePrimaryActionHref = $authenticatedLand
     ? o_route_href('/land', ['u' => $activeLandSlug])
     : o_route_href('/rejoindre');
-$guideHref = o_route_href('/0wlslw0');
+$guideHref = guide_public_href($host);
 $homeHref = o_route_href('/');
 $signalHref = o_route_href('/signal');
 $str3mHref = o_route_href('/str3m');
@@ -256,37 +256,105 @@ $joinHref = o_route_href('/rejoindre');
 $logoutHref = o_route_href('/logout.php');
 $publicAzaHref = 'https://sowwwl.com/aza';
 $publicStr3mHref = 'https://sowwwl.com/str3m';
-$publicGuideHref = 'https://0wlslw0.com/';
+$publicGuideHref = guide_owner_origin() . '/';
 $publicInstrumentHref = sowwwl_instrument_href();
 $publicXyzHref = 'https://sowwwl.xyz/';
+$surfaceAzaHref = $isSowwwlIo ? $azaHref : $publicAzaHref;
+$surfaceStr3mHref = $isSowwwlIo ? $str3mHref : $publicStr3mHref;
+$surfaceGuideHref = $isSowwwlIo ? $guideHref : $publicGuideHref;
+$surfaceCounterpartHref = $isSowwwlIo ? $publicXyzHref : $publicInstrumentHref;
+$surfaceCounterpartLabel = $isSowwwlIo ? 'xyz' : 'io';
+$surfaceRouteClusterCopy = $isSowwwlIo
+    ? 'Quand le centre a fini de respirer, la sortie reste dans la même surface : matière, guide et courant restent ici; xyz garde la membrane sœur.'
+    : 'Quand le centre a fini de respirer, la sortie ne se disperse pas : matière sur sowwwl.com, guide sur 0wlslw0.com, appareillage entre io et xyz.';
 $surfaceWayfinderAxes = [
     [
         'axis' => 'matter',
         'kicker' => 'axe 01',
-        'title' => 'aZa / Str3m',
-        'copy' => 'Lire, déposer, relier la matière publique.',
-        'href' => $publicStr3mHref,
-        'signal' => 'sowwwl.com',
+        'title' => $isSowwwlIo ? 'Str3m / aZa' : 'aZa / Str3m',
+        'copy' => $isSowwwlIo
+            ? 'Lire le courant, déposer une matière, puis revenir sans quitter la surface.'
+            : 'Lire, déposer, relier la matière publique.',
+        'href' => $isSowwwlIo ? $str3mHref : $surfaceStr3mHref,
+        'signal' => $isSowwwlIo ? 'courant' : 'sowwwl.com',
     ],
     [
         'axis' => 'guide',
         'kicker' => 'axe 02',
-        'title' => '0wlslw0',
-        'copy' => 'Choisir la route sans forcer la connexion.',
-        'href' => $publicGuideHref,
-        'signal' => 'guide',
+        'title' => $isSowwwlIo ? '0wlslw0 / Signal' : '0wlslw0',
+        'copy' => $isSowwwlIo
+            ? 'Clarifier la prochaine porte, puis entrer dans la liaison sans perdre le volume.'
+            : 'Choisir la route sans forcer la connexion.',
+        'href' => $surfaceGuideHref,
+        'signal' => $isSowwwlIo ? 'liaison' : 'guide',
     ],
     [
         'axis' => 'device',
         'kicker' => 'axe 03',
         'title' => $isSowwwlIo ? 'sowwwl.xyz' : 'sowwwl.io',
         'copy' => $isSowwwlIo
-            ? 'Revenir à la membrane téléphone et musique.'
+            ? 'Retrouver la membrane sœur, téléphone en main, quand le volume doit redevenir peau.'
             : 'Ouvrir l’instrument spatial du monde.',
-        'href' => $isSowwwlIo ? $publicXyzHref : $publicInstrumentHref,
-        'signal' => $isSowwwlIo ? 'membrane' : 'instrument',
+        'href' => $surfaceCounterpartHref,
+        'signal' => $isSowwwlIo ? 'membrane sœur' : 'instrument',
     ],
 ];
+$surfaceLandHref = $authenticatedLand ? o_route_href('/land', ['u' => $activeLandSlug]) : $joinHref;
+$surfaceIslandHref = $authenticatedLand ? o_route_href('/island', ['u' => $activeLandSlug]) : $joinHref;
+$surfaceShoreHref = o_route_href('/sh0re');
+$surfaceEchoHref = $authenticatedLand && $activeLandUsername !== '' ? o_route_href('/echo', ['u' => $activeLandUsername]) : $signalHref;
+$surfaceSceptreHref = sceptre_view_href(sceptre_primary_device_slug(), $host);
+$spatialReadingOrderCards = $isSowwwlIo
+    ? [
+        [
+            'kicker' => '01 terre',
+            'title' => $authenticatedLand ? 'La terre garde l adresse.' : 'La terre donne l adresse.',
+            'copy' => $authenticatedLand
+                ? 'Fuseau, fréquence, identité et partage repartent d ici avant toute lecture plus profonde.'
+                : 'Sans terre, le volume reste ouvert mais impersonnel. La terre lui donne une adresse stable.',
+            'meta' => $authenticatedLand ? '@' . $activeLandSlug . ' · fuseau · partage' : 'nom · fuseau · ouverture',
+            'links' => [
+                ['label' => $authenticatedLand ? 'Ouvrir la terre' : 'Poser une terre', 'href' => $surfaceLandHref],
+                ['label' => 'Carte', 'href' => $mapHref],
+            ],
+        ],
+        [
+            'kicker' => '02 memoire',
+            'title' => 'La mémoire rend le volume relisible.',
+            'copy' => $authenticatedLand
+                ? 'aZa dépose, l île relit, puis le courant peut revenir sans perdre sa provenance.'
+                : 'aZa prépare déjà la matière; une terre active permettra ensuite à l île de la relire calmement.',
+            'meta' => 'aza · ile · provenance',
+            'links' => [
+                ['label' => 'aZa', 'href' => $surfaceAzaHref],
+                ['label' => $authenticatedLand ? 'Île' : 'Ouvrir l île', 'href' => $surfaceIslandHref],
+            ],
+        ],
+        [
+            'kicker' => '03 capteurs',
+            'title' => 'Les capteurs branchent le réel.',
+            'copy' => 'Fenêtre écoute le paysage. Sceptre donne une main physique. Le tout reste local avant traduction.',
+            'meta' => 'lumiere · geste · climat',
+            'links' => [
+                ['label' => 'Fenêtre', 'href' => pocket_camera_view_href(null, $host)],
+                ['label' => 'Sceptre', 'href' => $surfaceSceptreHref],
+            ],
+        ],
+        [
+            'kicker' => '04 presence',
+            'title' => 'La présence règle la distance.',
+            'copy' => $authenticatedLand
+                ? 'Signal, Echo et Sh0re disent si l on écrit, si l on répond ou si l on laisse seulement un bord public.'
+                : 'Le volume reste public tant qu aucune terre ne répond. Ensuite viennent boîte, rivage et reprises plus directes.',
+            'meta' => 'signal · sh0re · reponse',
+            'links' => [
+                ['label' => 'Signal', 'href' => $signalHref],
+                ['label' => 'Sh0re', 'href' => $surfaceShoreHref],
+                ['label' => $authenticatedLand ? 'Echo' : '0wlslw0', 'href' => $authenticatedLand ? $surfaceEchoHref : $guideHref],
+            ],
+        ],
+    ]
+    : [];
 $promptSeeds = guide_prompt_seeds();
 $homeHeroLineOne = $authenticatedLand ? 'Ta terre' : 'Réseau';
 $homeHeroLineTwo = $authenticatedLand ? 'module le tore.' : 'minimal.';
@@ -469,26 +537,52 @@ $labSensorConfigured = trim((string) (getenv('SOWWWL_PI_TOKEN') ?: '')) !== '';
 $labRecentPlasmaEvents = $isLabSurface ? plasma_recent_events(6) : [];
 $labPlasmaWeather = plasma_weather_from_events($labRecentPlasmaEvents);
 $spatialSurfaceHostLabel = surface_brand_label($host);
-$spatialSurfaceEyebrow = $isSowwwlIo ? 'surface spatiale / vision / casque' : 'surface torique / monde reel';
+$spatialSurfaceEyebrow = $isSowwwlIo ? 'surface spatiale / terre / memoire / capteurs / presence' : 'surface torique / monde reel';
 $spatialSurfaceTitle = $isSowwwlIo ? 'Le tore s ouvre dans l espace.' : 'Le tore écoute le monde réel.';
 $spatialSurfaceLead = $isSowwwlIo
-    ? 'Ici, la surface devient volume. Regard, geste, voix, lumière et orientation préparent un client spatial pour casque.'
+    ? 'Ici, O. devient interface volumique. Terre donne l adresse, la mémoire garde la matière, les capteurs ouvrent le réel et la présence règle la distance.'
     : 'Ici, la surface devient membrane. Mouvement, souffle, lumière et grain entrent, puis le tore les rend lisibles.';
 $spatialMappingModeLabel = $isSowwwlIo ? 'espace / plasma / tore' : 'réalité / plasma / tore';
 $spatialMappingTitle = $isSowwwlIo ? 'Le volume filtre ce qu il reçoit.' : 'La peau filtre ce qu’elle reçoit.';
 $spatialMappingCopy = $isSowwwlIo
-    ? 'Le geste touche, le plasma traduit, le tore ouvre une lecture spatiale.'
+    ? 'Le monde touche, le plasma traduit, puis le tore ouvre une lecture située dans le volume.'
     : 'Le réel touche, le plasma traduit, le tore ouvre la lecture.';
+$spatialMappingRaNote = $isSowwwlIo
+    ? 'Quand la couche spatiale s ouvre, la couche dominante peut reprendre la main ici pour garder la lecture située.'
+    : 'Quand la membrane s ouvre, la couche dominante peut reprendre la main ici pour garder la lecture située.';
+$spatialMappingReading = $isSowwwlIo
+    ? 'Le plasma fait le lien entre la réalité et le volume spatial. Le tore n’est pas au-dessus du monde : il donne au volume sa prise lisible.'
+    : 'Le plasma fait le lien entre la réalité et la surface torique. Le tore n’est pas au-dessus du monde : il s’y branche.';
 $spatialMappingBadge = $isSowwwlIo ? 'spatial preview' : 'real-world map';
-$spatialCameraTitle = $isSowwwlIo ? 'La couche spatiale attend un geste.' : 'La membrane attend un geste.';
+$spatialCameraTitle = $isSowwwlIo ? 'La couche spatiale attend un premier accord.' : 'La membrane attend un geste.';
 $spatialCameraStatus = $isSowwwlIo
     ? 'Active la couche pour ouvrir mouvement, voix, lumière, caméra et veille active, puis préparer une lecture spatiale du tore. Terre et Mine permet aussi de tester la montée sans capteurs. Aucune image brute n est envoyée. Si le pont plasma est actif, seuls des signaux synthétiques quittent cette couche.'
     : 'Active la membrane pour ouvrir mouvement, voix, lumière, caméra et veille active, puis laisser le téléphone jouer un thérémin local et accorder légèrement la voix. Terre et Mine permet aussi de tester la montée sans capteurs. Aucune image brute n est envoyée. Si le pont plasma est actif, seuls des signaux synthétiques quittent cette couche.';
+$spatialSensorPanelLabel = $isSowwwlIo ? 'capteurs & lisiere' : 'rituel & capteurs';
+$spatialSensorPanelTitle = $isSowwwlIo ? 'Capteurs & lisiere physique' : 'Rituel & capteurs';
+$spatialSensorPanelMeta = $isSowwwlIo ? 'camera, mouvement, lumiere, sceptre' : 'camera, mouvement, lumiere, veille';
+$spatialSceptreState = $isSowwwlIo ? 'Le sceptre dort encore dans le volume.' : 'Le sceptre dort encore dans le tore.';
+$spatialSceptreCopy = $isSowwwlIo
+    ? 'Le Pi 3 B+ et son Sensor HAT peuvent devenir une main, un climat et un rythme pour le volume.'
+    : 'Le Pi 3 B+ et son Sensor HAT peuvent devenir une main, un climat et un rythme pour la surface.';
 $spatialDeviceNote = $isSowwwlIo
-    ? 'Le web pilote ici silence, niveau, haptique, partage et mode app. Un client visionOS ou Quest pourra ensuite relier le tore à des permissions spatiales natives plus fines.'
+    ? 'Le web pilote ici silence, niveau, partage, mode app et pont natif. Un client visionOS ou Quest pourra ensuite relier ce même tore à des permissions spatiales plus fines.'
     : 'Le web pilote ici silence, niveau, haptique, partage et mode app. Un wrapper natif pourra ensuite donner le silence et le volume réels du téléphone.';
+$spatialDeviceSummaryLabel = $isSowwwlIo ? '02 presence' : '02 appareil';
+$spatialDevicePanelTitle = $isSowwwlIo ? 'Presence, partage, pont' : 'Sortie, partage, pont';
+$spatialDevicePanelMeta = $isSowwwlIo ? 'niveau O., partage, natif' : 'niveau O., silence, natif';
+$spatialWorldPanelLabel = $isSowwwlIo ? 'presence jouable' : 'monde instrument';
+$spatialWorldSummaryLabel = $isSowwwlIo ? '03 presence' : '03 monde';
+$spatialWorldPanelTitle = $isSowwwlIo ? 'Presence jouable' : 'Monde instrument';
+$spatialWorldHeadLabel = $isSowwwlIo ? 'presence jouable' : 'monde instrument';
+$spatialWorldStageAria = $isSowwwlIo
+    ? 'Volume de jeu Terre et Mine, jouable au doigt, au pointeur et au clavier'
+    : 'Surface de jeu Terre et Mine, jouable au doigt, au pointeur et au clavier';
+$spatialWorldStaticCopy = $isSowwwlIo
+    ? 'Le monde devient présence jouable: visage, corps, lumière, paysage et toucher peuvent tous nourrir le volume.'
+    : 'Le monde reste un instrument: visage, corps, lumière, paysage et toucher peuvent tous nourrir le tore.';
 $spatialGestureTitle = $isSowwwlIo
-    ? 'Traverse, puis laisse regard, geste et appareil infléchir le tore.'
+    ? 'Traverse, puis laisse regard, geste et appareil infléchir le volume.'
     : 'Traverse, puis laisse le téléphone infléchir le tore.';
 $spatialGestureCopy = $isSowwwlIo
     ? ($isSpatialHeadsetMode
@@ -510,6 +604,54 @@ $spatialModeCopy = $isSowwwlIo
         ? 'Cette passe privilégie le focus large, le clavier et les actions franches pour tester un casque dès maintenant, sans promettre encore le vrai passthrough ni les gestes natifs.'
         : 'Cette passe garde une lecture écran plus souple pour maquetter, puis permet de basculer explicitement en mode casque quand on veut tester le parcours spatial.')
     : '';
+$spatialActivationLabel = $isSowwwlIo ? 'Activer la couche spatiale' : 'Activer la membrane';
+$spatialReleaseLabel = $isSowwwlIo ? 'Relâcher la couche' : 'Relâcher la membrane';
+$spatialWayfinderAria = $isSowwwlIo ? 'Routes rapides du volume spatial' : 'Routes rapides de la surface';
+$spatialWayfinderIntroLabel = $isSowwwlIo ? 'routes spatiales' : 'routes lisibles';
+$spatialTorusBodyCopy = $isSowwwlIo
+    ? 'Un volume navigable où les intensités deviennent lecture, interface et dérive située.'
+    : 'Une membrane navigable où les intensités deviennent lecture, interface et dérive située.';
+$spatialSensorSummaryLabel = $isSowwwlIo ? '01 capteurs' : '01 membrane';
+$spatialSensorAriaLabel = $isSowwwlIo ? 'État direct de la couche spatiale' : 'État direct de la membrane';
+$spatialWorkshopLabel = $isSowwwlIo ? 'memoire & atelier spatial' : 'atelier membrane';
+$spatialWorkshopTitle = $isSowwwlIo ? 'Memoire & atelier spatial' : 'Atelier membrane';
+$spatialMusicSummaryLabel = $isSowwwlIo ? '04 memoire' : '04 atelier';
+$spatialMusicPanelMeta = $isSowwwlIo ? 'memoire, voyage, motif, prises' : 'lecture, voyage, motif, prises';
+$spatialMusicControlsAria = $isSowwwlIo ? 'Réglages musicaux du volume spatial' : 'Réglages musicaux de la membrane';
+$spatialMusicScenesAria = $isSowwwlIo ? 'Scènes du volume spatial' : 'Scènes de la membrane';
+$spatialMusicGuideGridAria = $isSowwwlIo ? 'Lecture musicale du volume spatial' : 'Lecture musicale du tore';
+$spatialMusicDeskAria = $isSowwwlIo ? 'Console musicale du volume spatial' : 'Console musicale membrane';
+$spatialWorkshopCopy = $isSowwwlIo
+    ? 'Enchaîne des scènes mémorisées sur plusieurs mesures pour transformer le volume en forme jouable, enregistrable et partageable.'
+    : 'Enchaîne des scènes mémorisées sur plusieurs mesures pour transformer la membrane en forme jouable et enregistrable.';
+$spatialMusicFxCopy = $isSowwwlIo
+    ? 'Ouvre l espace, la repetition, le grain et l air du master pour transformer le volume en chambre, verriere, brume ou braise.'
+    : 'Ouvre l espace, la repetition, le grain et l air du master pour transformer la membrane en chambre, vitre, brume ou braise.';
+$spatialMusicMemoryTitle = $isSowwwlIo ? 'memoire situee' : 'memoire du tore';
+$spatialMasterCopy = $isSowwwlIo
+    ? 'Le bus final du volume, celui qui part vers l oreille, les prises et le futur pont natif.'
+    : 'Le bus final de la membrane, celui qui part vers l oreille et les prises.';
+$spatialMusicMixerAria = $isSowwwlIo ? 'Mixer spatial' : 'Mixer membrane';
+$spatialTrackTerreCopy = $isSowwwlIo ? 'La charpente stable, la gravite et le corps du volume.' : 'La charpente stable, la gravite et le corps du tore.';
+$spatialArTitle = $isSowwwlIo ? 'Le volume se pose sur le monde.' : 'Le tore se pose sur le monde.';
+$spatialArStatus = $isSowwwlIo
+    ? 'La réalité garde encore la main. Active la couche spatiale pour laisser les trois couches se répartir.'
+    : 'La réalité garde encore la main. Active la membrane pour laisser les trois couches se répartir.';
+$spatialArDirective = $isSowwwlIo
+    ? 'Directive: garder les plans du monde lisibles, laisser le plasma annoter, puis ouvrir le volume seulement là où il doit prendre.'
+    : 'Directive: garder les plans du monde lisibles, laisser le plasma annoter, puis ouvrir le tore seulement là où il doit prendre.';
+$spatialArPilotTitle = $isSowwwlIo ? 'Prise active: cadrer la presence.' : 'Prise active: cadrer le volume.';
+$spatialArUsage = $isSowwwlIo
+    ? 'Raccourcis: R ancre, P traduit, T boucle, M tresse. En mode casque web, le volume peut changer de régime sans perdre la lecture située.'
+    : 'Raccourcis: R ancre, P traduit, T boucle, M tresse. En mode casque web, le tore peut changer de régime sans perdre la lecture située.';
+$spatialRoutesTitle = $isSowwwlIo ? 'Passages & appareillage' : 'Sorties & appareillage';
+$spatialRoutesMeta = $isSowwwlIo ? 'matiere, guide, presence' : 'matière, guide, membrane';
+$spatialMappingTorusWhisper = $isSowwwlIo
+    ? 'Le volume devient seuil, navigation, orientation.'
+    : 'La surface devient seuil, navigation, orientation.';
+$spatialMappingTorusSummary = $isSowwwlIo
+    ? 'Le tore donne au volume sa peau lisible, ses prises et sa dérive située.'
+    : 'Le tore est la peau visible de Sowwwl. Il accueille la projection du réel et permet d’entrer dans le réseau par dérive, lecture et résonance.';
 $ioSpatialVolumeNodes = [];
 if ($isSowwwlIo) {
     $ioSpatialVolumeNodes = [
@@ -602,15 +744,26 @@ if ($isSowwwlIo) {
             'copy' => 'L écho relance une présence en direct sans perdre la mémoire de Signal.',
         ],
         [
-            'key' => 'lab',
-            'label' => 'Lab',
-            'layer' => 'prototype',
+            'key' => 'camera',
+            'label' => 'Fenêtre',
+            'layer' => 'capteur',
             'tone' => 'lab',
-            'href' => 'https://lab.sowwwl.cloud/',
+            'href' => pocket_camera_view_href(null, $host),
             'x' => 0,
             'y' => -7.7,
             'z' => -6.3,
-            'copy' => 'Le lab raccorde capteurs, pocket, plasma et vérification avant passage en production.',
+            'copy' => 'La fenêtre harmonique donne au volume une prise physique: paysage, lumière, climat et présence restent lisibles sans sortir de sowwwl.io.',
+        ],
+        [
+            'key' => 'sceptre',
+            'label' => 'Sceptre',
+            'layer' => 'geste',
+            'tone' => 'lab',
+            'href' => $sceptreViewHref,
+            'x' => 7.1,
+            'y' => -6.1,
+            'z' => -5.8,
+            'copy' => 'Le sceptre donne une main physique au volume: mouvement, halo, percussion et climat peuvent piloter le tore depuis la même surface.',
         ],
     ];
 }
@@ -627,6 +780,7 @@ $pageDescription = $isLabSurface
         : ($isSowwwlXyz
             ? 'SOWWWL XYZ — membrane musicale du tore pour téléphone, capteurs, monde instrument et gestes situés.'
             : (SITE_TITLE . ' — entrer publiquement, poser une terre, ou passer par 0wlslw0.')));
+$pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === null) ? 'public-shell' : 'main';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -636,7 +790,8 @@ $pageDescription = $isLabSurface
     <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
     <title><?= h($pageTitle) ?></title>
-<?= render_o_page_head_assets($pageHeadVariant) ?>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host) ?>
+<?= render_o_page_head_assets($pageHeadVariant, $host, ['script_bundle' => $pageScriptBundle]) ?>
 <?php if ($isUserCloudChamberEntry): ?>
     <script>
         if (!window.location.hash) {
@@ -805,9 +960,9 @@ $pageDescription = $isLabSurface
             <p class="lead xyz-surface-head__lead"><?= h($spatialSurfaceLead) ?></p>
 
             <div class="xyz-surface-actions">
-                <button type="button" class="pill-link xyz-camera-toggle" data-xyz-camera-start>Activer la membrane</button>
+                <button type="button" class="pill-link xyz-camera-toggle" data-xyz-camera-start><?= h($spatialActivationLabel) ?></button>
                 <button type="button" class="ghost-link xyz-camera-toggle" data-xyz-camera-demo aria-pressed="false">Terre &amp; Mine</button>
-                <button type="button" class="ghost-link xyz-camera-toggle hidden" data-xyz-camera-stop>Relâcher la membrane</button>
+                <button type="button" class="ghost-link xyz-camera-toggle hidden" data-xyz-camera-stop><?= h($spatialReleaseLabel) ?></button>
                 <a class="ghost-link" href="<?= h($authenticatedLand ? o_route_href('/land', ['u' => $activeLandSlug]) : '#connexion') ?>"><?= h($authenticatedLand ? 'Ouvrir ma terre' : 'Relier une terre') ?></a>
                 <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
             </div>
@@ -819,9 +974,9 @@ $pageDescription = $isLabSurface
                 <span class="badge badge-glass">local d’abord</span>
             </div>
 
-            <nav class="xyz-surface-wayfinder" aria-label="Routes rapides de la surface">
+            <nav class="xyz-surface-wayfinder" aria-label="<?= h($spatialWayfinderAria) ?>">
                 <div class="xyz-surface-wayfinder__intro">
-                    <span class="summary-label">routes lisibles</span>
+                    <span class="summary-label"><?= h($spatialWayfinderIntroLabel) ?></span>
                     <strong>Choisir sans masquer le centre.</strong>
                     <a href="#xyz-panel-routes">voir les sorties</a>
                 </div>
@@ -849,6 +1004,34 @@ $pageDescription = $isLabSurface
             'unread_signal' => $unreadSignal,
         ]) ?>
 
+        <?php if ($isSowwwlIo): ?>
+        <section class="panel reveal xyz-surface-foundation" aria-labelledby="xyz-surface-foundation-title">
+            <div class="section-topline">
+                <div>
+                    <span class="summary-label">ordre de lecture</span>
+                    <h2 id="xyz-surface-foundation-title">Quatre prises tiennent sowwwl.io.</h2>
+                    <p class="panel-copy">Le volume devient lisible quand on sait d abord où se pose l adresse, où sédimente la matière, où entre le réel et comment une présence répond.</p>
+                </div>
+                <span class="badge">terre / memoire / capteurs / presence</span>
+            </div>
+            <div class="land-focus-grid">
+                <?php foreach ($spatialReadingOrderCards as $card): ?>
+                <article class="land-focus-card">
+                    <p class="land-card-kicker"><?= h((string) $card['kicker']) ?></p>
+                    <h3><?= h((string) $card['title']) ?></h3>
+                    <p class="land-card-copy"><?= h((string) $card['copy']) ?></p>
+                    <p class="panel-copy"><?= h((string) $card['meta']) ?></p>
+                    <div class="xyz-surface-route-links">
+                        <?php foreach ($card['links'] as $link): ?>
+                            <a class="ghost-link" href="<?= h((string) $link['href']) ?>"><?= h((string) $link['label']) ?></a>
+                        <?php endforeach; ?>
+                    </div>
+                </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+        <?php endif; ?>
+
         <div class="xyz-surface-grid">
             <section class="panel reveal mapping-panel mapping-panel--genie xyz-surface-mapping" id="mapping" aria-labelledby="mapping-title" data-mapping-genie data-mapping-theme="real" data-xyz-archi-section data-xyz-archi-label="cartographie">
                 <div class="mapping-panel__veil" aria-hidden="true">
@@ -870,7 +1053,7 @@ $pageDescription = $isLabSurface
                 </div>
 
                 <div class="mapping-panel__scene">
-                    <div class="mapping-genie" role="list" aria-label="Cartographie du tore" data-mapping-genie-list>
+                    <div class="mapping-genie" role="list" aria-label="<?= h($isSowwwlIo ? 'Cartographie du volume' : 'Cartographie du tore') ?>" data-mapping-genie-list>
                         <button
                             type="button"
                             class="mapping-genie-card mapping-genie-card--real is-active"
@@ -929,8 +1112,8 @@ $pageDescription = $isLabSurface
                             data-mapping-card
                             data-mapping-tone="torus"
                             data-mapping-label="Tore"
-                            data-mapping-whisper="La surface devient seuil, navigation, orientation."
-                            data-mapping-summary="Le tore est la peau visible de Sowwwl. Il accueille la projection du réel et permet d’entrer dans le réseau par dérive, lecture et résonance."
+                            data-mapping-whisper="<?= h($spatialMappingTorusWhisper) ?>"
+                            data-mapping-summary="<?= h($spatialMappingTorusSummary) ?>"
                             aria-expanded="false"
                             aria-pressed="false"
                             aria-describedby="mapping-keys"
@@ -941,7 +1124,7 @@ $pageDescription = $isLabSurface
                                 <span class="summary-label">plan 03</span>
                                 <strong>Tore</strong>
                             </span>
-                            <span class="mapping-genie-card__body">Une membrane navigable où les intensités deviennent lecture, interface et dérive située.</span>
+                            <span class="mapping-genie-card__body"><?= h($spatialTorusBodyCopy) ?></span>
                         </button>
                     </div>
 
@@ -950,7 +1133,7 @@ $pageDescription = $isLabSurface
                         <strong class="mapping-chorus__title" data-mapping-active-label>Réalité</strong>
                         <p class="mapping-chorus__whisper" data-mapping-active-whisper>Rue, souffle, corps, lumière : le monde avant sa traduction.</p>
                         <p class="mapping-chorus__summary" data-mapping-active-summary>La réalité contient les phénomènes, les gestes, les traces et les intensités qui n’ont pas encore trouvé leur forme navigable.</p>
-                        <p class="mapping-chorus__ra" data-mapping-ra-note>Quand la membrane s ouvre, la couche dominante peut reprendre la main ici pour garder la lecture située.</p>
+                        <p class="mapping-chorus__ra" data-mapping-ra-note><?= h($spatialMappingRaNote) ?></p>
                         <p class="mapping-chorus__hint" id="mapping-keys">Tab pour parcourir chaque plan. Entrée ou clic pour l activer. En mode casque web, les flèches, Home et End gardent aussi la dérive.</p>
                         <div class="mapping-chorus__meter" aria-hidden="true">
                             <span></span>
@@ -960,21 +1143,21 @@ $pageDescription = $isLabSurface
                     </aside>
                 </div>
 
-                <p class="mapping-panel__reading"><strong>Lecture&nbsp;:</strong> le <span class="mapping-panel__accent mapping-panel__accent--plasma">plasma</span> fait le lien entre <span class="mapping-panel__accent mapping-panel__accent--real">la réalité</span> et <span class="mapping-panel__accent mapping-panel__accent--torus">la surface torique</span>. Le tore n’est pas au-dessus du monde&nbsp;: il s’y branche.</p>
+                <p class="mapping-panel__reading"><strong>Lecture&nbsp;:</strong> <?= h($spatialMappingReading) ?></p>
             </section>
 
             <aside class="xyz-surface-aside reveal">
                 <article class="xyz-surface-note xyz-surface-note--camera" data-xyz-camera-panel>
-                    <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-rituel" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="rituel & capteurs" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="1" open>
+                    <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-rituel" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="<?= h($spatialSensorPanelLabel) ?>" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="1" open>
                         <summary class="xyz-archi-panel__summary">
-                            <span class="summary-label">01 membrane</span>
-                            <strong>Rituel &amp; capteurs</strong>
-                            <span class="xyz-archi-panel__meta">camera, mouvement, lumiere, veille</span>
+                            <span class="summary-label"><?= h($spatialSensorSummaryLabel) ?></span>
+                            <strong><?= h($spatialSensorPanelTitle) ?></strong>
+                            <span class="xyz-archi-panel__meta"><?= h($spatialSensorPanelMeta) ?></span>
                         </summary>
                         <div class="xyz-archi-panel__content">
                             <strong data-xyz-camera-title><?= h($spatialCameraTitle) ?></strong>
                             <p class="panel-copy" data-xyz-camera-status><?= h($spatialCameraStatus) ?></p>
-                            <div class="xyz-surface-sensor-grid" aria-label="État direct de la membrane">
+                            <div class="xyz-surface-sensor-grid" aria-label="<?= h($spatialSensorAriaLabel) ?>">
                                 <p><span>orientation</span><strong data-xyz-sensor-orientation>en attente</strong></p>
                                 <p><span>mouvement</span><strong data-xyz-sensor-motion>en attente</strong></p>
                                 <p><span>lumière</span><strong data-xyz-sensor-light>en attente</strong></p>
@@ -988,8 +1171,8 @@ $pageDescription = $isLabSurface
                             </div>
                             <div class="xyz-archi-callout xyz-archi-callout--sceptre">
                                 <span class="summary-label">sceptre</span>
-                                <strong data-xyz-sceptre-state>Le sceptre dort encore dans le tore.</strong>
-                                <p class="panel-copy" data-xyz-sceptre-copy>Le Pi 3 B+ et son Sensor HAT peuvent devenir une main, un climat et un rythme pour la surface.</p>
+                                <strong data-xyz-sceptre-state><?= h($spatialSceptreState) ?></strong>
+                                <p class="panel-copy" data-xyz-sceptre-copy><?= h($spatialSceptreCopy) ?></p>
                                 <p class="panel-copy" data-xyz-sceptre-roster>Le premier sceptre attend encore sa levée.</p>
                                 <div class="action-row">
                                     <a class="ghost-link" data-xyz-sceptre-console href="<?= h($sceptreViewHref) ?>">Ouvrir la console</a>
@@ -999,15 +1182,15 @@ $pageDescription = $isLabSurface
                         </div>
                     </details>
 
-                    <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-device" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="appareil" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="0">
+                    <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-device" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="<?= h($isSowwwlIo ? 'presence & appareil' : 'appareil') ?>" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="0">
                         <summary class="xyz-archi-panel__summary">
-                            <span class="summary-label">02 appareil</span>
-                            <strong>Sortie, partage, pont</strong>
-                            <span class="xyz-archi-panel__meta">niveau O., silence, natif</span>
+                            <span class="summary-label"><?= h($spatialDeviceSummaryLabel) ?></span>
+                            <strong><?= h($spatialDevicePanelTitle) ?></strong>
+                            <span class="xyz-archi-panel__meta"><?= h($spatialDevicePanelMeta) ?></span>
                         </summary>
                         <div class="xyz-archi-panel__content">
                             <div class="device-bridge-panel" data-device-bridge-root data-device-context="xyz">
-                                <span class="summary-label">appareil</span>
+                                <span class="summary-label"><?= h($isSowwwlIo ? 'presence' : 'appareil') ?></span>
                                 <div class="device-bridge-grid" aria-label="État téléphone">
                                     <p><span>silence</span><strong data-device-silence-status>web sonore</strong></p>
                                     <p><span>volume</span><strong data-device-volume-status>82%</strong></p>
@@ -1033,16 +1216,16 @@ $pageDescription = $isLabSurface
                         </div>
                     </details>
 
-                    <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-instrument" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="monde instrument" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="1" open>
+                    <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-instrument" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="<?= h($spatialWorldPanelLabel) ?>" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="1" open>
                         <summary class="xyz-archi-panel__summary">
-                            <span class="summary-label">03 monde</span>
-                            <strong>Monde instrument</strong>
+                            <span class="summary-label"><?= h($spatialWorldSummaryLabel) ?></span>
+                            <strong><?= h($spatialWorldPanelTitle) ?></strong>
                             <span class="xyz-archi-panel__meta">Terre, Mine, visage, paysage</span>
                         </summary>
                         <div class="xyz-archi-panel__content">
                             <div class="xyz-world-instrument" data-xyz-instrument-root>
                                 <div class="xyz-world-instrument__head">
-                                    <span class="summary-label">monde instrument</span>
+                                    <span class="summary-label"><?= h($spatialWorldHeadLabel) ?></span>
                                     <div class="xyz-world-instrument__camera-switch" role="group" aria-label="Perspective caméra">
                                         <button type="button" class="ghost-link xyz-world-instrument__camera-button" data-xyz-camera-facing-button="user" aria-pressed="false">visage</button>
                                         <button type="button" class="ghost-link xyz-world-instrument__camera-button" data-xyz-camera-facing-button="environment" aria-pressed="false">paysage</button>
@@ -1055,23 +1238,23 @@ $pageDescription = $isLabSurface
                                     <p><span>mains</span><strong data-xyz-instrument-touch>aucune prise</strong></p>
                                     <p><span>lumière</span><strong data-xyz-instrument-light>lueur mixte</strong></p>
                                 </div>
-                                <div class="xyz-world-instrument__stage" data-xyz-instrument-stage tabindex="0" aria-label="Surface de jeu Terre et Mine, jouable au doigt, au pointeur et au clavier">
+                                <div class="xyz-world-instrument__stage" data-xyz-instrument-stage tabindex="0" aria-label="<?= h($spatialWorldStageAria) ?>">
                                     <span class="xyz-world-instrument__axis xyz-world-instrument__axis--x" aria-hidden="true"></span>
                                     <span class="xyz-world-instrument__axis xyz-world-instrument__axis--y" aria-hidden="true"></span>
                                     <span class="xyz-world-instrument__orb xyz-world-instrument__orb--terre" data-xyz-instrument-terre aria-hidden="true"></span>
                                     <span class="xyz-world-instrument__orb xyz-world-instrument__orb--mine" data-xyz-instrument-mine aria-hidden="true"></span>
                                     <p class="xyz-world-instrument__hint" data-xyz-instrument-stage-copy>Glisse une ou deux mains ici. Terre porte le fond, Mine taille la note. WASD et flèches fonctionnent aussi. Bascule en paysage pour faire jouer le dehors.</p>
                                 </div>
-                                <p class="panel-copy xyz-world-instrument__copy" data-xyz-world-copy>Le monde reste un instrument: visage, corps, lumière, paysage et toucher peuvent tous nourrir le tore.</p>
+                                <p class="panel-copy xyz-world-instrument__copy" data-xyz-world-copy><?= h($spatialWorldStaticCopy) ?></p>
                             </div>
                         </div>
                     </details>
 
-                    <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-music" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="atelier membrane" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="1" open>
+                    <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-music" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="<?= h($spatialWorkshopLabel) ?>" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="1" open>
                         <summary class="xyz-archi-panel__summary">
-                            <span class="summary-label">04 atelier</span>
-                            <strong>Atelier membrane</strong>
-                            <span class="xyz-archi-panel__meta">lecture, voyage, motif, prises</span>
+                            <span class="summary-label"><?= h($spatialMusicSummaryLabel) ?></span>
+                            <strong><?= h($spatialWorkshopTitle) ?></strong>
+                            <span class="xyz-archi-panel__meta"><?= h($spatialMusicPanelMeta) ?></span>
                         </summary>
                         <div class="xyz-archi-panel__content">
                             <div class="xyz-music-guide" data-xyz-music-guide-root>
@@ -1082,7 +1265,7 @@ $pageDescription = $isLabSurface
                                         <span class="xyz-archi-panel__meta">gamme, timbre, percu</span>
                                     </summary>
                                     <div class="xyz-archi-panel__content">
-                                        <div class="xyz-music-guide__grid" aria-label="Lecture musicale du tore">
+                                        <div class="xyz-music-guide__grid" aria-label="<?= h($spatialMusicGuideGridAria) ?>">
                                             <p><span>mode</span><strong data-xyz-music-mode>Mi éolien</strong></p>
                                             <p><span>note</span><strong data-xyz-music-note>Mi2</strong></p>
                                             <p><span>timbre</span><strong data-xyz-music-timbre>peau</strong></p>
@@ -1091,7 +1274,7 @@ $pageDescription = $isLabSurface
                                             <p><span>terre</span><strong data-xyz-hand-terre-state>porte le champ</strong></p>
                                             <p><span>mine</span><strong data-xyz-hand-mine-state>creuse la note</strong></p>
                                         </div>
-                                        <div class="xyz-music-guide__controls" aria-label="Réglages musicaux de la membrane">
+                                        <div class="xyz-music-guide__controls" aria-label="<?= h($spatialMusicControlsAria) ?>">
                                             <label class="xyz-music-guide__control">
                                                 <span>gamme</span>
                                                 <select data-xyz-music-scale>
@@ -1163,7 +1346,7 @@ $pageDescription = $isLabSurface
                                         <span class="xyz-archi-panel__meta">BPM, FX, scenes, voyage, prises</span>
                                     </summary>
                                     <div class="xyz-archi-panel__content">
-                                        <section class="xyz-music-desk" data-xyz-daw-root aria-label="Console musicale membrane">
+                                        <section class="xyz-music-desk" data-xyz-daw-root aria-label="<?= h($spatialMusicDeskAria) ?>">
                                             <details class="xyz-archi-panel xyz-archi-panel--nested xyz-archi-panel--subtle" id="xyz-panel-daw-transport" data-xyz-archi-panel data-xyz-archi-group="music-desk" data-xyz-archi-default-open="1" open>
                                                 <summary class="xyz-archi-panel__summary">
                                                     <span class="summary-label">session</span>
@@ -1249,7 +1432,7 @@ $pageDescription = $isLabSurface
                                                                 <span class="summary-label">matiere</span>
                                                                 <strong data-xyz-daw-fx-state>nu proche</strong>
                                                             </div>
-                                                            <p class="xyz-music-fx__copy" data-xyz-daw-fx-copy>Ouvre l espace, la repetition, le grain et l air du master pour transformer la membrane en chambre, vitre, brume ou braise.</p>
+                                                            <p class="xyz-music-fx__copy" data-xyz-daw-fx-copy><?= h($spatialMusicFxCopy) ?></p>
                                                             <div class="xyz-music-fx__presets" role="group" aria-label="Presets de matière">
                                                                 <button type="button" class="ghost-link xyz-music-fx__preset" data-xyz-daw-fx-preset="bare">nu</button>
                                                                 <button type="button" class="ghost-link xyz-music-fx__preset" data-xyz-daw-fx-preset="mist">brume</button>
@@ -1294,10 +1477,10 @@ $pageDescription = $isLabSurface
                                                         <div class="xyz-music-memory">
                                                             <div class="xyz-music-memory__head">
                                                                 <span class="summary-label">scenes</span>
-                                                                <strong>memoire du tore</strong>
+                                                                <strong><?= h($spatialMusicMemoryTitle) ?></strong>
                                                             </div>
                                                             <p class="xyz-music-memory__copy">Mémorise une position Terre/Mine, le timbre, la gamme et le mix, puis relance-les comme des états jouables.</p>
-                                                            <div class="xyz-music-memory__grid" role="group" aria-label="Scènes de la membrane">
+                                                            <div class="xyz-music-memory__grid" role="group" aria-label="<?= h($spatialMusicScenesAria) ?>">
                                                                 <article class="xyz-music-scene" data-xyz-daw-scene="scene-a">
                                                                     <div class="xyz-music-scene__head">
                                                                         <span class="summary-label">A</span>
@@ -1373,7 +1556,7 @@ $pageDescription = $isLabSurface
                                                                 <span class="summary-label">voyage</span>
                                                                 <strong data-xyz-daw-arrangement-state>aucun voyage</strong>
                                                             </div>
-                                                            <p class="xyz-music-arrangement__copy" data-xyz-daw-arrangement-copy>Enchaîne des scènes mémorisées sur plusieurs mesures pour transformer la membrane en forme jouable et enregistrable.</p>
+                                                            <p class="xyz-music-arrangement__copy" data-xyz-daw-arrangement-copy><?= h($spatialWorkshopCopy) ?></p>
                                                             <div class="xyz-music-arrangement__actions" role="group" aria-label="Transport du voyage">
                                                                 <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-arrangement-play>jouer voyage</button>
                                                                 <button type="button" class="ghost-link xyz-music-desk__transport-button" data-xyz-daw-arrangement-build>charger A B C D</button>
@@ -1504,13 +1687,13 @@ $pageDescription = $isLabSurface
                                                     <span class="xyz-archi-panel__meta">terre, mine, basse, percu</span>
                                                 </summary>
                                                 <div class="xyz-archi-panel__content">
-                                                    <div class="xyz-music-desk__mixer" aria-label="Mixer membrane">
+                                                    <div class="xyz-music-desk__mixer" aria-label="<?= h($spatialMusicMixerAria) ?>">
                                                         <article class="xyz-music-track" data-xyz-track-card="terre">
                                                             <div class="xyz-music-track__head">
                                                                 <span class="summary-label">terre</span>
                                                                 <strong>fond</strong>
                                                             </div>
-                                                            <p class="xyz-music-track__copy">La charpente stable, la gravite et le corps du tore.</p>
+                                                            <p class="xyz-music-track__copy"><?= h($spatialTrackTerreCopy) ?></p>
                                                             <div class="xyz-music-track__actions">
                                                                 <button type="button" class="ghost-link xyz-music-track__toggle" data-xyz-track-mute="terre" aria-pressed="false">mute</button>
                                                                 <button type="button" class="ghost-link xyz-music-track__toggle" data-xyz-track-solo="terre" aria-pressed="false">solo</button>
@@ -1574,7 +1757,7 @@ $pageDescription = $isLabSurface
                                                                 <span class="summary-label">master</span>
                                                                 <strong>sortie</strong>
                                                             </div>
-                                                            <p class="xyz-music-track__copy">Le bus final de la membrane, celui qui part vers l oreille et les prises.</p>
+                                                            <p class="xyz-music-track__copy"><?= h($spatialMasterCopy) ?></p>
                                                             <label class="xyz-music-track__level">
                                                                 <span>niveau</span>
                                                                 <input type="range" min="0" max="100" step="1" value="98" data-xyz-daw-master-input>
@@ -1643,8 +1826,8 @@ $pageDescription = $isLabSurface
                             <span class="xyz-archi-panel__meta">reel, plasma, tore</span>
                         </summary>
                         <div class="xyz-archi-panel__content">
-                            <strong data-xyz-ar-title>Le tore se pose sur le monde.</strong>
-                            <p class="panel-copy" data-xyz-ar-status>La réalité garde encore la main. Active la membrane pour laisser les trois couches se répartir.</p>
+                            <strong data-xyz-ar-title><?= h($spatialArTitle) ?></strong>
+                            <p class="panel-copy" data-xyz-ar-status><?= h($spatialArStatus) ?></p>
                             <div class="xyz-ar-mode-switch" aria-label="Mode de modulation en réalité augmentée">
                                 <button type="button" class="ghost-link xyz-ar-mode-button" data-xyz-ar-mode-button="anchor" aria-pressed="true">Ancrer</button>
                                 <button type="button" class="ghost-link xyz-ar-mode-button" data-xyz-ar-mode-button="translate" aria-pressed="false">Traduire</button>
@@ -1677,16 +1860,16 @@ $pageDescription = $isLabSurface
                                     <p data-xyz-ar-torus-copy>Seuils, routes, prises, zones et dérive: la peau qui boucle l espace en interface.</p>
                                 </article>
                             </div>
-                            <p class="xyz-ar-directive" data-xyz-ar-directive>Directive: garder les plans du monde lisibles, laisser le plasma annoter, puis ouvrir le tore seulement là où il doit prendre.</p>
+                            <p class="xyz-ar-directive" data-xyz-ar-directive><?= h($spatialArDirective) ?></p>
                             <div class="xyz-ar-pilot" data-xyz-ar-pilot>
-                                <p class="xyz-ar-pilot__title" data-xyz-ar-pilot-title>Prise active: cadrer le volume.</p>
+                                <p class="xyz-ar-pilot__title" data-xyz-ar-pilot-title><?= h($spatialArPilotTitle) ?></p>
                                 <p class="xyz-ar-pilot__copy" data-xyz-ar-pilot-copy>Commence par la carte pour tenir les plans, puis repasse par 0wlslw0 si tu dois réorienter la lecture située.</p>
                                 <div class="xyz-surface-route-links xyz-surface-route-links--ar" aria-label="Routes conseillées en réalité augmentée">
                                     <a class="ghost-link" href="<?= h($mapHref) ?>" data-xyz-ar-primary-link>Ouvrir Map</a>
                                     <a class="ghost-link" href="<?= h($guideHref) ?>" data-xyz-ar-secondary-link>Passer par 0wlslw0</a>
                                 </div>
                             </div>
-                            <p class="xyz-ar-usage" data-xyz-ar-usage>Raccourcis: R ancre, P traduit, T boucle, M tresse. En mode casque web, le tore peut changer de régime sans perdre la lecture située.</p>
+                            <p class="xyz-ar-usage" data-xyz-ar-usage><?= h($spatialArUsage) ?></p>
                         </div>
                     </details>
                 </article>
@@ -1971,20 +2154,20 @@ $pageDescription = $isLabSurface
                     <details class="xyz-archi-panel xyz-archi-panel--surface" id="xyz-panel-routes" data-xyz-archi-panel data-xyz-archi-section data-xyz-archi-label="sorties" data-xyz-archi-group="surface-archi" data-xyz-archi-default-open="0">
                         <summary class="xyz-archi-panel__summary">
                             <span class="summary-label"><?= $isSowwwlIo ? ($showSpatialNativeSimulator ? '10 sorties' : '09 sorties') : '07 sorties' ?></span>
-                            <strong>Sorties &amp; appareillage</strong>
-                            <span class="xyz-archi-panel__meta">matière, guide, membrane</span>
+                            <strong><?= h($spatialRoutesTitle) ?></strong>
+                            <span class="xyz-archi-panel__meta"><?= h($spatialRoutesMeta) ?></span>
                         </summary>
                         <div class="xyz-archi-panel__content">
                             <div class="xyz-surface-route-cluster">
                                 <div class="xyz-surface-route-cluster__block">
                                     <span class="summary-label">trois axes</span>
                                     <div class="xyz-surface-route-links">
-                                        <a class="ghost-link" href="<?= h($publicAzaHref) ?>">aZa</a>
-                                        <a class="ghost-link" href="<?= h($publicStr3mHref) ?>">Str3m</a>
-                                        <a class="ghost-link" href="<?= h($publicGuideHref) ?>">0wlslw0</a>
-                                        <a class="ghost-link" href="<?= h($isSowwwlIo ? $publicXyzHref : $publicInstrumentHref) ?>"><?= h($isSowwwlIo ? 'xyz' : 'io') ?></a>
+                                        <a class="ghost-link" href="<?= h($surfaceAzaHref) ?>">aZa</a>
+                                        <a class="ghost-link" href="<?= h($surfaceStr3mHref) ?>">Str3m</a>
+                                        <a class="ghost-link" href="<?= h($surfaceGuideHref) ?>">0wlslw0</a>
+                                        <a class="ghost-link" href="<?= h($surfaceCounterpartHref) ?>"><?= h($surfaceCounterpartLabel) ?></a>
                                     </div>
-                                    <p class="panel-copy">Quand le centre a fini de respirer, la sortie ne se disperse pas : matière sur sowwwl.com, guide sur 0wlslw0.com, appareillage entre io et xyz.</p>
+                                    <p class="panel-copy"><?= h($surfaceRouteClusterCopy) ?></p>
                                 </div>
                                 <div class="xyz-archi-callout">
                                     <span class="summary-label">centre</span>

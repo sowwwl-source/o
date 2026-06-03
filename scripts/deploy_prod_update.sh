@@ -456,6 +456,16 @@ should_verify_0wlslw0_agent() {
 	[[ -n "$endpoint" ]]
 }
 
+should_verify_pi_host() {
+	local public_origin
+	local api_origin
+
+	public_origin=$(origin_from_url "$(read_env_value "SOWWWL_PUBLIC_ORIGIN")")
+	api_origin=$(origin_from_url "$(read_env_value "API_PUBLIC_BASE_URL")")
+
+	[[ "$public_origin" == "pi.sowwwl.cloud" || "$api_origin" == "pi.sowwwl.cloud" ]]
+}
+
 echo "==> Updating production checkout"
 cd "$prod_root"
 git fetch origin
@@ -520,8 +530,10 @@ verify_service_container_image app
 verify_service_container_image api
 docker exec "${project_name}-app-1" php -m | grep -qi '^pdo_sqlite$'
 docker exec "${project_name}-app-1" test -s /var/www/html/main.js
+docker exec "${project_name}-app-1" test -s /var/www/html/public-shell.js
 docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon.svg
 docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon-192.png
+docker exec "${project_name}-app-1" test -s /var/www/html/sitemap.php
 docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_signal_validation.php
 docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_0wlslw0_agent.php
 docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_spatial_surface.php
@@ -552,10 +564,16 @@ echo "==> Verifying sowwwl.io spatial surface inside app container"
 docker exec "${project_name}-app-1" php /var/www/html/scripts/check_spatial_surface.php --require-ready >/dev/null
 echo "==> Verifying media readers inside app container"
 docker exec "${project_name}-app-1" php /var/www/html/scripts/check_media_readers.php --require-ready >/dev/null
-main_js_url=$(resolve_versioned_asset_url https://sowwwl.com/ main.js)
+public_shell_url=$(resolve_versioned_asset_url https://sowwwl.com/ public-shell.js)
+main_js_url=$(resolve_versioned_asset_url https://sowwwl.com/str3m main.js)
 curl -fsSI https://sowwwl.com/
+curl -fsSI https://sowwwl.com/sitemap.xml
+curl -fsSI https://0wlslw0.com/
+curl -fsSI https://0wlslw0.com/sitemap.xml
 curl -fsSI https://sowwwl.io/
 curl -fsSI https://www.sowwwl.io/
+curl -fsSI https://sowwwl.cloud/
+curl -fsSI https://www.sowwwl.cloud/
 curl -fsSI https://sowwwl.xyz/
 curl -fsSI https://sowwwl.xyz/map
 curl -fsSI https://sowwwl.com/signal
@@ -569,6 +587,10 @@ curl -fsSI https://sowwwl.org/
 curl -fsSI https://api.sowwwl.cloud/healthz
 curl -fsSI https://api.sowwwl.cloud/v1/status
 assert_body_matches https://sowwwl.com/ 'Trois portes : public, terre, 0wlslw0|Passer par 0wlslw0|commande noyau'
+assert_body_matches https://sowwwl.com/sitemap.xml '<loc>https://sowwwl\.com/</loc>|<loc>https://sowwwl\.com/str3m</loc>'
+assert_body_matches https://0wlslw0.com/ 'Entrer sans se perdre|guide des passages|Parler à 0wlslw0'
+assert_body_matches https://0wlslw0.com/sitemap.xml '<loc>https://0wlslw0\.com/</loc>'
+assert_body_matches "$public_shell_url" 'querySelectorAll\("\.reveal"\)|public-shell'
 assert_body_matches "$main_js_url" 'runPageInit\("xyzCamera",[[:space:]]*initXyzCamera\);?'
 assert_body_matches "$main_js_url" 'runPageInit\("guideVoice",[[:space:]]*initGuideVoice\);?'
 assert_body_matches "$main_js_url" 'const[[:space:]]+hasRecognition[[:space:]]*=[[:space:]]*Boolean\(RecognitionCtor\);?'
@@ -579,13 +601,26 @@ assert_body_matches https://sowwwl.io/ 'Perspective caméra|data-xyz-camera-faci
 assert_body_matches 'https://sowwwl.io/manifest.php?app=io&spatial=headset' '"name"[[:space:]]*:[[:space:]]*"SOWWWL IO"'
 assert_body_matches 'https://sowwwl.io/manifest.php?app=io&spatial=headset' 'spatial=headset'
 assert_header_contains https://www.sowwwl.io location '^https://sowwwl\.io/'
+assert_body_matches https://sowwwl.cloud/ 'One network\. Accueil des fleurs\.|Open the product|Review validation layer'
+assert_header_contains https://www.sowwwl.cloud location '^https://sowwwl\.cloud/'
 assert_body_matches https://sowwwl.xyz/ 'Le tore écoute le monde réel|Activer la membrane|Silence web|Partager'
-assert_body_matches https://sowwwl.xyz/ 'data-xyz-plasma-bridge="https://sowwwl\.xyz(?:/o)?/ingest/membrane"'
+assert_body_matches https://sowwwl.xyz/ 'data-xyz-plasma-bridge="https://sowwwl\.xyz(/o)?/ingest/membrane"'
 assert_body_absent https://sowwwl.xyz/ 'data-xyz-plasma-bridge="https://lab\.sowwwl\.cloud'
 assert_body_matches https://sowwwl.xyz/map 'Le tore des terres actives|Console lexicale de la map|courants actifs'
 assert_body_matches https://sowwwl.org/ 'Comprendre les domaines sans se perdre|carte des rôles|Ouvrir sowwwl\.com'
 assert_body_matches https://api.sowwwl.cloud/v1/status '"service"[[:space:]]*:[[:space:]]*"api\.sowwwl\.cloud"'
 assert_body_matches https://api.sowwwl.cloud/v1/status '"openapi"[[:space:]]*:[[:space:]]*"https://api\.sowwwl\.cloud/docs/AzA_v0\.7_openapi\.min\.yaml"'
+if should_verify_pi_host; then
+	curl -fsSI https://pi.sowwwl.cloud/
+	curl -fsSI https://pi.sowwwl.cloud/healthz
+	curl -fsSI https://pi.sowwwl.cloud/v1/status
+	curl -fsSI https://pi.sowwwl.cloud/camera/pi3-camera-01
+	curl -fsSI https://pi.sowwwl.cloud/sceptre/ensemble
+	assert_body_matches https://pi.sowwwl.cloud/v1/status '"service"[[:space:]]*:[[:space:]]*"pi\.sowwwl\.cloud"'
+	assert_body_matches https://pi.sowwwl.cloud/v1/status '"openapi"[[:space:]]*:[[:space:]]*"https://pi\.sowwwl\.cloud/docs/AzA_v0\.7_openapi\.min\.yaml"'
+	assert_body_matches https://pi.sowwwl.cloud/camera/pi3-camera-01 'Fen.tre harmonique'
+	assert_body_matches https://pi.sowwwl.cloud/sceptre/ensemble 'Sceptre harmonique|pi\.sowwwl\.cloud'
+fi
 assert_single_header https://sowwwl.com/ cross-origin-opener-policy
 assert_single_header https://sowwwl.com/ cross-origin-resource-policy
 assert_single_header https://sowwwl.com/ x-permitted-cross-domain-policies

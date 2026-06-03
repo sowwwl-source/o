@@ -11,7 +11,7 @@ $homeHref = o_route_path('/');
 $landBaseHref = o_route_path('/land');
 $shoreBaseHref = o_route_path('/sh0re');
 $str3mHref = o_route_path('/str3m');
-$guideHref = o_route_path('/0wlslw0');
+$guideHref = guide_public_href($host);
 $nHref = o_route_path('/n');
 
 // Which land's shore are we visiting?
@@ -186,15 +186,22 @@ if ($viewLand) {
 }
 
 $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_profile('nocturnal');
+$pageTitle = $viewLand
+    ? 'Sh0re · ' . (string) $viewLand['username'] . ' — ' . SITE_TITLE
+    : 'Sh0re — ' . SITE_TITLE;
+$pageDescription = $viewLand
+    ? 'Sh0re — le bord public de ' . (string) $viewLand['username'] . ', entre présence visible, n0us actifs, t0ks et b0t3s.'
+    : 'Sh0re — présence publique, n0us actifs et dépôts de bord dans ' . SITE_TITLE . '.';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Sh0re — le rivage de <?= h((string) ($viewLand['username'] ?? 'cette land')) ?> dans <?= h(SITE_TITLE) ?>.">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title>Sh0re<?= $viewLand ? ' · ' . h((string) $viewLand['username']) : '' ?> — <?= h(SITE_TITLE) ?></title>
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host, ['canonical_params' => ['u']]) ?>
 <?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience sh0re-view">
@@ -207,7 +214,7 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
 <main <?= main_landmark_attrs() ?> class="layout page-shell">
 
     <header class="hero page-header reveal">
-        <p class="eyebrow"><strong>sh0re</strong> <span>rivage · n0us · t0ks</span></p>
+        <p class="eyebrow"><strong>sh0re</strong> <span>presence publique / n0us / b0t3s</span></p>
         <h1 class="land-title">
             <?php if ($viewLand): ?>
                 <strong><?= h((string) $viewLand['username']) ?></strong>
@@ -217,7 +224,7 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
                 <span>où les t0ks arrivent</span>
             <?php endif; ?>
         </h1>
-        <p class="lead">Sh0re montre le bord public d’une terre. On peut y voir les n0us actifs et y déposer des b0t3s ; les gestes de formation restent liés à une présence ouverte.</p>
+        <p class="lead">Sh0re tient le bord public d’une terre : présence visible, n0us actifs et dépôts de bord restent lisibles sans session liée.</p>
         <div class="land-meta">
             <?php if ($viewLand): ?>
                 <a class="meta-pill meta-pill-link" href="<?= h($landBaseHref) ?>?u=<?= rawurlencode((string) $viewLand['slug']) ?>">Terre</a>
@@ -239,6 +246,8 @@ $ambientProfile = $viewLand ? land_visual_profile($viewLand) : land_collective_p
             <a class="meta-pill meta-pill-link" href="<?= h($str3mHref) ?>">str3m</a>
         </div>
     </header>
+
+    <?= render_spatial_context_bar('sh0re', $host) ?>
 
     <?php if ($message !== ''): ?>
         <div class="flash flash-<?= h($messageType) ?>" aria-live="polite"><p><?= $message ?></p></div>

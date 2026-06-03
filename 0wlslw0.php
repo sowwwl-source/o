@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . '/config.php';
+require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/meaning.php';
 require_once __DIR__ . '/lib/guide_voice.php';
 
@@ -66,8 +66,13 @@ $host = request_host();
 // The guide stays on the current host instead of bouncing to another surface.
 
 $requestPath = o_request_path('/0wlslw0');
+if (in_array($host, ['0wlslw0.com', 'www.0wlslw0.com'], true) && $requestPath === '/0wlslw0') {
+    header('Location: ' . o_route_href('/'), true, 302);
+    exit;
+}
+
 if ($requestPath === '/0wlslw0.php') {
-    header('Location: ' . o_route_href('/0wlslw0'), true, 302);
+    header('Location: ' . guide_public_href($host), true, 302);
     exit;
 }
 
@@ -92,7 +97,7 @@ $voiceUpstreamState = trim((string) ($voiceState['upstream_state'] ?? guide_voic
 $voiceUpstreamLabel = trim((string) ($voiceState['upstream_label'] ?? guide_voice_upstream_label()));
 $guideMode = guide_voice_mode_label();
 $siteTitle = defined('SITE_TITLE') ? (string) constant('SITE_TITLE') : 'O. Le réseau minimal';
-$guideHref = o_route_href('/0wlslw0');
+$guideHref = guide_public_href($host);
 $openLandHref = $authenticatedLand
     ? o_route_href('/land', ['u' => (string) $authenticatedLand['slug']])
     : o_route_href('/rejoindre');
@@ -107,6 +112,8 @@ $guidePassageStateLong = match ($voiceUpstreamState) {
     'auth-missing' => 'Le relais est repéré, mais l’autorisation reste incomplète. 0wlslw0 reste utilisable ici.',
     default => 'Le guidage local reste actif. Si l’amont manque, 0wlslw0 garde le seuil ouvert ici.',
 };
+$pageTitle = '0wlslw0 — ' . $siteTitle;
+$pageDescription = '0wlslw0 — guide d entree pour comprendre ' . $siteTitle . ' et trouver la bonne porte sans se perdre.';
 $owlDoors = [
     [
         'label' => '01 · ici',
@@ -150,10 +157,15 @@ $guideVoiceNotes = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="0wlslw0 — guide d entree pour comprendre <?= h($siteTitle) ?> et trouver la bonne porte sans se perdre.">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title>0wlslw0 — <?= h($siteTitle) ?></title>
-<?= render_o_page_head_assets('owl') ?>
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host, [
+    'canonical_href' => guide_canonical_href($host),
+    'schema_type' => 'AboutPage',
+    'site_url' => current_surface_variant($host) !== null ? request_public_origin($host) . '/' : guide_owner_origin() . '/',
+]) ?>
+<?= render_o_page_head_assets('owl', $host) ?>
 </head>
 <body
     class="experience guide-view<?= $isSpatialMappingHost ? ' mapping-host-view' : '' ?><?= $surfaceVariant === 'io' ? ' io-surface-view' : '' ?><?= $isSpatialHeadsetMode ? ' io-headset-mode' : '' ?>"

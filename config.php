@@ -734,8 +734,41 @@ function surface_brand_label(?string $host = null): string
     };
 }
 
-function sowwwl_instrument_href(): string
+function guide_owner_origin(): string
 {
+    return 'https://0wlslw0.com';
+}
+
+function guide_public_href(?string $host = null, bool $preservePreview = true): string
+{
+    if (current_surface_variant($host) !== null) {
+        return o_route_href('/0wlslw0', [], $host, $preservePreview);
+    }
+
+    $resolvedHost = request_host($host);
+    if (in_array($resolvedHost, ['0wlslw0.com', 'www.0wlslw0.com'], true)) {
+        return o_route_href('/', [], $host, $preservePreview);
+    }
+
+    return guide_owner_origin() . '/';
+}
+
+function guide_canonical_href(?string $host = null): string
+{
+    if (current_surface_variant($host) !== null) {
+        return current_public_page_href($host);
+    }
+
+    return guide_owner_origin() . '/';
+}
+
+function sowwwl_instrument_href(?string $host = null): string
+{
+    $resolvedHost = request_host($host);
+    if (current_surface_variant($resolvedHost) === 'io') {
+        return o_route_href('/#xyz-panel-instrument', [], $resolvedHost);
+    }
+
     return 'https://sowwwl.io/#xyz-panel-instrument';
 }
 
@@ -1775,6 +1808,11 @@ function pwa_app_catalog(): array
         ],
     ];
 
+    $resolvedHost = request_host();
+    $isGuideOwnerHost = in_array($resolvedHost, ['0wlslw0.com', 'www.0wlslw0.com'], true);
+    $owlStartUrl = $isGuideOwnerHost ? o_route_href('/') : o_route_href('/0wlslw0');
+    $owlScope = $isGuideOwnerHost ? o_route_path('/') : o_route_path('/0wlslw0');
+
     $catalog = [
         'main' => [
             'id' => o_route_path('/app/main'),
@@ -1797,8 +1835,8 @@ function pwa_app_catalog(): array
             'name' => '0wlslw0',
             'short_name' => '0wlslw0',
             'description' => '0wlslw0 — guide d entree pour comprendre O. et trouver la bonne porte sans se perdre.',
-            'start_url' => o_route_href('/0wlslw0'),
-            'scope' => o_route_path('/0wlslw0'),
+            'start_url' => $owlStartUrl,
+            'scope' => $owlScope,
             'theme_color' => '#09090b',
             'background_color' => '#09090b',
             'shortcuts' => [
@@ -1950,21 +1988,178 @@ function render_pwa_head_tags(?string $preferred = null, ?string $host = null): 
 HTML;
 }
 
-function render_o_page_head_assets(?string $preferred = null, ?string $host = null): string
+function absolute_public_href(string $asset, ?string $host = null, bool $withVersion = false, ?string $filePath = null): string
 {
+    return request_public_origin($host) . o_public_href($asset, $withVersion, $filePath);
+}
+
+function discovery_origin_from_href(string $href, ?string $host = null): string
+{
+    $scheme = parse_url($href, PHP_URL_SCHEME);
+    $originHost = parse_url($href, PHP_URL_HOST);
+    $port = parse_url($href, PHP_URL_PORT);
+
+    if (is_string($scheme) && $scheme !== '' && is_string($originHost) && $originHost !== '') {
+        $origin = strtolower($scheme) . '://' . strtolower($originHost);
+        if (is_int($port) && $port > 0) {
+            $defaultPort = $scheme === 'https' ? 443 : ($scheme === 'http' ? 80 : null);
+            if ($defaultPort === null || $port !== $defaultPort) {
+                $origin .= ':' . $port;
+            }
+        }
+
+        return $origin;
+    }
+
+    return request_public_origin($host);
+}
+
+function default_discovery_image_href(string $canonicalHref, ?string $host = null): string
+{
+    $origin = discovery_origin_from_href($canonicalHref, $host);
+    return $origin . o_public_href('icons/icon-512.png', true, __DIR__ . '/icons/icon-512.png');
+}
+
+function render_discovery_json_ld(string $title, string $description, string $canonicalHref, ?string $host = null, array $options = []): string
+{
+    $siteName = trim((string) ($options['site_name'] ?? 'SOWWWL'));
+    $locale = trim((string) ($options['locale'] ?? 'fr_FR'));
+    $schemaType = trim((string) ($options['schema_type'] ?? 'WebPage'));
+    $siteUrl = trim((string) ($options['site_url'] ?? ''));
+    if ($siteUrl === '') {
+        $siteUrl = rtrim(discovery_origin_from_href($canonicalHref, $host), '/') . '/';
+    }
+
+    $websiteId = rtrim($siteUrl, '/') . '#website';
+    $schema = [
+        [
+            '@context' => 'https://schema.org',
+            '@type' => 'WebSite',
+            '@id' => $websiteId,
+            'name' => $siteName,
+            'url' => $siteUrl,
+            'inLanguage' => str_replace('_', '-', $locale),
+        ],
+        [
+            '@context' => 'https://schema.org',
+            '@type' => $schemaType !== '' ? $schemaType : 'WebPage',
+            'name' => $title,
+            'description' => $description,
+            'url' => $canonicalHref,
+            'isPartOf' => ['@id' => $websiteId],
+            'inLanguage' => str_replace('_', '-', $locale),
+        ],
+    ];
+
+    $json = json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    if (!is_string($json) || $json === '') {
+        return '';
+    }
+
+    return '<script type="application/ld+json">' . $json . '</script>';
+}
+
+function current_public_page_href(?string $host = null, array $canonicalParams = []): string
+{
+    $href = request_public_origin($host) . o_request_path();
+    if ($canonicalParams === []) {
+        return $href;
+    }
+
+    $resolvedParams = [];
+    foreach ($canonicalParams as $key) {
+        if (!is_string($key) || $key === '') {
+            continue;
+        }
+
+        $value = $_GET[$key] ?? null;
+        if ($value === null || !is_scalar($value)) {
+            continue;
+        }
+
+        $candidate = trim((string) $value);
+        if ($candidate === '') {
+            continue;
+        }
+
+        $resolvedParams[$key] = $candidate;
+    }
+
+    $query = http_build_query($resolvedParams, '', '&', PHP_QUERY_RFC3986);
+
+    return $href . ($query !== '' ? '?' . $query : '');
+}
+
+function render_o_discovery_head_tags(string $title, string $description, ?string $host = null, array $options = []): string
+{
+    $canonicalParams = is_array($options['canonical_params'] ?? null)
+        ? $options['canonical_params']
+        : [];
+    $canonicalHref = trim((string) ($options['canonical_href'] ?? ''));
+    if ($canonicalHref === '') {
+        $canonicalHref = current_public_page_href($host, $canonicalParams);
+    }
+
+    $type = trim((string) ($options['type'] ?? 'website'));
+    $siteName = trim((string) ($options['site_name'] ?? 'SOWWWL'));
+    $locale = trim((string) ($options['locale'] ?? 'fr_FR'));
+    $imageHref = trim((string) ($options['image_href'] ?? ''));
+    if ($imageHref === '') {
+        $imageHref = default_discovery_image_href($canonicalHref, $host);
+    }
+    $imageAlt = trim((string) ($options['image_alt'] ?? $title));
+    $structuredData = trim((string) ($options['structured_data'] ?? ''));
+    if ($structuredData === '') {
+        $structuredData = render_discovery_json_ld($title, $description, $canonicalHref, $host, $options);
+    }
+
+    $safeCanonicalHref = h($canonicalHref);
+    $safeTitle = h($title);
+    $safeDescription = h($description);
+    $safeType = h($type);
+    $safeSiteName = h($siteName);
+    $safeLocale = h($locale);
+    $safeImageHref = h($imageHref);
+    $safeImageAlt = h($imageAlt);
+
+    return <<<HTML
+    <link rel="canonical" href="{$safeCanonicalHref}">
+    <meta property="og:type" content="{$safeType}">
+    <meta property="og:site_name" content="{$safeSiteName}">
+    <meta property="og:locale" content="{$safeLocale}">
+    <meta property="og:title" content="{$safeTitle}">
+    <meta property="og:description" content="{$safeDescription}">
+    <meta property="og:url" content="{$safeCanonicalHref}">
+    <meta property="og:image" content="{$safeImageHref}">
+    <meta property="og:image:alt" content="{$safeImageAlt}">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{$safeTitle}">
+    <meta name="twitter:description" content="{$safeDescription}">
+    <meta name="twitter:image" content="{$safeImageHref}">
+    <meta name="twitter:image:alt" content="{$safeImageAlt}">
+    {$structuredData}
+HTML;
+}
+
+function render_o_page_head_assets(?string $preferred = null, ?string $host = null, array $options = []): string
+{
+    $scriptBundle = strtolower(trim((string) ($options['script_bundle'] ?? 'main')));
+    $scriptAsset = $scriptBundle === 'public-shell' ? 'public-shell.js' : 'main.js';
     $bridgePrefix = h(o_mount_prefix());
     $disableServiceWorker = o_mount_prefix() !== '' ? 'true' : 'false';
     $faviconHref = h(o_public_href('favicon.svg'));
     $pwaHead = render_pwa_head_tags($preferred, $host);
     $spatialContractVersion = h(spatial_native_contract_version());
     $stylesHref = h(o_asset_href('styles.css'));
-    $scriptHref = h(o_asset_href('main.js'));
+    $scriptHref = h(o_asset_href($scriptAsset));
+    $mainBundleHref = h(o_asset_href('main.js'));
 
     return <<<HTML
     <meta name="o-bridge-prefix" content="{$bridgePrefix}">
     <meta name="o-disable-sw" content="{$disableServiceWorker}">
     <meta name="o-spatial-native-contract" content="{$spatialContractVersion}">
     <meta name="o-spatial-native-event" content="o:native-spatial-state">
+    <meta name="o-main-bundle" content="{$mainBundleHref}">
     <link rel="icon" href="{$faviconHref}" type="image/svg+xml">
 {$pwaHead}
     <link rel="stylesheet" href="{$stylesHref}">
@@ -2055,7 +2250,8 @@ function render_continuity_dome(string $current = 'surface', array $context = []
     $signalHref = $route('/signal');
     $echoHref = $landUsername !== '' ? $route('/echo', ['u' => $landUsername]) : $route('/echo');
     $labHref = $surfaceVariant === 'lab' ? $route('/') : 'https://lab.sowwwl.cloud/';
-    $instrumentHref = sowwwl_instrument_href();
+    $cameraHref = pocket_camera_view_href(null, $host);
+    $instrumentHref = sowwwl_instrument_href($host);
 
     $catalog = [
         'surface' => [
@@ -2069,7 +2265,7 @@ function render_continuity_dome(string $current = 'surface', array $context = []
             'label' => '0wlslw0',
             'verb' => 'clarifier',
             'copy' => 'comprendre le passage avant de bifurquer',
-            'href' => $route('/0wlslw0'),
+            'href' => guide_public_href($host),
             'layer' => 'arc',
         ],
         'join' => [
@@ -2136,10 +2332,12 @@ function render_continuity_dome(string $current = 'surface', array $context = []
             'layer' => 'dome',
         ],
         'lab' => [
-            'label' => 'Lab',
-            'verb' => 'prototyper',
-            'copy' => 'relier capteurs, pocket, plasma et reprise differee',
-            'href' => $labHref,
+            'label' => $surfaceVariant === 'io' ? 'Fenetre' : 'Lab',
+            'verb' => $surfaceVariant === 'io' ? 'observer' : 'prototyper',
+            'copy' => $surfaceVariant === 'io'
+                ? 'garder paysage, lumiere, climat et presence dans le volume'
+                : 'relier capteurs, pocket, plasma et reprise differee',
+            'href' => $surfaceVariant === 'io' ? $cameraHref : $labHref,
             'layer' => 'dome',
         ],
     ];
@@ -2182,7 +2380,9 @@ function render_continuity_dome(string $current = 'surface', array $context = []
         'instrument' => 'L instrument devient dome quand sowwwl.io reste accessible depuis chaque brique.',
         'signal', 'echo' => 'La liaison tient quand Signal garde la memoire et Echo garde la prise directe.',
         'map' => 'La carte tient le dome quand chaque noeud peut rejoindre sa terre et son courant.',
-        'lab' => 'Le lab ferme le dome quand les prototypes savent revenir au public, a l ile et au noyau.',
+        'lab' => $surfaceVariant === 'io'
+            ? 'La fenetre ferme le dome quand le paysage, la lumiere et les traces physiques restent lisibles depuis la meme surface.'
+            : 'Le lab ferme le dome quand les prototypes savent revenir au public, a l ile et au noyau.',
         default => 'L arc se construit en reliant orientation, terre, matiere, lecture et liaison.',
     };
     $landLabel = $hasLand
@@ -2315,12 +2515,68 @@ function render_spatial_context_bar(string $view = 'surface', ?string $host = nu
             'dominant' => 'terre',
             'note' => 'Str3m reste la grande nappe publique: lecture lente, repères clairs, bifurcation rapide vers les terres.',
         ],
+        'land' => [
+            'label' => 'terre',
+            'title' => 'La terre garde l identité située.',
+            'copy' => 'Terre tient fuseau, mémoire et partage. Mine garde les reprises courtes vers Signal, aZa et Sh0re.',
+            'dominant' => 'terre',
+            'note' => 'La terre reste le point d ancrage: identité, lecture publique et reprise des passages liés.',
+        ],
+        'aza' => [
+            'label' => 'aza',
+            'title' => 'La mémoire reste une matière située.',
+            'copy' => 'Terre garde la provenance et Mine choisit la bonne entrée avant de projeter la trace vers l île ou la lecture publique.',
+            'dominant' => 'mine',
+            'note' => 'aZa tient la sédimentation: dépôt, relecture et projection sans casser l adresse de la terre.',
+        ],
         'island' => [
             'label' => 'island',
             'title' => 'L ile garde une lecture situee.',
             'copy' => 'Terre cadre le relief, Mine choisit la matiere la plus juste avant de pousser plus loin dans la memoire.',
             'dominant' => 'terre',
             'note' => 'L ile reste stable pendant que la surface spatiale decide quelle matiere doit prendre la main.',
+        ],
+        'sh0re' => [
+            'label' => 'sh0re',
+            'title' => 'Le rivage garde le bord public.',
+            'copy' => 'Terre laisse voir les n0us et Mine relance les gestes courts sans ouvrir toute la présence liée.',
+            'dominant' => 'mine',
+            'note' => 'Sh0re sépare le visible public des gestes de formation pour garder un bord lisible.',
+        ],
+        'n' => [
+            'label' => 't0k',
+            'title' => 'Le passage garde une trace portable.',
+            'copy' => 'Terre retient la provenance et Mine pousse le passage vers Sh0re, l autre terre ou la matière.',
+            'dominant' => 'mine',
+            'note' => 'Le t0k reste un fragment portable: il lie la relation, le rivage et la sortie matérielle.',
+        ],
+        'n0de' => [
+            'label' => 'n0de',
+            'title' => 'L objet fait sortir le passage.',
+            'copy' => 'Terre garde l ancrage et Mine spécialise le geste en QR, NFC ou manifest SD.',
+            'dominant' => 'mine',
+            'note' => 'Le n0de pousse le passage hors du navigateur sans lui faire perdre son contexte.',
+        ],
+        'join' => [
+            'label' => 'seuil',
+            'title' => 'Le seuil peut encore devenir terre.',
+            'copy' => 'Terre ouvre le nom, Mine garde la lecture, puis le réglage scelle une présence située.',
+            'dominant' => 'terre',
+            'note' => 'Le parcours d entrée prépare déjà la future terre: lecture, rythme, signature et ancrage.',
+        ],
+        'camera' => [
+            'label' => 'fenetre',
+            'title' => 'La fenêtre ouvre le volume au paysage.',
+            'copy' => 'Terre garde lumière, cadre et climat. Mine relève les signes utiles pour nourrir le tore sans rompre la lecture.',
+            'dominant' => 'terre',
+            'note' => 'Le Pi caméra reste une prise physique douce: présence, météo visuelle et paysage avant le vrai client natif.',
+        ],
+        'sceptre' => [
+            'label' => 'sceptre',
+            'title' => 'Le sceptre donne une main physique au tore.',
+            'copy' => 'Mine frappe, module et relance. Terre garde l axe, la respiration et la mémoire du geste dans la même surface.',
+            'dominant' => 'mine',
+            'note' => 'Le sceptre transforme mouvement, climat et percussion en pilotage direct du volume.',
         ],
         'surface' => [
             'label' => 'surface',
@@ -2340,16 +2596,23 @@ function render_spatial_context_bar(string $view = 'surface', ?string $host = nu
     $resolvedNote = trim($note ?? '') !== '' ? trim((string) $note) : (string) $viewConfig['note'];
     $dominantHand = (string) ($viewConfig['dominant'] ?? 'terre');
     $surfaceLabel = surface_brand_label($resolvedHost);
+    $contextAriaLabel = 'Contexte spatial de ' . $surfaceLabel;
     $modeScreenHref = o_current_route_href(['spatial' => null], $resolvedHost, false);
     $modeHeadsetHref = o_current_route_href(['spatial' => 'headset'], $resolvedHost, false);
     $homeHref = o_route_href('/', [], $resolvedHost);
+    $raNote = 'Le tore garde ici le dernier régime utile, même quand tu quittes la membrane.';
+    $worldMemoryCopy = 'Le dernier monde instrument rejouable se posera ici quand la membrane aura parlé.';
+    if (current_surface_variant($resolvedHost) === 'io') {
+        $raNote = 'Le tore garde ici le dernier régime utile, même quand tu quittes la couche spatiale.';
+        $worldMemoryCopy = 'Le dernier monde instrument rejouable se posera ici quand la couche spatiale aura vraiment parlé.';
+    }
 
     $routeGroups = [
         'terre' => [
             'title' => 'main terre',
             'copy' => 'ouvrir, cadrer, porter',
             'links' => [
-                ['key' => 'guide', 'label' => '0wlslw0', 'href' => o_route_href('/0wlslw0', [], $resolvedHost)],
+                ['key' => 'guide', 'label' => '0wlslw0', 'href' => guide_public_href($resolvedHost)],
                 ['key' => 'map', 'label' => 'Map', 'href' => o_route_href('/map', [], $resolvedHost)],
             ],
         ],
@@ -2361,11 +2624,19 @@ function render_spatial_context_bar(string $view = 'surface', ?string $host = nu
                 ['key' => 'str3m', 'label' => 'Str3m', 'href' => o_route_href('/str3m', [], $resolvedHost)],
             ],
         ],
+        'capteurs' => [
+            'title' => 'lisiere physique',
+            'copy' => 'voir, ecouter, piloter',
+            'links' => [
+                ['key' => 'camera', 'label' => 'Fenetre', 'href' => pocket_camera_view_href(null, $resolvedHost)],
+                ['key' => 'sceptre', 'label' => 'Sceptre', 'href' => sceptre_view_href(null, $resolvedHost)],
+            ],
+        ],
     ];
 
     ob_start();
     ?>
-    <section class="spatial-context reveal" data-spatial-context data-spatial-view="<?= h($viewKey) ?>" data-spatial-dominant="<?= h($dominantHand) ?>" aria-label="Contexte spatial de sowwwl.io">
+    <section class="spatial-context reveal" data-spatial-context data-spatial-view="<?= h($viewKey) ?>" data-spatial-dominant="<?= h($dominantHand) ?>" aria-label="<?= h($contextAriaLabel) ?>">
         <div class="spatial-context__head">
             <p class="spatial-context__eyebrow"><strong><?= h($surfaceLabel) ?></strong> <span><?= h($modeLabel) ?></span></p>
             <h2 class="spatial-context__title"><?= h((string) $viewConfig['title']) ?></h2>
@@ -2381,7 +2652,7 @@ function render_spatial_context_bar(string $view = 'surface', ?string $host = nu
                     <a class="ghost-link" data-spatial-link href="<?= h($modeHeadsetHref) ?>"<?= $isHeadsetMode ? ' aria-current="page"' : '' ?>>Mode casque web</a>
                     <a class="ghost-link" data-spatial-link href="<?= h($homeHref) ?>">Noyau</a>
                 </div>
-                <p class="spatial-context__ra" data-spatial-ra-note>Le tore garde ici le dernier régime utile, même quand tu quittes la membrane.</p>
+                <p class="spatial-context__ra" data-spatial-ra-note><?= h($raNote) ?></p>
                 <div class="xyz-surface-route-links spatial-context__ra-actions" data-spatial-ra-actions aria-label="Prises recommandées par la modulation" hidden>
                     <a class="ghost-link" data-spatial-ra-primary href="<?= h($homeHref) ?>">Revenir au noyau</a>
                     <a class="ghost-link" data-spatial-ra-secondary href="<?= h($homeHref) ?>">Revenir au noyau</a>
@@ -2394,7 +2665,7 @@ function render_spatial_context_bar(string $view = 'surface', ?string $host = nu
                         <p><span>mains</span><strong data-spatial-world-hands>terre et mine au repos</strong></p>
                         <p><span>lumière</span><strong data-spatial-world-light>lueur en mémoire</strong></p>
                     </div>
-                    <p class="spatial-context__world-copy" data-spatial-world-copy>Le dernier monde instrument rejouable se posera ici quand la membrane aura parlé.</p>
+                    <p class="spatial-context__world-copy" data-spatial-world-copy><?= h($worldMemoryCopy) ?></p>
                 </div>
                 <div class="spatial-context__native" data-spatial-native>
                     <div class="spatial-context__world-grid spatial-context__world-grid--native" aria-label="Pont spatial natif">

@@ -8,9 +8,11 @@ require_once __DIR__ . '/lib/signals.php';
 $host = request_host();
 $surfaceVariant = current_surface_variant($host);
 $isSpatialHeadsetMode = $surfaceVariant === 'io' && spatial_preview_mode($host) === 'headset';
+$pageTitle = 'Signal — ' . SITE_TITLE;
+$pageDescription = 'Signal — présence, réponses et boîte située dans ' . SITE_TITLE . '.';
 
 $brandDomain = current_brand_domain($host);
-$guideHref = o_route_href('/0wlslw0', [], $host);
+$guideHref = guide_public_href($host);
 $signalHref = o_route_href('/signal', [], $host);
 $str3mHref = o_route_href('/str3m', [], $host);
 $echoHref = o_route_href('/echo', [], $host);
@@ -199,9 +201,10 @@ $activeConversationCount = count($conversation);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Signal — boîte de réception située dans <?= h(SITE_TITLE) ?>.">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title>Signal — <?= h(SITE_TITLE) ?></title>
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host, ['canonical_params' => ['u']]) ?>
 <?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
 </head>
 <body class="experience signal-view<?= $surfaceVariant === 'io' ? ' io-surface-view' : '' ?><?= $isSpatialHeadsetMode ? ' io-headset-mode' : '' ?>">
@@ -213,12 +216,12 @@ $activeConversationCount = count($conversation);
 
 <main <?= main_landmark_attrs() ?> class="layout page-shell">
     <header class="hero page-header reveal">
-        <p class="eyebrow"><strong>signal</strong> <span>messagerie située</span></p>
+        <p class="eyebrow"><strong>signal</strong> <span>presence / reponse / fil</span></p>
         <h1 class="land-title signal-title">
             <strong>Boîte aux lettres de terre.</strong>
             <span><?= $land ? h($virtualAddress) : 'liaison réservée aux terres' ?></span>
         </h1>
-        <p class="lead">Ici, on écrit à une terre et on garde le fil.</p>
+        <p class="lead">Ici, la présence répond sans quitter la terre.</p>
 
         <div class="land-meta">
             <a class="meta-pill meta-pill-link" href="<?= h($str3mHref) ?>">courant public</a>
