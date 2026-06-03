@@ -63,6 +63,21 @@
 		});
 	};
 
+	const scheduleAmbientEscalation = () => {
+		const passiveTorus = doc.querySelector("[data-torus-cloud][data-torus-passive='1']");
+		if (!(passiveTorus instanceof HTMLElement)) {
+			return;
+		}
+
+		if (typeof win.requestIdleCallback === "function") {
+			win.requestIdleCallback(() => loadFullBundle(), { timeout: 900 });
+			return;
+		}
+
+		win.setTimeout(loadFullBundle, 180);
+	};
+
 	activateReveals();
 	registerEscalation();
+	scheduleAmbientEscalation();
 })();
