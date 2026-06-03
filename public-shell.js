@@ -64,8 +64,8 @@
 	};
 
 	const scheduleAmbientEscalation = () => {
-		const passiveTorus = doc.querySelector("[data-torus-cloud][data-torus-passive='1']");
-		if (!(passiveTorus instanceof HTMLElement)) {
+		const torusSurface = doc.querySelector("[data-torus-cloud]");
+		if (!(torusSurface instanceof HTMLElement)) {
 			return;
 		}
 
