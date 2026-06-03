@@ -30,7 +30,6 @@ COPY aza_portals ./aza_portals
 COPY lib ./lib
 COPY scripts/check_signal_validation.php scripts/check_0wlslw0_agent.php scripts/check_spatial_surface.php scripts/check_media_readers.php scripts/plasma_backfill_from_jsonl.php ./scripts/
 COPY icons ./icons
-COPY sites ./sites
 
 RUN chmod +x /usr/local/bin/sowwwl-entrypoint
 
