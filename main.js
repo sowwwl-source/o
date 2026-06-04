@@ -5947,7 +5947,7 @@ function initTorusCloud(canvas) {
 			: 1;
 		const homeHaloBoost = isHomeTorusCanvas ? 1.12 : 1;
 		const homeAlphaBoost = isHomeTorusCanvas ? 1.08 : 1;
-		const homeRadiusBoost = isHomeTorusCanvas ? 0.94 : 1;
+		const homeRadiusBoost = isHomeTorusCanvas ? 0.84 : 1;
 		const lightOffsetX = membrane.lightDirectionX * width * 0.032;
 		const lightOffsetY = membrane.lightDirectionY * height * 0.028;
 		stepNavigation();
