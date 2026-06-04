@@ -5542,6 +5542,9 @@ function initTorusCloud(canvas) {
 	}
 
 	const isPassiveCanvas = canvas.dataset.torusPassive === "1";
+	const isHomeTorusCanvas = !isPassiveCanvas
+		&& canvas.id === "torus-ambient"
+		&& document.body.classList.contains("home");
 	const touchHint = isPassiveCanvas ? null : ensureTorusTouchHint();
 
 	const state = {
@@ -5583,18 +5586,22 @@ function initTorusCloud(canvas) {
 		touchOrbitActive: false,
 	};
 
-	const torusScale = 11;
-	const ringCount = 96;
-	const tubeCount = 42;
+	const torusScale = isHomeTorusCanvas ? 12.7 : 11;
+	const ringCount = isHomeTorusCanvas ? 126 : 96;
+	const tubeCount = isHomeTorusCanvas ? 54 : 42;
 	const majorRadius = 1.9 * torusScale;
 	const minorRadius = 0.78 * torusScale;
-	const zoomMin = 6.5;
-	const zoomMax = 17.5;
+	const zoomMin = isHomeTorusCanvas ? 6.2 : 6.5;
+	const zoomMax = isHomeTorusCanvas ? 18.2 : 17.5;
 
 	if (isPassiveCanvas) {
 		state.pitch = 0.38;
 		state.roll = 0.04;
 		state.zoom = 9.8;
+	} else if (isHomeTorusCanvas) {
+		state.pitch = 0.42;
+		state.roll = 0.08;
+		state.zoom = 10.85;
 	}
 
 	for (let ringIndex = 0; ringIndex < ringCount; ringIndex += 1) {
@@ -5626,6 +5633,11 @@ function initTorusCloud(canvas) {
 		state.autoScale = isPortraitViewport
 			? clampNumber(0.74 + viewportRatio * 0.26, 0.78, 0.92)
 			: clampNumber(0.94 + viewportRatio * 0.05, 0.94, 1.04);
+		if (isHomeTorusCanvas) {
+			state.autoScale = isPortraitViewport
+				? clampNumber(state.autoScale + 0.04, 0.82, 0.98)
+				: clampNumber(state.autoScale + 0.08, 1.01, 1.16);
+		}
 		state.autoLiftY = isPortraitViewport ? Math.round(state.height * -0.035) : 0;
 		canvas.width = Math.round(state.width * state.devicePixelRatio);
 		canvas.height = Math.round(state.height * state.devicePixelRatio);
@@ -5925,11 +5937,17 @@ function initTorusCloud(canvas) {
 		}
 
 		const profile = resolveTorusProfile(canvas);
-	const membrane = readCameraReactiveState();
+		const membrane = readCameraReactiveState();
 		const isXyzScene = document.body.classList.contains("xyz-surface-view");
 		const mobileLayoutBias = isXyzScene && width < 720
 			? clamp((720 - width) / 360, 0, 1)
 			: 0;
+		const homeScaleBoost = isHomeTorusCanvas
+			? (width >= 1180 ? 1.2 : (width >= 860 ? 1.14 : 1.08))
+			: 1;
+		const homeHaloBoost = isHomeTorusCanvas ? 1.12 : 1;
+		const homeAlphaBoost = isHomeTorusCanvas ? 1.08 : 1;
+		const homeRadiusBoost = isHomeTorusCanvas ? 0.94 : 1;
 		const lightOffsetX = membrane.lightDirectionX * width * 0.032;
 		const lightOffsetY = membrane.lightDirectionY * height * 0.028;
 		stepNavigation();
@@ -5937,14 +5955,14 @@ function initTorusCloud(canvas) {
 		const centerX = width * (0.5 + mobileLayoutBias * 0.16) + state.panX * (width * 0.018) + membrane.tiltX * width * 0.042 + lightOffsetX;
 		const centerY = height * (0.5 + mobileLayoutBias * 0.045) + state.autoLiftY + state.panY * (height * 0.018) + membrane.tiltY * height * 0.038 + lightOffsetY;
 		const camera = 39 - state.zoom * 1.12 - membrane.presence * 1.8 - membrane.lightContrast * 0.9;
-		const scale = Math.min(width, height) * (0.09 + state.zoom * 0.01) * state.autoScale * (1 - mobileLayoutBias * 0.18) * (1 + membrane.lightContrast * 0.08);
+		const scale = Math.min(width, height) * (0.09 + state.zoom * 0.01) * state.autoScale * homeScaleBoost * (1 - mobileLayoutBias * 0.18) * (1 + membrane.lightContrast * 0.08);
 		const spinY = state.yaw + time * 0.00006 + membrane.tiltX * 0.24 + membrane.lightDirectionX * 0.1;
 		const spinX = state.pitch + Math.sin(time * 0.00012) * 0.05 + membrane.tiltY * 0.28 + membrane.lightDirectionY * 0.08;
 		const spinZ = state.roll + Math.cos(time * 0.00009) * 0.03 + (membrane.audioLevel - 0.08) * 0.16 + membrane.lightDirectionX * membrane.lightContrast * 0.12;
 
 		context.clearRect(0, 0, width, height);
 		const haloColor = Array.isArray(profile.haloColor) && profile.haloColor.length >= 3 ? profile.haloColor : profile.glow;
-		const haloRadius = Math.min(width, height) * (0.16 + profile.haloStrength * 0.24 + membrane.presence * 0.08 + membrane.lightContrast * 0.05);
+		const haloRadius = Math.min(width, height) * (0.16 + profile.haloStrength * 0.24 + membrane.presence * 0.08 + membrane.lightContrast * 0.05) * homeHaloBoost;
 		const haloGradient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, haloRadius);
 		haloGradient.addColorStop(0, `rgba(${haloColor[0]}, ${haloColor[1]}, ${haloColor[2]}, ${clamp(0.08 + profile.haloStrength * 0.08 + membrane.audioLevel * 0.05, 0.06, 0.22)})`);
 		haloGradient.addColorStop(0.46, `rgba(${profile.glow[0]}, ${profile.glow[1]}, ${profile.glow[2]}, ${clamp(0.04 + profile.haloStrength * 0.06, 0.03, 0.12)})`);
@@ -5976,8 +5994,8 @@ function initTorusCloud(canvas) {
 			return {
 				x: centerX + finalX * perspective,
 				y: centerY + finalY * perspective,
-				alpha: clamp(0.055 + depthFactor * (0.6 + profile.pulseStrength * 0.14) * point.density + shimmer * 0.04, 0.035, 0.84),
-				radius: clamp(0.18 + depthFactor * (3.58 + profile.pulseStrength * 0.82) * point.density, 0.16, 5.1),
+				alpha: clamp((0.055 + depthFactor * (0.6 + profile.pulseStrength * 0.14) * point.density + shimmer * 0.04) * homeAlphaBoost, 0.035, 0.92),
+				radius: clamp((0.18 + depthFactor * (3.58 + profile.pulseStrength * 0.82) * point.density) * homeRadiusBoost, 0.16, 5.2),
 				depth,
 				mix: clamp(0.2 + depthFactor * 0.56 + shimmer * 0.1, 0, 1),
 				signalSeed: point.phase + point.theta + point.phi,

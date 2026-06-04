@@ -698,6 +698,11 @@ body.xyz-surface-view .main-torus {
 	will-change: filter, opacity;
 }
 
+body.home .main-torus {
+	filter: brightness(1.26) contrast(1.14) saturate(1.16);
+	opacity: 0.99;
+}
+
 .main-torus.is-nav-armed,
 .main-torus.is-dragging {
 	touch-action: none;
