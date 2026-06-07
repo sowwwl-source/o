@@ -67,12 +67,12 @@ $host = request_host();
 
 $requestPath = o_request_path('/0wlslw0');
 if (in_array($host, ['0wlslw0.com', 'www.0wlslw0.com'], true) && $requestPath === '/0wlslw0') {
-    header('Location: ' . o_route_href('/'), true, 302);
+    header('Location: ' . o_route_href('/'), true, 308);
     exit;
 }
 
 if ($requestPath === '/0wlslw0.php') {
-    header('Location: ' . guide_public_href($host), true, 302);
+    header('Location: ' . guide_public_href($host), true, 308);
     exit;
 }
 

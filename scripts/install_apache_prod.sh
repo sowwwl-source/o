@@ -31,16 +31,16 @@ EOF
 }
 
 profile_files() {
-	case "$1" in
-		homepage)
-			printf '%s\n' index.php main.js styles.css manifest.php site-sw.js apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
-			;;
-		aza)
-			printf '%s\n' aza.php config.php manifest.php site-sw.js apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
-			;;
-		full-web)
-			printf '%s\n' index.php land.php island.php aza.php config.php main.js styles.css manifest.php manifest.json site-sw.js favicon.svg apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
-			;;
+		case "$1" in
+			homepage)
+				printf '%s\n' index.php 404.php robots.php sitemap.php main.js public-shell.js styles.css manifest.php site-sw.js apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
+				;;
+			aza)
+				printf '%s\n' aza.php 404.php robots.php sitemap.php config.php manifest.php site-sw.js apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
+				;;
+			full-web)
+				printf '%s\n' index.php 404.php robots.php sitemap.php land.php island.php aza.php config.php main.js public-shell.js styles.css manifest.php manifest.json site-sw.js favicon.svg apple-touch-icon.png icons/icon.svg icons/icon-mask.svg icons/icon-192.png icons/icon-512.png icons/icon-mask-192.png icons/icon-mask-512.png
+				;;
 		*)
 			echo "Unknown profile: $1" >&2
 			exit 1

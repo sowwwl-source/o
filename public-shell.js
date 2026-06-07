@@ -56,6 +56,7 @@
 		const once = { once: true };
 		targets.forEach((target) => {
 			target.addEventListener("pointerdown", loadFullBundle, once);
+			target.addEventListener("pointerenter", loadFullBundle, once);
 			target.addEventListener("focusin", loadFullBundle, once);
 			target.addEventListener("keydown", loadFullBundle, once);
 			target.addEventListener("touchstart", loadFullBundle, once);
@@ -63,21 +64,6 @@
 		});
 	};
 
-	const scheduleAmbientEscalation = () => {
-		const torusSurface = doc.querySelector("[data-torus-cloud]");
-		if (!(torusSurface instanceof HTMLElement)) {
-			return;
-		}
-
-		if (typeof win.requestIdleCallback === "function") {
-			win.requestIdleCallback(() => loadFullBundle(), { timeout: 900 });
-			return;
-		}
-
-		win.setTimeout(loadFullBundle, 180);
-	};
-
 	activateReveals();
 	registerEscalation();
-	scheduleAmbientEscalation();
 })();

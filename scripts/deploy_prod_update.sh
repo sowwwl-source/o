@@ -533,6 +533,8 @@ docker exec "${project_name}-app-1" test -s /var/www/html/main.js
 docker exec "${project_name}-app-1" test -s /var/www/html/public-shell.js
 docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon.svg
 docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon-192.png
+docker exec "${project_name}-app-1" test -s /var/www/html/404.php
+docker exec "${project_name}-app-1" test -s /var/www/html/robots.php
 docker exec "${project_name}-app-1" test -s /var/www/html/sitemap.php
 docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_signal_validation.php
 docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_0wlslw0_agent.php
@@ -567,8 +569,10 @@ docker exec "${project_name}-app-1" php /var/www/html/scripts/check_media_reader
 public_shell_url=$(resolve_versioned_asset_url https://sowwwl.com/ public-shell.js)
 main_js_url=$(resolve_versioned_asset_url https://sowwwl.com/str3m main.js)
 curl -fsSI https://sowwwl.com/
+curl -fsSI https://sowwwl.com/robots.txt
 curl -fsSI https://sowwwl.com/sitemap.xml
 curl -fsSI https://0wlslw0.com/
+curl -fsSI https://0wlslw0.com/robots.txt
 curl -fsSI https://0wlslw0.com/sitemap.xml
 curl -fsSI https://sowwwl.io/
 curl -fsSI https://www.sowwwl.io/
@@ -587,10 +591,13 @@ curl -fsSI https://sowwwl.org/
 curl -fsSI https://api.sowwwl.cloud/healthz
 curl -fsSI https://api.sowwwl.cloud/v1/status
 assert_body_matches https://sowwwl.com/ 'Trois portes : public, terre, 0wlslw0|Passer par 0wlslw0|commande noyau'
+assert_body_matches https://sowwwl.com/robots.txt 'Sitemap: https://sowwwl\.com/sitemap\.xml'
 assert_body_matches https://sowwwl.com/sitemap.xml '<loc>https://sowwwl\.com/</loc>|<loc>https://sowwwl\.com/str3m</loc>'
 assert_body_matches https://0wlslw0.com/ 'Entrer sans se perdre|guide des passages|Parler à 0wlslw0'
+assert_body_matches https://0wlslw0.com/robots.txt 'Sitemap: https://0wlslw0\.com/sitemap\.xml'
 assert_body_matches https://0wlslw0.com/sitemap.xml '<loc>https://0wlslw0\.com/</loc>'
 assert_body_matches "$public_shell_url" 'querySelectorAll\("\.reveal"\)|public-shell'
+assert_body_absent "$public_shell_url" 'requestIdleCallback'
 assert_body_matches "$main_js_url" 'runPageInit\("xyzCamera",[[:space:]]*initXyzCamera\);?'
 assert_body_matches "$main_js_url" 'runPageInit\("guideVoice",[[:space:]]*initGuideVoice\);?'
 assert_body_matches "$main_js_url" 'const[[:space:]]+hasRecognition[[:space:]]*=[[:space:]]*Boolean\(RecognitionCtor\);?'
@@ -607,7 +614,10 @@ assert_body_matches https://sowwwl.xyz/ 'Le tore écoute le monde réel|Activer 
 assert_body_matches https://sowwwl.xyz/ 'data-xyz-plasma-bridge="https://sowwwl\.xyz(/o)?/ingest/membrane"'
 assert_body_absent https://sowwwl.xyz/ 'data-xyz-plasma-bridge="https://lab\.sowwwl\.cloud'
 assert_body_matches https://sowwwl.xyz/map 'Le tore des terres actives|Console lexicale de la map|courants actifs'
+assert_body_matches https://sowwwl.com/map '<link rel="canonical" href="https://sowwwl\.com/map"|<meta property="og:url" content="https://sowwwl\.com/map"|application/ld\+json'
 assert_body_matches https://sowwwl.org/ 'Comprendre les domaines sans se perdre|carte des rôles|Ouvrir sowwwl\.com'
+assert_header_contains https://sowwwl.com strict-transport-security 'max-age=31536000'
+assert_header_contains https://0wlslw0.com strict-transport-security 'max-age=31536000'
 assert_body_matches https://api.sowwwl.cloud/v1/status '"service"[[:space:]]*:[[:space:]]*"api\.sowwwl\.cloud"'
 assert_body_matches https://api.sowwwl.cloud/v1/status '"openapi"[[:space:]]*:[[:space:]]*"https://api\.sowwwl\.cloud/docs/AzA_v0\.7_openapi\.min\.yaml"'
 if should_verify_pi_host; then

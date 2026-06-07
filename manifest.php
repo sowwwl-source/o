@@ -1,13 +1,16 @@
 <?php
 declare(strict_types=1);
 
+define('SOWWWL_SKIP_BOOTSTRAP_REQUEST', true);
 require __DIR__ . '/config.php';
 
 $requestedApp = trim((string) ($_GET['app'] ?? ''));
 $config = pwa_app_config($requestedApp !== '' ? $requestedApp : null);
 
+header_remove('X-Powered-By');
 header('Content-Type: application/manifest+json; charset=UTF-8');
 header('Cache-Control: public, max-age=300');
+header('Vary: Host');
 header('X-Content-Type-Options: nosniff');
 
 echo json_encode([
