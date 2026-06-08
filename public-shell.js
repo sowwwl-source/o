@@ -63,21 +63,6 @@
 		});
 	};
 
-	const scheduleAmbientEscalation = () => {
-		const torusSurface = doc.querySelector("[data-torus-cloud]");
-		if (!(torusSurface instanceof HTMLElement)) {
-			return;
-		}
-
-		if (typeof win.requestIdleCallback === "function") {
-			win.requestIdleCallback(() => loadFullBundle(), { timeout: 900 });
-			return;
-		}
-
-		win.setTimeout(loadFullBundle, 180);
-	};
-
 	activateReveals();
 	registerEscalation();
-	scheduleAmbientEscalation();
 })();

@@ -75,7 +75,7 @@ $timezoneSuggestions = [
     'Asia/Bangkok',
 ];
 $authenticatedLand = current_authenticated_land();
-$csrfToken = csrf_token();
+$homeConnectionRequested = ((string) ($_GET['connexion'] ?? '')) === '1';
 $form = [
     'username' => '',
     'timezone' => DEFAULT_TIMEZONE,
@@ -144,7 +144,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     }
 }
 
-remember_form_rendered_at();
+$homeConnectionRequested = $homeConnectionRequested || $requestMethod === 'POST' || $message !== '';
+$shouldRenderHomeLoginForm = !$authenticatedLand && $homeConnectionRequested;
+$csrfToken = $shouldRenderHomeLoginForm ? csrf_token() : '';
+if ($shouldRenderHomeLoginForm) {
+    remember_form_rendered_at();
+}
 
 $pulse = land_pulse();
 $previewSlug = preview_land_slug($form['username']);
@@ -204,8 +209,20 @@ $connectionNeedleClass = $connectionNeedleAngle < -12
 $homeHeroVuState = $connectionNeedleAngle < -12
     ? 'low'
     : ($connectionNeedleAngle > 12 ? 'high' : 'mid');
-$connectionStatusText = $authenticatedLand ? 'terre liée 3h33' : 'surface publique';
-$connectionDockOpen = $authenticatedLand || $message !== '';
+$connectionStatusText = $authenticatedLand
+    ? 'terre liée 3h33'
+    : ($homeConnectionRequested ? 'connexion ouverte' : 'surface publique');
+$connectionDockOpen = $authenticatedLand || $message !== '' || $homeConnectionRequested;
+$homeUsesPublicShell = !$isSpatialSurface && !$isLabSurface && $userCloudSlug === null;
+if (
+    $homeUsesPublicShell
+    && in_array($requestMethod, ['GET', 'HEAD'], true)
+    && !$authenticatedLand
+    && !$homeConnectionRequested
+    && !has_secure_session_cookie()
+) {
+    mark_public_response_cacheable(300);
+}
 
 $pdoConn = null;
 if (isset($pdo) && $pdo instanceof PDO) {
@@ -248,6 +265,7 @@ $homePrimaryActionHref = $authenticatedLand
     : o_route_href('/rejoindre');
 $guideHref = guide_public_href($host);
 $homeHref = o_route_href('/');
+$homeConnectionHref = o_route_href('/', ['connexion' => '1']) . '#connexion';
 $signalHref = o_route_href('/signal');
 $str3mHref = o_route_href('/str3m');
 $mapHref = o_route_href('/map');
@@ -780,7 +798,7 @@ $pageDescription = $isLabSurface
         : ($isSowwwlXyz
             ? 'SOWWWL XYZ — membrane musicale du tore pour téléphone, capteurs, monde instrument et gestes situés.'
             : (SITE_TITLE . ' — entrer publiquement, poser une terre, ou passer par 0wlslw0.')));
-$pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === null) ? 'public-shell' : 'main';
+$pageScriptBundle = $homeUsesPublicShell ? 'public-shell' : 'main';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -862,7 +880,7 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
                 <a class="pill-link" href="<?= h(o_route_href('/land', ['u' => $activeLandSlug])) ?>">ouvrir</a>
                 <a class="ghost-link" href="<?= h($logoutHref) ?>">retirer</a>
             </div>
-        <?php else: ?>
+        <?php elseif ($shouldRenderHomeLoginForm): ?>
             <form method="post" action="<?= h($homeHref) ?>#connexion" class="connection-meter__form" autocomplete="on">
                 <input type="hidden" name="action" value="login">
                 <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
@@ -890,6 +908,12 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
                 <button type="submit">entrer</button>
             </form>
             <a class="connection-meter__create" href="<?= h($joinHref) ?>">poser une terre</a>
+        <?php else: ?>
+            <p class="connection-meter__copy">Ouvre la connexion seulement si une terre est déjà posée. Sinon, pose d’abord une terre ou passe par 0wlslw0.</p>
+            <div class="connection-meter__actions">
+                <a class="pill-link" href="<?= h($homeConnectionHref) ?>">ouvrir la connexion</a>
+                <a class="ghost-link" href="<?= h($joinHref) ?>">poser une terre</a>
+            </div>
         <?php endif; ?>
     </div>
 </details>
@@ -963,7 +987,7 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
                 <button type="button" class="pill-link xyz-camera-toggle" data-xyz-camera-start><?= h($spatialActivationLabel) ?></button>
                 <button type="button" class="ghost-link xyz-camera-toggle" data-xyz-camera-demo aria-pressed="false">Terre &amp; Mine</button>
                 <button type="button" class="ghost-link xyz-camera-toggle hidden" data-xyz-camera-stop><?= h($spatialReleaseLabel) ?></button>
-                <a class="ghost-link" href="<?= h($authenticatedLand ? o_route_href('/land', ['u' => $activeLandSlug]) : '#connexion') ?>"><?= h($authenticatedLand ? 'Ouvrir ma terre' : 'Relier une terre') ?></a>
+                <a class="ghost-link" href="<?= h($authenticatedLand ? o_route_href('/land', ['u' => $activeLandSlug]) : $homeConnectionHref) ?>"><?= h($authenticatedLand ? 'Ouvrir ma terre' : 'Relier une terre') ?></a>
                 <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
             </div>
 

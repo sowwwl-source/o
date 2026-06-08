@@ -9,14 +9,29 @@ function bootstrap_request(): void
         return;
     }
 
-    start_secure_session();
+    start_secure_session(false);
     send_security_headers();
 }
 
-function start_secure_session(): void
+function secure_session_name(): string
+{
+    return 'sowwwl_session';
+}
+
+function has_secure_session_cookie(): bool
+{
+    $cookie = $_COOKIE[secure_session_name()] ?? null;
+    return is_string($cookie) && $cookie !== '';
+}
+
+function start_secure_session(bool $createIfMissing = true): bool
 {
     if (session_status() === PHP_SESSION_ACTIVE) {
-        return;
+        return true;
+    }
+
+    if (!$createIfMissing && !has_secure_session_cookie()) {
+        return false;
     }
 
     $sessionSavePath = sowwwl_session_save_path();
@@ -30,7 +45,7 @@ function start_secure_session(): void
         }
     }
 
-    session_name('sowwwl_session');
+    session_name(secure_session_name());
     ini_set('session.gc_maxlifetime', (string) SOWWWL_AUTH_SESSION_TTL);
     session_set_cookie_params([
         'lifetime' => SOWWWL_AUTH_SESSION_TTL,
@@ -42,6 +57,7 @@ function start_secure_session(): void
     ]);
 
     session_start();
+    return session_status() === PHP_SESSION_ACTIVE;
 }
 
 function sowwwl_session_save_path(): string
@@ -79,6 +95,25 @@ function send_security_headers(): void
     header('Cross-Origin-Opener-Policy: same-origin');
     header('Cross-Origin-Resource-Policy: same-origin');
     header('X-Permitted-Cross-Domain-Policies: none');
+}
+
+function mark_public_response_cacheable(int $maxAgeSeconds = 300, array $varyHeaders = ['Accept-Encoding']): void
+{
+    header_remove('Pragma');
+    header_remove('Expires');
+    header('Cache-Control: public, max-age=' . max(0, $maxAgeSeconds));
+
+    $varyHeaders = array_values(array_filter(array_unique(array_map(
+        static fn ($value): string => trim((string) $value),
+        $varyHeaders
+    ))));
+
+    if ($varyHeaders === []) {
+        header_remove('Vary');
+        return;
+    }
+
+    header('Vary: ' . implode(',', $varyHeaders));
 }
 
 function content_security_policy(): string
@@ -135,17 +170,29 @@ function site_origin(): string
 
 function remember_form_rendered_at(): void
 {
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        start_secure_session();
+    }
+
     $_SESSION['form_rendered_at'] = time();
 }
 
 function form_was_rendered_recently(int $minimumSeconds = 2): bool
 {
+    if (session_status() !== PHP_SESSION_ACTIVE && !start_secure_session(false)) {
+        return false;
+    }
+
     $renderedAt = (int) ($_SESSION['form_rendered_at'] ?? 0);
     return $renderedAt > 0 && (time() - $renderedAt) >= $minimumSeconds;
 }
 
 function csrf_token(): string
 {
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        start_secure_session();
+    }
+
     $token = (string) ($_SESSION['csrf_token'] ?? '');
 
     if ($token === '') {
@@ -158,12 +205,20 @@ function csrf_token(): string
 
 function verify_csrf_token(?string $token): bool
 {
+    if (session_status() !== PHP_SESSION_ACTIVE && !start_secure_session(false)) {
+        return false;
+    }
+
     $sessionToken = (string) ($_SESSION['csrf_token'] ?? '');
     return $sessionToken !== '' && is_string($token) && hash_equals($sessionToken, $token);
 }
 
 function auth_land_slug(): ?string
 {
+    if (session_status() !== PHP_SESSION_ACTIVE && !start_secure_session(false)) {
+        return null;
+    }
+
     expire_land_session_if_needed();
 
     $slug = trim((string) ($_SESSION['auth_land_slug'] ?? ''));
