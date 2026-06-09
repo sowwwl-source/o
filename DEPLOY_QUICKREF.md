@@ -100,7 +100,7 @@ curl -sL 'https://sowwwl.com/island?u=<slug-connu>' | grep -E 'île classique|Re
 For the anonymous home edge-cache on Cloudflare, the cache rule should match:
 
 ```text
-(http.host eq "sowwwl.com" and http.request.method in {"GET" "HEAD"} and http.request.uri.path eq "/" and not http.request.uri.query contains "connexion=" and not http.cookie contains "sowwwl_session=")
+(http.host eq "sowwwl.com" and http.request.method in {"GET" "HEAD"} and http.request.uri.path eq "/" and http.request.uri.query eq "" and not http.cookie contains "sowwwl_session=")
 ```
 
 ### 5b. Verify island video compatibility when a land has multiple video formats

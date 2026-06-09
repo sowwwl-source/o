@@ -69,7 +69,7 @@ Point these hosts to the VPS:
 6. If you want Cloudflare to edge-cache the anonymous `https://sowwwl.com/` home, add a Cache Rule with:
 
 ```text
-(http.host eq "sowwwl.com" and http.request.method in {"GET" "HEAD"} and http.request.uri.path eq "/" and not http.request.uri.query contains "connexion=" and not http.cookie contains "sowwwl_session=")
+(http.host eq "sowwwl.com" and http.request.method in {"GET" "HEAD"} and http.request.uri.path eq "/" and http.request.uri.query eq "" and not http.cookie contains "sowwwl_session=")
 ```
 
 Action:
@@ -77,7 +77,7 @@ Action:
 - `Cache eligibility` -> `Eligible for cache`
 - `Edge TTL` -> `Use cache-control header if present, use default Cloudflare caching behavior if not`
 
-This keeps the anonymous shell cacheable while excluding session-backed visits and the explicit login route `/?connexion=1`.
+This keeps the anonymous shell cacheable while excluding any query-backed variant and session-backed visits.
 
 ## Result
 
