@@ -1,4 +1,5 @@
 Options -Indexes
+ErrorDocument 404 /404.php
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
@@ -16,99 +17,103 @@ Options -Indexes
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*index\.php(?:\?|\s) [NC]
-  RewriteRule ^index\.php$ https://%{HTTP_HOST}/ [R=302,L]
+  RewriteRule ^index\.php$ https://%{HTTP_HOST}/ [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*land\.php(?:\?|\s) [NC]
-  RewriteRule ^land\.php$ https://%{HTTP_HOST}/land [R=302,L]
+  RewriteRule ^land\.php$ https://%{HTTP_HOST}/land [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*echo\.php(?:\?|\s) [NC]
-  RewriteRule ^echo\.php$ https://%{HTTP_HOST}/echo [R=302,L]
+  RewriteRule ^echo\.php$ https://%{HTTP_HOST}/echo [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*map\.php(?:\?|\s) [NC]
-  RewriteRule ^map\.php$ https://%{HTTP_HOST}/map [R=302,L]
+  RewriteRule ^map\.php$ https://%{HTTP_HOST}/map [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*signal\.php(?:\?|\s) [NC]
-  RewriteRule ^signal\.php$ https://%{HTTP_HOST}/signal [R=302,L]
+  RewriteRule ^signal\.php$ https://%{HTTP_HOST}/signal [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*str3m\.php(?:\?|\s) [NC]
-  RewriteRule ^str3m\.php$ https://%{HTTP_HOST}/str3m [R=302,L]
+  RewriteRule ^str3m\.php$ https://%{HTTP_HOST}/str3m [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*aza\.php(?:\?|\s) [NC]
-  RewriteRule ^aza\.php$ https://%{HTTP_HOST}/aza [R=302,L]
+  RewriteRule ^aza\.php$ https://%{HTTP_HOST}/aza [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*island\.php(?:\?|\s) [NC]
-  RewriteRule ^island\.php$ https://%{HTTP_HOST}/island [R=302,L]
+  RewriteRule ^island\.php$ https://%{HTTP_HOST}/island [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*rejoindre\.php(?:\?|\s) [NC]
-  RewriteRule ^rejoindre\.php$ https://%{HTTP_HOST}/rejoindre [R=302,L]
+  RewriteRule ^rejoindre\.php$ https://%{HTTP_HOST}/rejoindre [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*0wlslw0\.php(?:\?|\s) [NC]
-  RewriteRule ^0wlslw0\.php$ https://%{HTTP_HOST}/0wlslw0 [R=302,L]
+  RewriteRule ^0wlslw0\.php$ https://%{HTTP_HOST}/0wlslw0 [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*sitemap\.php(?:\?|\s) [NC]
-  RewriteRule ^sitemap\.php$ https://%{HTTP_HOST}/sitemap.xml [R=302,L]
+  RewriteRule ^sitemap\.php$ https://%{HTTP_HOST}/sitemap.xml [R=308,L]
+  RewriteCond %{REQUEST_METHOD} =GET [OR]
+  RewriteCond %{REQUEST_METHOD} =HEAD
+  RewriteCond %{THE_REQUEST} \s/+[^?\s]*robots\.php(?:\?|\s) [NC]
+  RewriteRule ^robots\.php$ https://%{HTTP_HOST}/robots.txt [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*sh0re\.php(?:\?|\s) [NC]
-  RewriteRule ^sh0re\.php$ https://%{HTTP_HOST}/sh0re [R=302,L]
+  RewriteRule ^sh0re\.php$ https://%{HTTP_HOST}/sh0re [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*n\.php(?:\?|\s) [NC]
-  RewriteRule ^n\.php$ https://%{HTTP_HOST}/n [R=302,L]
+  RewriteRule ^n\.php$ https://%{HTTP_HOST}/n [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*n0de\.php(?:\?|\s) [NC]
-  RewriteRule ^n0de\.php$ https://%{HTTP_HOST}/n0de [R=302,L]
+  RewriteRule ^n0de\.php$ https://%{HTTP_HOST}/n0de [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*ingest_sensor\.php(?:\?|\s) [NC]
-  RewriteRule ^ingest_sensor\.php$ https://%{HTTP_HOST}/ingest/sensor [R=302,L]
+  RewriteRule ^ingest_sensor\.php$ https://%{HTTP_HOST}/ingest/sensor [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*ingest_membrane\.php(?:\?|\s) [NC]
-  RewriteRule ^ingest_membrane\.php$ https://%{HTTP_HOST}/ingest/membrane [R=302,L]
+  RewriteRule ^ingest_membrane\.php$ https://%{HTTP_HOST}/ingest/membrane [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*plasma_recent\.php(?:\?|\s) [NC]
-  RewriteRule ^plasma_recent\.php$ https://%{HTTP_HOST}/plasma/recent [R=302,L]
+  RewriteRule ^plasma_recent\.php$ https://%{HTTP_HOST}/plasma/recent [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*camera\.php(?:\?|\s) [NC]
-  RewriteRule ^camera\.php$ https://%{HTTP_HOST}/camera/pi3-camera-01 [R=302,L]
+  RewriteRule ^camera\.php$ https://%{HTTP_HOST}/camera/pi3-camera-01 [R=308,L]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*camera_ai\.php(?:\?|\s) [NC]
-  RewriteRule ^camera_ai\.php$ https://%{HTTP_HOST}/camera-ai/pi3-camera-01.json [R=302,L]
+  RewriteRule ^camera_ai\.php$ https://%{HTTP_HOST}/camera-ai/pi3-camera-01.json [R=308,L]
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*ingest_camera_ai\.php(?:\?|\s) [NC]
-  RewriteRule ^ingest_camera_ai\.php$ https://%{HTTP_HOST}/ingest/camera-ai [R=302,L]
+  RewriteRule ^ingest_camera_ai\.php$ https://%{HTTP_HOST}/ingest/camera-ai [R=308,L]
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*sceptre_state\.php(?:\?|\s) [NC]
-  RewriteRule ^sceptre_state\.php$ https://%{HTTP_HOST}/sceptre/ensemble.json [R=302,L]
+  RewriteRule ^sceptre_state\.php$ https://%{HTTP_HOST}/sceptre/ensemble.json [R=308,L]
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*ingest_sceptre\.php(?:\?|\s) [NC]
-  RewriteRule ^ingest_sceptre\.php$ https://%{HTTP_HOST}/ingest/sceptre [R=302,L]
+  RewriteRule ^ingest_sceptre\.php$ https://%{HTTP_HOST}/ingest/sceptre [R=308,L]
 
-  RewriteRule ^0wlslw0/voice/$ https://%{HTTP_HOST}/0wlslw0/voice [R=302,L,NC]
-  RewriteRule ^0/$ https://%{HTTP_HOST}/0 [R=302,L,NC]
-  RewriteRule ^(land|echo|map|signal|str3m|aza|island|rejoindre|0wlslw0|sh0re|n|n0de)/$ https://%{HTTP_HOST}/$1 [R=302,L,NC]
-  RewriteRule ^camera/([a-z0-9-]+)/$ https://%{HTTP_HOST}/camera/$1 [R=302,L,NC]
-  RewriteRule ^ingest/sensor/$ https://%{HTTP_HOST}/ingest/sensor [R=302,L,NC]
-  RewriteRule ^ingest/camera-ai/$ https://%{HTTP_HOST}/ingest/camera-ai [R=302,L,NC]
-  RewriteRule ^ingest/sceptre/$ https://%{HTTP_HOST}/ingest/sceptre [R=302,L,NC]
-  RewriteRule ^ingest/membrane/$ https://%{HTTP_HOST}/ingest/membrane [R=302,L,NC]
-  RewriteRule ^plasma/recent/$ https://%{HTTP_HOST}/plasma/recent [R=302,L,NC]
+  RewriteRule ^0wlslw0/voice/$ https://%{HTTP_HOST}/0wlslw0/voice [R=308,L,NC]
+  RewriteRule ^0/$ https://%{HTTP_HOST}/0 [R=308,L,NC]
+  RewriteRule ^(land|echo|map|signal|str3m|aza|island|rejoindre|0wlslw0|sh0re|n|n0de)/$ https://%{HTTP_HOST}/$1 [R=308,L,NC]
+  RewriteRule ^camera/([a-z0-9-]+)/$ https://%{HTTP_HOST}/camera/$1 [R=308,L,NC]
+  RewriteRule ^ingest/sensor/$ https://%{HTTP_HOST}/ingest/sensor [R=308,L,NC]
+  RewriteRule ^ingest/camera-ai/$ https://%{HTTP_HOST}/ingest/camera-ai [R=308,L,NC]
+  RewriteRule ^ingest/sceptre/$ https://%{HTTP_HOST}/ingest/sceptre [R=308,L,NC]
+  RewriteRule ^ingest/membrane/$ https://%{HTTP_HOST}/ingest/membrane [R=308,L,NC]
+  RewriteRule ^plasma/recent/$ https://%{HTTP_HOST}/plasma/recent [R=308,L,NC]
   RewriteCond %{REQUEST_METHOD} =GET [OR]
   RewriteCond %{REQUEST_METHOD} =HEAD
   RewriteCond %{THE_REQUEST} \s/+[^?\s]*aza_asset\.php(?:\?|\s) [NC]
-  RewriteRule ^aza_asset\.php$ https://%{HTTP_HOST}/aza/asset [R=302,L]
+  RewriteRule ^aza_asset\.php$ https://%{HTTP_HOST}/aza/asset [R=308,L]
 
   RewriteRule ^storage/aza/.+\.(?:svg|svgz)$ - [F,L,NC]
 
@@ -142,6 +147,7 @@ Options -Indexes
   RewriteRule ^plasma/recent$ plasma_recent.php [L,NC,QSA]
   RewriteRule ^0wlslw0/voice$ 0wlslw0_voice.php [L,NC,QSA]
   RewriteRule ^0wlslw0$ 0wlslw0.php [L,NC,QSA]
+  RewriteRule ^robots\.txt$ robots.php [L,NC,QSA]
   RewriteRule ^sitemap\.xml$ sitemap.php [L,NC,QSA]
   RewriteRule ^aza/asset$ aza_asset.php [L,NC,QSA]
   RewriteRule ^aza/0*([0-9]{1,2})$ aza.php?p=$1 [L,NC,QSA]
@@ -150,5 +156,5 @@ Options -Indexes
 <IfModule mod_headers.c>
   Header set X-Content-Type-Options "nosniff"
   Header set X-Frame-Options "DENY"
-  Header set Referrer-Policy "no-referrer"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>

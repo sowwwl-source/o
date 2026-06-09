@@ -56,6 +56,7 @@
 		const once = { once: true };
 		targets.forEach((target) => {
 			target.addEventListener("pointerdown", loadFullBundle, once);
+			target.addEventListener("pointerenter", loadFullBundle, once);
 			target.addEventListener("focusin", loadFullBundle, once);
 			target.addEventListener("keydown", loadFullBundle, once);
 			target.addEventListener("touchstart", loadFullBundle, once);

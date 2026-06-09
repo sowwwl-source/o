@@ -9,15 +9,18 @@ $isSpatialHeadsetMode = $surfaceVariant === 'io' && spatial_preview_mode($host) 
 $brandDomain = current_brand_domain($host);
 $str3mHref = o_route_href('/str3m', [], $host);
 $pageHeadVariant = pwa_default_app_id($host);
+$pageTitle = 'Map — ' . SITE_TITLE;
+$pageDescription = 'Map — tore vivant de ' . SITE_TITLE . ', terres et courants actifs.';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Map — tore vivant de <?= h(SITE_TITLE) ?>, terres et courants actifs.">
+    <meta name="description" content="<?= h($pageDescription) ?>">
     <meta name="theme-color" content="#09090b">
-    <title>Map — <?= h(SITE_TITLE) ?></title>
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host) ?>
 <?= render_o_page_head_assets($pageHeadVariant, $host) ?>
 </head>
 <body class="experience map-view<?= $surfaceVariant === 'io' ? ' io-surface-view' : '' ?><?= $isSpatialHeadsetMode ? ' io-headset-mode' : '' ?>">
