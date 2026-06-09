@@ -71,6 +71,10 @@ if (array_key_exists('json', $options)) {
     }
 
     $replyExcerpt = trim((string) ($probe['reply_excerpt'] ?? ''));
+    $replySource = trim((string) ($probe['reply_source'] ?? ''));
+    if ($replySource !== '') {
+        fwrite(STDOUT, "reply source          : {$replySource}\n");
+    }
     if ($replyExcerpt !== '') {
         fwrite(STDOUT, "reply excerpt         : {$replyExcerpt}\n");
     }

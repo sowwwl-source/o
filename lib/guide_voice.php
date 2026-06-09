@@ -138,6 +138,9 @@ function guide_voice_value_looks_placeholder(string $value): bool
         'replace-with-endpoint-key',
         'change-me',
         'example.com',
+        'your-domain',
+        'your-site',
+        'votre-domaine',
     ];
 
     foreach ($markers as $marker) {
@@ -237,6 +240,38 @@ function guide_voice_starter_prompts(?array $authenticatedLand = null): array
         : array_slice(guide_prompt_seeds(), 0, 3);
 
     return guide_voice_format_suggestions($prompts);
+}
+
+function guide_voice_runtime_prompt(array $context): string
+{
+    $origin = trim((string) ($context['origin'] ?? ''));
+    $routeMap = is_array($context['route_map'] ?? null) ? $context['route_map'] : [];
+    $orderedRoutes = [
+        'home' => 'home',
+        'create_land' => 'create',
+        'signal' => 'signal',
+        'str3m' => 'str3m',
+        'aza' => 'aza',
+        'instrument' => 'instrument',
+        'echo' => 'echo',
+        'guide' => 'guide',
+    ];
+    $lines = [
+        'Current public origin: ' . ($origin !== '' ? $origin : 'https://sowwwl.com'),
+        'Use only clean canonical routes from this map when you mention a door:',
+    ];
+
+    foreach ($orderedRoutes as $key => $label) {
+        $href = trim((string) ($routeMap[$key] ?? ''));
+        if ($href === '') {
+            continue;
+        }
+        $lines[] = '- ' . $label . ': ' . $href;
+    }
+
+    $lines[] = 'Never output markdown links, placeholder domains, or legacy .php URLs.';
+
+    return implode("\n", $lines);
 }
 
 function guide_voice_format_suggestions(array $prompts): array
@@ -789,6 +824,12 @@ function guide_voice_remote_payload(string $utterance, ?array $authenticatedLand
     ];
 
     if ($isDoAgentEndpoint) {
+        array_unshift($messages, ['role' => 'system', 'content' => guide_voice_system_prompt()]);
+        array_splice($messages, 1, 0, [[
+            'role' => 'system',
+            'content' => guide_voice_runtime_prompt($context),
+        ]]);
+
         return [
             'messages' => $messages,
             'stream' => false,
@@ -965,22 +1006,19 @@ function guide_voice_probe_upstream(string $utterance = 'Guide-moi vers Str3m.',
         return $probe;
     }
 
-    $reply = guide_voice_extract_text($exchange['json'] ?? null);
-    if ($reply === '' && is_string($exchange['raw'] ?? null)) {
-        $reply = guide_voice_compact_reply_text((string) $exchange['raw']);
-    }
-
-    if ($reply === '') {
+    $localFallback = guide_voice_local_reply($utterance, $authenticatedLand);
+    $result = guide_voice_finalize_remote_result($exchange, $utterance, $authenticatedLand, $localFallback);
+    if ($result === null) {
         $probe['ok'] = false;
         $probe['error'] = 'reply_missing';
         return $probe;
     }
 
     $probe['ok'] = true;
-    $probe['reply_excerpt'] = guide_voice_compact_reply_text($reply);
-    $route = guide_voice_extract_route($exchange['json'] ?? null);
-    if (is_array($route)) {
-        $probe['route'] = $route;
+    $probe['reply_excerpt'] = guide_voice_compact_reply_text((string) ($result['reply'] ?? ''));
+    $probe['reply_source'] = trim((string) ($result['source'] ?? '')) ?: 'remote';
+    if (is_array($result['route'] ?? null)) {
+        $probe['route'] = $result['route'];
     }
 
     return $probe;
@@ -994,13 +1032,8 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
         return null;
     }
 
-    $decoded = $exchange['json'] ?? null;
-    $reply = guide_voice_extract_text($decoded);
-    if ($reply === '' && is_string($exchange['raw'] ?? null)) {
-        $reply = guide_voice_compact_reply_text((string) $exchange['raw']);
-    }
-
-    if ($reply === '') {
+    $result = guide_voice_finalize_remote_result($exchange, $utterance, $authenticatedLand, $localFallback);
+    if ($result === null) {
         guide_voice_log_remote_failure([
             'error' => 'reply_missing',
             'status' => (int) ($exchange['status'] ?? 0),
@@ -1010,19 +1043,14 @@ function guide_voice_remote_reply(string $utterance, ?array $authenticatedLand, 
         return null;
     }
 
-    $route = guide_voice_extract_route($decoded);
-    if ($route === null) {
-        $route = guide_voice_infer_route_from_text($reply, guide_voice_normalize_text($utterance));
+    if (($result['source'] ?? '') === 'local-fallback') {
+        guide_voice_log_remote_failure([
+            'error' => 'reply_unusable',
+            'status' => (int) ($exchange['status'] ?? 0),
+            'endpoint_host' => (string) ($exchange['endpoint_host'] ?? ''),
+            'raw' => $exchange['raw'] ?? null,
+        ]);
     }
-    if ($route === null && !empty($localFallback['route'])) {
-        $route = $localFallback['route'];
-    }
-
-    $result = [
-        'reply' => $reply,
-        'route' => $route,
-        'source' => 'remote',
-    ];
 
     if (!empty($localFallback['_intent'])) {
         $result['_intent'] = (string) $localFallback['_intent'];
@@ -1097,6 +1125,198 @@ function guide_voice_extract_text(mixed $payload): string
     }
 
     return '';
+}
+
+function guide_voice_internal_hosts(): array
+{
+    return [
+        'sowwwl.com',
+        'www.sowwwl.com',
+        '0wlslw0.com',
+        'www.0wlslw0.com',
+    ];
+}
+
+function guide_voice_is_internal_host(string $host): bool
+{
+    $normalized = strtolower(trim($host));
+    return $normalized !== '' && in_array($normalized, guide_voice_internal_hosts(), true);
+}
+
+function guide_voice_canonical_route_aliases(?array $authenticatedLand = null): array
+{
+    return [
+        '/index.php' => guide_voice_route_href('home', $authenticatedLand),
+        '/rejoindre.php' => guide_voice_route_href('create', $authenticatedLand),
+        '/signal.php' => guide_voice_route_href('signal', $authenticatedLand),
+        '/str3m.php' => guide_voice_route_href('str3m', $authenticatedLand),
+        '/aza.php' => guide_voice_route_href('aza', $authenticatedLand),
+        '/echo.php' => guide_voice_route_href('echo', $authenticatedLand),
+        '/0wlslw0.php' => function_exists('o_route_path') ? o_route_path('/0wlslw0') : '/0wlslw0',
+        '/land.php' => guide_voice_route_href('reopen', $authenticatedLand),
+    ];
+}
+
+function guide_voice_rebuild_href(string $path, string $query = '', string $fragment = ''): string
+{
+    return $path
+        . ($query !== '' ? '?' . ltrim($query, '?') : '')
+        . ($fragment !== '' ? '#' . ltrim($fragment, '#') : '');
+}
+
+function guide_voice_canonicalize_path(string $path, ?array $authenticatedLand = null): string
+{
+    $normalizedPath = trim($path);
+    if ($normalizedPath === '') {
+        return '';
+    }
+
+    foreach (guide_voice_canonical_route_aliases($authenticatedLand) as $legacy => $canonical) {
+        if ($normalizedPath === $legacy) {
+            return $canonical;
+        }
+    }
+
+    return $normalizedPath;
+}
+
+function guide_voice_canonicalize_href(string $href, ?array $authenticatedLand = null): string
+{
+    $candidate = trim($href);
+    if ($candidate === '') {
+        return '';
+    }
+
+    if (!preg_match('~^(?:/|https?://)~i', $candidate)) {
+        return $candidate;
+    }
+
+    $parts = parse_url($candidate);
+    if (!is_array($parts)) {
+        return $candidate;
+    }
+
+    $path = guide_voice_canonicalize_path((string) ($parts['path'] ?? ''), $authenticatedLand);
+    $query = trim((string) ($parts['query'] ?? ''));
+    $fragment = trim((string) ($parts['fragment'] ?? ''));
+
+    if (!preg_match('~^https?://~i', $candidate)) {
+        return guide_voice_rebuild_href($path, $query, $fragment);
+    }
+
+    $host = strtolower(trim((string) ($parts['host'] ?? '')));
+    if ($host === '') {
+        return guide_voice_rebuild_href($path, $query, $fragment);
+    }
+
+    if (guide_voice_value_looks_placeholder($host) || guide_voice_is_internal_host($host)) {
+        return guide_voice_rebuild_href($path !== '' ? $path : '/', $query, $fragment);
+    }
+
+    if ($path !== (string) ($parts['path'] ?? '')) {
+        $scheme = trim((string) ($parts['scheme'] ?? 'https')) ?: 'https';
+        $port = isset($parts['port']) ? ':' . (int) $parts['port'] : '';
+        return $scheme . '://' . $host . $port . guide_voice_rebuild_href($path, $query, $fragment);
+    }
+
+    return $candidate;
+}
+
+function guide_voice_sanitize_reply_text(string $reply, ?array $authenticatedLand = null): string
+{
+    $sanitized = preg_replace_callback(
+        '/\[([^\]]+)\]\((https?:\/\/[^)\s]+|\/[^)\s]+)\)/u',
+        static function (array $matches) use ($authenticatedLand): string {
+            $label = guide_voice_compact_reply_text((string) ($matches[1] ?? ''));
+            $href = guide_voice_canonicalize_href((string) ($matches[2] ?? ''), $authenticatedLand);
+
+            if ($label === '') {
+                return $href;
+            }
+            if ($href === '' || $href === $label) {
+                return $label;
+            }
+
+            return $label . ' (' . $href . ')';
+        },
+        $reply
+    );
+
+    if (!is_string($sanitized)) {
+        $sanitized = $reply;
+    }
+
+    $sanitized = preg_replace_callback(
+        '~https?://[^\s<>()]+|/(?:[A-Za-z0-9._\~!$&\'()*+,;=:@%-]+/?)+(?:\?[^\s<>()]+)?(?:#[^\s<>()]+)?~u',
+        static function (array $matches) use ($authenticatedLand): string {
+            $token = (string) ($matches[0] ?? '');
+            return guide_voice_canonicalize_href($token, $authenticatedLand);
+        },
+        $sanitized
+    ) ?? $sanitized;
+
+    return guide_voice_compact_reply_text($sanitized);
+}
+
+function guide_voice_reply_looks_unusable(string $reply): bool
+{
+    $normalized = guide_voice_normalize_text($reply);
+    if ($normalized === '') {
+        return true;
+    }
+
+    return guide_voice_value_looks_placeholder($normalized);
+}
+
+function guide_voice_finalize_remote_result(
+    array $exchange,
+    string $utterance,
+    ?array $authenticatedLand,
+    array $localFallback
+): ?array {
+    $decoded = $exchange['json'] ?? null;
+    $rawReply = guide_voice_extract_text($decoded);
+    if ($rawReply === '' && is_string($exchange['raw'] ?? null)) {
+        $rawReply = guide_voice_compact_reply_text((string) $exchange['raw']);
+    }
+
+    $rawReplyLooksPlaceholder = guide_voice_value_looks_placeholder($rawReply);
+    $reply = guide_voice_sanitize_reply_text($rawReply, $authenticatedLand);
+    $replySource = $reply === $rawReply ? 'remote' : 'remote-sanitized';
+
+    $route = guide_voice_extract_route($decoded);
+    if (is_array($route)) {
+        $route = guide_voice_normalize_route([
+            'href' => guide_voice_canonicalize_href((string) ($route['href'] ?? ''), $authenticatedLand),
+            'label' => (string) ($route['label'] ?? 'Continuer'),
+            'auto_navigate' => !empty($route['auto_navigate']),
+        ]);
+    }
+    if ($route === null) {
+        $route = guide_voice_infer_route_from_text($reply, guide_voice_normalize_text($utterance));
+    }
+    if ($route === null && !empty($localFallback['route'])) {
+        $route = $localFallback['route'];
+    }
+
+    if ($rawReplyLooksPlaceholder || guide_voice_reply_looks_unusable($reply)) {
+        $fallbackReply = guide_voice_compact_reply_text((string) ($localFallback['reply'] ?? ''));
+        if ($fallbackReply === '') {
+            return null;
+        }
+
+        return [
+            'reply' => $fallbackReply,
+            'route' => $localFallback['route'] ?? $route,
+            'source' => 'local-fallback',
+        ];
+    }
+
+    return [
+        'reply' => $reply,
+        'route' => $route,
+        'source' => $replySource,
+    ];
 }
 
 function guide_voice_extract_route(mixed $payload): ?array
@@ -1554,6 +1774,7 @@ function guide_voice_system_prompt(): string
         'Keep a calm, precise, slightly mystical tone, but stay easy to understand.',
         'Keep answers short enough to be spoken aloud comfortably, ideally under three sentences.',
         'Do not use markdown, bullets, or code formatting in your final reply.',
+        'Never output placeholder domains, raw markdown links, or legacy .php routes; use clean canonical paths instead.',
         'If the visitor intent is clear, orient them toward one primary route only.',
         'Never invent permissions, signup completion, or private access.',
         $agent,
