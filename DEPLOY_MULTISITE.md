@@ -66,6 +66,18 @@ Point these hosts to the VPS:
 3. Set Cloudflare SSL mode to `Full (strict)`.
 4. If `sowwwl.xyz` or `sowwwl.io` returns `525`, the origin handshake is still wrong: verify the host exists in Caddy, port `443` is open, and the origin certificate covers that domain.
 5. If `0wlslw0.com`, `sowwwl.cloud`, or `sowwwl.io` returns `526`, the origin certificate or routing is still wrong.
+6. If you want Cloudflare to edge-cache the anonymous `https://sowwwl.com/` home, add a Cache Rule with:
+
+```text
+(http.host eq "sowwwl.com" and http.request.method in {"GET" "HEAD"} and http.request.uri.path eq "/" and not http.request.uri.query contains "connexion=" and not http.cookie contains "sowwwl_session=")
+```
+
+Action:
+
+- `Cache eligibility` -> `Eligible for cache`
+- `Edge TTL` -> `Use cache-control header if present, use default Cloudflare caching behavior if not`
+
+This keeps the anonymous shell cacheable while excluding session-backed visits and the explicit login route `/?connexion=1`.
 
 ## Result
 

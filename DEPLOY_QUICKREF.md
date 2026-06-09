@@ -85,6 +85,9 @@ curl -sL https://0wlslw0.com | grep -E 'Entrer sans se perdre|Accompagnement voc
 
 curl -sL https://sowwwl.com/0wlslw0 | grep -E 'Accompagnement vocal|voice only|guide vocal|fallback local|Activer la voix'
 
+curl -sSI https://sowwwl.com/ | grep -Ei 'cache-control|cdn-cache-control|cloudflare-cdn-cache-control|cf-cache-status|set-cookie|vary'
+curl -sSI 'https://sowwwl.com/?connexion=1' | grep -Ei 'cache-control|cdn-cache-control|cloudflare-cdn-cache-control|cf-cache-status|set-cookie|vary'
+
 curl -I https://sowwwl.com/signal
 curl -I https://sowwwl.com/str3m
 curl -I https://sowwwl.com/map
@@ -92,6 +95,12 @@ curl -I https://api.sowwwl.cloud/healthz
 curl -sL https://api.sowwwl.cloud/v1/status | grep -E '"service": ?"api.sowwwl.cloud"|AzA_v0.7_openapi.min.yaml'
 curl -I 'https://sowwwl.com/island?u=<slug-connu>'
 curl -sL 'https://sowwwl.com/island?u=<slug-connu>' | grep -E 'île classique|Relief|Finder mémoire|Dernières traces'
+```
+
+For the anonymous home edge-cache on Cloudflare, the cache rule should match:
+
+```text
+(http.host eq "sowwwl.com" and http.request.method in {"GET" "HEAD"} and http.request.uri.path eq "/" and not http.request.uri.query contains "connexion=" and not http.cookie contains "sowwwl_session=")
 ```
 
 ### 5b. Verify island video compatibility when a land has multiple video formats

@@ -89,6 +89,8 @@ function send_security_headers(): void
 {
     header_remove('X-Powered-By');
     header('Cache-Control: no-store, private, max-age=0');
+    header('CDN-Cache-Control: no-store');
+    header('Cloudflare-CDN-Cache-Control: no-store');
     header('Pragma: no-cache');
     header('Vary: Cookie');
     header('Content-Security-Policy: ' . content_security_policy());
@@ -99,9 +101,12 @@ function send_security_headers(): void
 
 function mark_public_response_cacheable(int $maxAgeSeconds = 300, array $varyHeaders = ['Accept-Encoding']): void
 {
+    $maxAgeSeconds = max(0, $maxAgeSeconds);
     header_remove('Pragma');
     header_remove('Expires');
-    header('Cache-Control: public, max-age=' . max(0, $maxAgeSeconds));
+    header('Cache-Control: public, max-age=' . $maxAgeSeconds);
+    header('CDN-Cache-Control: public, max-age=' . $maxAgeSeconds);
+    header('Cloudflare-CDN-Cache-Control: public, max-age=' . $maxAgeSeconds);
 
     $varyHeaders = array_values(array_filter(array_unique(array_map(
         static fn ($value): string => trim((string) $value),

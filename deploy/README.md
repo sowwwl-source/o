@@ -348,6 +348,18 @@ If Cloudflare is enabled:
 4. If `sowwwl.xyz` shows a `525`, the origin handshake is still failing. Verify the host exists in Caddy, the origin is reachable on `443`, and the origin certificate matches the domain.
 5. Apply the same rule to `sowwwl.io`: `A @ -> 161.35.157.37`, `CNAME www -> @`, proxied in Cloudflare once the origin certificate is live.
 6. If you previously had a `526` on `0wlslw0.com`, `sowwwl.cloud`, or `sowwwl.io`, that error should disappear once the origin is serving a valid certificate and Cloudflare is in `Full (strict)`.
+7. If you want edge HTML caching for the anonymous `https://sowwwl.com/` home, create a Cache Rule with this expression:
+
+```text
+(http.host eq "sowwwl.com" and http.request.method in {"GET" "HEAD"} and http.request.uri.path eq "/" and not http.request.uri.query contains "connexion=" and not http.cookie contains "sowwwl_session=")
+```
+
+Then set:
+
+- `Cache eligibility` -> `Eligible for cache`
+- `Edge TTL` -> `Use cache-control header if present, use default Cloudflare caching behavior if not`
+
+Do not apply a broad `Cache Everything` rule to all of `sowwwl.com`, or Cloudflare may cache authenticated or login-intent pages. The app now emits `CDN-Cache-Control` and `Cloudflare-CDN-Cache-Control` on the anonymous home so the edge can follow the same 300-second TTL as the browser while still keeping `/?connexion=1` and session-backed responses uncacheable.
 
 ## What the API stub does
 
