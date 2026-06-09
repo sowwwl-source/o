@@ -824,13 +824,8 @@ function guide_voice_remote_payload(string $utterance, ?array $authenticatedLand
     ];
 
     if ($isDoAgentEndpoint) {
-        array_unshift($messages, ['role' => 'system', 'content' => guide_voice_system_prompt()]);
-        array_splice($messages, 1, 0, [[
-            'role' => 'system',
-            'content' => guide_voice_runtime_prompt($context),
-        ]]);
-
         return [
+            'model' => 'ignored',
             'messages' => $messages,
             'stream' => false,
         ];
@@ -1003,6 +998,10 @@ function guide_voice_probe_upstream(string $utterance = 'Guide-moi vers Str3m.',
     if (empty($exchange['ok'])) {
         $probe['ok'] = false;
         $probe['error'] = (string) ($exchange['error'] ?? 'remote_failure');
+        $rawExcerpt = guide_voice_compact_reply_text((string) ($exchange['raw'] ?? ''));
+        if ($rawExcerpt !== '') {
+            $probe['response_excerpt'] = $rawExcerpt;
+        }
         return $probe;
     }
 
