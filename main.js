@@ -8949,7 +8949,9 @@ function initXyzCamera() {
 	}
 
 	const plasmaBridgeUrl = root.dataset.xyzPlasmaBridge || "";
+	const plasmaFeedUrl = (root.dataset.xyzPlasmaFeed || "").trim();
 	const membraneLandSlug = root.dataset.xyzPlasmaLand || "";
+	const plasmaCameraSlug = (root.dataset.xyzPlasmaCamera || "").trim().toLowerCase();
 	const sceptreFeedUrl = root.dataset.xyzSceptreFeed || "";
 	const sceptreConstellationFeedUrl = root.dataset.xyzSceptreConstellationFeed || "";
 	const sceptrePrimaryDevice = (root.dataset.xyzSceptreDevice || "ensemble").trim() || "ensemble";
@@ -9156,6 +9158,28 @@ function initXyzCamera() {
 		inFlight: false,
 		triggerSignature: "",
 	};
+	const remotePlasma = {
+		snapshot: null,
+		weather: {},
+		pollTimer: 0,
+		inFlight: false,
+	};
+	const localSignalAt = {
+		camera: 0,
+		audio: 0,
+		light: 0,
+		orientation: 0,
+		motion: 0,
+	};
+	const localSignalTtl = {
+		camera: 2400,
+		audio: 1800,
+		light: 14000,
+		orientation: 6800,
+		motion: 6800,
+	};
+	let remoteAutoplaySuppressed = false;
+	let remoteAudioUnlockBound = false;
 	const instrument = {
 		pointers: new Map(),
 		terreX: 0.3,
@@ -9188,6 +9212,113 @@ function initXyzCamera() {
 		return `${safeValue > 0 ? "+" : "−"}${percent}%`;
 	};
 	const formatPercent = (value) => `${Math.round(clampNumber(Number(value) || 0, 0, 1) * 100)}%`;
+	const markLocalSignal = (channel) => {
+		if (channel in localSignalAt) {
+			localSignalAt[channel] = Date.now();
+		}
+	};
+	const hasRecentLocalSignal = (channel) => {
+		if (!(channel in localSignalAt)) {
+			return false;
+		}
+
+		const timestamp = Number(localSignalAt[channel]) || 0;
+		if (timestamp <= 0) {
+			return false;
+		}
+
+		const ttl = Number(localSignalTtl[channel]) || 0;
+		return Date.now() - timestamp <= ttl;
+	};
+	const parseRemoteMetric = (metrics, key) => {
+		if (!metrics || typeof metrics !== "object" || !(key in metrics)) {
+			return 0;
+		}
+
+		const value = Number(metrics[key]);
+		return Number.isFinite(value) ? value : 0;
+	};
+	const remoteEventTimeMs = (event) => {
+		if (!event || typeof event !== "object") {
+			return 0;
+		}
+
+		const rawValue = typeof event.timestamp === "string" && event.timestamp
+			? event.timestamp
+			: (typeof event.received_at === "string" ? event.received_at : "");
+		if (!rawValue) {
+			return 0;
+		}
+
+		const timestamp = Date.parse(rawValue);
+		return Number.isFinite(timestamp) ? timestamp : 0;
+	};
+	const readRemotePlasmaEvents = (events) => {
+		const list = Array.isArray(events) ? events : [];
+		if (!plasmaCameraSlug) {
+			return list;
+		}
+
+		return list.filter((event) => {
+			if (!event || typeof event !== "object") {
+				return false;
+			}
+
+			const landSlug = typeof event.land_slug === "string" ? event.land_slug.trim().toLowerCase() : "";
+			const source = typeof event.source === "string" ? event.source.trim().toLowerCase() : "";
+			const camera = typeof event.camera === "string" ? event.camera.trim().toLowerCase() : "";
+			return landSlug === plasmaCameraSlug || source === plasmaCameraSlug || camera === plasmaCameraSlug;
+		});
+	};
+	const computeRemotePlasmaSnapshot = (payload) => {
+		const safePayload = payload && typeof payload === "object" ? payload : {};
+		const safeWeather = safePayload.weather && typeof safePayload.weather === "object" ? safePayload.weather : {};
+		const events = readRemotePlasmaEvents(safePayload.events);
+		const latestEvent = events[0] && typeof events[0] === "object" ? events[0] : null;
+		const metrics = latestEvent && latestEvent.metrics && typeof latestEvent.metrics === "object"
+			? latestEvent.metrics
+			: {};
+		const largestArea = Math.max(0, parseRemoteMetric(metrics, "largest_area"));
+		const contourCount = Math.max(0, parseRemoteMetric(metrics, "contour_count"));
+		const frameLuma = clampNumber(parseRemoteMetric(metrics, "frame_luma"), 0, 1);
+		const weatherStale = safeWeather.stale === true || safeWeather.freshness === "stale";
+		const weatherAgeSeconds = Number(safeWeather.age_seconds ?? safeWeather.ageSeconds);
+		const ageSeconds = Number.isFinite(weatherAgeSeconds) && weatherAgeSeconds >= 0
+			? weatherAgeSeconds
+			: null;
+		const staleAfterSeconds = Number(safeWeather.stale_after_seconds ?? safeWeather.staleAfterSeconds);
+		const staleAfter = Number.isFinite(staleAfterSeconds) && staleAfterSeconds > 0 ? staleAfterSeconds : 90;
+		const weatherEnergy = clampNumber(Number(safeWeather.energy) || 0, 0, 1);
+		let area = clampNumber(Math.sqrt(largestArea / 48000), 0, 1);
+		let contours = clampNumber(contourCount / 6, 0, 1);
+		let density = clampNumber((events.length - 1) / 5, 0, 1);
+		const ageMs = latestEvent ? Math.max(0, Date.now() - remoteEventTimeMs(latestEvent)) : Number.POSITIVE_INFINITY;
+		let recency = Number.isFinite(ageMs) ? clampNumber(1 - (ageMs / 120000), 0, 1) : 0;
+		let intensity = clampNumber((area * 0.42) + (contours * 0.2) + (frameLuma * 0.16) + (density * 0.1) + (recency * 0.06) + (weatherEnergy * 0.06), 0, 1);
+		if (weatherStale) {
+			const staleOverrun = ageSeconds !== null ? Math.max(0, ageSeconds - staleAfter) : staleAfter;
+			const staleFade = clampNumber(1 - (staleOverrun / Math.max(staleAfter * 3, 45)), 0.12, 0.5);
+			area *= staleFade;
+			contours *= 0.48;
+			density *= 0.3;
+			recency = 0;
+			intensity = Math.min(intensity * (0.24 + (staleFade * 0.2)), 0.22);
+		}
+
+		return {
+			events,
+			latestEvent,
+			weather: safeWeather,
+			luma: frameLuma,
+			area,
+			contours,
+			density,
+			recency,
+			intensity,
+			contrast: clampNumber((contours * 0.72) + (density * 0.18) + (Math.abs(frameLuma - 0.5) * 0.4), 0, 1),
+			fresh: Boolean(latestEvent) && !weatherStale,
+		};
+	};
 	const formatSceptreClimate = () => {
 		if (!sceptreFresh()) {
 			return "neutre";
@@ -14260,6 +14391,7 @@ function initXyzCamera() {
 		syncSceptreReactiveState();
 		renderWorldInstrument();
 		updateMotionVoice();
+		applyRemoteMembraneFallback({ autoActivate: true });
 		void applySceptreTrigger();
 	};
 
@@ -14269,6 +14401,7 @@ function initXyzCamera() {
 		syncSceptreReactiveState();
 		renderWorldInstrument();
 		updateMotionVoice();
+		applyRemoteMembraneFallback({ autoActivate: true });
 		void applySceptreTrigger();
 	};
 
@@ -14833,6 +14966,7 @@ function initXyzCamera() {
 			const sample = (buffer[index] - 128) / 128;
 			energy += sample * sample;
 		}
+		markLocalSignal("audio");
 		membrane.audioLevel = clampNumber(Math.sqrt(energy / buffer.length) * 2.6, 0, 1);
 		syncMembraneReactiveState();
 		setSensorText(
@@ -15013,6 +15147,7 @@ function initXyzCamera() {
 					if (!isMembraneLive()) {
 						return;
 					}
+					markLocalSignal("light");
 					membrane.lightLevel = clampNumber(Math.log10(Math.max(1, Number(lightSensor.illuminance) || 1)) / 3, 0, 1);
 					syncMembraneReactiveState();
 					setSensorText(
@@ -15067,6 +15202,7 @@ function initXyzCamera() {
 					return;
 				}
 				orientationSignalSeen = true;
+				markLocalSignal("orientation");
 				membrane.tiltX = clampNumber((Number(event.gamma) || 0) / 46, -1, 1);
 				membrane.tiltY = clampNumber((Number(event.beta) || 0) / 64, -1, 1);
 				syncMembraneReactiveState();
@@ -15088,6 +15224,7 @@ function initXyzCamera() {
 					return;
 				}
 				motionSignalSeen = true;
+				markLocalSignal("motion");
 				const source = event.accelerationIncludingGravity || event.acceleration || {};
 				const x = Number(source.x || 0);
 				const y = Number(source.y || 0);
@@ -15244,6 +15381,7 @@ function initXyzCamera() {
 		});
 
 		const flavor = describeCameraFlavor(averageLuma, averageMotion);
+		markLocalSignal("camera");
 		setReactiveCssState(averageLuma, averageMotion, averageRgb, flavor.key, {
 			contrast: lightContrast,
 			directionX: lightDirectionX,
@@ -15287,9 +15425,337 @@ function initXyzCamera() {
 		renderMusicDesk();
 	};
 
+	const hasRemoteMembraneSignal = () => Boolean(
+		(remotePlasma.snapshot && (remotePlasma.snapshot.latestEvent || remotePlasma.snapshot.weather))
+		|| sceptreFresh()
+	);
+	const remoteMembraneProfile = () => {
+		const snapshot = remotePlasma.snapshot;
+		const sceptreLive = sceptreFresh();
+		const visualBrightness = sceptreLive ? clampNumber(sceptre.state.visual.brightness, 0, 1) : 0;
+		const halo = sceptreHaloLevel();
+		const motion = sceptreLive ? sceptreMotionLevel() : 0;
+		const percussion = sceptreLive ? sceptrePercussionLevel() : 0;
+		const volumeBias = sceptreLive ? clampNumber(sceptre.state.music.volumeBias, 0, 1) : 0;
+		const warmth = sceptreLive
+			? clampNumber((clampNumber(sceptre.state.visual.tintWarmth, -1, 1) + 1) * 0.5, 0, 1)
+			: 0.46;
+		const luma = clampNumber(
+			snapshot
+				? snapshot.luma
+				: Math.max((halo * 0.54) + (visualBrightness * 0.26), visualBrightness),
+			0,
+			1
+		);
+		const cameraMotion = clampNumber(
+			snapshot
+				? ((snapshot.intensity * 0.78) + (snapshot.area * 0.14) + (snapshot.contours * 0.08))
+				: motion * 0.24,
+			0,
+			1
+		);
+		const lightContrast = clampNumber(
+			snapshot
+				? snapshot.contrast
+				: ((clampNumber(sceptreLive ? sceptre.state.visual.contrastBias : 0, 0, 1) * 0.74) + (halo * 0.18)),
+			0,
+			1
+		);
+		const lightDirectionX = clampNumber(
+			sceptreLive
+				? (sceptre.state.motion.roll * 0.78) + (sceptre.state.visual.torusSpin * 0.24)
+				: 0,
+			-1,
+			1
+		);
+		const lightDirectionY = clampNumber(
+			sceptreLive
+				? (-sceptre.state.motion.pitch * 0.82) + ((luma - 0.5) * 0.18)
+				: 0,
+			-1,
+			1
+		);
+		const lightLevel = clampNumber(
+			Math.max(
+				(luma * 0.74) + (lightContrast * 0.14),
+				(halo * 0.82) + (visualBrightness * 0.08),
+				visualBrightness * 0.92
+			),
+			0,
+			1
+		);
+		const motionSensor = clampNumber(
+			Math.max(
+				motion,
+				cameraMotion * 0.76,
+				snapshot ? ((snapshot.area * 0.52) + (snapshot.contours * 0.22)) : 0
+			),
+			0,
+			1
+		);
+		const shake = clampNumber(
+			Math.max(
+				sceptreLive ? sceptre.state.motion.shake : 0,
+				sceptreLive ? sceptre.state.triggers.accent : 0,
+				sceptreLive ? (sceptre.state.triggers.kick * 0.86) : 0,
+				sceptreLive ? (sceptre.state.triggers.snare * 0.62) : 0,
+				cameraMotion * 0.28
+			),
+			0,
+			1
+		);
+		const audioLevel = clampNumber(
+			Math.max(
+				(percussion * 0.82) + (volumeBias * 0.34),
+				volumeBias * 0.72,
+				shake * 0.34
+			),
+			0,
+			1
+		);
+		const tiltX = clampNumber(sceptreLive ? sceptre.state.motion.roll : 0, -1, 1);
+		const tiltY = clampNumber(sceptreLive ? sceptre.state.motion.pitch : 0, -1, 1);
+		const baseRgb = mixRgb([84, 152, 230], [255, 188, 132], warmth);
+		const rgb = mixRgb(baseRgb, [255, 255, 255], clampNumber((lightLevel * 0.42) + (halo * 0.16), 0, 0.62));
+		const flavor = describeCameraFlavor(luma, cameraMotion);
+
+		return {
+			snapshot,
+			luma,
+			cameraMotion,
+			lightContrast,
+			lightDirectionX,
+			lightDirectionY,
+			lightLevel,
+			motionSensor,
+			shake,
+			audioLevel,
+			tiltX,
+			tiltY,
+			halo,
+			percussion,
+			rgb,
+			flavor,
+		};
+	};
+	const remoteMembraneTitle = () => isIoSurfaceView()
+		? "La couche vit déjà avec le sceptre."
+		: "La membrane vit déjà avec le sceptre.";
+	const remoteMembraneMessage = (profile = remoteMembraneProfile()) => {
+		const cameraLabel = plasmaCameraSlug || "pi";
+		if (profile.snapshot?.latestEvent) {
+			return isIoSurfaceView()
+				? `Le sceptre et ${cameraLabel} nourrissent déjà le volume à distance. Mouvement, lumière et pulsation suivent maintenant le relais matériel sans ouvrir la caméra locale.`
+				: `Le sceptre et ${cameraLabel} nourrissent déjà le tore à distance. Mouvement, lumière et pulsation suivent maintenant le relais matériel sans ouvrir la caméra locale.`;
+		}
+
+		return isIoSurfaceView()
+			? "Le sceptre tient déjà une présence distante. Mouvement, halo et rythme gardent le volume vivant pendant que la couche locale reste fermée."
+			: "Le sceptre tient déjà une présence distante. Mouvement, halo et rythme gardent le tore vivant pendant que la membrane locale reste fermée.";
+	};
+	const clearRemotePlasmaPoll = () => {
+		if (remotePlasma.pollTimer) {
+			window.clearTimeout(remotePlasma.pollTimer);
+			remotePlasma.pollTimer = 0;
+		}
+	};
+	const maybeAutoActivateRemoteMembrane = (profile = remoteMembraneProfile()) => {
+		if (
+			remoteAutoplaySuppressed
+			|| isMembraneLive()
+			|| isMembraneDemo()
+			|| stream
+			|| audioStream
+			|| !hasRemoteMembraneSignal()
+		) {
+			return false;
+		}
+
+		setUiState("partial", remoteMembraneMessage(profile), remoteMembraneTitle());
+		setSensorText(wakeNode, "relais distant");
+		return true;
+	};
+	const applyRemoteMembraneFallback = ({ autoActivate = true } = {}) => {
+		if (isMembraneDemo()) {
+			return false;
+		}
+		if (remoteAutoplaySuppressed && !isMembraneLive()) {
+			return false;
+		}
+		if (!hasRemoteMembraneSignal()) {
+			return false;
+		}
+
+		const profile = remoteMembraneProfile();
+		if (autoActivate) {
+			maybeAutoActivateRemoteMembrane(profile);
+		}
+
+		let changed = false;
+		if (!hasRecentLocalSignal("camera")) {
+			const safeRgb = profile.rgb.map((value) => clampNumber(Math.round(Number(value) || 0), 0, 255));
+			document.body.dataset.cameraLuma = profile.luma.toFixed(3);
+			document.body.dataset.cameraMotion = profile.cameraMotion.toFixed(3);
+			document.body.dataset.cameraRgb = safeRgb.join(" ");
+			document.body.dataset.cameraFlavor = profile.flavor.key;
+			document.body.style.setProperty("--camera-luma", profile.luma.toFixed(3));
+			document.body.style.setProperty("--camera-motion", profile.cameraMotion.toFixed(3));
+			document.body.style.setProperty("--camera-rgb", safeRgb.join(" "));
+			membrane.luma = profile.luma;
+			membrane.cameraMotion = profile.cameraMotion;
+			membrane.lightContrast = profile.lightContrast;
+			membrane.lightDirectionX = profile.lightDirectionX;
+			membrane.lightDirectionY = profile.lightDirectionY;
+			if (!hasRecentLocalSignal("light")) {
+				membrane.lightLevel = profile.lightLevel;
+			}
+			setSensorText(
+				cameraNode,
+				profile.snapshot?.latestEvent
+					? `${formatPercent(profile.cameraMotion)} · ${plasmaCameraSlug || cameraFacingLabel()}`
+					: `veille distante · ${cameraFacingLabel()}`
+			);
+			changed = true;
+		}
+
+		if (!hasRecentLocalSignal("light") && !hasRecentLocalSignal("camera")) {
+			membrane.lightLevel = profile.lightLevel;
+			setSensorText(lightNode, `${formatPercent(profile.lightLevel)} · halo ${formatPercent(profile.halo)}`);
+			changed = true;
+		}
+
+		if (!hasRecentLocalSignal("orientation")) {
+			membrane.tiltX = profile.tiltX;
+			membrane.tiltY = profile.tiltY;
+			setSensorText(
+				orientationNode,
+				`α ${Math.round((profile.tiltX + 1) * 90)}° · β ${Math.round(profile.tiltY * 90)}° · sceptre`
+			);
+			changed = true;
+		}
+
+		if (!hasRecentLocalSignal("motion")) {
+			membrane.motionSensor = profile.motionSensor;
+			membrane.shake = profile.shake;
+			setSensorText(
+				motionNode,
+				profile.shake > 0.18
+					? `${formatPercent(profile.motionSensor)} · accent`
+					: `${formatPercent(profile.motionSensor)} · sceptre`
+			);
+			changed = true;
+		}
+
+		if (!hasRecentLocalSignal("audio")) {
+			membrane.audioLevel = profile.audioLevel;
+			setSensorText(
+				audioNode,
+				profile.audioLevel > 0.14
+					? `${formatPercent(profile.audioLevel)} · pulsation`
+					: "sceptre calme"
+			);
+			changed = true;
+		}
+
+		if (changed) {
+			syncMembraneReactiveState();
+		}
+
+		return changed;
+	};
+	const fetchRemotePlasmaState = async () => {
+		if (!plasmaFeedUrl) {
+			return remotePlasma.snapshot;
+		}
+
+		const response = await fetch(plasmaFeedUrl, {
+			cache: "no-store",
+			headers: { Accept: "application/json" },
+		});
+		if (!response.ok) {
+			throw new Error(`plasma feed ${response.status}`);
+		}
+
+		const payload = await response.json();
+		remotePlasma.snapshot = computeRemotePlasmaSnapshot(payload);
+		remotePlasma.weather = payload && typeof payload === "object" && payload.weather && typeof payload.weather === "object"
+			? payload.weather
+			: {};
+		applyRemoteMembraneFallback({ autoActivate: true });
+		return remotePlasma.snapshot;
+	};
+	const scheduleRemotePlasmaPoll = (delay = 3600) => {
+		clearRemotePlasmaPoll();
+		if (!plasmaFeedUrl) {
+			return;
+		}
+
+		remotePlasma.pollTimer = window.setTimeout(async () => {
+			if (document.hidden) {
+				scheduleRemotePlasmaPoll(5200);
+				return;
+			}
+
+			if (!remotePlasma.inFlight) {
+				remotePlasma.inFlight = true;
+				try {
+					await fetchRemotePlasmaState();
+				} catch {
+					// Keep the last remote plasma state.
+				} finally {
+					remotePlasma.inFlight = false;
+				}
+			}
+
+			scheduleRemotePlasmaPoll(3600);
+		}, delay);
+	};
+	const primeRemoteMembrane = async () => {
+		const tasks = [];
+		if (plasmaFeedUrl) {
+			tasks.push(fetchRemotePlasmaState().catch(() => null));
+		}
+		if ((sceptreConstellationFeedUrl || sceptreFeedUrl) && !sceptreFresh()) {
+			tasks.push(fetchSceptreState().catch(() => null));
+		}
+		if (tasks.length) {
+			await Promise.all(tasks);
+		}
+		return hasRemoteMembraneSignal();
+	};
+	const bindRemoteAudioUnlock = () => {
+		if (remoteAudioUnlockBound) {
+			return;
+		}
+
+		const unlock = async () => {
+			if (!isMembraneLive() || isMembraneDemo() || !hasRemoteMembraneSignal()) {
+				return;
+			}
+
+			const ready = await ensureMotionVoice().catch(() => false);
+			if (!ready) {
+				return;
+			}
+
+			updateMotionVoice();
+			cueMotionVoice(0.84);
+		};
+
+		["pointerdown", "touchstart", "keydown"].forEach((eventName) => {
+			window.addEventListener(eventName, () => {
+				void unlock();
+			}, { passive: true });
+		});
+		remoteAudioUnlockBound = true;
+	};
+
 	const stopStream = ({ quiet = false } = {}) => {
 		const shouldNotifyBridge = !quiet && isMembraneLive() && !isMembraneDemo();
 		const closeMetrics = membraneMetricsSnapshot();
+		if (!quiet) {
+			remoteAutoplaySuppressed = true;
+		}
 		stopBridgePulse();
 		stopDemoMode();
 		resetSensorFeedback();
@@ -15404,7 +15870,18 @@ function initXyzCamera() {
 	};
 
 	const startLiveMembrane = async ({ restarting = false } = {}) => {
+		remoteAutoplaySuppressed = false;
 		if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+			const remoteReady = await primeRemoteMembrane();
+			if (remoteReady) {
+				setUiState("partial", remoteMembraneMessage(), remoteMembraneTitle());
+				applyRemoteMembraneFallback({ autoActivate: false });
+				bindRemoteAudioUnlock();
+				updateMotionVoice();
+				cueMotionVoice(0.78);
+				return;
+			}
+
 			setUiState(
 				"unsupported",
 				"La membrane ne trouve pas de caméra ou de micro disponibles ici. Le tore garde donc un monde synthétique comme pulpe de secours.",
@@ -15448,6 +15925,7 @@ function initXyzCamera() {
 		await ensureMotionVoice().catch(() => false);
 		await requestDeviceOrientationLock();
 		queueSensorFeedback({ orientationReady, motionReady });
+		const remoteReady = await primeRemoteMembrane();
 
 		let videoReady = false;
 		let audioReady = false;
@@ -15502,6 +15980,10 @@ function initXyzCamera() {
 							? "La membrane nourrit maintenant la surface."
 							: "La membrane voit déjà la surface."))
 			);
+			if (remoteReady) {
+				applyRemoteMembraneFallback({ autoActivate: false });
+			}
+			bindRemoteAudioUnlock();
 			updateMotionVoice();
 			cueMotionVoice(audioReady ? 1 : 0.9);
 			pulseDeviceHaptics("medium");
@@ -15514,40 +15996,48 @@ function initXyzCamera() {
 			return;
 		}
 
-		if (audioReady || sensorReady || lightReady || wakeReady) {
+		if (audioReady || sensorReady || lightReady || wakeReady || remoteReady) {
 			setUiState(
 				"partial",
-				isSpatialHeadsetSurface
-					? (cameraFacingMode === "environment"
-						? (audioReady
-							? "Le paysage n est pas encore entièrement visible, mais l air et la présence locale suffisent déjà pour régler le rythme du tore."
-							: "La couche spatiale reste partielle ici. On garde tout de même une lecture stable du paysage sans promettre encore le vrai volume natif.")
-						: (audioReady
-							? "La couche spatiale n a pas encore toute l image, mais l air et la présence locale suffisent déjà pour régler le rythme du tore."
-							: "La couche spatiale reste partielle ici. On garde une lecture stable sans promettre encore le vrai volume natif."))
-					: (cameraFacingMode === "environment"
-						? (audioReady
-							? "La membrane ne tient pas encore toute l image du dehors, mais le tore écoute déjà souffle, lumière, marche ou veille et peut rester vivant."
-							: "La membrane ne capte pas encore tout le paysage, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le tore.")
-						: (audioReady
-							? "La membrane n’a pas encore d’image, mais le tore écoute déjà souffle, mouvement, lumière ou veille et peut rester vivant sur Android."
-							: "La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le tore.")),
-				isSpatialHeadsetSurface
-					? (cameraFacingMode === "environment"
-						? (audioReady
-							? "Le paysage chante sans image complète."
-							: "Le paysage dérive en mode partiel.")
-						: (audioReady
-							? "La couche spatiale écoute sans image complète."
-							: "La couche spatiale dérive en mode partiel."))
-					: (cameraFacingMode === "environment"
-						? (audioReady
-							? "Le paysage chante sans image complète."
-							: "Le paysage dérive en mode partiel.")
-						: (audioReady
-							? "La membrane écoute sans image."
-							: "La membrane dérive en mode partiel."))
+				remoteReady && !audioReady && !sensorReady && !lightReady
+					? remoteMembraneMessage()
+					: (isSpatialHeadsetSurface
+						? (cameraFacingMode === "environment"
+							? (audioReady
+								? "Le paysage n est pas encore entièrement visible, mais l air et la présence locale suffisent déjà pour régler le rythme du tore."
+								: "La couche spatiale reste partielle ici. On garde tout de même une lecture stable du paysage sans promettre encore le vrai volume natif.")
+							: (audioReady
+								? "La couche spatiale n a pas encore toute l image, mais l air et la présence locale suffisent déjà pour régler le rythme du tore."
+								: "La couche spatiale reste partielle ici. On garde une lecture stable sans promettre encore le vrai volume natif."))
+						: (cameraFacingMode === "environment"
+							? (audioReady
+								? "La membrane ne tient pas encore toute l image du dehors, mais le tore écoute déjà souffle, lumière, marche ou veille et peut rester vivant."
+								: "La membrane ne capte pas encore tout le paysage, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le tore.")
+							: (audioReady
+								? "La membrane n’a pas encore d’image, mais le tore écoute déjà souffle, mouvement, lumière ou veille et peut rester vivant sur Android."
+								: "La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le tore."))),
+				remoteReady && !audioReady && !sensorReady && !lightReady
+					? remoteMembraneTitle()
+					: (isSpatialHeadsetSurface
+						? (cameraFacingMode === "environment"
+							? (audioReady
+								? "Le paysage chante sans image complète."
+								: "Le paysage dérive en mode partiel.")
+							: (audioReady
+								? "La couche spatiale écoute sans image complète."
+								: "La couche spatiale dérive en mode partiel."))
+						: (cameraFacingMode === "environment"
+							? (audioReady
+								? "Le paysage chante sans image complète."
+								: "Le paysage dérive en mode partiel.")
+							: (audioReady
+								? "La membrane écoute sans image."
+								: "La membrane dérive en mode partiel.")))
 			);
+			if (remoteReady) {
+				applyRemoteMembraneFallback({ autoActivate: false });
+			}
+			bindRemoteAudioUnlock();
 			updateMotionVoice();
 			cueMotionVoice(audioReady ? 0.94 : 0.82);
 			pulseDeviceHaptics("soft");
@@ -15597,6 +16087,7 @@ function initXyzCamera() {
 	};
 
 	startButton.addEventListener("click", async () => {
+		remoteAutoplaySuppressed = false;
 		await startLiveMembrane();
 	});
 
@@ -15779,6 +16270,7 @@ function initXyzCamera() {
 			}
 		});
 		clearSceptrePoll();
+		clearRemotePlasmaPoll();
 		stopStream();
 	});
 
@@ -15792,6 +16284,10 @@ function initXyzCamera() {
 			void fetchSceptreState().catch(() => {});
 			scheduleSceptrePoll(2400);
 		}
+		if (!document.hidden && plasmaFeedUrl) {
+			void fetchRemotePlasmaState().catch(() => {});
+			scheduleRemotePlasmaPoll(3600);
+		}
 	});
 
 	setSensorText(orientationNode, isSpatialHeadsetSurface ? "geste a venir" : "prête");
@@ -15802,9 +16298,14 @@ function initXyzCamera() {
 	setSensorText(wakeNode, "sur demande");
 	setSceptreState(null);
 	resetMembraneReactiveState();
+	bindRemoteAudioUnlock();
 	if (sceptreFeedUrl) {
 		void fetchSceptreState().catch(() => {});
 		scheduleSceptrePoll(2400);
+	}
+	if (plasmaFeedUrl) {
+		void fetchRemotePlasmaState().catch(() => {});
+		scheduleRemotePlasmaPoll(3600);
 	}
 
 	try {

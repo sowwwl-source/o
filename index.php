@@ -522,6 +522,7 @@ $homeRouteNodes = [
 $membraneBridgeHref = plasma_bridge_url();
 $labSensorEndpointHref = o_route_href('/ingest/sensor');
 $labPublicPlasmaFeedHref = plasma_feed_url();
+$pocketCameraSlug = pocket_camera_slug();
 $pocketCameraStreamHref = pocket_camera_stream_url();
 $pocketCameraSnapshotHref = pocket_camera_snapshot_url();
 $pocketCameraLabel = pocket_camera_label();
@@ -900,7 +901,9 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
         class="xyz-camera-layer"
         data-xyz-camera-root
         data-xyz-plasma-bridge="<?= h($membraneBridgeHref) ?>"
+        data-xyz-plasma-feed="<?= h($labPublicPlasmaFeedHref) ?>"
         data-xyz-plasma-land="<?= h($activeLandSlug) ?>"
+        data-xyz-plasma-camera="<?= h($pocketCameraSlug) ?>"
         data-xyz-sceptre-feed="<?= h($sceptreFeedHref) ?>"
         data-xyz-sceptre-constellation-feed="<?= h($sceptreConstellationFeedHref) ?>"
         data-xyz-sceptre-device="<?= h($sceptreDeviceSlug) ?>"
