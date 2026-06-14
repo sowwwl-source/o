@@ -7,6 +7,7 @@ require_once __DIR__ . '/config.php';
 header_remove('X-Powered-By');
 header('Content-Type: application/xml; charset=UTF-8');
 header('Cache-Control: public, max-age=900');
+header('Vary: Host');
 header('X-Robots-Tag: noindex, follow');
 
 $host = request_host();
