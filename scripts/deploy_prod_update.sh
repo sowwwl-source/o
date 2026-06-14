@@ -415,7 +415,17 @@ verify_service_container_image app
 verify_service_container_image api
 docker exec "${project_name}-app-1" php -m | grep -qi '^pdo_sqlite$'
 docker exec "${project_name}-app-1" test -s /var/www/html/main.js
+docker exec "${project_name}-app-1" test -s /var/www/html/main.str3m.js
+docker exec "${project_name}-app-1" test -s /var/www/html/main.sceptre.js
+docker exec "${project_name}-app-1" test -s /var/www/html/main.landscape.js
+docker exec "${project_name}-app-1" test -s /var/www/html/main.island.js
+docker exec "${project_name}-app-1" test -s /var/www/html/main.pages.js
 docker exec "${project_name}-app-1" test -s /var/www/html/public-shell.js
+docker exec "${project_name}-app-1" test -s /var/www/html/routes/pages/0wlslw0.php
+docker exec "${project_name}-app-1" test -s /var/www/html/routes/pages/map.php
+docker exec "${project_name}-app-1" test -s /var/www/html/routes/voice/0wlslw0.php
+docker exec "${project_name}-app-1" test -s /var/www/html/routes/json/plasma_recent.php
+docker exec "${project_name}-app-1" test -s /var/www/html/routes/ingest/sensor.php
 docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon.svg
 docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon-192.png
 docker exec "${project_name}-app-1" test -s /var/www/html/404.php
