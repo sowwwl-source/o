@@ -4028,1494 +4028,8 @@ function initStr3mGhostShellDock() {
 	document.body.classList.add("has-str3m-shell-ghost");
 }
 
-function bindStr3mIntegratedPlayer(root) {
-	if (!(root instanceof HTMLElement) || root.dataset.str3mPlayerBound === "1") {
-		return;
-	}
-	root.dataset.str3mPlayerBound = "1";
-
-	const audio = root.querySelector("[data-str3m-player-audio]");
-	if (!(audio instanceof HTMLAudioElement)) {
-		return;
-	}
-
-	const hasSource = root.dataset.str3mPlayerHasSource === "1";
-	const toggleButton = root.querySelector("[data-str3m-player-toggle]");
-	const backButton = root.querySelector("[data-str3m-player-back]");
-	const forwardButton = root.querySelector("[data-str3m-player-forward]");
-	const progressInput = root.querySelector("[data-str3m-player-progress]");
-	const currentOutput = root.querySelector("[data-str3m-player-current]");
-	const durationOutput = root.querySelector("[data-str3m-player-duration]");
-	const statusOutput = root.querySelector("[data-str3m-player-status]");
-	const rateOutput = root.querySelector("[data-str3m-player-rate-output]");
-	const rateStateOutput = root.querySelector("[data-str3m-player-rate-state]");
-	const eqStateOutput = root.querySelector("[data-str3m-player-eq-state]");
-	const eqSummaryOutput = root.querySelector("[data-str3m-player-summary]");
-	const engineOutput = root.querySelector("[data-str3m-player-engine]");
-	const outputModeOutput = root.querySelector("[data-str3m-player-output]");
-	const sourceStateOutput = root.querySelector("[data-str3m-player-source-state]");
-	const sourceOutput = root.querySelector("[data-str3m-player-source]");
-	const sourceOpenLink = root.querySelector("[data-str3m-player-open]");
-	const retryButton = root.querySelector("[data-str3m-player-retry]");
-	const raNoteOutput = root.querySelector("[data-str3m-player-ra-note]");
-	const preservePitchInput = root.querySelector("[data-str3m-player-preserve-pitch]");
-	const resetButton = root.querySelector("[data-str3m-player-reset]");
-	const rateStepButtons = Array.from(root.querySelectorAll("[data-str3m-player-rate-step]"));
-	const listeningPresetButtons = Array.from(root.querySelectorAll("[data-str3m-player-listening-preset]"));
-	const bassInput = root.querySelector("[data-str3m-player-bass]");
-	const midInput = root.querySelector("[data-str3m-player-mid]");
-	const trebleInput = root.querySelector("[data-str3m-player-treble]");
-	const gainInput = root.querySelector("[data-str3m-player-gain]");
-	const bassValue = root.querySelector("[data-str3m-player-bass-value]");
-	const midValue = root.querySelector("[data-str3m-player-mid-value]");
-	const trebleValue = root.querySelector("[data-str3m-player-treble-value]");
-	const gainValue = root.querySelector("[data-str3m-player-gain-value]");
-	const title = root.dataset.str3mPlayerTitle || "str3m quotidien";
-	const sourceUrl = root.dataset.str3mPlayerSourceUrl || audio.currentSrc || audio.querySelector("source")?.getAttribute("src") || "";
-	const initialAriaHidden = audio.getAttribute("aria-hidden");
-	const initiallyHadControls = audio.hasAttribute("controls");
-	const storageKey = "o:str3m-player:v1";
-	const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
-	const islandAudioGrid = root.closest(".island-reader-grid--audio");
-	const visualHosts = [root];
-	if (islandAudioGrid instanceof HTMLElement) {
-		visualHosts.push(islandAudioGrid);
-	}
-
-	const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-	const formatTime = (value) => {
-		if (!Number.isFinite(value) || value < 0) {
-			return "00:00";
-		}
-
-		const totalSeconds = Math.floor(value);
-		const minutes = Math.floor(totalSeconds / 60);
-		const seconds = totalSeconds % 60;
-		return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-	};
-
-	const readSettings = () => {
-		try {
-			const raw = window.localStorage.getItem(storageKey);
-			if (!raw) {
-				return null;
-			}
-			return JSON.parse(raw);
-		} catch (_error) {
-			return null;
-		}
-	};
-
-	const storedSettings = readSettings();
-	const buildSettingsFromPreset = (preset) => ({
-		rate: preset?.rate ?? 1,
-		preservePitch: preset?.preservePitch ?? true,
-		bass: preset?.bass ?? 0,
-		mid: preset?.mid ?? 0,
-		treble: preset?.treble ?? 0,
-		gain: preset?.gain ?? 100,
-		listeningProfile: "auto",
-	});
-	const applyPresetDecor = (preset) => {
-		root.dataset.str3mPlayerRaPreset = preset?.key || "";
-		root.dataset.str3mPlayerWorldPreset = preset?.worldKey || "";
-		root.dataset.str3mPlayerWorldTone = preset?.tone || "";
-		if (raNoteOutput instanceof HTMLElement && preset?.note) {
-			raNoteOutput.textContent = preset.note;
-		}
-	};
-	let currentSpatialPreset = str3mPlayerPresetFromSpatialState(readActiveIoRaSession(), readActiveIoWorldInstrumentSession());
-	let currentDefaultSettings = buildSettingsFromPreset(currentSpatialPreset);
-	const listeningProfiles = {
-		auto: {
-			label: "auto",
-			status: "profil auto",
-			note: "suit le preset spatial actif",
-		},
-		velvet: {
-			label: "velours",
-			status: "profil velours",
-			note: "bas rond, aigus adoucis",
-			rate: 0.98,
-			preservePitch: true,
-			bass: 1.8,
-			mid: 0.3,
-			treble: -0.8,
-			gain: 98,
-		},
-		voice: {
-			label: "voix",
-			status: "profil voix",
-			note: "presence et paroles devant",
-			rate: 1,
-			preservePitch: true,
-			bass: -0.8,
-			mid: 2.4,
-			treble: 1.1,
-			gain: 101,
-		},
-		wide: {
-			label: "large",
-			status: "profil large",
-			note: "air, detail et scene ouverte",
-			rate: 1.02,
-			preservePitch: true,
-			bass: 0.8,
-			mid: 0.1,
-			treble: 1.7,
-			gain: 102,
-		},
-		night: {
-			label: "nuit",
-			status: "profil nuit",
-			note: "gain retenu, ecoute douce",
-			rate: 0.96,
-			preservePitch: true,
-			bass: -1,
-			mid: -0.3,
-			treble: -1.4,
-			gain: 86,
-		},
-	};
-	const normalizeListeningProfile = (key) => Object.prototype.hasOwnProperty.call(listeningProfiles, key) ? key : "custom";
-	const storedListeningProfile = typeof storedSettings?.listeningProfile === "string"
-		? normalizeListeningProfile(storedSettings.listeningProfile)
-		: "";
-	let userCustomizedSettings = Boolean(storedSettings) && storedListeningProfile !== "auto";
-
-	const setEngineState = (label) => {
-		if (engineOutput instanceof HTMLElement) {
-			engineOutput.textContent = label;
-		}
-	};
-
-	const setOutputMode = (label) => {
-		if (outputModeOutput instanceof HTMLElement) {
-			outputModeOutput.textContent = label;
-		}
-	};
-
-	const setSourceState = (label) => {
-		if (sourceStateOutput instanceof HTMLElement) {
-			sourceStateOutput.textContent = label;
-		}
-	};
-
-	const syncSourceAccess = () => {
-		if (!(sourceOpenLink instanceof HTMLAnchorElement)) {
-			return;
-		}
-
-		if (!hasSource || !sourceUrl) {
-			sourceOpenLink.hidden = true;
-			sourceOpenLink.setAttribute("aria-hidden", "true");
-			sourceOpenLink.removeAttribute("href");
-			return;
-		}
-
-		sourceOpenLink.hidden = false;
-		sourceOpenLink.removeAttribute("aria-hidden");
-		sourceOpenLink.href = sourceUrl;
-	};
-
-	const enableNativeAudioFallback = (statusCopy = "lecture native") => {
-		stopScopeRender();
-		root.dataset.str3mPlayerFallback = "1";
-		audio.controls = true;
-		audio.setAttribute("controls", "controls");
-		audio.removeAttribute("aria-hidden");
-		audio.classList.add("is-fallback-controls");
-		if (eqStateOutput instanceof HTMLElement) {
-			eqStateOutput.textContent = "natif";
-		}
-		setEngineState("natif");
-		setOutputMode("native secours");
-		if (statusCopy) {
-			setStatus(statusCopy);
-		}
-	};
-
-	const disableNativeAudioFallback = () => {
-		root.dataset.str3mPlayerFallback = "0";
-		audio.classList.remove("is-fallback-controls");
-		if (!initiallyHadControls) {
-			audio.controls = false;
-			audio.removeAttribute("controls");
-		}
-		if (initialAriaHidden === null) {
-			audio.removeAttribute("aria-hidden");
-		} else {
-			audio.setAttribute("aria-hidden", initialAriaHidden);
-		}
-	};
-
-	const settings = {
-		...currentDefaultSettings,
-		...(storedSettings || {}),
-	};
-	settings.listeningProfile = typeof settings.listeningProfile === "string"
-		? normalizeListeningProfile(settings.listeningProfile)
-		: (storedSettings ? "custom" : "auto");
-	if (settings.listeningProfile === "auto") {
-		Object.assign(settings, currentDefaultSettings, { listeningProfile: "auto" });
-	}
-
-	syncSourceAccess();
-	if (!hasSource) {
-		setEngineState("veille");
-		setOutputMode("veille");
-		setSourceState("aucune source");
-	} else {
-		setEngineState("web en attente");
-		setOutputMode("intégrée");
-		setSourceState("annoncée");
-	}
-
-	applyPresetDecor(currentSpatialPreset);
-
-	let graph = null;
-	let scopeCanvas = null;
-	let scopeContext = null;
-	let scopeFrame = 0;
-	let frequencyData = null;
-	let timeData = null;
-	const visualLevels = {
-		energy: 0,
-		low: 0,
-		mid: 0,
-		high: 0,
-	};
-
-	const writeVisualLevels = () => {
-		visualHosts.forEach((host) => {
-			host.style.setProperty("--player-energy", visualLevels.energy.toFixed(3));
-			host.style.setProperty("--player-low", visualLevels.low.toFixed(3));
-			host.style.setProperty("--player-mid", visualLevels.mid.toFixed(3));
-			host.style.setProperty("--player-high", visualLevels.high.toFixed(3));
-		});
-	};
-
-	const resetVisualLevels = () => {
-		visualLevels.energy = 0;
-		visualLevels.low = 0;
-		visualLevels.mid = 0;
-		visualLevels.high = 0;
-		writeVisualLevels();
-	};
-
-	const ensureScopeCanvas = () => {
-		if (prefersReducedMotion) {
-			return null;
-		}
-		if (scopeCanvas instanceof HTMLCanvasElement && scopeContext instanceof CanvasRenderingContext2D) {
-			return { canvas: scopeCanvas, context: scopeContext };
-		}
-
-		const canvas = document.createElement("canvas");
-		canvas.className = "str3m-player__scope";
-		canvas.dataset.str3mPlayerScope = "1";
-		canvas.setAttribute("aria-hidden", "true");
-		root.prepend(canvas);
-
-		const context = canvas.getContext("2d");
-		if (!(context instanceof CanvasRenderingContext2D)) {
-			canvas.remove();
-			return null;
-		}
-
-		scopeCanvas = canvas;
-		scopeContext = context;
-		return { canvas, context };
-	};
-
-	const resizeScopeCanvas = (canvas) => {
-		const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-		const rect = canvas.getBoundingClientRect();
-		const width = Math.max(1, Math.floor(rect.width * pixelRatio));
-		const height = Math.max(1, Math.floor(rect.height * pixelRatio));
-		if (canvas.width !== width || canvas.height !== height) {
-			canvas.width = width;
-			canvas.height = height;
-		}
-		return { width, height, pixelRatio };
-	};
-
-	const averageBins = (data, start, end) => {
-		const safeStart = Math.max(0, Math.min(data.length - 1, Math.floor(start)));
-		const safeEnd = Math.max(safeStart + 1, Math.min(data.length, Math.floor(end)));
-		let total = 0;
-		for (let index = safeStart; index < safeEnd; index += 1) {
-			total += data[index];
-		}
-		return total / ((safeEnd - safeStart) * 255);
-	};
-
-	const drawRoundedBar = (context, x, y, width, height, radius) => {
-		if (typeof context.roundRect === "function") {
-			context.beginPath();
-			context.roundRect(x, y, width, height, radius);
-			context.fill();
-			return;
-		}
-		context.fillRect(x, y, width, height);
-	};
-
-	const drawScopeFrame = () => {
-		const analyser = graph?.analyser;
-		if (!analyser) {
-			resetVisualLevels();
-			return;
-		}
-
-		const scope = ensureScopeCanvas();
-		if (!scope) {
-			return;
-		}
-
-		const { canvas, context } = scope;
-		const { width, height, pixelRatio } = resizeScopeCanvas(canvas);
-		if (!frequencyData || frequencyData.length !== analyser.frequencyBinCount) {
-			frequencyData = new Uint8Array(analyser.frequencyBinCount);
-		}
-		if (!timeData || timeData.length !== analyser.fftSize) {
-			timeData = new Uint8Array(analyser.fftSize);
-		}
-
-		analyser.getByteFrequencyData(frequencyData);
-		analyser.getByteTimeDomainData(timeData);
-
-		const length = frequencyData.length;
-		const low = averageBins(frequencyData, 1, length * 0.08);
-		const mid = averageBins(frequencyData, length * 0.08, length * 0.36);
-		const high = averageBins(frequencyData, length * 0.36, length * 0.82);
-		const energy = clamp((low * 0.48) + (mid * 0.34) + (high * 0.18), 0, 1);
-		visualLevels.low += (low - visualLevels.low) * 0.24;
-		visualLevels.mid += (mid - visualLevels.mid) * 0.22;
-		visualLevels.high += (high - visualLevels.high) * 0.2;
-		visualLevels.energy += (energy - visualLevels.energy) * 0.24;
-		writeVisualLevels();
-
-		context.clearRect(0, 0, width, height);
-		context.globalCompositeOperation = "lighter";
-
-		const lowGlow = context.createRadialGradient(width * 0.2, height * 0.18, 0, width * 0.2, height * 0.18, width * (0.36 + visualLevels.low * 0.16));
-		lowGlow.addColorStop(0, `rgba(103, 255, 214, ${0.06 + visualLevels.low * 0.18})`);
-		lowGlow.addColorStop(1, "rgba(103, 255, 214, 0)");
-		context.fillStyle = lowGlow;
-		context.fillRect(0, 0, width, height);
-
-		const highGlow = context.createRadialGradient(width * 0.82, height * 0.84, 0, width * 0.82, height * 0.84, width * (0.3 + visualLevels.high * 0.18));
-		highGlow.addColorStop(0, `rgba(255, 220, 154, ${0.05 + visualLevels.high * 0.16})`);
-		highGlow.addColorStop(1, "rgba(255, 220, 154, 0)");
-		context.fillStyle = highGlow;
-		context.fillRect(0, 0, width, height);
-
-		const barCount = Math.min(64, Math.max(28, Math.floor(width / (pixelRatio * 15))));
-		const binStep = Math.max(1, Math.floor(length / barCount));
-		const barWidth = Math.max(pixelRatio * 2, (width / barCount) * 0.44);
-		const centerY = height * (0.6 - visualLevels.low * 0.06);
-		for (let index = 0; index < barCount; index += 1) {
-			const start = index * binStep;
-			const value = averageBins(frequencyData, start, start + binStep);
-			const lift = Math.pow(value, 1.3);
-			const barHeight = Math.max(pixelRatio * 2, lift * height * 0.42);
-			const x = (index / barCount) * width;
-			const y = centerY - (barHeight / 2);
-			const alpha = 0.12 + lift * 0.5;
-			context.fillStyle = index % 3 === 0
-				? `rgba(255, 226, 166, ${alpha})`
-				: `rgba(132, 255, 224, ${alpha})`;
-			drawRoundedBar(context, x, y, barWidth, barHeight, barWidth / 2);
-		}
-
-		context.globalCompositeOperation = "source-over";
-		context.beginPath();
-		const samples = timeData.length;
-		for (let index = 0; index < samples; index += 4) {
-			const x = (index / (samples - 1)) * width;
-			const sample = (timeData[index] - 128) / 128;
-			const y = (height * 0.38) + (sample * height * (0.08 + visualLevels.energy * 0.16));
-			if (index === 0) {
-				context.moveTo(x, y);
-			} else {
-				context.lineTo(x, y);
-			}
-		}
-		context.strokeStyle = `rgba(255, 241, 197, ${0.22 + visualLevels.energy * 0.42})`;
-		context.lineWidth = Math.max(1, pixelRatio * 1.2);
-		context.stroke();
-	};
-
-	const stopScopeRender = () => {
-		if (scopeFrame) {
-			window.cancelAnimationFrame(scopeFrame);
-			scopeFrame = 0;
-		}
-		root.classList.remove("is-visualizing", "is-playing");
-		resetVisualLevels();
-		if (scopeCanvas instanceof HTMLCanvasElement && scopeContext instanceof CanvasRenderingContext2D) {
-			const { width, height } = resizeScopeCanvas(scopeCanvas);
-			scopeContext.clearRect(0, 0, width, height);
-		}
-	};
-
-	const startScopeRender = () => {
-		if (prefersReducedMotion || scopeFrame || !graph?.analyser) {
-			return;
-		}
-		root.classList.add("is-visualizing");
-
-		const tick = () => {
-			scopeFrame = 0;
-			if (audio.paused || audio.ended || !graph?.analyser) {
-				stopScopeRender();
-				return;
-			}
-			drawScopeFrame();
-			scopeFrame = window.requestAnimationFrame(tick);
-		};
-
-		scopeFrame = window.requestAnimationFrame(tick);
-	};
-
-	const syncPlaybackVisualState = () => {
-		const isPlaying = !audio.paused && !audio.ended;
-		root.classList.toggle("is-playing", isPlaying);
-		if (isPlaying) {
-			startScopeRender();
-			return;
-		}
-		stopScopeRender();
-	};
-
-	resetVisualLevels();
-
-	const saveSettings = () => {
-		try {
-			window.localStorage.setItem(storageKey, JSON.stringify(settings));
-		} catch (_error) {
-			// storage unavailable — keep the stream moving
-		}
-	};
-
-	const setStatus = (copy) => {
-		if (statusOutput instanceof HTMLElement) {
-			statusOutput.textContent = copy;
-		}
-	};
-
-	const syncToggleLabel = () => {
-		if (toggleButton instanceof HTMLButtonElement) {
-			toggleButton.textContent = audio.paused ? "lecture" : "pause";
-		}
-	};
-
-	const setPreservePitch = (enabled) => {
-		if ("preservesPitch" in audio) {
-			audio.preservesPitch = enabled;
-		}
-		if ("mozPreservesPitch" in audio) {
-			audio.mozPreservesPitch = enabled;
-		}
-		if ("webkitPreservesPitch" in audio) {
-			audio.webkitPreservesPitch = enabled;
-		}
-	};
-
-	const syncRate = () => {
-		audio.playbackRate = clamp(Number(settings.rate) || 1, 0.5, 2);
-		const label = `${audio.playbackRate.toFixed(2)}×`;
-		if (rateOutput instanceof HTMLElement) {
-			rateOutput.textContent = label;
-		}
-		if (rateStateOutput instanceof HTMLElement) {
-			rateStateOutput.textContent = label;
-		}
-	};
-
-	const syncEqSummary = () => {
-		const isFlat = [settings.bass, settings.mid, settings.treble].every((value) => Math.abs(Number(value) || 0) < 0.01)
-			&& Math.abs((Number(settings.gain) || 100) - 100) < 0.01;
-		const summary = isFlat
-			? "plat"
-			: `B ${Number(settings.bass).toFixed(1)} · M ${Number(settings.mid).toFixed(1)} · T ${Number(settings.treble).toFixed(1)} · G ${Math.round(Number(settings.gain))}%`;
-		if (eqSummaryOutput instanceof HTMLElement) {
-			eqSummaryOutput.textContent = summary;
-		}
-	};
-
-	const syncSliderOutputs = () => {
-		if (bassValue instanceof HTMLElement) {
-			bassValue.textContent = `${Number(settings.bass).toFixed(1)} dB`;
-		}
-		if (midValue instanceof HTMLElement) {
-			midValue.textContent = `${Number(settings.mid).toFixed(1)} dB`;
-		}
-		if (trebleValue instanceof HTMLElement) {
-			trebleValue.textContent = `${Number(settings.treble).toFixed(1)} dB`;
-		}
-		if (gainValue instanceof HTMLElement) {
-			gainValue.textContent = `${Math.round(Number(settings.gain))}%`;
-		}
-	};
-
-	const syncSettingInputs = () => {
-		if (bassInput instanceof HTMLInputElement) {
-			bassInput.value = String(settings.bass);
-		}
-		if (midInput instanceof HTMLInputElement) {
-			midInput.value = String(settings.mid);
-		}
-		if (trebleInput instanceof HTMLInputElement) {
-			trebleInput.value = String(settings.treble);
-		}
-		if (gainInput instanceof HTMLInputElement) {
-			gainInput.value = String(settings.gain);
-		}
-		if (preservePitchInput instanceof HTMLInputElement) {
-			preservePitchInput.checked = Boolean(settings.preservePitch);
-		}
-	};
-
-	const syncListeningProfileButtons = () => {
-		const activeProfile = normalizeListeningProfile(settings.listeningProfile || "custom");
-		listeningPresetButtons.forEach((button) => {
-			if (!(button instanceof HTMLButtonElement)) {
-				return;
-			}
-			const buttonProfile = normalizeListeningProfile(button.dataset.str3mPlayerListeningPreset || "auto");
-			button.setAttribute("aria-pressed", buttonProfile === activeProfile ? "true" : "false");
-		});
-		root.dataset.str3mPlayerListeningProfile = activeProfile;
-	};
-
-	const syncProgress = () => {
-		if (!(progressInput instanceof HTMLInputElement)) {
-			return;
-		}
-
-		const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
-		progressInput.value = duration > 0 ? String(audio.currentTime / duration) : "0";
-		if (currentOutput instanceof HTMLElement) {
-			currentOutput.textContent = formatTime(audio.currentTime);
-		}
-		if (durationOutput instanceof HTMLElement) {
-			durationOutput.textContent = formatTime(duration);
-		}
-	};
-
-	const applyEqSettings = () => {
-		syncSliderOutputs();
-		syncEqSummary();
-		syncListeningProfileButtons();
-
-		if (!graph) {
-			return;
-		}
-
-		graph.bass.gain.value = Number(settings.bass) || 0;
-		graph.mid.gain.value = Number(settings.mid) || 0;
-		graph.treble.gain.value = Number(settings.treble) || 0;
-		graph.gain.gain.value = clamp((Number(settings.gain) || 100) / 100, 0, 1.5);
-	};
-
-	const applyCurrentSpatialDefaults = ({ persist = false, status = "" } = {}) => {
-		settings.rate = currentDefaultSettings.rate;
-		settings.preservePitch = currentDefaultSettings.preservePitch;
-		settings.bass = currentDefaultSettings.bass;
-		settings.mid = currentDefaultSettings.mid;
-		settings.treble = currentDefaultSettings.treble;
-		settings.gain = currentDefaultSettings.gain;
-		settings.listeningProfile = "auto";
-
-		syncSettingInputs();
-		setPreservePitch(Boolean(settings.preservePitch));
-		syncRate();
-		applyEqSettings();
-		if (persist) {
-			saveSettings();
-		}
-		if (status) {
-			setStatus(status);
-		}
-	};
-
-	const applyListeningProfile = (profileKey, { persist = true } = {}) => {
-		const key = normalizeListeningProfile(profileKey);
-		if (key === "custom") {
-			return;
-		}
-
-		if (key === "auto") {
-			userCustomizedSettings = false;
-			applyCurrentSpatialDefaults({
-				persist,
-				status: currentSpatialPreset?.status || listeningProfiles.auto.status,
-			});
-			return;
-		}
-
-		const profile = listeningProfiles[key];
-		userCustomizedSettings = true;
-		settings.rate = profile.rate;
-		settings.preservePitch = profile.preservePitch;
-		settings.bass = profile.bass;
-		settings.mid = profile.mid;
-		settings.treble = profile.treble;
-		settings.gain = profile.gain;
-		settings.listeningProfile = key;
-
-		syncSettingInputs();
-		setPreservePitch(Boolean(settings.preservePitch));
-		syncRate();
-		applyEqSettings();
-		if (persist) {
-			saveSettings();
-		}
-		setStatus(profile.status);
-		if (eqStateOutput instanceof HTMLElement) {
-			eqStateOutput.textContent = profile.note;
-		}
-	};
-
-	const ensureAudioGraph = async () => {
-		if (!hasSource) {
-			return null;
-		}
-
-		if (graph) {
-			if (graph.context.state === "suspended") {
-				await graph.context.resume().catch(() => {});
-			}
-			return graph;
-		}
-
-		const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-		if (!AudioContextClass) {
-			enableNativeAudioFallback("lecture native");
-			if (eqStateOutput instanceof HTMLElement) {
-				eqStateOutput.textContent = "natif";
-			}
-			return null;
-		}
-
-		try {
-			const context = new AudioContextClass();
-			const source = context.createMediaElementSource(audio);
-			const bass = context.createBiquadFilter();
-			const mid = context.createBiquadFilter();
-			const treble = context.createBiquadFilter();
-			const gain = context.createGain();
-			const analyser = context.createAnalyser();
-
-			bass.type = "lowshelf";
-			bass.frequency.value = 180;
-			mid.type = "peaking";
-			mid.frequency.value = 1000;
-			mid.Q.value = 0.85;
-			treble.type = "highshelf";
-			treble.frequency.value = 3200;
-			analyser.fftSize = 1024;
-			analyser.smoothingTimeConstant = 0.78;
-
-			source.connect(bass);
-			bass.connect(mid);
-			mid.connect(treble);
-			treble.connect(gain);
-			gain.connect(analyser);
-			analyser.connect(context.destination);
-
-			graph = { context, bass, mid, treble, gain, analyser };
-			disableNativeAudioFallback();
-			applyEqSettings();
-			ensureScopeCanvas();
-
-			if (eqStateOutput instanceof HTMLElement) {
-				eqStateOutput.textContent = "actif";
-			}
-			setEngineState("eq web");
-			setOutputMode("intégrée");
-
-			if (context.state === "suspended") {
-				await context.resume().catch(() => {});
-			}
-			syncPlaybackVisualState();
-
-			return graph;
-		} catch (_error) {
-			enableNativeAudioFallback("lecture native");
-			graph = null;
-			return null;
-		}
-	};
-
-	const resetPlayer = () => {
-		userCustomizedSettings = false;
-		applyCurrentSpatialDefaults({
-			persist: true,
-			status: hasSource ? (currentSpatialPreset?.status || "preset spatial") : "veille",
-		});
-	};
-
-	setPreservePitch(Boolean(settings.preservePitch));
-	syncRate();
-	syncSliderOutputs();
-	syncEqSummary();
-	syncProgress();
-	syncToggleLabel();
-	syncPlaybackVisualState();
-	syncSettingInputs();
-	syncListeningProfileButtons();
-
-	if (sourceOutput instanceof HTMLElement && !hasSource) {
-		sourceOutput.textContent = "aucune nappe";
-	}
-
-	if (!hasSource) {
-		setStatus("veille");
-		if (eqStateOutput instanceof HTMLElement) {
-			eqStateOutput.textContent = "hors source";
-		}
-		return;
-	}
-
-	setStatus(currentSpatialPreset?.status || "prêt");
-	if (sourceOutput instanceof HTMLElement) {
-		sourceOutput.textContent = title;
-	}
-
-	const seekBy = (offset) => {
-		audio.currentTime = clamp(audio.currentTime + offset, 0, Number.isFinite(audio.duration) ? audio.duration : audio.currentTime + offset);
-		syncProgress();
-	};
-
-	const updateEqFromInput = (input, key) => {
-		if (!(input instanceof HTMLInputElement)) {
-			return;
-		}
-		userCustomizedSettings = true;
-		settings.listeningProfile = "custom";
-		settings[key] = Number(input.value);
-		applyEqSettings();
-		saveSettings();
-	};
-
-	if (toggleButton instanceof HTMLButtonElement) {
-		toggleButton.addEventListener("click", async () => {
-			await ensureAudioGraph().catch(() => {
-				enableNativeAudioFallback("lecture native");
-			});
-			if (audio.paused) {
-				audio.play().then(() => {
-					setStatus(graph?.analyser && !prefersReducedMotion ? "en lecture · aura" : "en lecture");
-					syncPlaybackVisualState();
-				}).catch(() => {
-					setStatus("interaction requise");
-				});
-				return;
-			}
-
-			audio.pause();
-			setStatus("pause");
-		});
-	}
-
-	if (backButton instanceof HTMLButtonElement) {
-		backButton.addEventListener("click", () => {
-			seekBy(-5);
-			setStatus("recul −5 s");
-		});
-	}
-
-	if (forwardButton instanceof HTMLButtonElement) {
-		forwardButton.addEventListener("click", () => {
-			seekBy(5);
-			setStatus("avance +5 s");
-		});
-	}
-
-	if (progressInput instanceof HTMLInputElement) {
-		progressInput.addEventListener("input", () => {
-			if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
-				return;
-			}
-			audio.currentTime = audio.duration * Number(progressInput.value);
-			syncProgress();
-		});
-	}
-
-	rateStepButtons.forEach((button) => {
-		if (!(button instanceof HTMLButtonElement)) {
-			return;
-		}
-
-		button.addEventListener("click", () => {
-			userCustomizedSettings = true;
-			settings.listeningProfile = "custom";
-			const delta = Number(button.dataset.str3mPlayerRateStep || 0);
-			settings.rate = clamp((Number(settings.rate) || 1) + delta, 0.5, 2);
-			syncRate();
-			syncListeningProfileButtons();
-			saveSettings();
-			setStatus(`vitesse ${audio.playbackRate.toFixed(2)}×`);
-		});
-	});
-
-	listeningPresetButtons.forEach((button) => {
-		if (!(button instanceof HTMLButtonElement)) {
-			return;
-		}
-
-		button.addEventListener("click", () => {
-			applyListeningProfile(button.dataset.str3mPlayerListeningPreset || "auto");
-		});
-	});
-
-	if (preservePitchInput instanceof HTMLInputElement) {
-		preservePitchInput.addEventListener("change", () => {
-			userCustomizedSettings = true;
-			settings.listeningProfile = "custom";
-			settings.preservePitch = preservePitchInput.checked;
-			setPreservePitch(settings.preservePitch);
-			syncListeningProfileButtons();
-			saveSettings();
-			setStatus(settings.preservePitch ? "hauteur conservée" : "hauteur libre");
-		});
-	}
-
-	if (bassInput instanceof HTMLInputElement) {
-		bassInput.addEventListener("input", () => updateEqFromInput(bassInput, "bass"));
-	}
-	if (midInput instanceof HTMLInputElement) {
-		midInput.addEventListener("input", () => updateEqFromInput(midInput, "mid"));
-	}
-	if (trebleInput instanceof HTMLInputElement) {
-		trebleInput.addEventListener("input", () => updateEqFromInput(trebleInput, "treble"));
-	}
-	if (gainInput instanceof HTMLInputElement) {
-		gainInput.addEventListener("input", () => updateEqFromInput(gainInput, "gain"));
-	}
-
-	if (resetButton instanceof HTMLButtonElement) {
-		resetButton.addEventListener("click", resetPlayer);
-	}
-
-	if (retryButton instanceof HTMLButtonElement) {
-		retryButton.addEventListener("click", async () => {
-			setStatus("relance moteur…");
-			setSourceState("vérification");
-			const restoredGraph = await ensureAudioGraph().catch(() => null);
-			if (restoredGraph) {
-				setStatus("EQ relancé");
-				setSourceState(audio.readyState >= 2 ? "prête" : "annoncée");
-				syncPlaybackVisualState();
-				return;
-			}
-			enableNativeAudioFallback("lecture native");
-			setSourceState("native disponible");
-		});
-	}
-
-	audio.addEventListener("loadedmetadata", syncProgress);
-	audio.addEventListener("loadedmetadata", () => {
-		setSourceState("chargée");
-	});
-	audio.addEventListener("durationchange", syncProgress);
-	audio.addEventListener("timeupdate", syncProgress);
-	audio.addEventListener("play", () => {
-		syncToggleLabel();
-		syncPlaybackVisualState();
-		setStatus(graph?.analyser && !prefersReducedMotion ? "en lecture · aura" : "en lecture");
-	});
-	audio.addEventListener("pause", () => {
-		syncToggleLabel();
-		syncPlaybackVisualState();
-		if (audio.ended) {
-			setStatus("terminé");
-			return;
-		}
-		setStatus("pause");
-	});
-	audio.addEventListener("ended", () => {
-		syncToggleLabel();
-		syncPlaybackVisualState();
-		setStatus("terminé");
-	});
-	audio.addEventListener("waiting", () => {
-		setStatus("mise en mémoire…");
-		setSourceState("mise en mémoire");
-	});
-	audio.addEventListener("canplay", () => {
-		setSourceState("prête");
-		if (audio.paused) {
-			setStatus("prêt");
-		}
-	});
-	audio.addEventListener("stalled", () => {
-		setSourceState("réseau lent");
-	});
-	audio.addEventListener("suspend", () => {
-		if (audio.networkState === HTMLMediaElement.NETWORK_IDLE) {
-			setSourceState(audio.readyState >= 2 ? "prête" : "pause réseau");
-		}
-	});
-	audio.addEventListener("emptied", () => {
-		setSourceState("vidée");
-	});
-	audio.addEventListener("error", () => {
-		setStatus("erreur média");
-		setSourceState("erreur média");
-	});
-
-	const refreshSpatialPreset = () => {
-		currentSpatialPreset = str3mPlayerPresetFromSpatialState(readActiveIoRaSession(), readActiveIoWorldInstrumentSession());
-		currentDefaultSettings = buildSettingsFromPreset(currentSpatialPreset);
-		applyPresetDecor(currentSpatialPreset);
-		if (!userCustomizedSettings) {
-			applyCurrentSpatialDefaults({
-				persist: false,
-				status: hasSource ? (currentSpatialPreset?.status || "preset spatial") : "veille",
-			});
-		}
-	};
-
-	window.addEventListener("o:ra-modulation", refreshSpatialPreset);
-	window.addEventListener("o:world-instrument", refreshSpatialPreset);
-
-	root.addEventListener("keydown", async (event) => {
-		const target = event.target;
-		if (target instanceof HTMLElement && target.closest("input, textarea, select")) {
-			return;
-		}
-
-		if (event.code === "Space") {
-			event.preventDefault();
-			await ensureAudioGraph();
-			if (audio.paused) {
-				audio.play().catch(() => {
-					setStatus("interaction requise");
-				});
-			} else {
-				audio.pause();
-			}
-			return;
-		}
-
-		if (event.key === "ArrowLeft") {
-			event.preventDefault();
-			seekBy(-5);
-			return;
-		}
-
-		if (event.key === "ArrowRight") {
-			event.preventDefault();
-			seekBy(5);
-			return;
-		}
-
-		if (event.key === "-" || event.key === "_") {
-			event.preventDefault();
-			userCustomizedSettings = true;
-			settings.listeningProfile = "custom";
-			settings.rate = clamp((Number(settings.rate) || 1) - 0.25, 0.5, 2);
-			syncRate();
-			syncListeningProfileButtons();
-			saveSettings();
-			return;
-		}
-
-		if (event.key === "+" || event.key === "=") {
-			event.preventDefault();
-			userCustomizedSettings = true;
-			settings.listeningProfile = "custom";
-			settings.rate = clamp((Number(settings.rate) || 1) + 0.25, 0.5, 2);
-			syncRate();
-			syncListeningProfileButtons();
-			saveSettings();
-		}
-	});
-}
-
-function initStr3mIntegratedPlayer() {
-	const roots = Array.from(document.querySelectorAll("[data-str3m-player]"));
-	if (!roots.length) {
-		return;
-	}
-
-	roots.forEach((root) => {
-		bindStr3mIntegratedPlayer(root);
-	});
-}
-
-function initIslandReaderStation() {
-	const shell = document.querySelector("[data-island-reader-shell]");
-	if (!(shell instanceof HTMLElement) || shell.dataset.islandReaderBound === "1") {
-		return;
-	}
-	shell.dataset.islandReaderBound = "1";
-	const isSpatialIoView = document.body.classList.contains("io-surface-view");
-
-	const tabs = Array.from(shell.querySelectorAll("[data-island-reader-tab]"))
-		.filter((tab) => tab instanceof HTMLButtonElement);
-	const navItems = Array.from(shell.querySelectorAll("[data-island-reader-nav]"))
-		.filter((item) => item instanceof HTMLButtonElement);
-	const panels = Array.from(shell.querySelectorAll("[data-island-reader-panel]"))
-		.filter((panel) => panel instanceof HTMLElement);
-	const previousButton = shell.querySelector("[data-island-reader-prev]");
-	const nextButton = shell.querySelector("[data-island-reader-next]");
-	const autoplayButton = shell.querySelector("[data-island-reader-autoplay]");
-	const counter = shell.querySelector("[data-island-reader-counter]");
-	const currentLabel = shell.querySelector("[data-island-reader-current-label]");
-	const currentMeta = shell.querySelector("[data-island-reader-current-meta]");
-	const curatorCopy = shell.querySelector("[data-island-reader-curator-copy]");
-	const recommendationLabel = shell.querySelector("[data-island-reader-recommendation-label]");
-	const recommendationCopy = shell.querySelector("[data-island-reader-recommendation-copy]");
-
-	if (!tabs.length || !panels.length) {
-		return;
-	}
-
-	const availableKeys = tabs
-		.filter((tab) => tab.dataset.islandReaderEmpty !== "1")
-		.map((tab) => tab.dataset.islandReaderTab || "")
-		.filter(Boolean);
-	const autoplayDelayMs = 12000;
-	let currentKey = "";
-	let autoplayEnabled = false;
-	let autoplayTimer = null;
-	let userSteered = false;
-	let spatialProfile = null;
-	let latestRaState = readActiveIoRaSession();
-	let latestWorldState = readActiveIoWorldInstrumentSession();
-	const defaultCuratorCopy = curatorCopy instanceof HTMLElement
-		? curatorCopy.textContent?.trim() || "La station garde le fil et peut deriver vers la matiere suivante."
-		: "La station garde le fil et peut deriver vers la matiere suivante.";
-
-	const formatCounter = (value, size) => String(value).padStart(2, "0") + " / " + String(size).padStart(2, "0");
-
-	const getReaderMeta = (key) => {
-		const tab = tabs.find((candidate) => candidate.dataset.islandReaderTab === key) || null;
-		const navItem = navItems.find((candidate) => candidate.dataset.islandReaderNav === key) || null;
-		const format = tab?.querySelector("small")?.textContent?.trim() || "veille";
-		const source = navItem?.querySelector(".island-reader-playlist__line--meta small:last-child")?.textContent?.trim() || "Veille";
-		const label = tab?.querySelector("span")?.textContent?.trim() || navItem?.querySelector("strong")?.textContent?.trim() || key;
-		return { label, format, source };
-	};
-
-	const syncCurator = (key) => {
-		if (!(currentLabel instanceof HTMLElement) && !(counter instanceof HTMLElement) && !(currentMeta instanceof HTMLElement)) {
-			return;
-		}
-
-		const meta = getReaderMeta(key);
-		const availableIndex = availableKeys.indexOf(key);
-		const nextKey = availableIndex >= 0 && availableKeys.length
-			? availableKeys[(availableIndex + 1) % availableKeys.length]
-			: (availableKeys[0] || "");
-		const nextMeta = nextKey ? getReaderMeta(nextKey) : null;
-		const spatialPrimaryMeta = spatialProfile?.primary ? getReaderMeta(spatialProfile.primary) : null;
-		const spatialSecondaryMeta = spatialProfile?.secondary ? getReaderMeta(spatialProfile.secondary) : null;
-
-		if (currentLabel instanceof HTMLElement) {
-			currentLabel.textContent = meta.label || "Veille";
-		}
-
-		if (currentMeta instanceof HTMLElement) {
-			currentMeta.textContent = [meta.format, meta.source].filter(Boolean).join(" · ");
-		}
-
-		if (counter instanceof HTMLElement) {
-			counter.textContent = availableIndex >= 0 ? formatCounter(availableIndex + 1, Math.max(availableKeys.length, 1)) : "veille";
-		}
-
-		if (recommendationLabel instanceof HTMLElement) {
-			recommendationLabel.textContent = spatialPrimaryMeta?.label || nextMeta?.label || "Aucune suite";
-		}
-
-		if (recommendationCopy instanceof HTMLElement) {
-			if (spatialPrimaryMeta) {
-				const lead = spatialProfile?.primary === key
-					? `Prise tenue : ${spatialPrimaryMeta.label} · ${spatialPrimaryMeta.format}.`
-					: `Prise conseillee : ${spatialPrimaryMeta.label} · ${spatialPrimaryMeta.format}.`;
-				const tail = spatialSecondaryMeta
-					? ` Ensuite : ${spatialSecondaryMeta.label} · ${spatialSecondaryMeta.format}.`
-					: (nextMeta ? ` Ensuite : ${nextMeta.label} · ${nextMeta.format}.` : "");
-				recommendationCopy.textContent = `${lead}${tail}`.trim();
-			} else {
-				recommendationCopy.textContent = nextMeta
-					? `Ensuite : ${nextMeta.label} · ${nextMeta.format}`
-					: "Aucune matiere active recommandee pour l instant.";
-			}
-		}
-
-		if (curatorCopy instanceof HTMLElement) {
-			curatorCopy.textContent = spatialProfile?.note || defaultCuratorCopy;
-		}
-
-		if (previousButton instanceof HTMLButtonElement) {
-			previousButton.disabled = availableKeys.length <= 1;
-		}
-
-		if (nextButton instanceof HTMLButtonElement) {
-			nextButton.disabled = availableKeys.length <= 1;
-		}
-
-		if (autoplayButton instanceof HTMLButtonElement) {
-			autoplayButton.disabled = availableKeys.length <= 1;
-			autoplayButton.textContent = `parcours auto · ${autoplayEnabled ? "on" : "off"}`;
-			autoplayButton.setAttribute("aria-pressed", autoplayEnabled ? "true" : "false");
-		}
-	};
-
-	const syncSpatialRecommendations = () => {
-		[...tabs, ...navItems, ...panels].forEach((node) => {
-			if (node instanceof HTMLElement) {
-				delete node.dataset.raRecommended;
-			}
-		});
-
-		if (!isSpatialIoView || !spatialProfile) {
-			delete shell.dataset.islandRaMode;
-			delete shell.dataset.islandRaDominant;
-			delete shell.dataset.islandWorldTone;
-			delete document.body.dataset.islandRaMode;
-			delete document.body.dataset.islandRaDominant;
-			delete document.body.dataset.islandWorldTone;
-			delete document.body.dataset.islandCameraFacing;
-			return;
-		}
-
-		const setRecommendation = (key, value) => {
-			if (!key) {
-				return;
-			}
-
-			[tabs, navItems, panels].forEach((collection) => {
-				collection.forEach((node) => {
-					if (!(node instanceof HTMLElement)) {
-						return;
-					}
-					const nodeKey = node.dataset.islandReaderTab || node.dataset.islandReaderNav || node.dataset.islandReaderPanel || "";
-					if (nodeKey === key) {
-						node.dataset.raRecommended = value;
-					}
-				});
-			});
-		};
-
-		shell.dataset.islandRaMode = typeof latestRaState?.mode === "string" ? latestRaState.mode : "";
-		shell.dataset.islandRaDominant = typeof latestRaState?.dominant === "string" ? latestRaState.dominant : "";
-		shell.dataset.islandWorldTone = spatialProfile.worldProfile?.tone || "";
-		document.body.dataset.islandRaMode = typeof latestRaState?.mode === "string" ? latestRaState.mode : "";
-		document.body.dataset.islandRaDominant = typeof latestRaState?.dominant === "string" ? latestRaState.dominant : "";
-		document.body.dataset.islandWorldTone = spatialProfile.worldProfile?.tone || "";
-		document.body.dataset.islandCameraFacing = typeof latestWorldState?.cameraFacing === "string" ? latestWorldState.cameraFacing : "";
-		setRecommendation(spatialProfile.primary, "primary");
-		setRecommendation(spatialProfile.secondary, "secondary");
-	};
-
-	const clearAutoplay = () => {
-		if (autoplayTimer !== null) {
-			window.clearTimeout(autoplayTimer);
-			autoplayTimer = null;
-		}
-	};
-
-	const stepAvailable = (direction = 1, focus = false) => {
-		if (availableKeys.length <= 1) {
-			return;
-		}
-
-		const activeIndex = availableKeys.indexOf(currentKey);
-		const safeIndex = activeIndex >= 0 ? activeIndex : 0;
-		const nextIndex = (safeIndex + direction + availableKeys.length) % availableKeys.length;
-		const nextKey = availableKeys[nextIndex] || availableKeys[0];
-		activate(nextKey, { focusTarget: focus ? "tab" : null, fromAutoplay: false });
-	};
-
-	const scheduleAutoplay = () => {
-		clearAutoplay();
-		if (!autoplayEnabled || availableKeys.length <= 1) {
-			return;
-		}
-
-		autoplayTimer = window.setTimeout(() => {
-			stepAvailable(1, false);
-			scheduleAutoplay();
-		}, autoplayDelayMs);
-	};
-
-	const activate = (key, options = {}) => {
-		const { focusTarget = null, fromAutoplay = false } = options;
-		currentKey = key;
-
-		tabs.forEach((tab) => {
-			const isActive = tab.dataset.islandReaderTab === key;
-			tab.classList.toggle("is-active", isActive);
-			tab.setAttribute("aria-selected", isActive ? "true" : "false");
-			tab.tabIndex = isActive ? 0 : -1;
-		});
-
-		panels.forEach((panel) => {
-			const isActive = panel.dataset.islandReaderPanel === key;
-			panel.classList.toggle("is-open", isActive);
-			panel.hidden = !isActive;
-		});
-
-		navItems.forEach((item) => {
-			const isActive = item.dataset.islandReaderNav === key;
-			item.classList.toggle("is-active", isActive);
-			item.setAttribute("aria-current", isActive ? "true" : "false");
-			item.tabIndex = isActive ? 0 : -1;
-		});
-
-		const activeNavItem = navItems.find((item) => item.dataset.islandReaderNav === key);
-		if (activeNavItem instanceof HTMLElement) {
-			try {
-				activeNavItem.scrollIntoView({
-					block: "nearest",
-					inline: "nearest",
-					behavior: fromAutoplay ? "auto" : "smooth",
-				});
-			} catch {
-				activeNavItem.scrollIntoView();
-			}
-		}
-
-		syncSpatialRecommendations();
-		syncCurator(key);
-
-		if (!fromAutoplay) {
-			scheduleAutoplay();
-		}
-
-		if (focusTarget === "tab") {
-			const activeTab = tabs.find((tab) => tab.dataset.islandReaderTab === key);
-			activeTab?.focus();
-		}
-
-		if (focusTarget === "nav") {
-			activeNavItem?.focus();
-		}
-	};
-
-	const applyIslandSpatialState = (raState, worldState) => {
-		latestRaState = raState;
-		latestWorldState = worldState;
-
-		if (!isSpatialIoView) {
-			spatialProfile = null;
-			syncSpatialRecommendations();
-			syncCurator(currentKey || availableKeys[0] || tabs[0]?.dataset.islandReaderTab || "");
-			return;
-		}
-
-		spatialProfile = composeIslandSpatialProfile(raState, worldState, availableKeys);
-		syncSpatialRecommendations();
-
-		const preferredKey = spatialProfile?.primary || "";
-		if (!currentKey) {
-			activate(preferredKey || availableKeys[0] || tabs[0]?.dataset.islandReaderTab || "", { fromAutoplay: false });
-			return;
-		}
-
-		if (!userSteered && preferredKey && currentKey !== preferredKey) {
-			activate(preferredKey, { fromAutoplay: false });
-			return;
-		}
-
-		syncCurator(currentKey);
-	};
-
-	tabs.forEach((tab) => {
-		tab.addEventListener("click", () => {
-			userSteered = true;
-			activate(tab.dataset.islandReaderTab || "", { fromAutoplay: false });
-		});
-
-		tab.addEventListener("keydown", (event) => {
-			const currentIndex = tabs.indexOf(tab);
-			if (currentIndex < 0) {
-				return;
-			}
-
-			let nextIndex = currentIndex;
-			if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-				nextIndex = (currentIndex + 1) % tabs.length;
-			} else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-				nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-			} else if (event.key === "Home") {
-				nextIndex = 0;
-			} else if (event.key === "End") {
-				nextIndex = tabs.length - 1;
-			} else {
-				return;
-			}
-
-			event.preventDefault();
-			const nextTab = tabs[nextIndex];
-			userSteered = true;
-			activate(nextTab.dataset.islandReaderTab || "", { focusTarget: "tab", fromAutoplay: false });
-		});
-	});
-
-	navItems.forEach((item) => {
-		item.addEventListener("click", () => {
-			userSteered = true;
-			activate(item.dataset.islandReaderNav || "", { fromAutoplay: false });
-		});
-
-		item.addEventListener("keydown", (event) => {
-			const currentIndex = navItems.indexOf(item);
-			if (currentIndex < 0) {
-				return;
-			}
-
-			let nextIndex = currentIndex;
-			if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-				nextIndex = (currentIndex + 1) % navItems.length;
-			} else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-				nextIndex = (currentIndex - 1 + navItems.length) % navItems.length;
-			} else if (event.key === "Home") {
-				nextIndex = 0;
-			} else if (event.key === "End") {
-				nextIndex = navItems.length - 1;
-			} else {
-				return;
-			}
-
-			event.preventDefault();
-			const nextItem = navItems[nextIndex];
-			userSteered = true;
-			activate(nextItem.dataset.islandReaderNav || "", { focusTarget: "nav", fromAutoplay: false });
-		});
-	});
-
-	previousButton?.addEventListener("click", () => {
-		userSteered = true;
-		stepAvailable(-1, true);
-	});
-
-	nextButton?.addEventListener("click", () => {
-		userSteered = true;
-		stepAvailable(1, true);
-	});
-
-	autoplayButton?.addEventListener("click", () => {
-		autoplayEnabled = !autoplayEnabled;
-		syncCurator(currentKey || availableKeys[0] || tabs[0]?.dataset.islandReaderTab || "");
-		scheduleAutoplay();
-	});
-
-	shell.addEventListener("pointerdown", () => {
-		if (autoplayEnabled) {
-			scheduleAutoplay();
-		}
-	});
-
-	document.addEventListener("keydown", (event) => {
-		const isHovered = typeof shell.matches === "function" ? shell.matches(":hover") : false;
-		if (!shell.contains(document.activeElement) && !isHovered) {
-			return;
-		}
-
-		if (event.target instanceof HTMLElement) {
-			const tagName = event.target.tagName;
-			if (tagName === "INPUT" || tagName === "TEXTAREA" || event.target.isContentEditable) {
-				return;
-			}
-		}
-
-		if (event.key === "PageDown") {
-			event.preventDefault();
-			userSteered = true;
-			stepAvailable(1, true);
-		} else if (event.key === "PageUp") {
-			event.preventDefault();
-			userSteered = true;
-			stepAvailable(-1, true);
-		}
-	});
-
-	const initiallyActive = tabs.find((tab) => tab.classList.contains("is-active")) || tabs[0];
-	activate(initiallyActive.dataset.islandReaderTab || "", { fromAutoplay: false });
-	applyIslandSpatialState(latestRaState, latestWorldState);
-	if (isSpatialIoView) {
-		window.addEventListener("o:ra-modulation", (event) => {
-			const detail = event instanceof CustomEvent ? event.detail : null;
-			applyIslandSpatialState(detail, latestWorldState);
-		});
-		window.addEventListener("o:world-instrument", (event) => {
-			const detail = event instanceof CustomEvent ? event.detail : null;
-			applyIslandSpatialState(latestRaState, detail);
-		});
-	}
-}
-
-function initIslandReaderFullscreen() {
-	const buttons = Array.from(document.querySelectorAll("[data-island-reader-fullscreen]"))
-		.filter((button) => button instanceof HTMLButtonElement);
-
-	if (!buttons.length) {
-		return;
-	}
-
-	const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
-	const requestFullscreen = async (element) => {
-		if (element.requestFullscreen) {
-			await element.requestFullscreen();
-			return;
-		}
-
-		if (element.webkitRequestFullscreen) {
-			element.webkitRequestFullscreen();
-		}
-	};
-
-	const exitFullscreen = async () => {
-		if (document.exitFullscreen) {
-			await document.exitFullscreen();
-			return;
-		}
-
-		if (document.webkitExitFullscreen) {
-			document.webkitExitFullscreen();
-		}
-	};
-
-	const syncButtons = () => {
-		const fullscreenElement = getFullscreenElement();
-		buttons.forEach((button) => {
-			const stage = button.closest(".island-reader-stage");
-			const isActive = stage instanceof HTMLElement && fullscreenElement === stage;
-			button.textContent = isActive ? "quitter" : "plein cadre";
-			button.setAttribute("aria-pressed", isActive ? "true" : "false");
-		});
-	};
-
-	buttons.forEach((button) => {
-		button.addEventListener("click", async () => {
-			const stage = button.closest(".island-reader-stage");
-			if (!(stage instanceof HTMLElement)) {
-				return;
-			}
-
-			const fullscreenElement = getFullscreenElement();
-			if (fullscreenElement === stage) {
-				await exitFullscreen().catch(() => {});
-				syncButtons();
-				return;
-			}
-
-			await requestFullscreen(stage).catch(() => {});
-			syncButtons();
-		});
-	});
-
-	document.addEventListener("fullscreenchange", syncButtons);
-	document.addEventListener("webkitfullscreenchange", syncButtons);
-	syncButtons();
-}
+// Str3m integrated player moved to main.str3m.js
+// Island reader adapters moved to main.island.js
 
 function ensureTorusTouchHint() {
 	if (!document.body) {
@@ -5542,6 +4056,9 @@ function initTorusCloud(canvas) {
 	}
 
 	const isPassiveCanvas = canvas.dataset.torusPassive === "1";
+	const isHomeTorusCanvas = !isPassiveCanvas
+		&& canvas.id === "torus-ambient"
+		&& document.body.classList.contains("home");
 	const touchHint = isPassiveCanvas ? null : ensureTorusTouchHint();
 
 	const state = {
@@ -5583,18 +4100,22 @@ function initTorusCloud(canvas) {
 		touchOrbitActive: false,
 	};
 
-	const torusScale = 11;
-	const ringCount = 96;
-	const tubeCount = 42;
+	const torusScale = isHomeTorusCanvas ? 12.7 : 11;
+	const ringCount = isHomeTorusCanvas ? 126 : 96;
+	const tubeCount = isHomeTorusCanvas ? 54 : 42;
 	const majorRadius = 1.9 * torusScale;
 	const minorRadius = 0.78 * torusScale;
-	const zoomMin = 6.5;
-	const zoomMax = 17.5;
+	const zoomMin = isHomeTorusCanvas ? 6.2 : 6.5;
+	const zoomMax = isHomeTorusCanvas ? 18.2 : 17.5;
 
 	if (isPassiveCanvas) {
 		state.pitch = 0.38;
 		state.roll = 0.04;
 		state.zoom = 9.8;
+	} else if (isHomeTorusCanvas) {
+		state.pitch = 0.42;
+		state.roll = 0.08;
+		state.zoom = 10.85;
 	}
 
 	for (let ringIndex = 0; ringIndex < ringCount; ringIndex += 1) {
@@ -5626,6 +4147,11 @@ function initTorusCloud(canvas) {
 		state.autoScale = isPortraitViewport
 			? clampNumber(0.74 + viewportRatio * 0.26, 0.78, 0.92)
 			: clampNumber(0.94 + viewportRatio * 0.05, 0.94, 1.04);
+		if (isHomeTorusCanvas) {
+			state.autoScale = isPortraitViewport
+				? clampNumber(state.autoScale + 0.04, 0.82, 0.98)
+				: clampNumber(state.autoScale + 0.08, 1.01, 1.16);
+		}
 		state.autoLiftY = isPortraitViewport ? Math.round(state.height * -0.035) : 0;
 		canvas.width = Math.round(state.width * state.devicePixelRatio);
 		canvas.height = Math.round(state.height * state.devicePixelRatio);
@@ -5925,11 +4451,17 @@ function initTorusCloud(canvas) {
 		}
 
 		const profile = resolveTorusProfile(canvas);
-	const membrane = readCameraReactiveState();
+		const membrane = readCameraReactiveState();
 		const isXyzScene = document.body.classList.contains("xyz-surface-view");
 		const mobileLayoutBias = isXyzScene && width < 720
 			? clamp((720 - width) / 360, 0, 1)
 			: 0;
+		const homeScaleBoost = isHomeTorusCanvas
+			? (width >= 1180 ? 1.2 : (width >= 860 ? 1.14 : 1.08))
+			: 1;
+		const homeHaloBoost = isHomeTorusCanvas ? 1.12 : 1;
+		const homeAlphaBoost = isHomeTorusCanvas ? 1.08 : 1;
+		const homeRadiusBoost = isHomeTorusCanvas ? 0.84 : 1;
 		const lightOffsetX = membrane.lightDirectionX * width * 0.032;
 		const lightOffsetY = membrane.lightDirectionY * height * 0.028;
 		stepNavigation();
@@ -5937,14 +4469,14 @@ function initTorusCloud(canvas) {
 		const centerX = width * (0.5 + mobileLayoutBias * 0.16) + state.panX * (width * 0.018) + membrane.tiltX * width * 0.042 + lightOffsetX;
 		const centerY = height * (0.5 + mobileLayoutBias * 0.045) + state.autoLiftY + state.panY * (height * 0.018) + membrane.tiltY * height * 0.038 + lightOffsetY;
 		const camera = 39 - state.zoom * 1.12 - membrane.presence * 1.8 - membrane.lightContrast * 0.9;
-		const scale = Math.min(width, height) * (0.09 + state.zoom * 0.01) * state.autoScale * (1 - mobileLayoutBias * 0.18) * (1 + membrane.lightContrast * 0.08);
+		const scale = Math.min(width, height) * (0.09 + state.zoom * 0.01) * state.autoScale * homeScaleBoost * (1 - mobileLayoutBias * 0.18) * (1 + membrane.lightContrast * 0.08);
 		const spinY = state.yaw + time * 0.00006 + membrane.tiltX * 0.24 + membrane.lightDirectionX * 0.1;
 		const spinX = state.pitch + Math.sin(time * 0.00012) * 0.05 + membrane.tiltY * 0.28 + membrane.lightDirectionY * 0.08;
 		const spinZ = state.roll + Math.cos(time * 0.00009) * 0.03 + (membrane.audioLevel - 0.08) * 0.16 + membrane.lightDirectionX * membrane.lightContrast * 0.12;
 
 		context.clearRect(0, 0, width, height);
 		const haloColor = Array.isArray(profile.haloColor) && profile.haloColor.length >= 3 ? profile.haloColor : profile.glow;
-		const haloRadius = Math.min(width, height) * (0.16 + profile.haloStrength * 0.24 + membrane.presence * 0.08 + membrane.lightContrast * 0.05);
+		const haloRadius = Math.min(width, height) * (0.16 + profile.haloStrength * 0.24 + membrane.presence * 0.08 + membrane.lightContrast * 0.05) * homeHaloBoost;
 		const haloGradient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, haloRadius);
 		haloGradient.addColorStop(0, `rgba(${haloColor[0]}, ${haloColor[1]}, ${haloColor[2]}, ${clamp(0.08 + profile.haloStrength * 0.08 + membrane.audioLevel * 0.05, 0.06, 0.22)})`);
 		haloGradient.addColorStop(0.46, `rgba(${profile.glow[0]}, ${profile.glow[1]}, ${profile.glow[2]}, ${clamp(0.04 + profile.haloStrength * 0.06, 0.03, 0.12)})`);
@@ -5976,8 +4508,8 @@ function initTorusCloud(canvas) {
 			return {
 				x: centerX + finalX * perspective,
 				y: centerY + finalY * perspective,
-				alpha: clamp(0.055 + depthFactor * (0.6 + profile.pulseStrength * 0.14) * point.density + shimmer * 0.04, 0.035, 0.84),
-				radius: clamp(0.18 + depthFactor * (3.58 + profile.pulseStrength * 0.82) * point.density, 0.16, 5.1),
+				alpha: clamp((0.055 + depthFactor * (0.6 + profile.pulseStrength * 0.14) * point.density + shimmer * 0.04) * homeAlphaBoost, 0.035, 0.92),
+				radius: clamp((0.18 + depthFactor * (3.58 + profile.pulseStrength * 0.82) * point.density) * homeRadiusBoost, 0.16, 5.2),
 				depth,
 				mix: clamp(0.2 + depthFactor * 0.56 + shimmer * 0.1, 0, 1),
 				signalSeed: point.phase + point.theta + point.phi,
@@ -7048,7 +5580,9 @@ function initMappingGenie() {
 			if (detail.live || detail.demo) {
 				raNote.textContent = `${detail.dominantLabel || "La couche"} mène en régime ${detail.modeLabel || detail.mode || "actif"}. ${primaryLabel ? `${primaryLabel} prolonge la lecture.` : "La cartographie suit cette couche pour garder la prise."}`;
 			} else {
-				raNote.textContent = "Quand la membrane s ouvre, la couche dominante peut reprendre la main ici pour garder la lecture située.";
+				raNote.textContent = isIoSurfaceView()
+					? "Quand la couche spatiale s ouvre, la couche dominante peut reprendre la main ici pour garder la lecture située."
+					: "Quand la membrane s ouvre, la couche dominante peut reprendre la main ici pour garder la lecture située.";
 			}
 		}
 
@@ -7345,7 +5879,9 @@ function initDeviceBridgePanels() {
 			panel.shareButton.addEventListener("click", () => {
 				const text = panel.context === "lab"
 					? "Le lab du tore écoute ce téléphone et rejoue ses capteurs."
-					: "La membrane du tore lit ce téléphone en direct.";
+					: (isIoSurfaceView()
+						? "La couche spatiale du tore lit ce téléphone en direct."
+						: "La membrane du tore lit ce téléphone en direct.");
 				void shareCurrentDeviceSurface({ text });
 			});
 		}
@@ -8949,7 +7485,9 @@ function initXyzCamera() {
 	}
 
 	const plasmaBridgeUrl = root.dataset.xyzPlasmaBridge || "";
+	const plasmaFeedUrl = (root.dataset.xyzPlasmaFeed || "").trim();
 	const membraneLandSlug = root.dataset.xyzPlasmaLand || "";
+	const plasmaCameraSlug = (root.dataset.xyzPlasmaCamera || "").trim().toLowerCase();
 	const sceptreFeedUrl = root.dataset.xyzSceptreFeed || "";
 	const sceptreConstellationFeedUrl = root.dataset.xyzSceptreConstellationFeed || "";
 	const sceptrePrimaryDevice = (root.dataset.xyzSceptreDevice || "ensemble").trim() || "ensemble";
@@ -9156,6 +7694,28 @@ function initXyzCamera() {
 		inFlight: false,
 		triggerSignature: "",
 	};
+	const remotePlasma = {
+		snapshot: null,
+		weather: {},
+		pollTimer: 0,
+		inFlight: false,
+	};
+	const localSignalAt = {
+		camera: 0,
+		audio: 0,
+		light: 0,
+		orientation: 0,
+		motion: 0,
+	};
+	const localSignalTtl = {
+		camera: 2400,
+		audio: 1800,
+		light: 14000,
+		orientation: 6800,
+		motion: 6800,
+	};
+	let remoteAutoplaySuppressed = false;
+	let remoteAudioUnlockBound = false;
 	const instrument = {
 		pointers: new Map(),
 		terreX: 0.3,
@@ -9188,6 +7748,113 @@ function initXyzCamera() {
 		return `${safeValue > 0 ? "+" : "−"}${percent}%`;
 	};
 	const formatPercent = (value) => `${Math.round(clampNumber(Number(value) || 0, 0, 1) * 100)}%`;
+	const markLocalSignal = (channel) => {
+		if (channel in localSignalAt) {
+			localSignalAt[channel] = Date.now();
+		}
+	};
+	const hasRecentLocalSignal = (channel) => {
+		if (!(channel in localSignalAt)) {
+			return false;
+		}
+
+		const timestamp = Number(localSignalAt[channel]) || 0;
+		if (timestamp <= 0) {
+			return false;
+		}
+
+		const ttl = Number(localSignalTtl[channel]) || 0;
+		return Date.now() - timestamp <= ttl;
+	};
+	const parseRemoteMetric = (metrics, key) => {
+		if (!metrics || typeof metrics !== "object" || !(key in metrics)) {
+			return 0;
+		}
+
+		const value = Number(metrics[key]);
+		return Number.isFinite(value) ? value : 0;
+	};
+	const remoteEventTimeMs = (event) => {
+		if (!event || typeof event !== "object") {
+			return 0;
+		}
+
+		const rawValue = typeof event.timestamp === "string" && event.timestamp
+			? event.timestamp
+			: (typeof event.received_at === "string" ? event.received_at : "");
+		if (!rawValue) {
+			return 0;
+		}
+
+		const timestamp = Date.parse(rawValue);
+		return Number.isFinite(timestamp) ? timestamp : 0;
+	};
+	const readRemotePlasmaEvents = (events) => {
+		const list = Array.isArray(events) ? events : [];
+		if (!plasmaCameraSlug) {
+			return list;
+		}
+
+		return list.filter((event) => {
+			if (!event || typeof event !== "object") {
+				return false;
+			}
+
+			const landSlug = typeof event.land_slug === "string" ? event.land_slug.trim().toLowerCase() : "";
+			const source = typeof event.source === "string" ? event.source.trim().toLowerCase() : "";
+			const camera = typeof event.camera === "string" ? event.camera.trim().toLowerCase() : "";
+			return landSlug === plasmaCameraSlug || source === plasmaCameraSlug || camera === plasmaCameraSlug;
+		});
+	};
+	const computeRemotePlasmaSnapshot = (payload) => {
+		const safePayload = payload && typeof payload === "object" ? payload : {};
+		const safeWeather = safePayload.weather && typeof safePayload.weather === "object" ? safePayload.weather : {};
+		const events = readRemotePlasmaEvents(safePayload.events);
+		const latestEvent = events[0] && typeof events[0] === "object" ? events[0] : null;
+		const metrics = latestEvent && latestEvent.metrics && typeof latestEvent.metrics === "object"
+			? latestEvent.metrics
+			: {};
+		const largestArea = Math.max(0, parseRemoteMetric(metrics, "largest_area"));
+		const contourCount = Math.max(0, parseRemoteMetric(metrics, "contour_count"));
+		const frameLuma = clampNumber(parseRemoteMetric(metrics, "frame_luma"), 0, 1);
+		const weatherStale = safeWeather.stale === true || safeWeather.freshness === "stale";
+		const weatherAgeSeconds = Number(safeWeather.age_seconds ?? safeWeather.ageSeconds);
+		const ageSeconds = Number.isFinite(weatherAgeSeconds) && weatherAgeSeconds >= 0
+			? weatherAgeSeconds
+			: null;
+		const staleAfterSeconds = Number(safeWeather.stale_after_seconds ?? safeWeather.staleAfterSeconds);
+		const staleAfter = Number.isFinite(staleAfterSeconds) && staleAfterSeconds > 0 ? staleAfterSeconds : 90;
+		const weatherEnergy = clampNumber(Number(safeWeather.energy) || 0, 0, 1);
+		let area = clampNumber(Math.sqrt(largestArea / 48000), 0, 1);
+		let contours = clampNumber(contourCount / 6, 0, 1);
+		let density = clampNumber((events.length - 1) / 5, 0, 1);
+		const ageMs = latestEvent ? Math.max(0, Date.now() - remoteEventTimeMs(latestEvent)) : Number.POSITIVE_INFINITY;
+		let recency = Number.isFinite(ageMs) ? clampNumber(1 - (ageMs / 120000), 0, 1) : 0;
+		let intensity = clampNumber((area * 0.42) + (contours * 0.2) + (frameLuma * 0.16) + (density * 0.1) + (recency * 0.06) + (weatherEnergy * 0.06), 0, 1);
+		if (weatherStale) {
+			const staleOverrun = ageSeconds !== null ? Math.max(0, ageSeconds - staleAfter) : staleAfter;
+			const staleFade = clampNumber(1 - (staleOverrun / Math.max(staleAfter * 3, 45)), 0.12, 0.5);
+			area *= staleFade;
+			contours *= 0.48;
+			density *= 0.3;
+			recency = 0;
+			intensity = Math.min(intensity * (0.24 + (staleFade * 0.2)), 0.22);
+		}
+
+		return {
+			events,
+			latestEvent,
+			weather: safeWeather,
+			luma: frameLuma,
+			area,
+			contours,
+			density,
+			recency,
+			intensity,
+			contrast: clampNumber((contours * 0.72) + (density * 0.18) + (Math.abs(frameLuma - 0.5) * 0.4), 0, 1),
+			fresh: Boolean(latestEvent) && !weatherStale,
+		};
+	};
 	const formatSceptreClimate = () => {
 		if (!sceptreFresh()) {
 			return "neutre";
@@ -9473,35 +8140,58 @@ function initXyzCamera() {
 			: (lightTone > 0.68
 				? "clair ouvert"
 				: (lightTone < 0.32 ? "ombre douce" : "lueur mixte"));
+		const ioSurface = isIoSurfaceView();
 		const stageCopy = cameraFacingMode === "environment"
-			? "Retourne la caméra et laisse le dehors jouer. Glisse pour orienter le tore. La lumière incline maintenant aussi Terre et Mine: Terre prend le champ, Mine mord le détail, le reflet ou la route. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage."
-			: "Approche visage, mains ou torse. Glisse pour orienter le tore. Terre pose le fond, Mine ouvre l accent, puis l air et la lumière déplacent aussi la partition. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage.";
-		let worldCopy = "Le monde reste un instrument: visage, corps, lumière, paysage et toucher peuvent tous nourrir le tore.";
+			? (ioSurface
+				? "Retourne la caméra et laisse le dehors jouer. Glisse pour orienter le volume. La lumière incline maintenant aussi Terre et Mine: Terre prend le champ, Mine mord le détail, le reflet ou la route. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage."
+				: "Retourne la caméra et laisse le dehors jouer. Glisse pour orienter le tore. La lumière incline maintenant aussi Terre et Mine: Terre prend le champ, Mine mord le détail, le reflet ou la route. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage.")
+			: (ioSurface
+				? "Approche visage, mains ou torse. Glisse pour orienter le volume. Terre pose le fond, Mine ouvre l accent, puis l air et la lumière déplacent aussi la partition. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage."
+				: "Approche visage, mains ou torse. Glisse pour orienter le tore. Terre pose le fond, Mine ouvre l accent, puis l air et la lumière déplacent aussi la partition. 1 à 4 rappellent les scènes, G capture un geste, L relance la boucle, B lance le voyage.");
+		let worldCopy = ioSurface
+			? "Le monde devient présence jouable: visage, corps, lumière, paysage et toucher peuvent tous nourrir le volume."
+			: "Le monde reste un instrument: visage, corps, lumière, paysage et toucher peuvent tous nourrir le tore.";
 		if (visionHands >= 2) {
-			worldCopy = "La vision lit maintenant deux mains. Terre lance le kick, Mine ouvre hh ou snare, et le tore prend leurs écarts comme une percussion vivante.";
+			worldCopy = ioSurface
+				? "La vision lit maintenant deux mains. Terre lance le kick, Mine ouvre hh ou snare, et le volume prend leurs écarts comme une percussion vivante."
+				: "La vision lit maintenant deux mains. Terre lance le kick, Mine ouvre hh ou snare, et le tore prend leurs écarts comme une percussion vivante.";
 		} else if (visionHands === 1) {
-			worldCopy = "La vision accroche déjà une main. Ouvre le cadre, frappe, relâche, puis laisse le tore transformer ce geste en pulsation.";
+			worldCopy = ioSurface
+				? "La vision accroche déjà une main. Ouvre le cadre, frappe, relâche, puis laisse le volume transformer ce geste en pulsation."
+				: "La vision accroche déjà une main. Ouvre le cadre, frappe, relâche, puis laisse le tore transformer ce geste en pulsation.";
 		}
 		if (cameraFacingMode === "environment") {
 			worldCopy = touchEnergy > 0.24
-				? "Le paysage répond maintenant à tes mains. Tu peux marcher, viser, pivoter et laisser les reflets, la rue ou le ciel nourrir le tore comme un instrument vivant."
+				? (ioSurface
+					? "Le paysage répond maintenant à tes mains. Tu peux marcher, viser, pivoter et laisser les reflets, la rue ou le ciel nourrir le volume comme une présence vivante."
+					: "Le paysage répond maintenant à tes mains. Tu peux marcher, viser, pivoter et laisser les reflets, la rue ou le ciel nourrir le tore comme un instrument vivant.")
 				: (light.contrast > 0.3
-					? "Passe en paysage pour faire jouer le dehors. L incidence lumineuse pousse déjà Terre et Mine: la nappe prend le champ, le détail perce, puis le tore suit."
+					? (ioSurface
+						? "Passe en paysage pour faire jouer le dehors. L incidence lumineuse pousse déjà Terre et Mine: la nappe prend le champ, le détail perce, puis le volume suit."
+						: "Passe en paysage pour faire jouer le dehors. L incidence lumineuse pousse déjà Terre et Mine: la nappe prend le champ, le détail perce, puis le tore suit.")
 					: "Passe en paysage pour faire jouer le dehors. Le monde devient matière: horizon, marche, reflets, façades, arbres, vitesse et lumière.");
 			if (visionHands >= 2) {
-				worldCopy = "Le paysage répond maintenant à tes mains. Gauche pour le kick, droite pour hh ou snare, double frappe pour relancer tout le set pendant que Terre et Mine déplacent le tore.";
+				worldCopy = ioSurface
+					? "Le paysage répond maintenant à tes mains. Gauche pour le kick, droite pour hh ou snare, double frappe pour relancer tout le set pendant que Terre et Mine déplacent le volume."
+					: "Le paysage répond maintenant à tes mains. Gauche pour le kick, droite pour hh ou snare, double frappe pour relancer tout le set pendant que Terre et Mine déplacent le tore.";
 			} else if (visionHands === 1) {
 				worldCopy = "Le paysage voit déjà une main. Cherche une frappe nette et la percussion partira directement du cadre.";
 			}
 		} else if (touchEnergy > 0.26 || membrane.audioLevel > 0.16) {
-			worldCopy = "Le visage, le souffle et les mains sont maintenant dans la boucle. Le tore peut tenir une note, ouvrir un rythme puis colorer la lumière autour de toi.";
+			worldCopy = ioSurface
+				? "Le visage, le souffle et les mains sont maintenant dans la boucle. Le volume peut tenir une note, ouvrir un rythme puis colorer la lumière autour de toi."
+				: "Le visage, le souffle et les mains sont maintenant dans la boucle. Le tore peut tenir une note, ouvrir un rythme puis colorer la lumière autour de toi.";
 		} else if (light.contrast > 0.26) {
 			worldCopy = "Même sans toucher, l incidence lumineuse commence à pencher la partition: Terre ouvre ou retient le champ, Mine taille la clarté et la nervure.";
 		}
 		if (sceptreLive && visionHands === 0) {
 			worldCopy = sceptrePercussionLevel() > 0.34
-				? `Le sceptre ${sceptreScene} incline maintenant le tore. Sa secousse ouvre la percussion, son roulis pousse Terre et Mine, et la surface prend une allure de rite portable.`
-				: `Le sceptre ${sceptreScene} tient une magie douce. Climat, angle et halo glissent déjà dans le tore comme une main distante.`;
+				? (ioSurface
+					? `Le sceptre ${sceptreScene} incline maintenant le volume. Sa secousse ouvre la percussion, son roulis pousse Terre et Mine, et la surface prend une allure de rite portable.`
+					: `Le sceptre ${sceptreScene} incline maintenant le tore. Sa secousse ouvre la percussion, son roulis pousse Terre et Mine, et la surface prend une allure de rite portable.`)
+				: (ioSurface
+					? `Le sceptre ${sceptreScene} tient une magie douce. Climat, angle et halo glissent déjà dans le volume comme une main distante.`
+					: `Le sceptre ${sceptreScene} tient une magie douce. Climat, angle et halo glissent déjà dans le tore comme une main distante.`);
 		}
 
 		document.body.dataset.cameraFacing = cameraFacingMode;
@@ -9802,30 +8492,40 @@ function initXyzCamera() {
 	const arModeCatalog = {
 			anchor: {
 				label: "ancrer",
-				title: "Le tore se pose sur le monde.",
-				status: "La réalité garde le plan principal. Le plasma annote, le tore n incise qu une fois les bords stabilisés.",
+				title: isIoSurfaceView() ? "Le volume se pose sur le monde." : "Le tore se pose sur le monde.",
+				status: isIoSurfaceView()
+					? "La réalité garde le plan principal. Le plasma annote, le volume n incise qu une fois les bords stabilisés."
+					: "La réalité garde le plan principal. Le plasma annote, le tore n incise qu une fois les bords stabilisés.",
 				usage: "Usage RA: garder les plans, les corps et les obstacles lisibles avant d ouvrir des seuils plus denses.",
 				bias: { real: 0.18, plasma: -0.03, torus: -0.08 },
 			},
 			translate: {
 				label: "traduire",
 				title: "Le plasma prend la traduction.",
-				status: "Les signes, la mémoire, la météo et la voix gagnent du terrain. Le tore reste au contact sans recouvrir le monde.",
+				status: isIoSurfaceView()
+					? "Les signes, la mémoire, la météo et la voix gagnent du terrain. Le volume reste au contact sans recouvrir le monde."
+					: "Les signes, la mémoire, la météo et la voix gagnent du terrain. Le tore reste au contact sans recouvrir le monde.",
 				usage: "Usage RA: laisser monter les flux, les annotations, les traces sonores et les directions avant d ouvrir la route.",
 				bias: { real: -0.06, plasma: 0.22, torus: -0.04 },
 			},
 			loop: {
 				label: "boucler",
-				title: "Le tore replie le lieu en interface.",
-				status: "Les seuils, les routes et la prise spatiale passent devant. La réalité reste visible, mais le tore mène la lecture.",
+				title: isIoSurfaceView() ? "Le volume replie le lieu en interface." : "Le tore replie le lieu en interface.",
+				status: isIoSurfaceView()
+					? "Les seuils, les routes et la prise spatiale passent devant. La réalité reste visible, mais le volume mène la lecture."
+					: "Les seuils, les routes et la prise spatiale passent devant. La réalité reste visible, mais le tore mène la lecture.",
 				usage: "Usage RA: ouvrir des routes, zones, prises et nœuds directement dans l espace perçu.",
 				bias: { real: -0.12, plasma: -0.04, torus: 0.24 },
 			},
 			weave: {
 				label: "tresser",
 				title: "Les trois couches se tiennent ensemble.",
-				status: "La réalité porte, le plasma relie, le tore boucle: aucun plan ne doit écraser les deux autres.",
-				usage: "Usage RA: faire tenir le monde, ses flux et la surface dans une même lecture sans rupture.",
+				status: isIoSurfaceView()
+					? "La réalité porte, le plasma relie, le volume boucle: aucun plan ne doit écraser les deux autres."
+					: "La réalité porte, le plasma relie, le tore boucle: aucun plan ne doit écraser les deux autres.",
+				usage: isIoSurfaceView()
+					? "Usage RA: faire tenir le monde, ses flux et le volume dans une même lecture sans rupture."
+					: "Usage RA: faire tenir le monde, ses flux et la surface dans une même lecture sans rupture.",
 				bias: { real: 0.04, plasma: 0.05, torus: 0.05 },
 			},
 		};
@@ -11175,12 +9875,16 @@ function initXyzCamera() {
 		if (fxPresetKey === "bare") {
 			setSensorText(
 				musicDawFxCopyNode,
-				"Le master reste proche et lisible. Un peu d espace, peu d echo, juste assez de grain et d air pour garder la peau de la membrane au premier plan."
+				isIoSurfaceView()
+					? "Le master reste proche et lisible. Un peu d espace, peu d echo, juste assez de grain et d air pour garder la couche spatiale au premier plan."
+					: "Le master reste proche et lisible. Un peu d espace, peu d echo, juste assez de grain et d air pour garder la peau de la membrane au premier plan."
 			);
 		} else if (fxPresetKey === "mist") {
 			setSensorText(
 				musicDawFxCopyNode,
-				"La membrane flotte plus loin. L espace s ouvre, l echo respire entre les pas et l air laisse les aigus passer comme une brume claire."
+				isIoSurfaceView()
+					? "La couche spatiale flotte plus loin. L espace s ouvre, l echo respire entre les pas et l air laisse les aigus passer comme une brume claire."
+					: "La membrane flotte plus loin. L espace s ouvre, l echo respire entre les pas et l air laisse les aigus passer comme une brume claire."
 			);
 		} else if (fxPresetKey === "glass") {
 			setSensorText(
@@ -11432,14 +10136,18 @@ function initXyzCamera() {
 			setSensorText(musicDawArrangementStateNode, "aucun voyage");
 			setSensorText(
 				musicDawArrangementCopyNode,
-				"Enchaîne des scènes mémorisées sur plusieurs mesures pour transformer la membrane en forme jouable et enregistrable."
+				isIoSurfaceView()
+					? "Enchaîne des scènes mémorisées sur plusieurs mesures pour transformer la couche spatiale en forme jouable et enregistrable."
+					: "Enchaîne des scènes mémorisées sur plusieurs mesures pour transformer la membrane en forme jouable et enregistrable."
 			);
 		}
 		if (musicPerformanceCaptureState === "recording") {
 			setSensorText(musicDawRecordingStateNode, `performance en cours · ${formatMusicDuration(performanceElapsedMs)}`);
 			setSensorText(
 				musicDawRecordingCopyNode,
-				"La membrane compose maintenant une video de performance avec le tore, le champ camera et le master audio. Stoppe quand la prise a la bonne densite."
+				isIoSurfaceView()
+					? "La couche spatiale compose maintenant une video de performance avec le tore, le champ camera et le master audio. Stoppe quand la prise a la bonne densite."
+					: "La membrane compose maintenant une video de performance avec le tore, le champ camera et le master audio. Stoppe quand la prise a la bonne densite."
 			);
 		} else if (musicStemExportState === "recording") {
 			setSensorText(
@@ -11463,13 +10171,17 @@ function initXyzCamera() {
 			setSensorText(musicDawRecordingStateNode, `prise en cours · ${formatMusicDuration(recordingElapsedMs)}`);
 			setSensorText(
 				musicDawRecordingCopyNode,
-				"Le master sort en direct vers une prise locale. Coupe ou relance des pistes sans perdre la couleur de la membrane, son humanize et sa derive."
+				isIoSurfaceView()
+					? "Le master sort en direct vers une prise locale. Coupe ou relance des pistes sans perdre la couleur de la couche spatiale, son humanize et sa derive."
+					: "Le master sort en direct vers une prise locale. Coupe ou relance des pistes sans perdre la couleur de la membrane, son humanize et sa derive."
 			);
 		} else if (!mediaRecorderSupported) {
 			setSensorText(musicDawRecordingStateNode, "enregistrement indisponible");
 			setSensorText(
 				musicDawRecordingCopyNode,
-				"Ce navigateur ne propose pas MediaRecorder. La membrane reste jouable, mais les prises locales audio ne peuvent pas partir d ici."
+				isIoSurfaceView()
+					? "Ce navigateur ne propose pas MediaRecorder. La couche spatiale reste jouable, mais les prises locales audio ne peuvent pas partir d ici."
+					: "Ce navigateur ne propose pas MediaRecorder. La membrane reste jouable, mais les prises locales audio ne peuvent pas partir d ici."
 			);
 		} else if (musicTakes.length) {
 			const lastTake = musicTakes[musicTakes.length - 1];
@@ -11947,6 +10659,7 @@ function initXyzCamera() {
 
 	const arLayerCopyFor = (layer, weight, { live = false, demo = false } = {}) => {
 		const percent = Math.round(clampNumber(weight, 0, 1) * 100);
+		const ioSurface = isIoSurfaceView();
 		switch (layer) {
 			case "real":
 				return percent >= 42
@@ -11956,17 +10669,25 @@ function initXyzCamera() {
 						: "La réalité garde encore le cadre minimal avant la montée des autres couches.");
 			case "plasma":
 				return percent >= 40
-					? "Le plasma devient lisible: mémoire, météo, voix, respiration et signes relient déjà le lieu au tore."
+					? (ioSurface
+						? "Le plasma devient lisible: mémoire, météo, voix, respiration et signes relient déjà le lieu au volume."
+						: "Le plasma devient lisible: mémoire, météo, voix, respiration et signes relient déjà le lieu au tore.")
 					: (demo
 						? "Le plasma prépare la traduction, même si la montée reste encore rejouée localement."
 						: "Le plasma reste discret: il annote sans encore prendre le dessus.");
 			case "torus":
 			default:
 				return percent >= 40
-					? "Le tore prend la main: seuils, routes, zones et points d accroche deviennent déjà des objets spatiaux."
+					? (ioSurface
+						? "Le volume prend la main: seuils, routes, zones et points d accroche deviennent déjà des objets spatiaux."
+						: "Le tore prend la main: seuils, routes, zones et points d accroche deviennent déjà des objets spatiaux.")
 					: (live
-						? "Le tore s installe sans recouvrir tout le monde: il ouvre des prises plutôt qu une peau totale."
-					: "Le tore reste en veille haute: il attend d ouvrir des prises plus nettes dans l espace.");
+						? (ioSurface
+							? "Le volume s installe sans recouvrir tout le monde: il ouvre des prises plutôt qu une peau totale."
+							: "Le tore s installe sans recouvrir tout le monde: il ouvre des prises plutôt qu une peau totale.")
+					: (ioSurface
+						? "Le volume reste en veille haute: il attend d ouvrir des prises plus nettes dans l espace."
+						: "Le tore reste en veille haute: il attend d ouvrir des prises plus nettes dans l espace."));
 		}
 	};
 
@@ -11983,10 +10704,13 @@ function initXyzCamera() {
 	};
 
 	const arPilotStateFor = ({ mode, dominant, live, demo }) => {
+		const ioSurface = isIoSurfaceView();
 		if (!live && !demo) {
 			return {
 				title: "Prise active: préparer le champ.",
-				copy: "Cadre d abord le volume et les plans. Le tore n ouvre pas encore de prise forte tant que la membrane ne tient pas vraiment.",
+				copy: ioSurface
+					? "Cadre d abord le volume et les plans. Le tore n ouvre pas encore de prise forte tant que la couche spatiale ne tient pas vraiment."
+					: "Cadre d abord le volume et les plans. Le tore n ouvre pas encore de prise forte tant que la membrane ne tient pas vraiment.",
 				primary: { label: "Ouvrir Map", href: withSurfaceContext("/map") },
 				secondary: { label: "Passer par 0wlslw0", href: withSurfaceContext("/0wlslw0") },
 			};
@@ -11995,7 +10719,9 @@ function initXyzCamera() {
 		if (mode === "anchor") {
 			return {
 				title: "Prise active: ancrer le monde.",
-				copy: "Le régime d ancrage garde les bords, corps, obstacles et orientations au premier plan avant toute densification du tore.",
+				copy: ioSurface
+					? "Le régime d ancrage garde les bords, corps, obstacles et orientations au premier plan avant toute densification du volume."
+					: "Le régime d ancrage garde les bords, corps, obstacles et orientations au premier plan avant toute densification du tore.",
 				primary: { label: "Ouvrir Map", href: withSurfaceContext("/map") },
 				secondary: { label: "Passer par 0wlslw0", href: withSurfaceContext("/0wlslw0") },
 			};
@@ -12013,7 +10739,9 @@ function initXyzCamera() {
 		if (mode === "loop") {
 			return {
 				title: "Prise active: ouvrir une prise située.",
-				copy: "Le tore replie le lieu en interface. On peut maintenant entrer dans un fil, une zone ou une accroche sans perdre le plan.",
+				copy: ioSurface
+					? "Le volume replie le lieu en interface. On peut maintenant entrer dans un fil, une zone ou une accroche sans perdre le plan."
+					: "Le tore replie le lieu en interface. On peut maintenant entrer dans un fil, une zone ou une accroche sans perdre le plan.",
 				primary: { label: "Ouvrir Signal", href: withSurfaceContext("/signal") },
 				secondary: { label: "Relire Map", href: withSurfaceContext("/map") },
 			};
@@ -12022,7 +10750,9 @@ function initXyzCamera() {
 		if (dominant === "real") {
 			return {
 				title: "Prise active: tresser depuis la réalité.",
-				copy: "La réalité porte encore le tressage. Garde le terrain lisible, puis laisse le plasma et le tore monter par touches.",
+				copy: ioSurface
+					? "La réalité porte encore le tressage. Garde le terrain lisible, puis laisse le plasma et le volume monter par touches."
+					: "La réalité porte encore le tressage. Garde le terrain lisible, puis laisse le plasma et le tore monter par touches.",
 				primary: { label: "Ouvrir Map", href: withSurfaceContext("/map") },
 				secondary: { label: "Lire Str3m", href: withSurfaceContext("/str3m") },
 			};
@@ -12031,15 +10761,19 @@ function initXyzCamera() {
 		if (dominant === "plasma") {
 			return {
 				title: "Prise active: tresser depuis le plasma.",
-				copy: "Le flux devient la couture principale: annotations, rythmes, mémoire et voix relient maintenant le lieu au tore.",
+				copy: ioSurface
+					? "Le flux devient la couture principale: annotations, rythmes, mémoire et voix relient maintenant le lieu au volume."
+					: "Le flux devient la couture principale: annotations, rythmes, mémoire et voix relient maintenant le lieu au tore.",
 				primary: { label: "Lire Str3m", href: withSurfaceContext("/str3m") },
 				secondary: { label: "Passer par 0wlslw0", href: withSurfaceContext("/0wlslw0") },
 			};
 		}
 
 		return {
-			title: "Prise active: tresser depuis le tore.",
-			copy: "Le tore prend le relief: seuils, routes et prises deviennent assez nets pour orienter une action située.",
+			title: ioSurface ? "Prise active: tresser depuis le volume." : "Prise active: tresser depuis le tore.",
+			copy: ioSurface
+				? "Le volume prend le relief: seuils, routes et prises deviennent assez nets pour orienter une action située."
+				: "Le tore prend le relief: seuils, routes et prises deviennent assez nets pour orienter une action située.",
 			primary: { label: "Ouvrir Signal", href: withSurfaceContext("/signal") },
 			secondary: { label: "Relire Map", href: withSurfaceContext("/map") },
 		};
@@ -12109,8 +10843,12 @@ function initXyzCamera() {
 		const directive = dominant === "real"
 			? "Directive: garder le plan du monde stable, puis faire monter les signes et les seuils seulement là où ils s accrochent vraiment."
 			: (dominant === "plasma"
-				? "Directive: laisser le plasma traduire voix, mémoire, météo et trajectoires, puis donner au tore juste assez de prise pour guider."
-				: "Directive: ouvrir le tore comme peau active du lieu, mais sans casser la lecture des corps, bords et flux déjà présents.");
+				? (isIoSurfaceView()
+					? "Directive: laisser le plasma traduire voix, mémoire, météo et trajectoires, puis donner au volume juste assez de prise pour guider."
+					: "Directive: laisser le plasma traduire voix, mémoire, météo et trajectoires, puis donner au tore juste assez de prise pour guider.")
+				: (isIoSurfaceView()
+					? "Directive: ouvrir le volume comme couche active du lieu, mais sans casser la lecture des corps, bords et flux déjà présents."
+					: "Directive: ouvrir le tore comme peau active du lieu, mais sans casser la lecture des corps, bords et flux déjà présents."));
 
 		document.body.dataset.raMode = arModulationMode;
 		document.body.dataset.raDominantLayer = dominant;
@@ -12360,7 +11098,9 @@ function initXyzCamera() {
 				duetPhase = "prepare";
 				duetDominant = "terre";
 			} else if (!percussionActive) {
-				guideText = `La membrane joue en drone nu. Terre tient ${scaleProfile.shortLabel}, Mine fait respirer la note, et le timbre ${instrumentProfile.label} garde l harmonie ouverte.`;
+				guideText = isIoSurfaceView()
+					? `La couche spatiale joue en drone nu. Terre tient ${scaleProfile.shortLabel}, Mine fait respirer la note, et le timbre ${instrumentProfile.label} garde l harmonie ouverte.`
+					: `La membrane joue en drone nu. Terre tient ${scaleProfile.shortLabel}, Mine fait respirer la note, et le timbre ${instrumentProfile.label} garde l harmonie ouverte.`;
 				terreTitle = "Elle tient le ciel.";
 				mineTitle = "Elle respire.";
 				terreCopy = "Terre garde la base et la lumière sans rien marteler. Le champ reste doux et continu.";
@@ -13018,7 +11758,7 @@ function initXyzCamera() {
 		context.strokeRect(34.5, 34.5, Math.min(width - 69, 519), 145);
 		context.fillStyle = "rgba(238, 244, 255, 0.92)";
 		context.font = '600 34px "Georgia", "Times New Roman", serif';
-		context.fillText("membrane performance", 58, 82);
+		context.fillText(isIoSurfaceView() ? "performance spatiale" : "membrane performance", 58, 82);
 		context.font = '500 20px "Helvetica Neue", Arial, sans-serif';
 		context.fillStyle = "rgba(238, 244, 255, 0.72)";
 		context.fillText(
@@ -13145,7 +11885,7 @@ function initXyzCamera() {
 					createdAt: startedAt,
 					kind: "video",
 					name: `performance ${String((musicTakeSerial || 0) + 1).padStart(2, "0")}`,
-					filenamePrefix: "membrane-performance",
+					filenamePrefix: isIoSurfaceView() ? "spatial-performance" : "membrane-performance",
 				});
 			} else {
 				renderMusicDesk();
@@ -13288,7 +12028,7 @@ function initXyzCamera() {
 						assetMap.set(key, {
 							key,
 							label: key === "bass" ? "basse" : key,
-							filename: `membrane-stem-${String((musicTakeSerial || 0) + 1).padStart(2, "0")}-${key}-${buildMusicFileStamp(startedAt)}.${extensionFromMimeType(trackMimeType)}`,
+							filename: `${isIoSurfaceView() ? "spatial" : "membrane"}-stem-${String((musicTakeSerial || 0) + 1).padStart(2, "0")}-${key}-${buildMusicFileStamp(startedAt)}.${extensionFromMimeType(trackMimeType)}`,
 							url: URL.createObjectURL(blob),
 							bytes: blob.size,
 							mimeType: trackMimeType,
@@ -13569,7 +12309,7 @@ function initXyzCamera() {
 			})),
 		};
 		const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" });
-		downloadBlob(blob, `membrane-project-${buildMusicFileStamp()}.json`);
+		downloadBlob(blob, `${isIoSurfaceView() ? "spatial" : "membrane"}-project-${buildMusicFileStamp()}.json`);
 	};
 	const applyMotionInstrumentProfile = () => {
 		const profile = currentInstrumentProfile();
@@ -13621,7 +12361,7 @@ function initXyzCamera() {
 		click.frequency.setValueAtTime(860 + (intensity * 260), now);
 		click.frequency.exponentialRampToValueAtTime(118, now + 0.04);
 		gain.gain.setValueAtTime(0.0001, now);
-		gain.gain.linearRampToValueAtTime(clampNumber((0.03 + intensity * 0.1) * deviceProfile.volume, 0.024, 0.14), now + 0.008);
+		gain.gain.linearRampToValueAtTime(clampNumber((0.038 + intensity * 0.118) * deviceProfile.volume, 0.028, 0.18), now + 0.008);
 		gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
 		body.connect(gain);
 		click.connect(gain);
@@ -13655,7 +12395,7 @@ function initXyzCamera() {
 		bandpass.frequency.value = 1900 + (intensity * 1400);
 		bandpass.Q.value = 0.82 + (intensity * 1.2);
 		gain.gain.setValueAtTime(0.0001, now);
-		gain.gain.linearRampToValueAtTime(clampNumber((0.018 + intensity * 0.076) * deviceProfile.volume, 0.016, 0.11), now + 0.006);
+		gain.gain.linearRampToValueAtTime(clampNumber((0.022 + intensity * 0.09) * deviceProfile.volume, 0.018, 0.13), now + 0.006);
 		gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
 		source.connect(highpass);
 		highpass.connect(bandpass);
@@ -13686,7 +12426,7 @@ function initXyzCamera() {
 		bandpass.frequency.value = 7600 + (intensity * 1800);
 		bandpass.Q.value = 1.2 + (intensity * 2.4);
 		gain.gain.setValueAtTime(0.0001, now);
-		gain.gain.linearRampToValueAtTime(clampNumber((0.014 + intensity * 0.048) * deviceProfile.volume, 0.012, 0.082), now + 0.003);
+		gain.gain.linearRampToValueAtTime(clampNumber((0.018 + intensity * 0.058) * deviceProfile.volume, 0.014, 0.094), now + 0.003);
 		gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08 + (intensity * 0.03));
 		source.connect(highpass);
 		highpass.connect(bandpass);
@@ -14260,6 +13000,7 @@ function initXyzCamera() {
 		syncSceptreReactiveState();
 		renderWorldInstrument();
 		updateMotionVoice();
+		applyRemoteMembraneFallback({ autoActivate: true });
 		void applySceptreTrigger();
 	};
 
@@ -14269,6 +13010,7 @@ function initXyzCamera() {
 		syncSceptreReactiveState();
 		renderWorldInstrument();
 		updateMotionVoice();
+		applyRemoteMembraneFallback({ autoActivate: true });
 		void applySceptreTrigger();
 	};
 
@@ -14475,6 +13217,7 @@ function initXyzCamera() {
 		const deviceProfile = readDeviceAudioProfile();
 		const flavor = document.body.dataset.cameraFlavor || "";
 		const instrumentProfile = currentInstrumentProfile();
+		const surfaceGainBoost = isIoSurfaceView() ? 1.34 : 1.18;
 		membrane.shake = clampNumber(membrane.shake * (isMembraneDemo() ? 0.96 : 0.88), 0, 1);
 		const shakeLevel = clampNumber(membrane.shake, 0, 1);
 		const motionEnergy = clampNumber(Math.max(membrane.motionSensor, membrane.cameraMotion * 0.92), 0, 1);
@@ -14529,7 +13272,7 @@ function initXyzCamera() {
 		const feedbackSafety = clampNumber(1 - ambient * 0.18, 0.68, 1);
 		const audible = !forceMute && !document.hidden && isMembraneAudible() && !deviceProfile.muted;
 		const demoPulseFloor = audible && isMembraneDemo()
-			? clampNumber((0.02 + handOpen * 0.016 + lightTone * 0.01 + shakeLevel * 0.008) * deviceProfile.volume * feedbackSafety, 0.02, 0.044)
+			? clampNumber((0.024 + handOpen * 0.018 + lightTone * 0.012 + shakeLevel * 0.01) * deviceProfile.volume * feedbackSafety * surfaceGainBoost, 0.024, 0.058)
 			: 0;
 		const terreTrackMix = getMusicTrackMix("terre");
 		const mineTrackMix = getMusicTrackMix("mine");
@@ -14560,20 +13303,20 @@ function initXyzCamera() {
 		) * instrumentProfile.detuneDepth;
 		const droneFloor = audible
 			? clampNumber(
-				(0.015 + handOpen * 0.012 + touchEnergy * 0.012 + sceneEnergy * 0.008 + lightTone * 0.006 + (activePercussion ? 0 : 0.006) + (sceptreDroneBias * 0.01))
+				(0.018 + handOpen * 0.014 + touchEnergy * 0.014 + sceneEnergy * 0.01 + lightTone * 0.008 + (activePercussion ? 0 : 0.008) + (sceptreDroneBias * 0.012))
 				* deviceProfile.volume
 				* feedbackSafety,
 				0,
-				isMembraneDemo() ? 0.044 : 0.04
+				(isMembraneDemo() ? 0.058 : 0.052) * surfaceGainBoost
 			)
 			: 0;
 		const targetGain = audible
 			? clampNumber(
-				gate * (handOpen * 0.74 + touchEnergy * 0.24 + sceneEnergy * 0.1 + lightContrast * 0.14 + sceptrePercussionLevel() * 0.12) * deviceProfile.volume * feedbackSafety * (0.12 + (sceptreVolumeBias * 0.03))
+				gate * (handOpen * 0.76 + touchEnergy * 0.28 + sceneEnergy * 0.12 + lightContrast * 0.16 + sceptrePercussionLevel() * 0.14) * deviceProfile.volume * feedbackSafety * (0.16 + (sceptreVolumeBias * 0.05)) * surfaceGainBoost
 					+ droneFloor
 					+ demoPulseFloor,
 				0,
-				isMembraneDemo() ? 0.18 : 0.15
+				isMembraneDemo() ? 0.24 : 0.2
 			)
 			: 0;
 		const targetMainGain = audible
@@ -14586,11 +13329,11 @@ function initXyzCamera() {
 			: 0;
 		const harmonicBlend = instrumentProfile.harmonicMix + lightTone * 0.12 + lightProfile.mine * 0.12 + (scaleProfile.color === "bright" ? 0.08 : 0) + (activePercussion ? 0 : 0.04);
 		const targetHarmonicGain = audible
-			? clampNumber(targetGain * harmonicBlend * mineTrackMix, 0, isMembraneDemo() ? 0.11 : 0.09)
+			? clampNumber(targetGain * harmonicBlend * mineTrackMix, 0, isMembraneDemo() ? 0.15 : 0.12)
 			: 0;
 		const subBlend = instrumentProfile.subMix + (scaleProfile.color === "shadow" ? 0.08 : 0) + (1 - lightTone) * 0.06;
 		const targetSubGain = audible
-			? clampNumber(targetGain * subBlend * bassTrackMix, 0, isMembraneDemo() ? 0.08 : 0.065)
+			? clampNumber(targetGain * subBlend * bassTrackMix, 0, isMembraneDemo() ? 0.11 : 0.085)
 			: 0;
 		const targetPan = clampNumber(membrane.tiltX * 0.54 + ((instrument.mineX - instrument.terreX) * 0.84) + (orientationX - 0.5) * 0.14 + lightDirectionX * 0.22, -1, 1);
 		const targetFilterFrequency = clampNumber(
@@ -14773,12 +13516,13 @@ function initXyzCamera() {
 
 			const now = audioContext.currentTime;
 			const isDemoCue = isMembraneDemo();
+			const cueBoost = isIoSurfaceView() ? 1.28 : 1.14;
 			const peak = isDemoCue
-				? clampNumber(0.066 + deviceProfile.volume * 0.072 * intensity, 0.054, 0.16)
-				: clampNumber(0.042 + deviceProfile.volume * 0.048 * intensity, 0.03, 0.098);
+				? clampNumber((0.078 + deviceProfile.volume * 0.09 * intensity) * cueBoost, 0.062, 0.2)
+				: clampNumber((0.052 + deviceProfile.volume * 0.06 * intensity) * cueBoost, 0.036, 0.122);
 			const sustain = isDemoCue
-				? clampNumber(peak * 0.46, 0.02, 0.06)
-				: clampNumber(peak * 0.38, 0.012, 0.038);
+				? clampNumber(peak * 0.48, 0.024, 0.074)
+				: clampNumber(peak * 0.4, 0.014, 0.048);
 		const terreTrackMix = getMusicTrackMix("terre");
 		const mineTrackMix = getMusicTrackMix("mine");
 		const bassTrackMix = getMusicTrackMix("bass");
@@ -14805,14 +13549,14 @@ function initXyzCamera() {
 			if (motionVoiceHarmonicGain) {
 				motionVoiceHarmonicGain.gain.cancelScheduledValues(now);
 				motionVoiceHarmonicGain.gain.setValueAtTime(Math.max(motionVoiceHarmonicGain.gain.value, 0.001), now);
-				motionVoiceHarmonicGain.gain.linearRampToValueAtTime(clampNumber(peak * 0.58 * mineTrackMix, 0, 0.05), now + 0.08);
-				motionVoiceHarmonicGain.gain.exponentialRampToValueAtTime(clampNumber(sustain * 0.58 * mineTrackMix, 0.0001, 0.022), now + 0.44);
+				motionVoiceHarmonicGain.gain.linearRampToValueAtTime(clampNumber(peak * 0.62 * mineTrackMix, 0, 0.07), now + 0.08);
+				motionVoiceHarmonicGain.gain.exponentialRampToValueAtTime(clampNumber(sustain * 0.62 * mineTrackMix, 0.0001, 0.03), now + 0.44);
 			}
 			if (motionVoiceSubGain) {
 				motionVoiceSubGain.gain.cancelScheduledValues(now);
 				motionVoiceSubGain.gain.setValueAtTime(Math.max(motionVoiceSubGain.gain.value, 0.001), now);
-				motionVoiceSubGain.gain.linearRampToValueAtTime(clampNumber(peak * 0.42 * bassTrackMix, 0, 0.04), now + 0.08);
-				motionVoiceSubGain.gain.exponentialRampToValueAtTime(clampNumber(sustain * 0.42 * bassTrackMix, 0.0001, 0.018), now + 0.44);
+				motionVoiceSubGain.gain.linearRampToValueAtTime(clampNumber(peak * 0.46 * bassTrackMix, 0, 0.052), now + 0.08);
+				motionVoiceSubGain.gain.exponentialRampToValueAtTime(clampNumber(sustain * 0.46 * bassTrackMix, 0.0001, 0.024), now + 0.44);
 			}
 	};
 
@@ -14833,6 +13577,7 @@ function initXyzCamera() {
 			const sample = (buffer[index] - 128) / 128;
 			energy += sample * sample;
 		}
+		markLocalSignal("audio");
 		membrane.audioLevel = clampNumber(Math.sqrt(energy / buffer.length) * 2.6, 0, 1);
 		syncMembraneReactiveState();
 		setSensorText(
@@ -15010,11 +13755,12 @@ function initXyzCamera() {
 		try {
 			lightSensor = new window.AmbientLightSensor();
 				lightSensor.addEventListener("reading", () => {
-					if (!isMembraneLive()) {
-						return;
-					}
-					membrane.lightLevel = clampNumber(Math.log10(Math.max(1, Number(lightSensor.illuminance) || 1)) / 3, 0, 1);
-					syncMembraneReactiveState();
+				if (!isMembraneLive()) {
+					return;
+				}
+				markLocalSignal("light");
+				membrane.lightLevel = clampNumber(Math.log10(Math.max(1, Number(lightSensor.illuminance) || 1)) / 3, 0, 1);
+				syncMembraneReactiveState();
 					setSensorText(
 						lightNode,
 						`${Math.round(Number(lightSensor.illuminance) || 0)} lux · ${currentScaleProfile().shortLabel}`
@@ -15067,6 +13813,7 @@ function initXyzCamera() {
 					return;
 				}
 				orientationSignalSeen = true;
+				markLocalSignal("orientation");
 				membrane.tiltX = clampNumber((Number(event.gamma) || 0) / 46, -1, 1);
 				membrane.tiltY = clampNumber((Number(event.beta) || 0) / 64, -1, 1);
 				syncMembraneReactiveState();
@@ -15088,6 +13835,7 @@ function initXyzCamera() {
 					return;
 				}
 				motionSignalSeen = true;
+				markLocalSignal("motion");
 				const source = event.accelerationIncludingGravity || event.acceleration || {};
 				const x = Number(source.x || 0);
 				const y = Number(source.y || 0);
@@ -15244,6 +13992,7 @@ function initXyzCamera() {
 		});
 
 		const flavor = describeCameraFlavor(averageLuma, averageMotion);
+		markLocalSignal("camera");
 		setReactiveCssState(averageLuma, averageMotion, averageRgb, flavor.key, {
 			contrast: lightContrast,
 			directionX: lightDirectionX,
@@ -15268,7 +14017,7 @@ function initXyzCamera() {
 			stopButton.classList.toggle("hidden", !isLiveLike);
 			demoButton.setAttribute("aria-pressed", isDemo ? "true" : "false");
 			demoButton.textContent = isDemo ? "Quitter Terre & Mine" : "Terre & Mine";
-			stopButton.textContent = isDemo ? "Couper Terre & Mine" : "Relâcher la membrane";
+			stopButton.textContent = isDemo ? "Couper Terre & Mine" : (isIoSurfaceView() ? "Relâcher la couche" : "Relâcher la membrane");
 
 		if (statusNode instanceof HTMLElement && message) {
 			statusNode.textContent = message;
@@ -15287,9 +14036,337 @@ function initXyzCamera() {
 		renderMusicDesk();
 	};
 
+	const hasRemoteMembraneSignal = () => Boolean(
+		(remotePlasma.snapshot && (remotePlasma.snapshot.latestEvent || remotePlasma.snapshot.weather))
+		|| sceptreFresh()
+	);
+	const remoteMembraneProfile = () => {
+		const snapshot = remotePlasma.snapshot;
+		const sceptreLive = sceptreFresh();
+		const visualBrightness = sceptreLive ? clampNumber(sceptre.state.visual.brightness, 0, 1) : 0;
+		const halo = sceptreHaloLevel();
+		const motion = sceptreLive ? sceptreMotionLevel() : 0;
+		const percussion = sceptreLive ? sceptrePercussionLevel() : 0;
+		const volumeBias = sceptreLive ? clampNumber(sceptre.state.music.volumeBias, 0, 1) : 0;
+		const warmth = sceptreLive
+			? clampNumber((clampNumber(sceptre.state.visual.tintWarmth, -1, 1) + 1) * 0.5, 0, 1)
+			: 0.46;
+		const luma = clampNumber(
+			snapshot
+				? snapshot.luma
+				: Math.max((halo * 0.54) + (visualBrightness * 0.26), visualBrightness),
+			0,
+			1
+		);
+		const cameraMotion = clampNumber(
+			snapshot
+				? ((snapshot.intensity * 0.78) + (snapshot.area * 0.14) + (snapshot.contours * 0.08))
+				: motion * 0.24,
+			0,
+			1
+		);
+		const lightContrast = clampNumber(
+			snapshot
+				? snapshot.contrast
+				: ((clampNumber(sceptreLive ? sceptre.state.visual.contrastBias : 0, 0, 1) * 0.74) + (halo * 0.18)),
+			0,
+			1
+		);
+		const lightDirectionX = clampNumber(
+			sceptreLive
+				? (sceptre.state.motion.roll * 0.78) + (sceptre.state.visual.torusSpin * 0.24)
+				: 0,
+			-1,
+			1
+		);
+		const lightDirectionY = clampNumber(
+			sceptreLive
+				? (-sceptre.state.motion.pitch * 0.82) + ((luma - 0.5) * 0.18)
+				: 0,
+			-1,
+			1
+		);
+		const lightLevel = clampNumber(
+			Math.max(
+				(luma * 0.74) + (lightContrast * 0.14),
+				(halo * 0.82) + (visualBrightness * 0.08),
+				visualBrightness * 0.92
+			),
+			0,
+			1
+		);
+		const motionSensor = clampNumber(
+			Math.max(
+				motion,
+				cameraMotion * 0.76,
+				snapshot ? ((snapshot.area * 0.52) + (snapshot.contours * 0.22)) : 0
+			),
+			0,
+			1
+		);
+		const shake = clampNumber(
+			Math.max(
+				sceptreLive ? sceptre.state.motion.shake : 0,
+				sceptreLive ? sceptre.state.triggers.accent : 0,
+				sceptreLive ? (sceptre.state.triggers.kick * 0.86) : 0,
+				sceptreLive ? (sceptre.state.triggers.snare * 0.62) : 0,
+				cameraMotion * 0.28
+			),
+			0,
+			1
+		);
+		const audioLevel = clampNumber(
+			Math.max(
+				(percussion * 0.82) + (volumeBias * 0.34),
+				volumeBias * 0.72,
+				shake * 0.34
+			),
+			0,
+			1
+		);
+		const tiltX = clampNumber(sceptreLive ? sceptre.state.motion.roll : 0, -1, 1);
+		const tiltY = clampNumber(sceptreLive ? sceptre.state.motion.pitch : 0, -1, 1);
+		const baseRgb = mixRgb([84, 152, 230], [255, 188, 132], warmth);
+		const rgb = mixRgb(baseRgb, [255, 255, 255], clampNumber((lightLevel * 0.42) + (halo * 0.16), 0, 0.62));
+		const flavor = describeCameraFlavor(luma, cameraMotion);
+
+		return {
+			snapshot,
+			luma,
+			cameraMotion,
+			lightContrast,
+			lightDirectionX,
+			lightDirectionY,
+			lightLevel,
+			motionSensor,
+			shake,
+			audioLevel,
+			tiltX,
+			tiltY,
+			halo,
+			percussion,
+			rgb,
+			flavor,
+		};
+	};
+	const remoteMembraneTitle = () => isIoSurfaceView()
+		? "La couche vit déjà avec le sceptre."
+		: "La membrane vit déjà avec le sceptre.";
+	const remoteMembraneMessage = (profile = remoteMembraneProfile()) => {
+		const cameraLabel = plasmaCameraSlug || "pi";
+		if (profile.snapshot?.latestEvent) {
+			return isIoSurfaceView()
+				? `Le sceptre et ${cameraLabel} nourrissent déjà le volume à distance. Mouvement, lumière et pulsation suivent maintenant le relais matériel sans ouvrir la caméra locale.`
+				: `Le sceptre et ${cameraLabel} nourrissent déjà le tore à distance. Mouvement, lumière et pulsation suivent maintenant le relais matériel sans ouvrir la caméra locale.`;
+		}
+
+		return isIoSurfaceView()
+			? "Le sceptre tient déjà une présence distante. Mouvement, halo et rythme gardent le volume vivant pendant que la couche locale reste fermée."
+			: "Le sceptre tient déjà une présence distante. Mouvement, halo et rythme gardent le tore vivant pendant que la membrane locale reste fermée.";
+	};
+	const clearRemotePlasmaPoll = () => {
+		if (remotePlasma.pollTimer) {
+			window.clearTimeout(remotePlasma.pollTimer);
+			remotePlasma.pollTimer = 0;
+		}
+	};
+	const maybeAutoActivateRemoteMembrane = (profile = remoteMembraneProfile()) => {
+		if (
+			remoteAutoplaySuppressed
+			|| isMembraneLive()
+			|| isMembraneDemo()
+			|| stream
+			|| audioStream
+			|| !hasRemoteMembraneSignal()
+		) {
+			return false;
+		}
+
+		setUiState("partial", remoteMembraneMessage(profile), remoteMembraneTitle());
+		setSensorText(wakeNode, "relais distant");
+		return true;
+	};
+	const applyRemoteMembraneFallback = ({ autoActivate = true } = {}) => {
+		if (isMembraneDemo()) {
+			return false;
+		}
+		if (remoteAutoplaySuppressed && !isMembraneLive()) {
+			return false;
+		}
+		if (!hasRemoteMembraneSignal()) {
+			return false;
+		}
+
+		const profile = remoteMembraneProfile();
+		if (autoActivate) {
+			maybeAutoActivateRemoteMembrane(profile);
+		}
+
+		let changed = false;
+		if (!hasRecentLocalSignal("camera")) {
+			const safeRgb = profile.rgb.map((value) => clampNumber(Math.round(Number(value) || 0), 0, 255));
+			document.body.dataset.cameraLuma = profile.luma.toFixed(3);
+			document.body.dataset.cameraMotion = profile.cameraMotion.toFixed(3);
+			document.body.dataset.cameraRgb = safeRgb.join(" ");
+			document.body.dataset.cameraFlavor = profile.flavor.key;
+			document.body.style.setProperty("--camera-luma", profile.luma.toFixed(3));
+			document.body.style.setProperty("--camera-motion", profile.cameraMotion.toFixed(3));
+			document.body.style.setProperty("--camera-rgb", safeRgb.join(" "));
+			membrane.luma = profile.luma;
+			membrane.cameraMotion = profile.cameraMotion;
+			membrane.lightContrast = profile.lightContrast;
+			membrane.lightDirectionX = profile.lightDirectionX;
+			membrane.lightDirectionY = profile.lightDirectionY;
+			if (!hasRecentLocalSignal("light")) {
+				membrane.lightLevel = profile.lightLevel;
+			}
+			setSensorText(
+				cameraNode,
+				profile.snapshot?.latestEvent
+					? `${formatPercent(profile.cameraMotion)} · ${plasmaCameraSlug || cameraFacingLabel()}`
+					: `veille distante · ${cameraFacingLabel()}`
+			);
+			changed = true;
+		}
+
+		if (!hasRecentLocalSignal("light") && !hasRecentLocalSignal("camera")) {
+			membrane.lightLevel = profile.lightLevel;
+			setSensorText(lightNode, `${formatPercent(profile.lightLevel)} · halo ${formatPercent(profile.halo)}`);
+			changed = true;
+		}
+
+		if (!hasRecentLocalSignal("orientation")) {
+			membrane.tiltX = profile.tiltX;
+			membrane.tiltY = profile.tiltY;
+			setSensorText(
+				orientationNode,
+				`α ${Math.round((profile.tiltX + 1) * 90)}° · β ${Math.round(profile.tiltY * 90)}° · sceptre`
+			);
+			changed = true;
+		}
+
+		if (!hasRecentLocalSignal("motion")) {
+			membrane.motionSensor = profile.motionSensor;
+			membrane.shake = profile.shake;
+			setSensorText(
+				motionNode,
+				profile.shake > 0.18
+					? `${formatPercent(profile.motionSensor)} · accent`
+					: `${formatPercent(profile.motionSensor)} · sceptre`
+			);
+			changed = true;
+		}
+
+		if (!hasRecentLocalSignal("audio")) {
+			membrane.audioLevel = profile.audioLevel;
+			setSensorText(
+				audioNode,
+				profile.audioLevel > 0.14
+					? `${formatPercent(profile.audioLevel)} · pulsation`
+					: "sceptre calme"
+			);
+			changed = true;
+		}
+
+		if (changed) {
+			syncMembraneReactiveState();
+		}
+
+		return changed;
+	};
+	const fetchRemotePlasmaState = async () => {
+		if (!plasmaFeedUrl) {
+			return remotePlasma.snapshot;
+		}
+
+		const response = await fetch(plasmaFeedUrl, {
+			cache: "no-store",
+			headers: { Accept: "application/json" },
+		});
+		if (!response.ok) {
+			throw new Error(`plasma feed ${response.status}`);
+		}
+
+		const payload = await response.json();
+		remotePlasma.snapshot = computeRemotePlasmaSnapshot(payload);
+		remotePlasma.weather = payload && typeof payload === "object" && payload.weather && typeof payload.weather === "object"
+			? payload.weather
+			: {};
+		applyRemoteMembraneFallback({ autoActivate: true });
+		return remotePlasma.snapshot;
+	};
+	const scheduleRemotePlasmaPoll = (delay = 3600) => {
+		clearRemotePlasmaPoll();
+		if (!plasmaFeedUrl) {
+			return;
+		}
+
+		remotePlasma.pollTimer = window.setTimeout(async () => {
+			if (document.hidden) {
+				scheduleRemotePlasmaPoll(5200);
+				return;
+			}
+
+			if (!remotePlasma.inFlight) {
+				remotePlasma.inFlight = true;
+				try {
+					await fetchRemotePlasmaState();
+				} catch {
+					// Keep the last remote plasma state.
+				} finally {
+					remotePlasma.inFlight = false;
+				}
+			}
+
+			scheduleRemotePlasmaPoll(3600);
+		}, delay);
+	};
+	const primeRemoteMembrane = async () => {
+		const tasks = [];
+		if (plasmaFeedUrl) {
+			tasks.push(fetchRemotePlasmaState().catch(() => null));
+		}
+		if ((sceptreConstellationFeedUrl || sceptreFeedUrl) && !sceptreFresh()) {
+			tasks.push(fetchSceptreState().catch(() => null));
+		}
+		if (tasks.length) {
+			await Promise.all(tasks);
+		}
+		return hasRemoteMembraneSignal();
+	};
+	const bindRemoteAudioUnlock = () => {
+		if (remoteAudioUnlockBound) {
+			return;
+		}
+
+		const unlock = async () => {
+			if (!isMembraneLive() || isMembraneDemo() || !hasRemoteMembraneSignal()) {
+				return;
+			}
+
+			const ready = await ensureMotionVoice().catch(() => false);
+			if (!ready) {
+				return;
+			}
+
+			updateMotionVoice();
+			cueMotionVoice(0.84);
+		};
+
+		["pointerdown", "touchstart", "keydown"].forEach((eventName) => {
+			window.addEventListener(eventName, () => {
+				void unlock();
+			}, { passive: true });
+		});
+		remoteAudioUnlockBound = true;
+	};
+
 	const stopStream = ({ quiet = false } = {}) => {
 		const shouldNotifyBridge = !quiet && isMembraneLive() && !isMembraneDemo();
 		const closeMetrics = membraneMetricsSnapshot();
+		if (!quiet) {
+			remoteAutoplaySuppressed = true;
+		}
 		stopBridgePulse();
 		stopDemoMode();
 		resetSensorFeedback();
@@ -15404,7 +14481,18 @@ function initXyzCamera() {
 	};
 
 	const startLiveMembrane = async ({ restarting = false } = {}) => {
+		remoteAutoplaySuppressed = false;
 		if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+			const remoteReady = await primeRemoteMembrane();
+			if (remoteReady) {
+				setUiState("partial", remoteMembraneMessage(), remoteMembraneTitle());
+				applyRemoteMembraneFallback({ autoActivate: false });
+				bindRemoteAudioUnlock();
+				updateMotionVoice();
+				cueMotionVoice(0.78);
+				return;
+			}
+
 			setUiState(
 				"unsupported",
 				"La membrane ne trouve pas de caméra ou de micro disponibles ici. Le tore garde donc un monde synthétique comme pulpe de secours.",
@@ -15448,6 +14536,7 @@ function initXyzCamera() {
 		await ensureMotionVoice().catch(() => false);
 		await requestDeviceOrientationLock();
 		queueSensorFeedback({ orientationReady, motionReady });
+		const remoteReady = await primeRemoteMembrane();
 
 		let videoReady = false;
 		let audioReady = false;
@@ -15502,6 +14591,10 @@ function initXyzCamera() {
 							? "La membrane nourrit maintenant la surface."
 							: "La membrane voit déjà la surface."))
 			);
+			if (remoteReady) {
+				applyRemoteMembraneFallback({ autoActivate: false });
+			}
+			bindRemoteAudioUnlock();
 			updateMotionVoice();
 			cueMotionVoice(audioReady ? 1 : 0.9);
 			pulseDeviceHaptics("medium");
@@ -15514,40 +14607,48 @@ function initXyzCamera() {
 			return;
 		}
 
-		if (audioReady || sensorReady || lightReady || wakeReady) {
+		if (audioReady || sensorReady || lightReady || wakeReady || remoteReady) {
 			setUiState(
 				"partial",
-				isSpatialHeadsetSurface
-					? (cameraFacingMode === "environment"
-						? (audioReady
-							? "Le paysage n est pas encore entièrement visible, mais l air et la présence locale suffisent déjà pour régler le rythme du tore."
-							: "La couche spatiale reste partielle ici. On garde tout de même une lecture stable du paysage sans promettre encore le vrai volume natif.")
-						: (audioReady
-							? "La couche spatiale n a pas encore toute l image, mais l air et la présence locale suffisent déjà pour régler le rythme du tore."
-							: "La couche spatiale reste partielle ici. On garde une lecture stable sans promettre encore le vrai volume natif."))
-					: (cameraFacingMode === "environment"
-						? (audioReady
-							? "La membrane ne tient pas encore toute l image du dehors, mais le tore écoute déjà souffle, lumière, marche ou veille et peut rester vivant."
-							: "La membrane ne capte pas encore tout le paysage, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le tore.")
-						: (audioReady
-							? "La membrane n’a pas encore d’image, mais le tore écoute déjà souffle, mouvement, lumière ou veille et peut rester vivant sur Android."
-							: "La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le tore.")),
-				isSpatialHeadsetSurface
-					? (cameraFacingMode === "environment"
-						? (audioReady
-							? "Le paysage chante sans image complète."
-							: "Le paysage dérive en mode partiel.")
-						: (audioReady
-							? "La couche spatiale écoute sans image complète."
-							: "La couche spatiale dérive en mode partiel."))
-					: (cameraFacingMode === "environment"
-						? (audioReady
-							? "Le paysage chante sans image complète."
-							: "Le paysage dérive en mode partiel.")
-						: (audioReady
-							? "La membrane écoute sans image."
-							: "La membrane dérive en mode partiel."))
+				remoteReady && !audioReady && !sensorReady && !lightReady
+					? remoteMembraneMessage()
+					: (isSpatialHeadsetSurface
+						? (cameraFacingMode === "environment"
+							? (audioReady
+								? "Le paysage n est pas encore entièrement visible, mais l air et la présence locale suffisent déjà pour régler le rythme du tore."
+								: "La couche spatiale reste partielle ici. On garde tout de même une lecture stable du paysage sans promettre encore le vrai volume natif.")
+							: (audioReady
+								? "La couche spatiale n a pas encore toute l image, mais l air et la présence locale suffisent déjà pour régler le rythme du tore."
+								: "La couche spatiale reste partielle ici. On garde une lecture stable sans promettre encore le vrai volume natif."))
+						: (cameraFacingMode === "environment"
+							? (audioReady
+								? "La membrane ne tient pas encore toute l image du dehors, mais le tore écoute déjà souffle, lumière, marche ou veille et peut rester vivant."
+								: "La membrane ne capte pas encore tout le paysage, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le tore.")
+							: (audioReady
+								? "La membrane n’a pas encore d’image, mais le tore écoute déjà souffle, mouvement, lumière ou veille et peut rester vivant sur Android."
+								: "La membrane ne capte pas encore toute l’image ou tout le souffle, mais elle lit déjà mouvement, lumière ou présence de veille et peut déjà faire jouer le tore."))),
+				remoteReady && !audioReady && !sensorReady && !lightReady
+					? remoteMembraneTitle()
+					: (isSpatialHeadsetSurface
+						? (cameraFacingMode === "environment"
+							? (audioReady
+								? "Le paysage chante sans image complète."
+								: "Le paysage dérive en mode partiel.")
+							: (audioReady
+								? "La couche spatiale écoute sans image complète."
+								: "La couche spatiale dérive en mode partiel."))
+						: (cameraFacingMode === "environment"
+							? (audioReady
+								? "Le paysage chante sans image complète."
+								: "Le paysage dérive en mode partiel.")
+							: (audioReady
+								? "La membrane écoute sans image."
+								: "La membrane dérive en mode partiel.")))
 			);
+			if (remoteReady) {
+				applyRemoteMembraneFallback({ autoActivate: false });
+			}
+			bindRemoteAudioUnlock();
 			updateMotionVoice();
 			cueMotionVoice(audioReady ? 0.94 : 0.82);
 			pulseDeviceHaptics("soft");
@@ -15597,6 +14698,7 @@ function initXyzCamera() {
 	};
 
 	startButton.addEventListener("click", async () => {
+		remoteAutoplaySuppressed = false;
 		await startLiveMembrane();
 	});
 
@@ -15779,6 +14881,7 @@ function initXyzCamera() {
 			}
 		});
 		clearSceptrePoll();
+		clearRemotePlasmaPoll();
 		stopStream();
 	});
 
@@ -15792,6 +14895,10 @@ function initXyzCamera() {
 			void fetchSceptreState().catch(() => {});
 			scheduleSceptrePoll(2400);
 		}
+		if (!document.hidden && plasmaFeedUrl) {
+			void fetchRemotePlasmaState().catch(() => {});
+			scheduleRemotePlasmaPoll(3600);
+		}
 	});
 
 	setSensorText(orientationNode, isSpatialHeadsetSurface ? "geste a venir" : "prête");
@@ -15802,9 +14909,14 @@ function initXyzCamera() {
 	setSensorText(wakeNode, "sur demande");
 	setSceptreState(null);
 	resetMembraneReactiveState();
+	bindRemoteAudioUnlock();
 	if (sceptreFeedUrl) {
 		void fetchSceptreState().catch(() => {});
 		scheduleSceptrePoll(2400);
+	}
+	if (plasmaFeedUrl) {
+		void fetchRemotePlasmaState().catch(() => {});
+		scheduleRemotePlasmaPoll(3600);
 	}
 
 	try {
@@ -15922,8 +15034,10 @@ function normalizeSceptreState(payload) {
 		source: "pi3-bplus-sceptre",
 		scene: "veille",
 		ritualMode: "veille",
-		lead: "Le sceptre dort encore dans le tore.",
-		summary: "Le Pi 3 B+ et son Sensor HAT peuvent deja devenir une main, un climat et un rythme pour la surface.",
+		lead: isIoSurfaceView() ? "Le sceptre attend encore sa première levée." : "Le sceptre attend encore son premier souffle.",
+		summary: isIoSurfaceView()
+			? "Le Pi 3 B+ et son Sensor HAT donnent au volume une main, un climat et un rythme."
+			: "Le Pi 3 B+ et son Sensor HAT peuvent deja devenir une main, un climat et un rythme pour la surface.",
 		updatedAt: "",
 		freshness: "idle",
 		stale: false,
@@ -16173,1293 +15287,9 @@ function normalizeSceptreConstellation(payload, fallbackPrimaryDevice = "ensembl
 	return normalized;
 }
 
-function initSceptreConsole() {
-	const root = document.querySelector("[data-sceptre-console-root]");
-	if (!(root instanceof HTMLElement)) {
-		return;
-	}
+// Sceptre console and pocket camera panels moved to main.sceptre.js
 
-	const feedUrl = (root.dataset.sceptreFeed || "").trim();
-	const badgeNode = root.querySelector("[data-sceptre-console-badge]");
-	const leadNode = root.querySelector("[data-sceptre-console-lead]");
-	const summaryNode = root.querySelector("[data-sceptre-console-summary]");
-	const spellNode = root.querySelector("[data-sceptre-console-spell]");
-	const ritualNode = root.querySelector("[data-sceptre-console-ritual]");
-	const screenNode = root.querySelector("[data-sceptre-console-screen]");
-	const motionNode = root.querySelector("[data-sceptre-console-motion]");
-	const climateNode = root.querySelector("[data-sceptre-console-climate]");
-	const percussionNode = root.querySelector("[data-sceptre-console-percussion]");
-	const haloNode = root.querySelector("[data-sceptre-console-halo]");
-	const tempoNode = root.querySelector("[data-sceptre-console-tempo]");
-	const filterNode = root.querySelector("[data-sceptre-console-filter]");
-	const negativeNode = root.querySelector("[data-sceptre-console-negative]");
-	const spinNode = root.querySelector("[data-sceptre-console-spin]");
-	const state = {
-		payload: normalizeSceptreState(null),
-		timer: 0,
-		inFlight: false,
-	};
-
-	const setText = (node, value) => {
-		if (node instanceof HTMLElement) {
-			node.textContent = value;
-		}
-	};
-	const formatPercent = (value) => `${Math.round(clampNumber(Number(value) || 0, 0, 1) * 100)}%`;
-	const formatSignedPercent = (value) => {
-		const safeValue = clampNumber(Number(value) || 0, -1, 1);
-		const percent = Math.round(Math.abs(safeValue) * 100);
-		if (percent === 0) {
-			return "0%";
-		}
-		return `${safeValue > 0 ? "+" : "−"}${percent}%`;
-	};
-	const climateLabel = (payload) => {
-		const parts = [];
-		if (Number.isFinite(payload.climate.temperature_c)) {
-			parts.push(`${Math.round(payload.climate.temperature_c)}°`);
-		}
-		if (Number.isFinite(payload.climate.humidity_percent)) {
-			parts.push(`${Math.round(payload.climate.humidity_percent)}%`);
-		}
-		if (Number.isFinite(payload.climate.pressure_hpa)) {
-			parts.push(`${Math.round(payload.climate.pressure_hpa)}hPa`);
-		}
-		return parts.length ? parts.join(" · ") : "respire";
-	};
-
-	const render = () => {
-		const payload = state.payload;
-		const motionLevel = clampNumber(Math.max(payload.motion.sway, payload.motion.shake, Math.abs(payload.motion.pitch) * 0.4), 0, 1);
-		setText(badgeNode, payload.freshness === "fresh" ? payload.scene : (payload.freshness === "stale" ? "attente" : "veille"));
-		setText(leadNode, payload.lead);
-		setText(summaryNode, payload.summary);
-		setText(spellNode, payload.magic.spell || "silence tenu");
-		setText(ritualNode, payload.ritualMode || "veille");
-		setText(screenNode, payload.screen.label || payload.screen.page || "veille");
-		setText(motionNode, formatPercent(motionLevel));
-		setText(climateNode, climateLabel(payload));
-		setText(percussionNode, formatPercent(Math.max(payload.music.percussionBias, payload.triggers.accent)));
-		setText(haloNode, formatPercent(payload.visual.halo));
-		setText(tempoNode, formatSignedPercent(payload.music.tempoBias));
-		setText(filterNode, formatSignedPercent(payload.music.filterBias));
-		setText(negativeNode, formatPercent(payload.visual.negativeBias));
-		setText(spinNode, formatSignedPercent(payload.visual.torusSpin));
-
-		root.dataset.sceptreFreshness = payload.freshness;
-		root.style.setProperty("--sceptre-presence", motionLevel.toFixed(3));
-		root.style.setProperty("--sceptre-halo", payload.visual.halo.toFixed(3));
-		root.style.setProperty("--sceptre-negative", payload.visual.negativeBias.toFixed(3));
-		root.style.setProperty("--sceptre-spin", payload.visual.torusSpin.toFixed(3));
-		root.style.setProperty("--sceptre-warmth", payload.visual.tintWarmth.toFixed(3));
-	};
-
-	const fetchState = async () => {
-		if (!feedUrl) {
-			return;
-		}
-		const response = await fetch(feedUrl, {
-			cache: "no-store",
-			headers: { Accept: "application/json" },
-		});
-		if (!response.ok) {
-			throw new Error(`sceptre console feed ${response.status}`);
-		}
-		state.payload = normalizeSceptreState(await response.json());
-		render();
-	};
-
-	const clearPoll = () => {
-		if (state.timer) {
-			window.clearTimeout(state.timer);
-			state.timer = 0;
-		}
-	};
-
-	const schedulePoll = (delay = 2800) => {
-		clearPoll();
-		if (!feedUrl) {
-			return;
-		}
-		state.timer = window.setTimeout(async () => {
-			if (!document.hidden && !state.inFlight) {
-				state.inFlight = true;
-				try {
-					await fetchState();
-				} catch {
-					// Keep the last stable console state.
-				} finally {
-					state.inFlight = false;
-				}
-			}
-			schedulePoll(document.hidden ? 5200 : 2800);
-		}, delay);
-	};
-
-	render();
-	if (feedUrl) {
-		void fetchState().catch(() => {});
-		schedulePoll(1200);
-	}
-
-	window.addEventListener("beforeunload", clearPoll);
-}
-
-function initPocketCameraPanels() {
-	const roots = Array.from(document.querySelectorAll("[data-pocket-camera-root]"));
-	if (!roots.length) {
-		return;
-	}
-
-	const withCacheBust = (url) => {
-		if (typeof url !== "string" || url.trim() === "") {
-			return "";
-		}
-
-		try {
-			const resolved = new URL(url, window.location.href);
-			resolved.searchParams.set("_t", `${Date.now()}`);
-			return resolved.toString();
-		} catch {
-			return `${url}${url.includes("?") ? "&" : "?"}_t=${Date.now()}`;
-		}
-	};
-
-	roots.forEach((root) => {
-		if (!(root instanceof HTMLElement)) {
-			return;
-		}
-
-			const frame = root.querySelector("[data-pocket-camera-frame]");
-			const fallback = root.querySelector("[data-pocket-camera-fallback]");
-			const overlay = root.querySelector("[data-pocket-camera-overlay]");
-		const status = root.querySelector("[data-pocket-camera-status]");
-		const badge = root.querySelector("[data-pocket-camera-badge]");
-		const mode = root.querySelector("[data-pocket-camera-mode]");
-		const presence = root.querySelector("[data-pocket-camera-presence]");
-		const aiLine = root.querySelector("[data-pocket-camera-ai-line]");
-		const vision = root.querySelector("[data-pocket-camera-vision]");
-		const liveButton = root.querySelector("[data-pocket-camera-live]");
-		const snapshotButton = root.querySelector("[data-pocket-camera-snapshot]");
-		const openLink = root.querySelector("[data-pocket-camera-open]");
-
-			if (!(frame instanceof HTMLImageElement)) {
-				return;
-			}
-
-		const streamUrl = (root.dataset.pocketCameraStream || "").trim();
-		const snapshotUrl = (root.dataset.pocketCameraSnapshot || "").trim();
-		const aiFeedUrl = (root.dataset.pocketCameraAiFeed || "").trim();
-		const cameraLabel = (root.dataset.pocketCameraLabel || "camera").trim();
-		const autostart = root.dataset.pocketCameraAutostart === "1";
-
-			const state = {
-				mode: snapshotUrl ? "snapshot" : "live",
-				pendingMode: "",
-			liveTimeout: 0,
-			snapshotLoopTimer: 0,
-			aiPollTimer: 0,
-				ai: normalizeCameraAiState(null),
-			};
-			let aiPollInFlight = false;
-
-			const clearLiveTimeout = () => {
-			if (state.liveTimeout) {
-				window.clearTimeout(state.liveTimeout);
-				state.liveTimeout = 0;
-			}
-		};
-
-		const clearSnapshotLoop = () => {
-			if (state.snapshotLoopTimer) {
-				window.clearTimeout(state.snapshotLoopTimer);
-				state.snapshotLoopTimer = 0;
-			}
-		};
-
-			const clearAiPoll = () => {
-				if (state.aiPollTimer) {
-					window.clearTimeout(state.aiPollTimer);
-					state.aiPollTimer = 0;
-				}
-			};
-
-		const setText = (node, text) => {
-			if (node instanceof HTMLElement) {
-				node.textContent = text;
-			}
-		};
-
-		const setFallbackVisible = (visible) => {
-			if (!(fallback instanceof HTMLElement)) {
-				return;
-			}
-			fallback.hidden = !visible;
-			fallback.setAttribute("aria-hidden", visible ? "false" : "true");
-		};
-
-		const renderAiOverlay = () => {
-			const detections = Array.isArray(state.ai.detections) ? state.ai.detections.slice(0, 4) : [];
-			const dominant = detections[0] || null;
-			const center = Array.isArray(dominant?.center) && dominant.center.length >= 2
-				? dominant.center
-				: [0.5, 0.46];
-			const area = clampNumber(Number(dominant?.area) || 0, 0, 1);
-			const presenceLevel = clampNumber(state.ai.objectCount / 4, 0, 1);
-			const staleAi = state.ai.stale === true;
-
-			root.style.setProperty("--camera-ai-focus-x", `${(center[0] * 100).toFixed(2)}%`);
-			root.style.setProperty("--camera-ai-focus-y", `${(center[1] * 100).toFixed(2)}%`);
-			root.style.setProperty("--camera-ai-spread", `${(28 + (area * 44)).toFixed(2)}%`);
-			root.style.setProperty("--camera-ai-score", state.ai.dominantScore.toFixed(3));
-			root.style.setProperty("--camera-ai-presence", presenceLevel.toFixed(3));
-			root.dataset.pocketCameraAiFreshness = state.ai.freshness;
-
-			if (vision instanceof HTMLElement) {
-				if (staleAi) {
-					vision.textContent = "IA en attente.";
-				} else if (!detections.length) {
-					vision.textContent = "IA veille.";
-				} else {
-					const leadLabel = dominant && dominant.label ? dominant.label : "forme";
-					const score = Math.round((dominant?.score || 0) * 100);
-					const count = state.ai.objectCount > 1 ? ` · ${state.ai.objectCount}` : "";
-					vision.textContent = `${state.ai.scene} · ${leadLabel} ${score}%${count}`;
-				}
-			}
-
-			if (presence instanceof HTMLElement) {
-				if (state.ai.objectCount > 0) {
-					presence.textContent = `${state.ai.objectCount} forme${state.ai.objectCount > 1 ? "s" : ""}`;
-				} else if (staleAi) {
-					presence.textContent = "attente";
-				}
-			}
-
-			if (!(overlay instanceof HTMLElement)) {
-				return;
-			}
-
-			const fragment = document.createDocumentFragment();
-			detections.forEach((detection) => {
-				if (!Array.isArray(detection.bbox) || detection.bbox.length < 4) {
-					return;
-				}
-
-				const [xMin, yMin, xMax, yMax] = detection.bbox;
-				const mark = document.createElement("div");
-				mark.className = "camera-negative-layer__detection";
-				mark.style.setProperty("--camera-box-left", clampNumber(xMin, 0, 1).toFixed(4));
-				mark.style.setProperty("--camera-box-top", clampNumber(yMin, 0, 1).toFixed(4));
-				mark.style.setProperty("--camera-box-width", clampNumber(xMax - xMin, 0.02, 1).toFixed(4));
-				mark.style.setProperty("--camera-box-height", clampNumber(yMax - yMin, 0.02, 1).toFixed(4));
-				mark.style.setProperty("--camera-box-alpha", clampNumber(detection.score, 0, 1).toFixed(4));
-
-				const label = document.createElement("span");
-				label.className = "camera-negative-layer__detection-label";
-				label.append(document.createTextNode(detection.label || "forme"));
-
-				const score = document.createElement("strong");
-				score.textContent = `${Math.round(clampNumber(detection.score, 0, 1) * 100)}%`;
-				label.append(score);
-
-				mark.append(label);
-				fragment.append(mark);
-			});
-
-			overlay.replaceChildren(fragment);
-		};
-
-		const setAiState = (payload) => {
-			state.ai = normalizeCameraAiState(payload);
-			root.dataset.pocketCameraAiScene = state.ai.scene;
-			root.dataset.pocketCameraAiLabel = state.ai.dominantLabel || "";
-			root.style.setProperty("--camera-ai-attention", state.ai.attention.toFixed(3));
-			root.style.setProperty("--camera-ai-movement", state.ai.movement.toFixed(3));
-			root.style.setProperty("--camera-ai-density", state.ai.density.toFixed(3));
-			if (aiLine instanceof HTMLElement) {
-				aiLine.textContent = [state.ai.lead, state.ai.summary].filter(Boolean).join(" ");
-			}
-			renderAiOverlay();
-		};
-
-		const setPanelState = ({ statusText, badgeText, modeText, presenceText, ready = false }) => {
-			setText(status, statusText);
-			setText(badge, badgeText);
-			setText(mode, modeText);
-			setText(presence, presenceText);
-			root.dataset.pocketCameraReady = ready ? "1" : "0";
-			root.dataset.pocketCameraVisualState = state.pendingMode || state.mode;
-		};
-
-			const setFrameSource = (url) => {
-				const resolved = withCacheBust(url);
-				frame.src = resolved;
-			};
-
-			const fetchAiState = async () => {
-			if (!aiFeedUrl) {
-				return state.ai;
-			}
-
-			const response = await fetch(aiFeedUrl, {
-				cache: "no-store",
-				headers: { Accept: "application/json" },
-			});
-			if (!response.ok) {
-				throw new Error(`camera ai feed ${response.status}`);
-			}
-
-				const payload = await response.json();
-				setAiState(payload);
-				return state.ai;
-			};
-
-			const scheduleAiPoll = (delay = 6200) => {
-				clearAiPoll();
-				if (!aiFeedUrl) {
-					return;
-				}
-
-				state.aiPollTimer = window.setTimeout(async () => {
-					if (document.hidden) {
-						scheduleAiPoll(2800);
-						return;
-					}
-
-					if (!aiPollInFlight) {
-						aiPollInFlight = true;
-						try {
-							await fetchAiState();
-						} catch {
-							// Ignore polling failures and keep the last stable state.
-						} finally {
-							aiPollInFlight = false;
-						}
-					}
-
-					scheduleAiPoll(6200);
-				}, delay);
-			};
-
-		const loadSnapshot = (statusText = "Image fixe.") => {
-			if (!snapshotUrl) {
-				setPanelState({
-					statusText: "Pas de snapshot.",
-					badgeText: "offline",
-					modeText: "indisponible",
-					presenceText: "absent",
-					ready: false,
-				});
-				setFallbackVisible(true);
-				return;
-			}
-
-			clearLiveTimeout();
-			clearSnapshotLoop();
-			state.mode = "snapshot";
-			state.pendingMode = "snapshot";
-			setFallbackVisible(true);
-			setPanelState({
-				statusText,
-				badgeText: "image",
-				modeText: "image",
-				presenceText: "lecture",
-				ready: false,
-			});
-			setFrameSource(snapshotUrl);
-		};
-
-		const startSnapshotCadence = (statusText = "Cadence.") => {
-			if (!snapshotUrl) {
-				loadSnapshot("Live absent.");
-				return;
-			}
-
-			clearLiveTimeout();
-			clearSnapshotLoop();
-			state.mode = "cadence";
-			state.pendingMode = "cadence";
-			setFallbackVisible(true);
-			setPanelState({
-				statusText,
-				badgeText: "cadence",
-				modeText: "images",
-				presenceText: "mouvement",
-				ready: false,
-			});
-
-			const tick = () => {
-				setFrameSource(snapshotUrl);
-					if (document.hidden) {
-						state.snapshotLoopTimer = window.setTimeout(tick, 2200);
-						return;
-					}
-					const cadenceMs = Math.max(720, 1480 - Math.round((state.ai.attention * 320) + (state.ai.movement * 220) + (state.ai.density * 140)));
-					state.snapshotLoopTimer = window.setTimeout(tick, cadenceMs);
-				};
-
-			tick();
-		};
-
-		const loadLive = () => {
-			if (!streamUrl) {
-				loadSnapshot("Live absent.");
-				return;
-			}
-
-			clearLiveTimeout();
-			clearSnapshotLoop();
-			state.mode = "live";
-			state.pendingMode = "live";
-			setFallbackVisible(true);
-			setPanelState({
-				statusText: "Ouverture.",
-				badgeText: "live",
-				modeText: "live",
-				presenceText: "attente",
-				ready: false,
-			});
-			setFrameSource(streamUrl);
-			state.liveTimeout = window.setTimeout(() => {
-				if (state.pendingMode !== "live") {
-					return;
-				}
-				startSnapshotCadence("Cadence auto.");
-			}, 4200);
-		};
-
-		frame.addEventListener("load", () => {
-			clearLiveTimeout();
-			setFallbackVisible(false);
-			if (state.pendingMode === "live") {
-				setPanelState({
-					statusText: "Direct.",
-					badgeText: "live",
-					modeText: "live",
-					presenceText: "actif",
-					ready: true,
-				});
-				return;
-			}
-
-			if (state.pendingMode === "cadence") {
-				setPanelState({
-					statusText: "Cadence.",
-					badgeText: "cadence",
-					modeText: "images",
-					presenceText: "mobile",
-					ready: true,
-				});
-				return;
-			}
-
-			setPanelState({
-				statusText: "Image fixe.",
-				badgeText: "image",
-				modeText: "image",
-				presenceText: "stable",
-				ready: true,
-			});
-		});
-
-		frame.addEventListener("error", () => {
-			clearLiveTimeout();
-			setFallbackVisible(true);
-			if (state.pendingMode === "live" && snapshotUrl) {
-				startSnapshotCadence("Cadence auto.");
-				return;
-			}
-
-			if (state.pendingMode === "cadence") {
-				setPanelState({
-					statusText: "Attente.",
-					badgeText: "cadence",
-					modeText: "attente",
-					presenceText: "attente",
-					ready: false,
-				});
-				return;
-			}
-
-			setPanelState({
-				statusText: "Flux indisponible.",
-				badgeText: "offline",
-				modeText: "erreur",
-				presenceText: "erreur",
-				ready: false,
-			});
-		});
-
-		if (liveButton instanceof HTMLButtonElement) {
-			liveButton.addEventListener("click", () => {
-				loadLive();
-			});
-		}
-
-		if (snapshotButton instanceof HTMLButtonElement) {
-			snapshotButton.addEventListener("click", () => {
-				loadSnapshot("Image fixe.");
-			});
-		}
-
-		if (openLink instanceof HTMLAnchorElement) {
-			openLink.href = streamUrl || snapshotUrl || "#";
-		}
-
-		if (autostart && streamUrl) {
-			loadSnapshot("Image.");
-			window.setTimeout(() => {
-				loadLive();
-			}, 320);
-		} else {
-			loadSnapshot("Image.");
-		}
-
-			setAiState(null);
-			if (aiFeedUrl) {
-				void fetchAiState().catch(() => {});
-				scheduleAiPoll(6200);
-			}
-
-		window.addEventListener("beforeunload", () => {
-			clearLiveTimeout();
-			clearSnapshotLoop();
-			clearAiPoll();
-		});
-	});
-}
-
-function initLandscapeChoirs() {
-	const roots = Array.from(document.querySelectorAll("[data-landscape-choir-root]"));
-	if (!roots.length) {
-		return;
-	}
-
-	const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-	const choirModes = {
-		soft: {
-			label: "chant doux",
-			badge: "doux",
-			idleCopy: "Souffle lent.",
-			activeCopy: "Souffle ouvert.",
-			droneType: "sine",
-			harmonyType: "triangle",
-			shimmerType: "sine",
-			bellType: "sine",
-			masterScale: 1.18,
-			droneScale: 0.9,
-			harmonyScale: 0.82,
-			shimmerScale: 1.2,
-			filterScale: 1.08,
-			filterOffset: 120,
-			lfoScale: 0.88,
-			lfoDepthScale: 0.82,
-			bellGainScale: 1.08,
-			bellSweepScale: 1.08,
-			bellDuration: 1.55,
-		},
-		ritual: {
-			label: "chant rituel",
-			badge: "rituel",
-			idleCopy: "Veille dense.",
-			activeCopy: "Rituel dense.",
-			droneType: "sawtooth",
-			harmonyType: "square",
-			shimmerType: "triangle",
-			bellType: "triangle",
-			masterScale: 1.32,
-			droneScale: 1.2,
-			harmonyScale: 1.26,
-			shimmerScale: 0.72,
-			filterScale: 0.88,
-			filterOffset: -40,
-			lfoScale: 1.18,
-			lfoDepthScale: 1.28,
-			bellGainScale: 1.44,
-			bellSweepScale: 0.94,
-			bellDuration: 1.22,
-		},
-	};
-	const formatPercent = (value) => `${Math.round(clampNumber(Number.isFinite(value) ? value : 0, 0, 1) * 100)}%`;
-	const parseMetric = (metrics, key) => {
-		if (!metrics || typeof metrics !== "object" || !(key in metrics)) {
-			return 0;
-		}
-
-		const value = Number(metrics[key]);
-		return Number.isFinite(value) ? value : 0;
-	};
-	const parseSeed = (root) => {
-		const node = root.querySelector("[data-landscape-choir-seed]");
-		if (!(node instanceof HTMLScriptElement)) {
-			return { weather: {}, events: [] };
-		}
-
-		try {
-			const parsed = JSON.parse(node.textContent || "{}");
-			return parsed && typeof parsed === "object" ? parsed : { weather: {}, events: [] };
-		} catch {
-			return { weather: {}, events: [] };
-		}
-	};
-	const eventTimeMs = (event) => {
-		if (!event || typeof event !== "object") {
-			return 0;
-		}
-
-		const rawValue = typeof event.timestamp === "string" && event.timestamp
-			? event.timestamp
-			: (typeof event.received_at === "string" ? event.received_at : "");
-		if (!rawValue) {
-			return 0;
-		}
-
-		const timestamp = Date.parse(rawValue);
-		return Number.isFinite(timestamp) ? timestamp : 0;
-	};
-	const readCameraEvents = (events, cameraSlug) => {
-		const slug = typeof cameraSlug === "string" ? cameraSlug.trim().toLowerCase() : "";
-		const list = Array.isArray(events) ? events : [];
-		if (!slug) {
-			return list;
-		}
-
-		return list.filter((event) => {
-			if (!event || typeof event !== "object") {
-				return false;
-			}
-
-			const landSlug = typeof event.land_slug === "string" ? event.land_slug.trim().toLowerCase() : "";
-			const source = typeof event.source === "string" ? event.source.trim().toLowerCase() : "";
-			const camera = typeof event.camera === "string" ? event.camera.trim().toLowerCase() : "";
-
-			return landSlug === slug || source === slug || camera === slug;
-		});
-	};
-	const summarizeSnapshot = (snapshot) => {
-		if (!snapshot.latestEvent) {
-			return "veille basse";
-		}
-
-		if (snapshot.intensity >= 0.72) {
-			return "surge chantant";
-		}
-		if (snapshot.intensity >= 0.46) {
-			return "marche sensible";
-		}
-		if (snapshot.intensity >= 0.2) {
-			return "veille vibrante";
-		}
-
-		return "souffle ténu";
-	};
-	const computeSnapshot = (events, weather = {}) => {
-		const list = Array.isArray(events) ? events : [];
-		const latestEvent = list[0] && typeof list[0] === "object" ? list[0] : null;
-		const metrics = latestEvent && latestEvent.metrics && typeof latestEvent.metrics === "object"
-			? latestEvent.metrics
-			: {};
-		const largestArea = Math.max(0, parseMetric(metrics, "largest_area"));
-		const contourCount = Math.max(0, parseMetric(metrics, "contour_count"));
-		const frameLuma = clampNumber(parseMetric(metrics, "frame_luma"), 0, 1);
-		const safeWeather = weather && typeof weather === "object" ? weather : {};
-		const weatherStale = safeWeather.stale === true || safeWeather.freshness === "stale";
-		const weatherAgeSeconds = Number(safeWeather.age_seconds ?? safeWeather.ageSeconds);
-		const ageSeconds = Number.isFinite(weatherAgeSeconds) && weatherAgeSeconds >= 0
-			? weatherAgeSeconds
-			: null;
-		const weatherStaleAfter = Number(safeWeather.stale_after_seconds ?? safeWeather.staleAfterSeconds);
-		const staleAfterSeconds = Number.isFinite(weatherStaleAfter) && weatherStaleAfter > 0
-			? weatherStaleAfter
-			: 90;
-		let area = clampNumber(Math.sqrt(largestArea / 48000), 0, 1);
-		let contours = clampNumber(contourCount / 6, 0, 1);
-		let density = clampNumber((list.length - 1) / 5, 0, 1);
-		const ageMs = latestEvent ? Math.max(0, Date.now() - eventTimeMs(latestEvent)) : Number.POSITIVE_INFINITY;
-		let recency = Number.isFinite(ageMs) ? clampNumber(1 - (ageMs / 120000), 0, 1) : 0;
-		let intensity = clampNumber((area * 0.44) + (contours * 0.18) + (frameLuma * 0.16) + (density * 0.1) + (recency * 0.12), 0, 1);
-		if (weatherStale) {
-			const staleOverrun = ageSeconds !== null ? Math.max(0, ageSeconds - staleAfterSeconds) : staleAfterSeconds;
-			const staleFade = clampNumber(1 - (staleOverrun / Math.max(staleAfterSeconds * 3, 45)), 0.14, 0.48);
-			area *= staleFade;
-			contours *= 0.44;
-			density *= 0.28;
-			recency = 0;
-			intensity = Math.min(intensity * (0.22 + (staleFade * 0.18)), 0.18);
-		}
-		const scale = [130.81, 146.83, 164.81, 174.61, 196.0, 220.0, 246.94, 293.66];
-		const scaleIndex = Math.round(frameLuma * (scale.length - 1));
-		const baseFreq = scale[scaleIndex] * (1 + ((area - 0.5) * 0.14));
-		const harmonyRatio = contours >= 0.66 ? 1.5 : contours >= 0.33 ? 1.333 : 1.25;
-		const harmonyFreq = baseFreq * harmonyRatio;
-		const shimmerFreq = baseFreq * (2 + (density * 0.8) + (frameLuma * 0.4));
-		const filterCutoff = 420 + (frameLuma * 2400) + (intensity * 760);
-		let latestMessage = latestEvent && typeof latestEvent.message === "string" && latestEvent.message
-			? latestEvent.message
-			: "Le prochain passage du Pi 3 donnera une voix au paysage.";
-		const latestLabel = latestEvent && typeof latestEvent.timestamp === "string" && latestEvent.timestamp
-			? latestEvent.timestamp
-			: "veille";
-		let statusLabel = summarizeSnapshot({
-			latestEvent,
-			intensity,
-		});
-		if (weatherStale) {
-			statusLabel = "trace froide";
-			if (typeof safeWeather.detail === "string" && safeWeather.detail) {
-				latestMessage = safeWeather.detail;
-			}
-		}
-
-		return {
-			events: list,
-			latestEvent,
-			weather: safeWeather,
-			intensity,
-			area,
-			contours,
-			luma: frameLuma,
-			density,
-			recency,
-			baseFreq,
-			harmonyFreq,
-			shimmerFreq,
-			filterCutoff,
-			statusLabel,
-			latestMessage,
-			latestLabel,
-		};
-	};
-
-	roots.forEach((root) => {
-		if (!(root instanceof HTMLElement)) {
-			return;
-		}
-
-		const statusNode = root.querySelector("[data-landscape-choir-status]");
-		const copyNode = root.querySelector("[data-landscape-choir-copy]");
-		const badgeNode = root.querySelector("[data-landscape-choir-badge]");
-		const lumaNode = root.querySelector("[data-landscape-choir-luma]");
-		const contourNode = root.querySelector("[data-landscape-choir-contours]");
-		const intensityNode = root.querySelector("[data-landscape-choir-intensity]");
-		const lumaBar = root.querySelector("[data-landscape-choir-luma-bar]");
-		const contourBar = root.querySelector("[data-landscape-choir-contours-bar]");
-		const intensityBar = root.querySelector("[data-landscape-choir-intensity-bar]");
-		const toggleButton = root.querySelector("[data-landscape-choir-toggle]");
-		const volumeInput = root.querySelector("[data-landscape-choir-volume]");
-		const volumeLabel = root.querySelector("[data-landscape-choir-volume-label]");
-		const lastNode = root.querySelector("[data-landscape-choir-last]");
-		const modeButtons = Array.from(root.querySelectorAll("[data-landscape-choir-mode]")).filter((node) => node instanceof HTMLButtonElement);
-		const cameraSlug = (root.dataset.landscapeChoirCamera || "").trim();
-		const cameraLabel = (root.dataset.landscapeChoirLabel || cameraSlug || "pocket").trim();
-		const feedUrl = (root.dataset.landscapeChoirFeed || "").trim();
-		const aiFeedUrl = (root.dataset.landscapeChoirAiFeed || "").trim();
-		const seed = parseSeed(root);
-		const state = {
-			running: false,
-			pollTimer: 0,
-			volume: 0.58,
-			audioContext: null,
-			nodes: null,
-			rawSnapshot: null,
-			snapshot: null,
-			lastEventId: "",
-			mode: "soft",
-			ai: normalizeCameraAiState(null),
-			aiPollTimer: 0,
-		};
-
-		const currentModeProfile = () => choirModes[state.mode] || choirModes.soft;
-
-		const setText = (node, text) => {
-			if (node instanceof HTMLElement) {
-				node.textContent = text;
-			}
-		};
-
-		const setMeter = (labelNode, barNode, value) => {
-			const normalized = clampNumber(Number.isFinite(value) ? value : 0, 0, 1);
-			setText(labelNode, formatPercent(normalized));
-			if (barNode instanceof HTMLElement) {
-				barNode.style.setProperty("--landscape-choir-fill", `${Math.round(normalized * 100)}%`);
-			}
-		};
-
-		const setToggleState = () => {
-			if (!(toggleButton instanceof HTMLButtonElement)) {
-				return;
-			}
-
-			toggleButton.setAttribute("aria-pressed", state.running ? "true" : "false");
-			toggleButton.textContent = state.running ? "Couper" : "Écouter";
-		};
-
-		const syncModeButtons = () => {
-			root.dataset.landscapeChoirMode = state.mode;
-			modeButtons.forEach((button) => {
-				const nextMode = (button.dataset.landscapeChoirMode || "").trim();
-				button.setAttribute("aria-pressed", nextMode === state.mode ? "true" : "false");
-			});
-		};
-
-		const mergeSnapshotWithAi = (snapshot, aiPayload) => {
-			const safeSnapshot = snapshot && typeof snapshot === "object"
-				? { ...snapshot }
-				: computeSnapshot([], {});
-			const ai = normalizeCameraAiState(aiPayload);
-			const objectEnergy = clampNumber((ai.objectCount / 6), 0, 1);
-			const personBias = clampNumber(ai.personCount * 0.22, 0, 1);
-			const vehicleBias = clampNumber(ai.vehicleCount * 0.18, 0, 1);
-			const animalBias = clampNumber(ai.animalCount * 0.22, 0, 1);
-			const aiEnergy = clampNumber((ai.attention * 0.44) + (ai.movement * 0.32) + (ai.density * 0.24), 0, 1);
-
-			return {
-				...safeSnapshot,
-				intensity: clampNumber((safeSnapshot.intensity * 0.8) + (aiEnergy * 0.2) + (personBias * 0.06), 0, 1),
-				contours: clampNumber((safeSnapshot.contours * 0.84) + (ai.movement * 0.08) + (ai.density * 0.14), 0, 1),
-				density: clampNumber((safeSnapshot.density * 0.76) + (ai.density * 0.14) + (objectEnergy * 0.1), 0, 1),
-				baseFreq: safeSnapshot.baseFreq * (1 + (personBias * 0.04) - (vehicleBias * 0.03)),
-				harmonyFreq: safeSnapshot.harmonyFreq * (1 + (animalBias * 0.06) + (personBias * 0.03)),
-				shimmerFreq: safeSnapshot.shimmerFreq * (1 + (ai.density * 0.1) + (animalBias * 0.08)),
-				filterCutoff: Math.max(220, (safeSnapshot.filterCutoff * (0.9 + (ai.attention * 0.18))) - (vehicleBias * 180)),
-				ai,
-			};
-		};
-
-		const renderSnapshot = (snapshot) => {
-			const safeSnapshot = snapshot && typeof snapshot === "object"
-				? snapshot
-				: computeSnapshot([], {});
-			const modeProfile = currentModeProfile();
-			const ai = safeSnapshot.ai && typeof safeSnapshot.ai === "object"
-				? normalizeCameraAiState(safeSnapshot.ai)
-				: normalizeCameraAiState(null);
-			const weather = safeSnapshot.weather && typeof safeSnapshot.weather === "object"
-				? safeSnapshot.weather
-				: {};
-			const weatherStale = weather.stale === true || weather.freshness === "stale";
-			const aiStale = ai.stale === true || ai.freshness === "stale";
-			const toneBadge = typeof weather.badge === "string" && weather.badge
-				? weather.badge
-				: (safeSnapshot.latestEvent ? safeSnapshot.statusLabel : "veille");
-			const aiBadge = ai.objectCount > 0 && ai.dominantLabel
-				? `ia ${ai.dominantLabel}`
-				: (aiStale ? "ia attente" : "")
-			;
-			const lead = ai.objectCount > 0
-				? [toneBadge, ai.dominantLabel || ai.scene, `${Math.round(ai.attention * 100)}%`].filter(Boolean).join(" · ")
-				: (aiStale
-					? [toneBadge, "attente IA"].filter(Boolean).join(" · ")
-					: toneBadge);
-			const weatherDetail = typeof weather.detail === "string" && weather.detail
-				? weather.detail
-				: "";
-			const detail = [
-				state.running ? modeProfile.activeCopy : modeProfile.idleCopy,
-				weatherDetail,
-				ai.summary,
-			].filter(Boolean).join(" ");
-			const latestLine = safeSnapshot.latestEvent
-				? `${safeSnapshot.latestLabel} · ${weatherStale ? "Trace refroidie." : safeSnapshot.latestMessage}`
-				: (weatherStale ? "Traces refroidies." : "Aucune trace récente.");
-
-			root.dataset.landscapeChoirState = state.running ? "singing" : "idle";
-			root.dataset.landscapeChoirFreshness = typeof weather.freshness === "string" && weather.freshness
-				? weather.freshness
-				: (safeSnapshot.latestEvent ? "fresh" : "idle");
-			root.dataset.landscapeChoirAiFreshness = ai.freshness;
-			root.style.setProperty("--landscape-choir-energy", safeSnapshot.intensity.toFixed(3));
-			root.style.setProperty("--landscape-choir-luma", safeSnapshot.luma.toFixed(3));
-			root.style.setProperty("--camera-ai-attention", ai.attention.toFixed(3));
-			root.style.setProperty("--camera-ai-movement", ai.movement.toFixed(3));
-			setText(statusNode, state.running ? [modeProfile.badge, lead].filter(Boolean).join(" · ") : lead);
-			setText(copyNode, detail);
-			setText(badgeNode, state.running
-				? `${modeProfile.badge} · ${aiBadge || toneBadge}`
-				: (aiBadge ? `${aiBadge} · ${toneBadge}` : toneBadge));
-			setText(lastNode, latestLine);
-			setMeter(lumaNode, lumaBar, safeSnapshot.luma);
-			setMeter(contourNode, contourBar, safeSnapshot.contours);
-			setMeter(intensityNode, intensityBar, safeSnapshot.intensity);
-		};
-
-		const buildAudioGraph = () => {
-			if (!AudioContextClass) {
-				return null;
-			}
-
-			const context = new AudioContextClass();
-			const masterGain = context.createGain();
-			masterGain.gain.value = 0.0001;
-			masterGain.connect(context.destination);
-
-			const filter = context.createBiquadFilter();
-			filter.type = "lowpass";
-			filter.frequency.value = 900;
-			filter.Q.value = 0.72;
-			filter.connect(masterGain);
-
-			const drone = context.createOscillator();
-			drone.type = "sine";
-			const droneGain = context.createGain();
-			droneGain.gain.value = 0.0001;
-			drone.connect(droneGain);
-			droneGain.connect(filter);
-
-			const harmony = context.createOscillator();
-			harmony.type = "triangle";
-			const harmonyGain = context.createGain();
-			harmonyGain.gain.value = 0.0001;
-			harmony.connect(harmonyGain);
-			harmonyGain.connect(filter);
-
-			const shimmer = context.createOscillator();
-			shimmer.type = "sine";
-			const shimmerGain = context.createGain();
-			shimmerGain.gain.value = 0.0001;
-			shimmer.connect(shimmerGain);
-			shimmerGain.connect(filter);
-
-			const lfo = context.createOscillator();
-			lfo.type = "sine";
-			lfo.frequency.value = 0.16;
-			const lfoDepth = context.createGain();
-			lfoDepth.gain.value = 0.02;
-			lfo.connect(lfoDepth);
-			lfoDepth.connect(droneGain.gain);
-			lfoDepth.connect(harmonyGain.gain);
-
-			drone.start();
-			harmony.start();
-			shimmer.start();
-			lfo.start();
-
-			return {
-				context,
-				masterGain,
-				filter,
-				drone,
-				droneGain,
-				harmony,
-				harmonyGain,
-				shimmer,
-				shimmerGain,
-				lfo,
-				lfoDepth,
-			};
-		};
-
-		const ringBell = (snapshot, accent = 1) => {
-			if (!state.nodes || !state.audioContext || !state.running) {
-				return;
-			}
-
-			const context = state.audioContext;
-			const bell = context.createOscillator();
-			const bellGain = context.createGain();
-			const now = context.currentTime;
-			const modeProfile = currentModeProfile();
-			const ai = snapshot.ai && typeof snapshot.ai === "object" ? normalizeCameraAiState(snapshot.ai) : normalizeCameraAiState(null);
-			const level = (0.018 + (snapshot.intensity * 0.05)) * state.volume * accent * modeProfile.bellGainScale * (1 + (ai.attention * 0.22));
-
-			bell.type = modeProfile.bellType;
-			bell.frequency.setValueAtTime(snapshot.harmonyFreq * (1 + (snapshot.luma * 0.3)), now);
-			bell.frequency.exponentialRampToValueAtTime(Math.max(80, snapshot.shimmerFreq * modeProfile.bellSweepScale), now + 0.9);
-			bellGain.gain.setValueAtTime(0.0001, now);
-			bellGain.gain.exponentialRampToValueAtTime(Math.max(0.0002, level), now + 0.04);
-			bellGain.gain.exponentialRampToValueAtTime(0.0001, now + modeProfile.bellDuration);
-
-			bell.connect(bellGain);
-			bellGain.connect(state.nodes.filter);
-			bell.start(now);
-			bell.stop(now + modeProfile.bellDuration + 0.1);
-		};
-
-		const applySnapshotToAudio = (snapshot, { ring = false } = {}) => {
-			if (!state.nodes || !state.audioContext || !snapshot) {
-				return;
-			}
-
-			const now = state.audioContext.currentTime;
-			const modeProfile = currentModeProfile();
-			const ai = snapshot.ai && typeof snapshot.ai === "object" ? normalizeCameraAiState(snapshot.ai) : normalizeCameraAiState(null);
-			const masterTarget = Math.max(0.0001, (0.026 + (snapshot.intensity * 0.11)) * state.volume * modeProfile.masterScale * (1 + (ai.attention * 0.18)));
-			const droneTarget = (0.032 + (snapshot.intensity * 0.17)) * modeProfile.droneScale;
-			const harmonyTarget = (0.018 + (snapshot.contours * 0.09)) * modeProfile.harmonyScale;
-			const shimmerTarget = (0.008 + (snapshot.luma * 0.056) + (ai.animalCount * 0.01)) * modeProfile.shimmerScale;
-
-			state.nodes.drone.type = modeProfile.droneType;
-			state.nodes.harmony.type = modeProfile.harmonyType;
-			state.nodes.shimmer.type = modeProfile.shimmerType;
-
-			state.nodes.masterGain.gain.cancelScheduledValues(now);
-			state.nodes.masterGain.gain.setTargetAtTime(masterTarget, now, 0.42);
-			state.nodes.filter.frequency.cancelScheduledValues(now);
-			state.nodes.filter.frequency.setTargetAtTime(
-				Math.max(220, (snapshot.filterCutoff * modeProfile.filterScale) + modeProfile.filterOffset),
-				now,
-				0.46,
-			);
-			state.nodes.drone.frequency.cancelScheduledValues(now);
-			state.nodes.drone.frequency.setTargetAtTime(snapshot.baseFreq, now, 0.52);
-			state.nodes.harmony.frequency.cancelScheduledValues(now);
-			state.nodes.harmony.frequency.setTargetAtTime(snapshot.harmonyFreq, now, 0.6);
-			state.nodes.shimmer.frequency.cancelScheduledValues(now);
-			state.nodes.shimmer.frequency.setTargetAtTime(snapshot.shimmerFreq, now, 0.58);
-			state.nodes.droneGain.gain.cancelScheduledValues(now);
-			state.nodes.droneGain.gain.setTargetAtTime(droneTarget, now, 0.5);
-			state.nodes.harmonyGain.gain.cancelScheduledValues(now);
-			state.nodes.harmonyGain.gain.setTargetAtTime(harmonyTarget, now, 0.56);
-			state.nodes.shimmerGain.gain.cancelScheduledValues(now);
-			state.nodes.shimmerGain.gain.setTargetAtTime(shimmerTarget, now, 0.62);
-			state.nodes.lfo.frequency.cancelScheduledValues(now);
-			state.nodes.lfo.frequency.setTargetAtTime(
-				(0.08 + (snapshot.intensity * 0.54) + (snapshot.density * 0.18)) * modeProfile.lfoScale,
-				now,
-				0.7,
-			);
-			state.nodes.lfoDepth.gain.cancelScheduledValues(now);
-			state.nodes.lfoDepth.gain.setTargetAtTime(
-				(0.012 + (snapshot.intensity * 0.038)) * modeProfile.lfoDepthScale,
-				now,
-				0.6,
-			);
-
-			if (ring) {
-				ringBell(snapshot, 1);
-			}
-		};
-
-		const stopPolling = () => {
-			if (state.pollTimer) {
-				window.clearInterval(state.pollTimer);
-				state.pollTimer = 0;
-			}
-		};
-
-		const stopAiPolling = () => {
-			if (state.aiPollTimer) {
-				window.clearInterval(state.aiPollTimer);
-				state.aiPollTimer = 0;
-			}
-		};
-
-		const refreshFromCurrentState = () => {
-			state.snapshot = mergeSnapshotWithAi(state.rawSnapshot, state.ai);
-			renderSnapshot(state.snapshot);
-			if (state.running && state.snapshot) {
-				applySnapshotToAudio(state.snapshot);
-			}
-		};
-
-		const fetchRecent = async ({ ringOnFresh = false } = {}) => {
-			if (!feedUrl) {
-				return state.snapshot;
-			}
-
-			const response = await fetch(feedUrl, {
-				cache: "no-store",
-				headers: { Accept: "application/json" },
-			});
-			if (!response.ok) {
-				throw new Error(`landscape choir feed ${response.status}`);
-			}
-
-			const payload = await response.json();
-			const events = readCameraEvents(payload?.events, cameraSlug);
-			const snapshot = computeSnapshot(events, payload?.weather);
-			const nextEventId = snapshot.latestEvent && typeof snapshot.latestEvent.id === "string"
-				? snapshot.latestEvent.id
-				: "";
-			const isFreshEvent = nextEventId !== "" && nextEventId !== state.lastEventId;
-
-			state.rawSnapshot = snapshot;
-			state.snapshot = mergeSnapshotWithAi(snapshot, state.ai);
-			if (nextEventId !== "") {
-				state.lastEventId = nextEventId;
-			}
-
-			renderSnapshot(state.snapshot);
-			if (state.running) {
-				applySnapshotToAudio(state.snapshot, { ring: ringOnFresh && isFreshEvent });
-			}
-
-			return state.snapshot;
-		};
-
-		const fetchAi = async () => {
-			if (!aiFeedUrl) {
-				return state.ai;
-			}
-
-			const response = await fetch(aiFeedUrl, {
-				cache: "no-store",
-				headers: { Accept: "application/json" },
-			});
-			if (!response.ok) {
-				throw new Error(`camera ai feed ${response.status}`);
-			}
-
-			state.ai = normalizeCameraAiState(await response.json());
-			refreshFromCurrentState();
-			return state.ai;
-		};
-
-		const ensureAudio = async () => {
-			if (!AudioContextClass) {
-				return false;
-			}
-
-			if (!state.nodes) {
-				state.nodes = buildAudioGraph();
-				state.audioContext = state.nodes?.context || null;
-			}
-
-			if (!state.audioContext) {
-				return false;
-			}
-
-			if (state.audioContext.state === "suspended") {
-				await state.audioContext.resume().catch(() => {});
-			}
-
-			return true;
-		};
-
-		const startChoir = async () => {
-			const audioReady = await ensureAudio();
-			if (!audioReady) {
-				setText(statusNode, "Le navigateur ne peut pas ouvrir le chant Web Audio ici.");
-				setText(copyNode, "Essaie depuis Safari, Chrome ou un autre navigateur qui laisse le geste ouvrir la sortie audio.");
-				if (toggleButton instanceof HTMLButtonElement) {
-					toggleButton.disabled = true;
-				}
-				return;
-			}
-
-			state.running = true;
-			setToggleState();
-			root.dataset.landscapeChoirState = "singing";
-
-			if (state.snapshot) {
-				applySnapshotToAudio(state.snapshot, { ring: true });
-				renderSnapshot(state.snapshot);
-			}
-
-			stopPolling();
-			await fetchRecent({ ringOnFresh: false }).catch(() => {});
-			state.pollTimer = window.setInterval(() => {
-				if (document.hidden) {
-					return;
-				}
-				void fetchRecent({ ringOnFresh: true }).catch(() => {});
-			}, 6400);
-		};
-
-		const stopChoir = () => {
-			state.running = false;
-			setToggleState();
-			stopPolling();
-			root.dataset.landscapeChoirState = "idle";
-
-			if (state.nodes && state.audioContext) {
-				const now = state.audioContext.currentTime;
-				state.nodes.masterGain.gain.cancelScheduledValues(now);
-				state.nodes.masterGain.gain.setTargetAtTime(0.0001, now, 0.28);
-			}
-
-			renderSnapshot(state.snapshot);
-			if (state.audioContext && typeof state.audioContext.suspend === "function") {
-				window.setTimeout(() => {
-					if (!state.running) {
-						state.audioContext.suspend().catch(() => {});
-					}
-				}, 380);
-			}
-		};
-
-		if (toggleButton instanceof HTMLButtonElement) {
-			toggleButton.addEventListener("click", () => {
-				if (state.running) {
-					stopChoir();
-					return;
-				}
-
-				void startChoir();
-			});
-		}
-
-		if (volumeInput instanceof HTMLInputElement) {
-			const syncVolume = () => {
-				const nextVolume = clampNumber(Number(volumeInput.value) / 100, 0, 1);
-				state.volume = nextVolume;
-				setText(volumeLabel, `${Math.round(nextVolume * 100)}%`);
-				if (state.running && state.snapshot) {
-					applySnapshotToAudio(state.snapshot);
-				}
-			};
-
-			volumeInput.addEventListener("input", syncVolume);
-			syncVolume();
-		}
-
-		modeButtons.forEach((button) => {
-			button.addEventListener("click", () => {
-				const nextMode = (button.dataset.landscapeChoirMode || "").trim();
-				if (!(nextMode in choirModes) || nextMode === state.mode) {
-					return;
-				}
-
-				state.mode = nextMode;
-				syncModeButtons();
-				renderSnapshot(state.snapshot);
-				if (state.running && state.snapshot) {
-					applySnapshotToAudio(state.snapshot, { ring: true });
-				}
-			});
-		});
-
-		const seedEvents = readCameraEvents(seed?.events, cameraSlug);
-		state.rawSnapshot = computeSnapshot(seedEvents, seed?.weather);
-		state.snapshot = mergeSnapshotWithAi(state.rawSnapshot, state.ai);
-		state.lastEventId = state.snapshot.latestEvent && typeof state.snapshot.latestEvent.id === "string"
-			? state.snapshot.latestEvent.id
-			: "";
-		setToggleState();
-		syncModeButtons();
-		renderSnapshot(state.snapshot);
-		void fetchRecent({ ringOnFresh: false }).catch(() => {});
-		if (aiFeedUrl) {
-			void fetchAi().catch(() => {});
-			state.aiPollTimer = window.setInterval(() => {
-				if (document.hidden) {
-					return;
-				}
-				void fetchAi().catch(() => {});
-			}, 6200);
-		}
-
-		document.addEventListener("visibilitychange", () => {
-			if (document.hidden) {
-				return;
-			}
-
-			void fetchRecent({ ringOnFresh: false }).catch(() => {});
-			if (aiFeedUrl) {
-				void fetchAi().catch(() => {});
-			}
-		});
-
-		window.addEventListener("beforeunload", () => {
-			stopPolling();
-			stopAiPolling();
-			if (state.audioContext && typeof state.audioContext.close === "function") {
-				state.audioContext.close().catch(() => {});
-			}
-		});
-	});
-}
+// Landscape choirs moved to main.landscape.js
 
 function initLabConsole() {
 	const root = document.querySelector("[data-lab-console]");
@@ -18707,9 +16537,6 @@ let cornerDocksBooted = false;
 
 runPageInit("mappingGenie", initMappingGenie);
 runPageInit("deviceBridgePanels", initDeviceBridgePanels);
-runPageInit("pocketCameraPanels", initPocketCameraPanels);
-runPageInit("sceptreConsole", initSceptreConsole);
-runPageInit("landscapeChoirs", initLandscapeChoirs);
 runPageInit("labConsole", initLabConsole);
 runPageInit("xyzSurface", initXyzSurface);
 runPageInit("ioSpatialExplorer", initIoSpatialExplorer);
@@ -21143,2082 +18970,5 @@ function mountGuideVoice(root) {
 	syncDockState();
 }
 
-function initGuideVoice() {
-	const existingRoot = document.querySelector("[data-guide-voice]");
-	const persisted = readGuideVoiceSession();
 
-	const boot = async () => {
-		let root = existingRoot instanceof HTMLElement ? existingRoot : null;
-		if (!root && !persisted.active) {
-			return;
-		}
-
-		if (!root) {
-			const state = await fetchGuideVoiceState(persisted.apiPath || withBridgePrefix("/0wlslw0/voice"));
-			if (!state) {
-				return;
-			}
-			root = createGuideVoiceDock(state);
-		}
-
-		mountGuideVoice(root);
-	};
-
-	boot();
-}
-
-function initMapSurface() {
-	const surfaceRoot = document.getElementById("sowwwl-map-surface");
-	if (!(surfaceRoot instanceof HTMLElement)) {
-		return;
-	}
-
-	const pointsUrl = withBridgePrefix("/map/points");
-	const note = document.getElementById("map-note");
-	const lexicalForm = document.querySelector("[data-map-lexical-form]");
-	const lexicalInput = document.querySelector("[data-map-lexical-input]");
-	const lexicalOutput = document.querySelector("[data-map-lexical-output]");
-	const lexicalChips = Array.from(document.querySelectorAll("[data-map-lexical-chip]"));
-	let currentPayload = null;
-	let currentLexicalQuery = "";
-	let renderFrame = 0;
-	let raProfile = mapRaProfileFromState(readActiveIoRaSession());
-	let worldProfile = mapWorldProfileFromState(readActiveIoWorldInstrumentSession());
-	let spatialProfile = composeMapSpatialProfile(raProfile, worldProfile);
-	let autoLexicalQuery = "";
-	let lexicalUserOverride = false;
-	let lastWorldFacing = readActiveIoWorldInstrumentSession()?.cameraFacing || "";
-	const mapNavigationState = {
-		yaw: 0,
-		pitch: 0,
-		zoom: 1,
-		pointerId: null,
-		armed: false,
-		active: false,
-		moved: false,
-		suppressClick: false,
-		longTouchTimer: 0,
-		startX: 0,
-		startY: 0,
-		lastX: 0,
-		lastY: 0,
-		userControlled: false,
-	};
-
-	const applySpatialMapState = (raState, worldState) => {
-		raProfile = mapRaProfileFromState(raState);
-		worldProfile = mapWorldProfileFromState(worldState);
-		spatialProfile = composeMapSpatialProfile(raProfile, worldProfile);
-		delete surfaceRoot.dataset.raMode;
-		delete surfaceRoot.dataset.raDominant;
-		delete surfaceRoot.dataset.mapWorldTone;
-		delete surfaceRoot.dataset.cameraFacing;
-		if (raState && typeof raState === "object") {
-			surfaceRoot.dataset.raMode = typeof raState.mode === "string" ? raState.mode : "";
-			surfaceRoot.dataset.raDominant = typeof raState.dominant === "string" ? raState.dominant : "";
-		}
-		if (spatialProfile?.tone) {
-			surfaceRoot.dataset.mapWorldTone = spatialProfile.tone;
-		}
-		if (worldState && typeof worldState === "object" && typeof worldState.cameraFacing === "string") {
-			surfaceRoot.dataset.cameraFacing = worldState.cameraFacing;
-			if (lastWorldFacing && lastWorldFacing !== worldState.cameraFacing) {
-				mapNavigationState.userControlled = false;
-			}
-			lastWorldFacing = worldState.cameraFacing;
-		}
-
-		lexicalChips.forEach((chip) => {
-			if (!(chip instanceof HTMLElement)) {
-				return;
-			}
-			delete chip.dataset.raRecommended;
-			delete chip.dataset.worldRecommended;
-			if (spatialProfile && chip.dataset.mapLexicalChip === spatialProfile.query) {
-				chip.dataset.raRecommended = "1";
-				return;
-			}
-			if (spatialProfile && chip.dataset.mapLexicalChip === mapSecondaryQueryForProfile(spatialProfile)) {
-				chip.dataset.worldRecommended = "1";
-			}
-		});
-
-		if (lexicalInput instanceof HTMLInputElement) {
-			lexicalInput.placeholder = spatialProfile?.tone === "landscape"
-				? `${spatialProfile.query} · horizon · @slug · fragment de marche`
-				: spatialProfile
-					? `${spatialProfile.query} · chaud · @slug · fragment lexical`
-				: "chaud · terres · courants · @slug · fragment lexical";
-		}
-
-		if (spatialProfile?.query && lexicalInput instanceof HTMLInputElement) {
-			const trimmed = lexicalInput.value.trim();
-			if (!lexicalUserOverride && (!trimmed || trimmed === autoLexicalQuery)) {
-				autoLexicalQuery = spatialProfile.query;
-				currentLexicalQuery = spatialProfile.query;
-				lexicalInput.value = spatialProfile.query;
-			}
-		}
-
-		if (!mapNavigationState.active && !mapNavigationState.userControlled) {
-			mapNavigationState.zoom = spatialProfile ? spatialProfile.zoom : 1;
-			mapNavigationState.yaw = spatialProfile?.yawBias ?? 0;
-			mapNavigationState.pitch = spatialProfile?.pitchBias ?? 0;
-		}
-
-		if (currentPayload) {
-			renderSurface(currentPayload, currentLexicalQuery);
-		} else if (note instanceof HTMLElement && spatialProfile?.note) {
-			note.textContent = spatialProfile.note;
-		}
-	};
-
-	const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
-
-	const hashSeed = (value) => {
-		const input = String(value || "o-map");
-		let hash = 2166136261;
-		for (let index = 0; index < input.length; index += 1) {
-			hash ^= input.charCodeAt(index);
-			hash = Math.imul(hash, 16777619);
-		}
-		return hash >>> 0;
-	};
-
-	const makeRng = (seed) => {
-		let state = hashSeed(seed) || 1;
-		return () => {
-			state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
-			return state / 4294967295;
-		};
-	};
-
-	const lerp = (left, right, factor) => left + ((right - left) * factor);
-
-	const escapeHtml = (value) => String(value)
-		.replaceAll("&", "&amp;")
-		.replaceAll("<", "&lt;")
-		.replaceAll(">", "&gt;")
-		.replaceAll("\"", "&quot;")
-		.replaceAll("'", "&#039;");
-
-	const formatPercent = (value) => `${Math.round(Number(value || 0) * 100)}%`;
-	const normalizeLexeme = (value) => String(value || "")
-		.normalize("NFD")
-		.replace(/[\u0300-\u036f]/g, "")
-		.toLowerCase()
-		.trim();
-
-	const fetchPoints = async () => {
-		const response = await fetch(pointsUrl, {
-			method: "GET",
-			headers: { Accept: "application/json" },
-			credentials: "same-origin",
-			cache: "no-store",
-		});
-
-		if (!response.ok) {
-			throw new Error(`HTTP ${response.status}`);
-		}
-
-		return response.json();
-	};
-
-	const wrapLongitude = (lng) => ((((lng + 180) % 360) + 360) % 360) - 180;
-
-	const setNavigationMode = (mode) => {
-		surfaceRoot.classList.toggle("is-map-arming", mode === "arming");
-		surfaceRoot.classList.toggle("is-map-navigating", mode === "navigating");
-	};
-
-	const scheduleSurfaceRender = () => {
-		if (!currentPayload || renderFrame) {
-			return;
-		}
-
-		renderFrame = window.requestAnimationFrame(() => {
-			renderFrame = 0;
-			renderSurface(currentPayload, currentLexicalQuery);
-		});
-	};
-
-	const projectPoint = (lng, lat, width, height) => {
-		const safeLng = Number.isFinite(Number(lng)) ? Number(lng) : 0;
-		const safeLat = Number.isFinite(Number(lat)) ? Number(lat) : 0;
-		const navigatedLng = wrapLongitude(safeLng + mapNavigationState.yaw);
-		const navigatedLat = clamp(safeLat + mapNavigationState.pitch, -84, 84);
-		const baseX = ((navigatedLng + 180) / 360) * width;
-		const baseY = ((90 - navigatedLat) / 180) * height;
-		const centerX = width / 2;
-		const centerY = height / 2;
-		const zoom = mapNavigationState.zoom;
-		const torusDepth = 1 + (Math.cos((navigatedLng / 180) * Math.PI) * 0.045);
-		const x = centerX + ((baseX - centerX) * zoom * torusDepth);
-		const y = centerY + ((baseY - centerY) * zoom);
-		return [Math.max(-80, Math.min(width + 80, x)), Math.max(-80, Math.min(height + 80, y))];
-	};
-
-	const buildTorusDust = (seed, width, height, count = 540) => {
-		const rng = makeRng(`torus-dust|${seed}`);
-		const centerX = width / 2;
-		const centerY = height / 2;
-		const particles = [];
-
-		for (let index = 0; index < count; index += 1) {
-			const theta = rng() * Math.PI * 2;
-			const phi = rng() * Math.PI * 2;
-			const majorRadius = 242 + ((rng() - 0.5) * 44);
-			const minorRadius = 72 + (rng() * 48);
-			const x = centerX + Math.cos(theta) * (majorRadius + (Math.cos(phi) * minorRadius * 0.46));
-			const y = centerY + (Math.sin(theta) * 126) + (Math.sin(phi) * (36 + rng() * 20));
-			const size = 0.34 + (rng() * 1.18);
-			const opacity = 0.025 + (rng() * 0.18);
-			const hueShift = Math.round(180 + (rng() * 35));
-			const speedClass = index % 5 === 0 ? "map-particle--fast" : (index % 3 === 0 ? "map-particle--slow" : "");
-			particles.push(`<circle class="map-particle ${speedClass}" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${size.toFixed(2)}" fill="hsla(${hueShift}, 72%, 84%, ${opacity.toFixed(3)})" />`);
-		}
-
-		return particles.join("");
-	};
-
-	const densityAnchorsForKind = (kind) => {
-		switch (kind) {
-			case "person":
-				return [
-					[0, -0.96, 0.18],
-					[0, -0.58, 0.22],
-					[-0.34, -0.26, 0.2],
-					[0.34, -0.26, 0.2],
-					[0, 0.06, 0.26],
-					[-0.18, 0.58, 0.18],
-					[0.18, 0.58, 0.18],
-					[-0.62, -0.06, 0.14],
-					[0.62, -0.06, 0.14],
-				];
-			case "place":
-				return [
-					[0, -0.94, 0.12],
-					[-0.62, -0.34, 0.15],
-					[0.62, -0.34, 0.15],
-					[-0.52, 0.2, 0.22],
-					[0.52, 0.2, 0.22],
-					[0, 0.44, 0.24],
-					[0, 0.02, 0.16],
-					[0, 0.72, 0.18],
-				];
-			default:
-				return [
-					[-0.72, -0.08, 0.14],
-					[-0.4, -0.42, 0.16],
-					[0, -0.52, 0.18],
-					[0.42, -0.26, 0.16],
-					[0.7, 0.04, 0.14],
-					[0.42, 0.34, 0.16],
-					[0, 0.5, 0.18],
-					[-0.42, 0.34, 0.16],
-					[0, 0.02, 0.22],
-				];
-		}
-	};
-
-	const buildDensityFigure = (kind, centerX, centerY, heat, seed) => {
-		const rng = makeRng(`density-figure|${kind}|${seed}`);
-		const anchors = densityAnchorsForKind(kind);
-		const count = Math.round(56 + (heat * 120));
-		const scaleX = 18 + (heat * 28);
-		const scaleY = 24 + (heat * 34);
-		const particles = [];
-
-		for (let index = 0; index < count; index += 1) {
-			const anchor = anchors[Math.floor(rng() * anchors.length)] || anchors[0];
-			const spread = anchor[2] || 0.18;
-			const jitterX = (rng() - 0.5) * scaleX * spread * 2.4;
-			const jitterY = (rng() - 0.5) * scaleY * spread * 2.4;
-			const x = centerX + (anchor[0] * scaleX) + jitterX;
-			const y = centerY + (anchor[1] * scaleY) + jitterY;
-			const size = 0.55 + (rng() * 1.45) + (heat * 0.72);
-			const opacity = 0.12 + (rng() * 0.34) + (heat * 0.16);
-			const color = kind === "person"
-				? `rgba(255, 245, 214, ${opacity.toFixed(3)})`
-				: (kind === "place"
-					? `rgba(159, 226, 195, ${opacity.toFixed(3)})`
-					: `rgba(194, 232, 255, ${opacity.toFixed(3)})`);
-			const speedClass = index % 4 === 0 ? "map-particle--fast" : "";
-			particles.push(`<circle class="map-particle ${speedClass}" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${size.toFixed(2)}" fill="${color}" />`);
-		}
-
-		return particles.join("");
-	};
-
-	const buildLandParticleCloud = (lands, width, height) => {
-		const cloud = [];
-		const figures = [];
-		const kinds = ["person", "place", "object"];
-
-		lands.forEach((feature, index) => {
-			const properties = feature?.properties || {};
-			const coords = Array.isArray(feature?.geometry?.coordinates) ? feature.geometry.coordinates : [];
-			const [x, y] = projectPoint(coords[0], coords[1], width, height);
-			const heat = clamp(Number(properties.activity_heat || 0.18), 0.18, 1);
-			const rng = makeRng(`land-cloud|${properties.slug || index}`);
-			const count = Math.round(96 + (heat * 260));
-			const radiusX = 16 + (heat * 48);
-			const radiusY = 11 + (heat * 34);
-
-			for (let particleIndex = 0; particleIndex < count; particleIndex += 1) {
-				const angle = rng() * Math.PI * 2;
-				const radius = Math.pow(rng(), 1.85);
-				const orbit = 1 + (Math.sin(angle * 3 + rng() * 2) * 0.08);
-				const driftX = Math.cos(angle) * radiusX * radius * orbit;
-				const driftY = Math.sin(angle) * radiusY * radius;
-				const px = x + driftX;
-				const py = y + driftY;
-				const coreBias = 1 - radius;
-				const size = 0.28 + (rng() * 1.25) + (coreBias * heat * 1.45);
-				const opacity = 0.045 + (rng() * 0.22) + (coreBias * heat * 0.4);
-				const speedClass = particleIndex % 6 === 0 ? "map-particle--slow" : "";
-				cloud.push(`<circle class="map-particle ${speedClass}" cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${size.toFixed(2)}" fill="rgba(191, 255, 228, ${opacity.toFixed(3)})" />`);
-			}
-
-			const kind = kinds[hashSeed(properties.slug || String(index)) % kinds.length] || "object";
-			figures.push(buildDensityFigure(kind, x, y - (10 + heat * 18), heat, properties.slug || index));
-		});
-
-		return {
-			cloud: cloud.join(""),
-			figures: figures.join(""),
-		};
-	};
-
-	const buildCurrentParticleCloud = (currents, width, height) => {
-		const particles = [];
-		const veils = [];
-
-		currents.forEach((feature, currentIndex) => {
-			const coords = Array.isArray(feature?.geometry?.coordinates) ? feature.geometry.coordinates : [];
-			const projected = coords
-				.filter((point) => Array.isArray(point) && point.length >= 2)
-				.map((point) => projectPoint(point[0], point[1], width, height));
-
-			if (projected.length < 2) {
-				return;
-			}
-
-			const heat = clamp(Number(feature?.properties?.activity_heat || 0.18), 0.18, 1);
-			const rng = makeRng(`current-cloud|${feature?.properties?.from_slug || currentIndex}|${feature?.properties?.to_slug || currentIndex}`);
-			const count = Math.round(88 + (heat * 230));
-
-			for (let particleIndex = 0; particleIndex < count; particleIndex += 1) {
-				const segmentIndex = Math.min(projected.length - 2, Math.floor(rng() * (projected.length - 1)));
-				const start = projected[segmentIndex];
-				const end = projected[segmentIndex + 1];
-				const factor = rng();
-				const baseX = lerp(start[0], end[0], factor);
-				const baseY = lerp(start[1], end[1], factor);
-				const dx = end[0] - start[0];
-				const dy = end[1] - start[1];
-				const length = Math.max(1, Math.hypot(dx, dy));
-				const normalX = -dy / length;
-				const normalY = dx / length;
-				const centerPull = Math.pow(rng(), 2.35);
-				const spread = (rng() - 0.5) * (10 + heat * 34) * centerPull;
-				const px = baseX + (normalX * spread);
-				const py = baseY + (normalY * spread);
-				const size = 0.22 + (rng() * 1.2) + ((1 - centerPull) * heat * 0.9);
-				const opacity = 0.035 + (rng() * 0.22) + ((1 - centerPull) * heat * 0.28);
-				particles.push(`<circle class="map-current-particle" cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${size.toFixed(2)}" fill="rgba(217, 255, 240, ${opacity.toFixed(3)})" />`);
-			}
-
-			projected.forEach((point, pointIndex) => {
-				if (pointIndex % 2 !== 0) {
-					return;
-				}
-
-				const veilRadius = (14 + heat * 32 + rng() * 18).toFixed(2);
-				const veilOpacity = (0.018 + heat * 0.055).toFixed(3);
-				veils.push(`<circle cx="${point[0].toFixed(2)}" cy="${point[1].toFixed(2)}" r="${veilRadius}" fill="rgba(217,255,240,${veilOpacity})" />`);
-			});
-		});
-
-		return {
-			particles: particles.join(""),
-			veils: veils.join(""),
-		};
-	};
-
-	const lexicalMatchesFeature = (feature, query) => {
-		const normalized = normalizeLexeme(query);
-		if (normalized === "") {
-			return true;
-		}
-
-		const properties = feature?.properties || {};
-		const kind = String(properties.kind || "");
-		const haystack = normalizeLexeme([
-			properties.slug,
-			properties.username,
-			properties.from_slug,
-			properties.to_slug,
-			properties.from_username,
-			properties.to_username,
-			properties.activity_label,
-			properties.timezone,
-			kind,
-		].filter(Boolean).join(" "));
-
-		if (normalized === "aide" || normalized === "?") {
-			return true;
-		}
-
-		if (normalized === "terres") {
-			return kind === "land";
-		}
-
-		if (normalized === "courants") {
-			return kind === "current";
-		}
-
-		if (normalized === "chaud" || normalized === "chaude" || normalized === "hot") {
-			return Number(properties.activity_heat || 0) >= 0.42;
-		}
-
-		if (normalized.startsWith("@")) {
-			const slugNeedle = normalized.slice(1);
-			return normalizeLexeme(properties.slug || properties.from_slug || "").includes(slugNeedle)
-				|| normalizeLexeme(properties.to_slug || "").includes(slugNeedle);
-		}
-
-		return haystack.includes(normalized);
-	};
-
-	const renderLexicalOutput = (payload, query) => {
-		if (!(lexicalOutput instanceof HTMLElement)) {
-			return;
-		}
-
-		const normalized = normalizeLexeme(query);
-		const features = Array.isArray(payload?.features) ? payload.features : [];
-		if (normalized === "" || normalized === "aide" || normalized === "?") {
-			lexicalOutput.innerHTML = "<p>Commandes : <strong>chaud</strong>, <strong>terres</strong>, <strong>courants</strong>, <strong>@slug</strong>, ou n’importe quel fragment lexical.</p>";
-			return;
-		}
-
-		const matches = features.filter((feature) => lexicalMatchesFeature(feature, query)).slice(0, 8);
-		if (!matches.length) {
-			lexicalOutput.innerHTML = `<p>Aucun nœud ne répond à <strong>${escapeHtml(query)}</strong>. Essaie une racine plus courte.</p>`;
-			return;
-		}
-
-		lexicalOutput.innerHTML = matches.map((feature) => {
-			const properties = feature?.properties || {};
-			if (properties.kind === "land") {
-				return `<p>terre · <a href="${escapeHtml(properties.land_url || "/land")}">${escapeHtml(properties.username || properties.slug || "inconnue")}</a> · chaleur ${formatPercent(properties.activity_heat)}</p>`;
-			}
-
-			return `<p>courant · ${escapeHtml(properties.from_username || properties.from_slug || "origine")} → ${escapeHtml(properties.to_username || properties.to_slug || "destination")} · chaleur ${formatPercent(properties.activity_heat)}</p>`;
-		}).join("");
-	};
-
-	const renderSurface = (payload, query = "") => {
-		const features = Array.isArray(payload?.features) ? payload.features : [];
-		const lands = features.filter((feature) => feature?.properties?.kind === "land");
-		const currents = features.filter((feature) => feature?.properties?.kind === "current");
-		const hasLexicalQuery = normalizeLexeme(query) !== "" && normalizeLexeme(query) !== "aide" && normalizeLexeme(query) !== "?";
-		const matchingFeatures = hasLexicalQuery ? features.filter((feature) => lexicalMatchesFeature(feature, query)) : features;
-		const matchingLandSlugs = new Set(matchingFeatures
-			.filter((feature) => feature?.properties?.kind === "land")
-			.map((feature) => String(feature?.properties?.slug || "")));
-		const matchingCurrentKeys = new Set(matchingFeatures
-			.filter((feature) => feature?.properties?.kind === "current")
-			.map((feature) => `${feature?.properties?.from_slug || ""}|${feature?.properties?.to_slug || ""}`));
-		const svgWidth = 960;
-		const svgHeight = 540;
-		const dust = buildTorusDust(`${lands.length}|${currents.length}`, svgWidth, svgHeight);
-		const landParticles = buildLandParticleCloud(lands, svgWidth, svgHeight);
-		const currentParticles = buildCurrentParticleCloud(currents, svgWidth, svgHeight);
-
-		const currentPaths = currents.map((feature) => {
-			const coords = Array.isArray(feature?.geometry?.coordinates) ? feature.geometry.coordinates : [];
-			if (!coords.length) {
-				return "";
-			}
-
-			const [firstLng, firstLat] = Array.isArray(coords[0]) ? coords[0] : [0, 0];
-			const [startX, startY] = projectPoint(firstLng, firstLat, svgWidth, svgHeight);
-			const segments = coords.slice(1).map((point) => {
-				const [lng, lat] = Array.isArray(point) ? point : [0, 0];
-				const [x, y] = projectPoint(lng, lat, svgWidth, svgHeight);
-				return `L ${x.toFixed(2)} ${y.toFixed(2)}`;
-			}).join(" ");
-			const heat = Math.max(0.18, Math.min(1, Number(feature?.properties?.activity_heat || 0.18)));
-			const opacity = (0.025 + heat * 0.08).toFixed(3);
-			const strokeWidth = (0.5 + heat * 1.35).toFixed(2);
-			const currentKey = `${feature?.properties?.from_slug || ""}|${feature?.properties?.to_slug || ""}`;
-			const matchClass = hasLexicalQuery && matchingCurrentKeys.has(currentKey) ? " map-line-ghost--match" : "";
-			return `<path class="map-line-ghost${matchClass}" d="M ${startX.toFixed(2)} ${startY.toFixed(2)} ${segments}" fill="none" stroke="rgba(217,255,240,${opacity})" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" />`;
-		}).join("");
-
-		const landDots = lands.map((feature) => {
-			const coords = Array.isArray(feature?.geometry?.coordinates) ? feature.geometry.coordinates : [];
-			const [lng, lat] = coords;
-			const [x, y] = projectPoint(lng, lat, svgWidth, svgHeight);
-			const heat = Math.max(0.18, Math.min(1, Number(feature?.properties?.activity_heat || 0.18)));
-			const radius = (2.2 + heat * 4.2).toFixed(2);
-			const glow = (18 + heat * 42).toFixed(2);
-			const slug = escapeHtml(feature?.properties?.slug || "terre");
-			const username = escapeHtml(feature?.properties?.username || slug);
-			const matchClass = hasLexicalQuery && matchingLandSlugs.has(String(feature?.properties?.slug || "")) ? " map-core-node--match" : "";
-			return `
-				<g>
-					<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${glow}" fill="rgba(159,226,195,${(0.028 + heat * 0.055).toFixed(3)})" />
-					<a href="${escapeHtml(feature?.properties?.land_url || "/land")}" aria-label="ouvrir la terre ${username}">
-						<circle class="map-core-node${matchClass}" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${radius}" fill="rgba(236,255,248,0.74)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
-					</a>
-					<title>${username} · @${slug}</title>
-				</g>
-			`;
-		}).join("");
-
-		const topLands = lands
-			.slice()
-			.sort((left, right) => Number(right?.properties?.activity_heat || 0) - Number(left?.properties?.activity_heat || 0))
-			.slice(0, 6)
-			.map((feature) => {
-				const properties = feature?.properties || {};
-				return `
-					<article class="map-fallback__item">
-						<a href="${escapeHtml(properties.land_url || "/land")}"><strong>${escapeHtml(properties.username || properties.slug || "Terre")} · @${escapeHtml(properties.slug || "inconnue")}</strong></a>
-						<p>${escapeHtml(properties.activity_label || "latente")} · chaleur ${formatPercent(properties.activity_heat)} · ${Number(properties.signal_public_count || 0)} signal(s) public(s)</p>
-						<p>Fuseau · ${escapeHtml(properties.timezone || "n/a")}</p>
-					</article>
-				`;
-			}).join("");
-
-		const hotCurrents = currents
-			.slice()
-			.sort((left, right) => Number(right?.properties?.activity_heat || 0) - Number(left?.properties?.activity_heat || 0))
-			.slice(0, 6)
-			.map((feature) => {
-				const properties = feature?.properties || {};
-				return `
-					<article class="map-fallback__item">
-						<strong>${escapeHtml(properties.from_username || properties.from_slug || "origine")} → ${escapeHtml(properties.to_username || properties.to_slug || "destination")}</strong>
-						<p>${escapeHtml(properties.activity_label || "en circulation")} · chaleur ${formatPercent(properties.activity_heat)}</p>
-						<p>${Number(properties.passage_count || 0)} passage(s) observé(s)</p>
-					</article>
-				`;
-			}).join("");
-		const listTitles = mapListTitlesForProfile(spatialProfile);
-		const legendTone = mapLegendToneLabel(spatialProfile);
-
-		surfaceRoot.innerHTML = lands.length > 0
-			? `
-				<div class="map-fallback__legend">
-					<span><span class="map-fallback__dot"></span> <strong>${lands.length}</strong> terre(s)</span>
-					<span><span class="map-fallback__line"></span> <strong>${currents.length}</strong> courant(s)</span>
-					<span>rendu local autonome</span>
-					${legendTone ? `<span class="map-fallback__tone">${escapeHtml(legendTone)}</span>` : ""}
-					<span class="map-fallback__nav">${escapeHtml(spatialProfile?.nav || "scroll = zoom · clic/glisse = dérive · appui long tactile")}</span>
-				</div>
-				<div class="map-fallback__frame">
-					<svg class="map-fallback__svg" viewBox="0 0 ${svgWidth} ${svgHeight}" role="img" aria-label="Vue torique simplifiée des terres actives">
-						<defs>
-							<radialGradient id="torusCore" cx="50%" cy="50%" r="50%">
-								<stop offset="0%" stop-color="rgba(159,226,195,0.18)" />
-								<stop offset="55%" stop-color="rgba(159,226,195,0.05)" />
-								<stop offset="100%" stop-color="rgba(159,226,195,0)" />
-							</radialGradient>
-							<radialGradient id="torusDenseGlow" cx="50%" cy="50%" r="50%">
-								<stop offset="0%" stop-color="rgba(220,255,244,0.22)" />
-								<stop offset="100%" stop-color="rgba(220,255,244,0)" />
-							</radialGradient>
-						</defs>
-						<rect width="${svgWidth}" height="${svgHeight}" fill="rgba(4,7,9,0.88)" />
-						<rect width="${svgWidth}" height="${svgHeight}" fill="url(#torusDenseGlow)" opacity="0.65" />
-						<ellipse cx="${svgWidth / 2}" cy="${svgHeight / 2}" rx="300" ry="124" fill="none" stroke="rgba(217,255,240,0.045)" stroke-width="1" />
-						<ellipse cx="${svgWidth / 2}" cy="${svgHeight / 2}" rx="188" ry="68" fill="none" stroke="rgba(217,255,240,0.028)" stroke-width="0.8" />
-						<ellipse cx="${svgWidth / 2}" cy="${svgHeight / 2}" rx="156" ry="54" fill="url(#torusCore)" />
-						${dust}
-						<g class="map-current-field">
-							${currentParticles.veils}
-							${currentPaths}
-							${currentParticles.particles}
-						</g>
-						<g class="map-density-field">
-							${landParticles.figures}
-							${landParticles.cloud}
-						</g>
-						${landDots}
-					</svg>
-				</div>
-				<div class="map-fallback__lists">
-					<section class="map-fallback__list" aria-labelledby="map-top-lands-title">
-						<h2 id="map-top-lands-title">${escapeHtml(listTitles.lands)}</h2>
-						<div class="map-fallback__items">${topLands || '<p class="map-fallback__empty">Aucune terre publique visible.</p>'}</div>
-					</section>
-					<section class="map-fallback__list" aria-labelledby="map-top-currents-title">
-						<h2 id="map-top-currents-title">${escapeHtml(listTitles.currents)}</h2>
-						<div class="map-fallback__items">${hotCurrents || '<p class="map-fallback__empty">Aucun courant observé pour l’instant.</p>'}</div>
-					</section>
-				</div>
-			`
-			: `
-				<div class="map-fallback__empty-state">
-					<p class="map-fallback__empty">Aucune terre publique n’alimente encore la surface.</p>
-					<p class="map-fallback__empty-copy">Le tore local tient déjà, mais il attend ses premières terres visibles.</p>
-					<div class="action-row map-fallback__actions">
-						<a class="pill-link" href="${withSurfaceContext("/str3m")}">Lire Str3m</a>
-						<a class="ghost-link" href="${withSurfaceContext("/rejoindre")}">Poser une terre</a>
-						<a class="ghost-link" href="${withSurfaceContext("/0wlslw0")}">Passer par 0wlslw0</a>
-					</div>
-				</div>
-			`;
-
-		if (note instanceof HTMLElement) {
-			const baseNote = lands.length > 0
-				? `Tore local dense : ${lands.length} terre(s), ${currents.length} courant(s), zoom ${mapNavigationState.zoom.toFixed(2)}x, console lexicale ${hasLexicalQuery ? "active" : "en veille"}.`
-				: "Tore local actif, mais aucune terre publique n’alimente encore la surface.";
-			note.textContent = spatialProfile?.note ? `${baseNote} ${spatialProfile.note}` : baseNote;
-		}
-
-		renderLexicalOutput(payload, query);
-	};
-
-	const bootSurface = async () => {
-		try {
-			const payload = await fetchPoints();
-			currentPayload = payload;
-			renderSurface(payload, currentLexicalQuery);
-		} catch (error) {
-			console.error("Impossible de charger la surface torique locale", error);
-			surfaceRoot.innerHTML = `
-				<div class="map-fallback__empty-state">
-					<p class="map-fallback__empty">Le tore local n’a pas pu se déplier.</p>
-					<p class="map-fallback__empty-copy">Tu peux revenir au noyau, lire le courant, puis réessayer.</p>
-					<div class="action-row map-fallback__actions">
-						<a class="pill-link" href="${withSurfaceContext("/")}">Revenir au noyau</a>
-						<a class="ghost-link" href="${withSurfaceContext("/str3m")}">Lire Str3m</a>
-						<a class="ghost-link" href="${withSurfaceContext("/0wlslw0")}">Passer par 0wlslw0</a>
-					</div>
-				</div>
-			`;
-			if (note instanceof HTMLElement) {
-				note.textContent = "Erreur de chargement du tore vivant. Reviens au noyau ou réessaie dans un instant.";
-			}
-		}
-	};
-
-	const endNavigationGesture = () => {
-		const shouldSuppressClick = mapNavigationState.active && mapNavigationState.moved;
-		if (mapNavigationState.pointerId !== null && surfaceRoot.hasPointerCapture?.(mapNavigationState.pointerId)) {
-			surfaceRoot.releasePointerCapture(mapNavigationState.pointerId);
-		}
-
-		window.clearTimeout(mapNavigationState.longTouchTimer);
-		mapNavigationState.longTouchTimer = 0;
-		mapNavigationState.pointerId = null;
-		mapNavigationState.armed = false;
-		mapNavigationState.active = false;
-		mapNavigationState.moved = false;
-		mapNavigationState.suppressClick = shouldSuppressClick;
-		setNavigationMode("");
-
-		if (shouldSuppressClick) {
-			window.setTimeout(() => {
-				mapNavigationState.suppressClick = false;
-			}, 0);
-		}
-	};
-
-	const activateNavigationGesture = () => {
-		if (mapNavigationState.pointerId === null) {
-			return;
-		}
-
-		mapNavigationState.armed = false;
-		mapNavigationState.active = true;
-		setNavigationMode("navigating");
-	};
-
-	const updateNavigationFromDelta = (deltaX, deltaY) => {
-		mapNavigationState.userControlled = true;
-		mapNavigationState.yaw = wrapLongitude(mapNavigationState.yaw + (deltaX * 0.18 / mapNavigationState.zoom));
-		mapNavigationState.pitch = clamp(mapNavigationState.pitch - (deltaY * 0.12 / mapNavigationState.zoom), -46, 46);
-		scheduleSurfaceRender();
-	};
-
-	const bindMapNavigation = () => {
-		surfaceRoot.addEventListener("wheel", (event) => {
-			const frame = event.target instanceof Element ? event.target.closest(".map-fallback__frame") : null;
-			if (!frame) {
-				return;
-			}
-
-			event.preventDefault();
-			const direction = event.deltaY > 0 ? -1 : 1;
-			const nextZoom = mapNavigationState.zoom * (direction > 0 ? 1.08 : 0.92);
-			mapNavigationState.userControlled = true;
-			mapNavigationState.zoom = clamp(nextZoom, 0.72, 1.9);
-			scheduleSurfaceRender();
-		}, { passive: false });
-
-		surfaceRoot.addEventListener("pointerdown", (event) => {
-			const target = event.target instanceof Element ? event.target : null;
-			if (!target || !target.closest(".map-fallback__frame") || target.closest("a")) {
-				return;
-			}
-
-			mapNavigationState.pointerId = event.pointerId;
-			mapNavigationState.startX = event.clientX;
-			mapNavigationState.startY = event.clientY;
-			mapNavigationState.lastX = event.clientX;
-			mapNavigationState.lastY = event.clientY;
-			mapNavigationState.moved = false;
-			surfaceRoot.setPointerCapture?.(event.pointerId);
-
-			if (event.pointerType === "touch") {
-				mapNavigationState.armed = true;
-				setNavigationMode("arming");
-				mapNavigationState.longTouchTimer = window.setTimeout(activateNavigationGesture, 333);
-				return;
-			}
-
-			event.preventDefault();
-			activateNavigationGesture();
-		});
-
-		surfaceRoot.addEventListener("pointermove", (event) => {
-			if (mapNavigationState.pointerId !== event.pointerId) {
-				return;
-			}
-
-			const deltaFromStart = Math.hypot(
-				event.clientX - mapNavigationState.startX,
-				event.clientY - mapNavigationState.startY
-			);
-
-			if (mapNavigationState.armed && deltaFromStart > 12) {
-				endNavigationGesture();
-				return;
-			}
-
-			if (!mapNavigationState.active) {
-				return;
-			}
-
-			event.preventDefault();
-			const deltaX = event.clientX - mapNavigationState.lastX;
-			const deltaY = event.clientY - mapNavigationState.lastY;
-			mapNavigationState.lastX = event.clientX;
-			mapNavigationState.lastY = event.clientY;
-			mapNavigationState.moved = true;
-			updateNavigationFromDelta(deltaX, deltaY);
-		});
-
-		surfaceRoot.addEventListener("click", (event) => {
-			const target = event.target instanceof Element ? event.target : null;
-			const frame = target ? target.closest(".map-fallback__frame") : null;
-			if (!frame || target?.closest("a")) {
-				return;
-			}
-
-			if (mapNavigationState.suppressClick) {
-				event.preventDefault();
-				mapNavigationState.suppressClick = false;
-				return;
-			}
-
-			const rect = frame.getBoundingClientRect();
-			const offsetX = event.clientX - (rect.left + (rect.width / 2));
-			const offsetY = event.clientY - (rect.top + (rect.height / 2));
-			mapNavigationState.userControlled = true;
-			mapNavigationState.yaw = wrapLongitude(mapNavigationState.yaw + (offsetX * 0.018));
-			mapNavigationState.pitch = clamp(mapNavigationState.pitch - (offsetY * 0.012), -46, 46);
-			scheduleSurfaceRender();
-		});
-
-		surfaceRoot.addEventListener("pointerup", endNavigationGesture);
-		surfaceRoot.addEventListener("pointercancel", endNavigationGesture);
-		surfaceRoot.addEventListener("lostpointercapture", endNavigationGesture);
-	};
-
-	bindMapNavigation();
-	applySpatialMapState(readActiveIoRaSession(), readActiveIoWorldInstrumentSession());
-	bootSurface();
-
-	if (lexicalForm instanceof HTMLFormElement && lexicalInput instanceof HTMLInputElement) {
-		lexicalForm.addEventListener("submit", (event) => {
-			event.preventDefault();
-			currentLexicalQuery = lexicalInput.value;
-			const trimmed = currentLexicalQuery.trim();
-			lexicalUserOverride = trimmed !== "" && trimmed !== autoLexicalQuery;
-			if (currentPayload) {
-				renderSurface(currentPayload, currentLexicalQuery);
-			}
-		});
-
-		lexicalInput.addEventListener("input", () => {
-			currentLexicalQuery = lexicalInput.value;
-			const trimmed = currentLexicalQuery.trim();
-			lexicalUserOverride = trimmed !== "" && trimmed !== autoLexicalQuery;
-			if (currentPayload) {
-				renderSurface(currentPayload, currentLexicalQuery);
-			}
-		});
-	}
-
-	window.addEventListener("o:ra-modulation", (event) => {
-		const detail = event instanceof CustomEvent ? event.detail : null;
-		applySpatialMapState(detail, readActiveIoWorldInstrumentSession());
-	});
-	window.addEventListener("o:world-instrument", (event) => {
-		const detail = event instanceof CustomEvent ? event.detail : null;
-		applySpatialMapState(readActiveIoRaSession(), detail);
-	});
-}
-
-const SIGNAL_ALGORA_STORAGE_KEY = "o-signal-algora-mode";
-const SIGNAL_ALGORA_COPY = {
-	douceur: {
-		fallbackHint: "algoRa en douceur : chercher les accords avant de pousser le flux.",
-		openPlaceholder: "slug ou nom d’une terre en douceur",
-		recipientPlaceholder: "slug ou nom d’une terre en douceur",
-		subjectPlaceholder: "Premier contact en douceur (optionnel)",
-		threadSubjectPlaceholder: "Objet du message en douceur (optionnel)",
-		body: {
-			"phase-locked": "Écrire en prolongeant l’accord déjà là...",
-			harmonic: "Écrire en gardant de la souplesse entre vos ondes...",
-			interference: "Entrer doucement dans l’écart créatif...",
-			drift: "Ralentir un peu pour rencontrer l’autre fréquence...",
-			inertia: "Approcher lentement cette distance fertile...",
-		},
-	},
-	confrontation: {
-		fallbackHint: "algoRa en confrontation : préférer les écarts productifs et les tensions claires.",
-		openPlaceholder: "slug ou nom d’une terre à confronter",
-		recipientPlaceholder: "slug ou nom d’une terre à confronter",
-		subjectPlaceholder: "Point de friction à ouvrir (optionnel)",
-		threadSubjectPlaceholder: "Nœud de confrontation (optionnel)",
-		body: {
-			"phase-locked": "Nommer franchement ce qui résiste malgré la proximité...",
-			harmonic: "Faire apparaître le désaccord utile sans rompre le lien...",
-			interference: "Entrer dans la tension féconde sans l’adoucir trop tôt...",
-			drift: "Attraper le décalage et le rendre explicite...",
-			inertia: "Forer la distance sans contourner ce qui frotte...",
-		},
-	},
-	ecoute: {
-		fallbackHint: "algoRa en écoute : laisser l’autre fréquence se dire avant de conclure.",
-		openPlaceholder: "slug ou nom d’une terre à écouter",
-		recipientPlaceholder: "slug ou nom d’une terre à écouter",
-		subjectPlaceholder: "Question d’écoute (optionnel)",
-		threadSubjectPlaceholder: "Ce que tu veux entendre (optionnel)",
-		body: {
-			"phase-locked": "Écrire en laissant de l’espace à ce qui répond déjà...",
-			harmonic: "Écrire avec attention aux nuances entre vos rythmes...",
-			interference: "Accueillir le contraste avant de le résoudre...",
-			drift: "Suivre le décalage pour entendre ce qu’il révèle...",
-			inertia: "Laisser le temps et la profondeur faire remonter la voix de l’autre...",
-		},
-	},
-};
-
-const SIGNAL_PREFERRED_PHASES_BY_MODE = {
-	douceur: ["phase-locked", "harmonic"],
-	confrontation: ["interference", "drift"],
-	ecoute: ["inertia", "harmonic", "drift"],
-};
-
-function normalizeSignalRecipient(value) {
-	return String(value || "").toLowerCase().trim();
-}
-
-function buildSignalRecipientDirectory(optionNodes) {
-	return optionNodes.map((option) => ({
-		value: option.getAttribute("value") || "",
-		slug: option.dataset.slug || option.getAttribute("value") || "",
-		username: option.dataset.username || option.textContent?.trim() || option.getAttribute("value") || "",
-		phase: option.dataset.phase || "drift",
-		phaseLabel: option.dataset.phaseLabel || "déphasage léger",
-		summary: option.dataset.summary || "",
-		lambda: option.dataset.lambda || "548",
-		gap: option.dataset.gap || "0",
-	}));
-}
-
-function createSignalRecipientMatcher(recipientDirectory) {
-	return (query) => {
-		const normalized = normalizeSignalRecipient(query);
-		if (!normalized) {
-			return null;
-		}
-
-		const exactMatch = recipientDirectory.find((entry) => {
-			return [entry.value, entry.slug, entry.username].some((candidate) => normalizeSignalRecipient(candidate) === normalized);
-		});
-		if (exactMatch) {
-			return exactMatch;
-		}
-
-		return recipientDirectory.find((entry) => {
-			return [entry.value, entry.slug, entry.username].some((candidate) => normalizeSignalRecipient(candidate).includes(normalized));
-		}) || null;
-	};
-}
-
-function readStoredSignalAlgoraMode() {
-	try {
-		const stored = window.localStorage.getItem(SIGNAL_ALGORA_STORAGE_KEY);
-		return stored && SIGNAL_ALGORA_COPY[stored] ? stored : "";
-	} catch {
-		return "";
-	}
-}
-
-function getSavedSignalAlgoraMode() {
-	return readStoredSignalAlgoraMode() || "douceur";
-}
-
-function applySignalRaState(state) {
-	const noteNode = document.querySelector("[data-signal-ra-note]");
-	const composeNoteNode = document.querySelector("[data-signal-ra-compose-note]");
-	const signalCard = document.querySelector('[data-signal-ra-card="signal"]');
-	const echoCard = document.querySelector('[data-signal-ra-card="echo"]');
-	const prefersEcho = Boolean(state && typeof state === "object" && (state.mode === "loop" || (state.mode === "weave" && state.dominant === "torus")));
-
-	[signalCard, echoCard].forEach((card) => {
-		if (card instanceof HTMLElement) {
-			delete card.dataset.raRecommended;
-		}
-	});
-
-	if (!(state && typeof state === "object")) {
-		return;
-	}
-
-	document.body.dataset.signalRaMode = typeof state.mode === "string" ? state.mode : "";
-	document.body.dataset.signalRaDominant = typeof state.dominant === "string" ? state.dominant : "";
-
-	if (noteNode instanceof HTMLElement) {
-		noteNode.textContent = prefersEcho
-			? "Régime bouclé: Écho peut reprendre la même liaison quand la destination est déjà claire et que la prise doit être directe."
-			: (state.mode === "translate"
-				? "Régime traduit: Signal garde mieux le fil quand il faut laisser passer nuance, mémoire et médiation avant le direct."
-				: "Régime ancré ou tressé: Signal garde le fil, l’adresse et la reprise avant une éventuelle bascule en direct.");
-	}
-
-	if (composeNoteNode instanceof HTMLElement) {
-		composeNoteNode.textContent = prefersEcho
-			? "Le tore boucle déjà la prise: si la destination est nette, Écho peut aller droit au direct sans casser la liaison."
-			: (state.mode === "translate"
-				? "Le plasma tient encore la couture: ouvre d abord le fil, laisse la relation se formuler, puis passe en direct si la tension devient claire."
-				: "La réalité ou le tressage gardent la main: commence par le fil, clarifie la terre, puis décide ensuite si le direct s impose.");
-	}
-
-	if (signalCard instanceof HTMLElement) {
-		signalCard.dataset.raRecommended = prefersEcho ? "secondary" : "primary";
-	}
-	if (echoCard instanceof HTMLElement) {
-		echoCard.dataset.raRecommended = prefersEcho ? "primary" : "secondary";
-	}
-}
-
-function applyEchoRaState(state) {
-	const noteNode = document.querySelector("[data-echo-ra-note]");
-	const emptyNoteNodes = Array.from(document.querySelectorAll("[data-echo-ra-empty-note]"));
-	const threadNoteNode = document.querySelector("[data-echo-ra-thread-note]");
-	const composeNoteNode = document.querySelector("[data-echo-ra-compose-note]");
-	const composeTextarea = document.querySelector("[data-echo-ra-textarea]");
-	const signalCard = document.querySelector('[data-echo-ra-card="signal"]');
-	const echoCard = document.querySelector('[data-echo-ra-card="echo"]');
-	const contactsZone = document.querySelector('[data-echo-ra-zone="contacts"]');
-	const directZone = document.querySelector('[data-echo-ra-zone="direct"]');
-	const profile = echoRaProfileFromState(state);
-
-	[signalCard, echoCard, contactsZone, directZone].forEach((node) => {
-		if (node instanceof HTMLElement) {
-			delete node.dataset.raRecommended;
-		}
-	});
-
-	if (!(state && typeof state === "object") || !profile) {
-		delete document.body.dataset.echoRaMode;
-		delete document.body.dataset.echoRaDominant;
-		delete document.body.dataset.echoRaFocus;
-		return;
-	}
-
-	document.body.dataset.echoRaMode = typeof state.mode === "string" ? state.mode : "";
-	document.body.dataset.echoRaDominant = typeof state.dominant === "string" ? state.dominant : "";
-	document.body.dataset.echoRaFocus = profile.focus;
-
-	if (noteNode instanceof HTMLElement) {
-		noteNode.textContent = profile.note;
-	}
-	emptyNoteNodes.forEach((node) => {
-		if (node instanceof HTMLElement) {
-			node.textContent = profile.emptyNote;
-		}
-	});
-	if (threadNoteNode instanceof HTMLElement) {
-		threadNoteNode.textContent = profile.threadNote;
-	}
-	if (composeNoteNode instanceof HTMLElement) {
-		composeNoteNode.textContent = profile.composeNote;
-	}
-	if (composeTextarea instanceof HTMLTextAreaElement) {
-		composeTextarea.placeholder = profile.placeholder;
-	}
-
-	if (signalCard instanceof HTMLElement) {
-		signalCard.dataset.raRecommended = profile.primary === "signal" ? "primary" : "secondary";
-	}
-	if (echoCard instanceof HTMLElement) {
-		echoCard.dataset.raRecommended = profile.primary === "echo" ? "primary" : "secondary";
-	}
-	if (contactsZone instanceof HTMLElement) {
-		contactsZone.dataset.raRecommended = profile.focus === "contacts" ? "primary" : "secondary";
-	}
-	if (directZone instanceof HTMLElement) {
-		directZone.dataset.raRecommended = profile.focus === "direct" ? "primary" : "secondary";
-	}
-}
-
-function applyStr3mRaState(state) {
-	const noteNode = document.querySelector("[data-str3m-ra-note]");
-	const playerNoteNode = document.querySelector("[data-str3m-player-ra-note]");
-	const playerRoot = document.querySelector("[data-str3m-player]");
-	const cards = Array.from(document.querySelectorAll("[data-str3m-ra-card]"));
-	const worldState = readActiveIoWorldInstrumentSession();
-	const profile = composeStr3mSpatialProfile(state, worldState);
-	const preset = profile.playerPreset;
-	const secondaryFocus = profile.raProfile?.focus && profile.raProfile.focus !== profile.focus
-		? profile.raProfile.focus
-		: "";
-
-	cards.forEach((card) => {
-		if (card instanceof HTMLElement) {
-			delete card.dataset.raRecommended;
-			delete card.dataset.worldRecommended;
-		}
-	});
-
-	if (!profile.raProfile && !profile.worldProfile) {
-		delete document.body.dataset.str3mRaFocus;
-		delete document.body.dataset.str3mWorldTone;
-		delete document.body.dataset.str3mCameraFacing;
-		return;
-	}
-
-	document.body.dataset.str3mRaFocus = profile.focus || "";
-	document.body.dataset.str3mWorldTone = profile.worldProfile?.tone || "";
-	document.body.dataset.str3mCameraFacing = worldState?.cameraFacing || "";
-	if (noteNode instanceof HTMLElement && profile.note) {
-		noteNode.textContent = profile.note;
-	}
-	if (playerNoteNode instanceof HTMLElement && preset?.note) {
-		playerNoteNode.textContent = preset.note;
-	}
-	if (playerRoot instanceof HTMLElement) {
-		playerRoot.dataset.str3mPlayerRaPreset = preset?.key || "";
-		playerRoot.dataset.str3mPlayerWorldPreset = preset?.worldKey || "";
-		playerRoot.dataset.str3mPlayerWorldTone = preset?.tone || "";
-	}
-
-	cards.forEach((card) => {
-		if (!(card instanceof HTMLElement)) {
-			return;
-		}
-		if (card.dataset.str3mRaCard === profile.focus) {
-			card.dataset.raRecommended = "1";
-			return;
-		}
-		if (secondaryFocus && card.dataset.str3mRaCard === secondaryFocus) {
-			card.dataset.worldRecommended = "1";
-		}
-	});
-}
-
-function initEchoRaSurface() {
-	if (!document.body.classList.contains("signal-view") || !document.querySelector("[data-echo-ra-note]")) {
-		return;
-	}
-
-	applyEchoRaState(readActiveIoRaSession());
-	window.addEventListener("o:ra-modulation", (event) => {
-		const detail = event instanceof CustomEvent ? event.detail : null;
-		applyEchoRaState(detail);
-	});
-}
-
-function saveSignalAlgoraMode(mode) {
-	try {
-		window.localStorage.setItem(SIGNAL_ALGORA_STORAGE_KEY, mode);
-	} catch {
-		// Ignore persistence failures.
-	}
-}
-
-function renderSignalUnreadLabel(count) {
-	const unreadCount = Math.max(0, Number.parseInt(count, 10) || 0);
-	return `${unreadCount} message${unreadCount > 1 ? "s" : ""} non lu${unreadCount > 1 ? "s" : ""}`;
-}
-
-function createSignalUnreadUpdater(unreadLabels) {
-	return (count) => {
-		unreadLabels.forEach((node) => {
-			if (node instanceof HTMLElement) {
-				node.textContent = renderSignalUnreadLabel(count);
-			}
-		});
-	};
-}
-
-function createSignalLiveIndicatorUpdater(liveIndicator) {
-	return (message) => {
-		if (liveIndicator instanceof HTMLElement && typeof message === "string" && message.trim()) {
-			liveIndicator.textContent = message;
-		}
-	};
-}
-
-function initSignalContactFilter(filterInput, contactItems) {
-	if (!(filterInput instanceof HTMLInputElement) || !contactItems.length) {
-		return;
-	}
-
-	const applyFilter = () => {
-		const query = filterInput.value.toLowerCase().trim();
-		let visibleCount = 0;
-
-		contactItems.forEach((item) => {
-			const haystack = [
-				item.getAttribute("data-signal-contact-name") || "",
-				item.getAttribute("data-signal-contact-slug") || "",
-				item.getAttribute("data-signal-contact-last") || "",
-			].join(" ");
-			const visible = query === "" || haystack.includes(query);
-			item.hidden = !visible;
-			if (visible) {
-				visibleCount += 1;
-			}
-		});
-
-		const list = document.querySelector("[data-signal-contact-list]");
-		if (list instanceof HTMLElement) {
-			list.dataset.empty = visibleCount === 0 ? "1" : "0";
-		}
-	};
-
-	filterInput.addEventListener("input", applyFilter);
-	applyFilter();
-}
-
-function syncSignalOpenInput(openInput) {
-	if (!(openInput instanceof HTMLInputElement) || openInput.value) {
-		return;
-	}
-
-	const activeContact = document.querySelector("[data-signal-contact-item].is-active strong");
-	if (activeContact instanceof HTMLElement) {
-		openInput.value = activeContact.textContent.trim();
-	}
-}
-
-function createSignalRecipientPlaceholderApplier({
-	input,
-	form,
-	subjectInput,
-	bodyInput,
-	algoraCopy,
-	getAlgoraMode,
-}) {
-	return (phase = null) => {
-		const copy = algoraCopy[getAlgoraMode()] || algoraCopy.douceur;
-		const resolvedPhase = phase || "phase-locked";
-		const bodyPlaceholder = copy.body[resolvedPhase] || copy.body.drift;
-
-		if (input.dataset.signalOpenInput !== undefined || input.hasAttribute("data-signal-open-input")) {
-			input.placeholder = copy.openPlaceholder;
-		} else {
-			input.placeholder = copy.recipientPlaceholder;
-		}
-
-		if (subjectInput instanceof HTMLInputElement && !subjectInput.value) {
-			subjectInput.placeholder = form?.dataset.draftScope === "new"
-				? copy.subjectPlaceholder
-				: copy.threadSubjectPlaceholder;
-		}
-
-		if (bodyInput instanceof HTMLTextAreaElement && !bodyInput.value) {
-			bodyInput.placeholder = bodyPlaceholder;
-		}
-	};
-}
-
-function refreshSignalRecipientSuggestionPriority({
-	choiceNodes,
-	preferredPhasesByMode,
-	getAlgoraMode,
-	recipientDirectory,
-}) {
-	const preferredPhases = preferredPhasesByMode[getAlgoraMode()] || [];
-	choiceNodes.forEach((node, index) => {
-		if (!(node instanceof HTMLElement)) {
-			return;
-		}
-
-		const phase = recipientDirectory.find((entry) => entry.slug === (node.dataset.recipientValue || ""))?.phase || "drift";
-		const preferredIndex = preferredPhases.indexOf(phase);
-		node.classList.toggle("is-algora-preferred", preferredIndex !== -1);
-		node.style.order = String(preferredIndex !== -1 ? preferredIndex : preferredPhases.length + index);
-	});
-}
-
-function updateSignalRecipientChoiceVisibility({ choiceNodes, query, normalizeSignalRecipient }) {
-	const normalizedQuery = normalizeSignalRecipient(query);
-	choiceNodes.forEach((node) => {
-		if (!(node instanceof HTMLElement)) {
-			return;
-		}
-
-		const haystack = normalizeSignalRecipient(node.dataset.recipientSearch || node.dataset.recipientValue || "");
-		node.hidden = normalizedQuery !== "" && !haystack.includes(normalizedQuery);
-	});
-}
-
-function createSignalRecipientPreviewRenderer(previewNode) {
-	if (!(previewNode instanceof HTMLElement)) {
-		return () => {};
-	}
-
-	const titleNode = previewNode.querySelector("[data-signal-preview-title]");
-	const copyNode = previewNode.querySelector("[data-signal-preview-copy]");
-	const kickerNode = previewNode.querySelector("[data-signal-preview-kicker]");
-	const spectrumNode = previewNode.querySelector("[data-signal-preview-spectrum]");
-	const lambdaNode = previewNode.querySelector("[data-signal-preview-lambda]");
-	const phaseNode = previewNode.querySelector("[data-signal-preview-phase]");
-	const gapNode = previewNode.querySelector("[data-signal-preview-gap]");
-	const actionsNode = previewNode.querySelector("[data-signal-preview-actions]");
-	const openLink = previewNode.querySelector("[data-signal-preview-open]");
-	const echoLink = previewNode.querySelector("[data-signal-preview-echo]");
-	const emptyTitle = previewNode.dataset.previewEmptyTitle || "Aucune terre retenue";
-	const emptyCopy = previewNode.dataset.previewEmptyCopy || "Choisis une terre pour afficher son contexte.";
-	const signalBase = previewNode.dataset.previewSignalBase || withSurfaceContext("/signal");
-	const echoBase = previewNode.dataset.previewEchoBase || withSurfaceContext("/echo");
-
-	return (match) => {
-		if (!(titleNode instanceof HTMLElement) || !(copyNode instanceof HTMLElement)) {
-			return;
-		}
-
-		if (!match) {
-			previewNode.classList.add("is-empty");
-			titleNode.textContent = emptyTitle;
-			copyNode.textContent = emptyCopy;
-			if (kickerNode instanceof HTMLElement) {
-				kickerNode.textContent = "Aperçu de liaison";
-			}
-			if (spectrumNode instanceof HTMLElement) {
-				spectrumNode.hidden = true;
-			}
-			if (actionsNode instanceof HTMLElement) {
-				actionsNode.hidden = true;
-			}
-			return;
-		}
-
-		previewNode.classList.remove("is-empty");
-		titleNode.textContent = match.username || match.slug || match.value || "terre reconnue";
-		copyNode.textContent = `@${match.slug} · ${match.phaseLabel} — ${match.summary || "Le fil peut s’ouvrir ou passer en direct."}`;
-
-		if (kickerNode instanceof HTMLElement) {
-			kickerNode.textContent = "Terre reconnue";
-		}
-		if (lambdaNode instanceof HTMLElement) {
-			lambdaNode.textContent = `λ ${match.lambda} nm`;
-		}
-		if (phaseNode instanceof HTMLElement) {
-			phaseNode.textContent = match.phaseLabel;
-			phaseNode.className = `signal-spectrum-pill signal-spectrum-pill--${match.phase || "drift"}`;
-		}
-		if (gapNode instanceof HTMLElement) {
-			gapNode.textContent = `Δ ${match.gap} nm`;
-		}
-		if (spectrumNode instanceof HTMLElement) {
-			spectrumNode.hidden = false;
-		}
-		if (openLink instanceof HTMLAnchorElement) {
-			openLink.href = `${signalBase}?u=${encodeURIComponent(match.slug || match.value || "")}`;
-		}
-		if (echoLink instanceof HTMLAnchorElement) {
-			echoLink.href = `${echoBase}?u=${encodeURIComponent(match.username || match.slug || match.value || "")}`;
-		}
-		if (actionsNode instanceof HTMLElement) {
-			actionsNode.hidden = false;
-		}
-	};
-}
-
-function createSignalRecipientHintRenderer({
-	input,
-	hintNode,
-	defaultHint,
-	algoraCopy,
-	getAlgoraMode,
-	findRecipientMatch,
-	applyPlaceholders,
-	normalizeSignalRecipient,
-	choiceNodes,
-	renderPreview,
-}) {
-	return () => {
-		if (!(hintNode instanceof HTMLElement)) {
-			return;
-		}
-
-		const match = findRecipientMatch(input.value);
-		if (!match) {
-			hintNode.textContent = (algoraCopy[getAlgoraMode()] || algoraCopy.douceur).fallbackHint || defaultHint || "Choisis une terre et la phase apparaîtra ici.";
-			applyPlaceholders(null);
-			renderPreview(null);
-		} else {
-			hintNode.textContent = `${match.username} · λ ${match.lambda} nm · Δ ${match.gap} nm · ${match.phaseLabel} — ${match.summary}`;
-			applyPlaceholders(match.phase);
-			renderPreview(match);
-		}
-
-		updateSignalRecipientChoiceVisibility({
-			choiceNodes,
-			query: input.value,
-			normalizeSignalRecipient,
-		});
-	};
-}
-
-function bindSignalAlgoraModeButtons({ algoraNodes, getAlgoraMode, setAlgoraMode, onModeChange }) {
-	algoraNodes.forEach((node) => {
-		if (!(node instanceof HTMLButtonElement)) {
-			return;
-		}
-
-		const nodeMode = node.dataset.algoraMode || "douceur";
-		node.classList.toggle("is-active", nodeMode === getAlgoraMode());
-		node.addEventListener("click", () => {
-			setAlgoraMode(nodeMode);
-			algoraNodes.forEach((otherNode) => {
-				if (otherNode instanceof HTMLButtonElement) {
-					otherNode.classList.toggle("is-active", (otherNode.dataset.algoraMode || "") === getAlgoraMode());
-				}
-			});
-			onModeChange();
-		});
-	});
-}
-
-function bindSignalRecipientChoiceButtons({ choiceNodes, input, bodyInput }) {
-	choiceNodes.forEach((node) => {
-		if (!(node instanceof HTMLButtonElement)) {
-			return;
-		}
-
-		node.addEventListener("click", () => {
-			input.value = node.dataset.recipientValue || "";
-			input.dispatchEvent(new Event("input", { bubbles: true }));
-			if (bodyInput instanceof HTMLTextAreaElement) {
-				bodyInput.focus();
-				return;
-			}
-
-			input.focus();
-		});
-	});
-}
-
-function createSignalDraftStatusRenderer(statusNode) {
-	return (message) => {
-		if (statusNode instanceof HTMLElement && message) {
-			statusNode.textContent = message;
-		}
-	};
-}
-
-function readSignalDraft(storageKey) {
-	try {
-		const raw = window.localStorage.getItem(storageKey);
-		if (!raw) {
-			return null;
-		}
-
-		const draft = JSON.parse(raw);
-		return draft && typeof draft === "object" ? draft : null;
-	} catch {
-		return null;
-	}
-}
-
-function clearSignalDraft(storageKey) {
-	try {
-		window.localStorage.removeItem(storageKey);
-	} catch {
-		// Ignore cleanup failures.
-	}
-}
-
-function applySignalDraftToFields({ draft, subjectInput, bodyInput, receiverInput }) {
-	if (!draft || typeof draft !== "object") {
-		return false;
-	}
-
-	if (subjectInput instanceof HTMLInputElement && typeof draft.subject === "string" && !subjectInput.value) {
-		subjectInput.value = draft.subject;
-	}
-	if (bodyInput instanceof HTMLTextAreaElement && typeof draft.body === "string" && !bodyInput.value) {
-		bodyInput.value = draft.body;
-	}
-	if (receiverInput instanceof HTMLInputElement && typeof draft.receiver === "string" && !receiverInput.value) {
-		receiverInput.value = draft.receiver;
-	}
-
-	return Boolean(draft.subject || draft.body || draft.receiver);
-}
-
-function createSignalDraftPersister({ storageKey, subjectInput, bodyInput, receiverInput, renderStatus }) {
-	return () => {
-		try {
-			const subject = subjectInput instanceof HTMLInputElement ? subjectInput.value : "";
-			const body = bodyInput instanceof HTMLTextAreaElement ? bodyInput.value : "";
-			const receiver = receiverInput instanceof HTMLInputElement ? receiverInput.value : "";
-			if (!subject.trim() && !body.trim() && !receiver.trim()) {
-				clearSignalDraft(storageKey);
-				renderStatus("Brouillon vide. ⌘/Ctrl + Entrée envoie.");
-				return;
-			}
-
-			window.localStorage.setItem(storageKey, JSON.stringify({
-				subject,
-				body,
-				receiver,
-				updatedAt: Date.now(),
-			}));
-			renderStatus("Brouillon gardé localement. ⌘/Ctrl + Entrée envoie.");
-		} catch {
-			// Ignore draft persistence failures.
-		}
-	};
-}
-
-function initSignalRecipientAssist({
-	recipientInputs,
-	algoraCopy,
-	preferredPhasesByMode,
-	getSavedAlgoraMode,
-	saveAlgoraMode,
-	normalizeSignalRecipient,
-	findRecipientMatch,
-	recipientDirectory,
-}) {
-	recipientInputs.forEach((input) => {
-		if (!(input instanceof HTMLInputElement)) {
-			return;
-		}
-
-		const form = input.closest("form");
-		const hintNode = form?.querySelector("[data-signal-recipient-hint]");
-		const choiceNodes = Array.from(form?.querySelectorAll("[data-signal-recipient-choice]") || []);
-		const algoraNodes = Array.from(form?.querySelectorAll("[data-signal-algora-choice]") || []);
-		const subjectInput = form?.querySelector("[data-signal-draft-subject]");
-		const bodyInput = form?.querySelector("[data-signal-draft-body]");
-		const previewNode = form?.querySelector("[data-signal-recipient-preview]");
-		const storedAlgoraMode = readStoredSignalAlgoraMode();
-		const recommendedAlgoraMode = signalAlgoraModeFromRaState(readActiveIoRaSession());
-		let algoraMode = storedAlgoraMode || recommendedAlgoraMode || getSavedAlgoraMode();
-		const defaultHint = hintNode instanceof HTMLElement ? hintNode.textContent : "";
-		const getAlgoraMode = () => algoraMode;
-		const setAlgoraMode = (nextMode) => {
-			algoraMode = nextMode;
-			saveAlgoraMode(algoraMode);
-		};
-		const applyPlaceholders = createSignalRecipientPlaceholderApplier({
-			input,
-			form,
-			subjectInput,
-			bodyInput,
-			algoraCopy,
-			getAlgoraMode,
-		});
-		const refreshSuggestionPriority = () => refreshSignalRecipientSuggestionPriority({
-			choiceNodes,
-			preferredPhasesByMode,
-			getAlgoraMode,
-			recipientDirectory,
-		});
-		const renderRecipientHint = createSignalRecipientHintRenderer({
-			input,
-			hintNode,
-			defaultHint,
-			algoraCopy,
-			getAlgoraMode,
-			findRecipientMatch,
-			applyPlaceholders,
-			normalizeSignalRecipient,
-			choiceNodes,
-			renderPreview: createSignalRecipientPreviewRenderer(previewNode),
-		});
-
-		bindSignalAlgoraModeButtons({
-			algoraNodes,
-			getAlgoraMode,
-			setAlgoraMode,
-			onModeChange: () => {
-				refreshSuggestionPriority();
-				renderRecipientHint();
-			},
-		});
-
-		bindSignalRecipientChoiceButtons({ choiceNodes, input, bodyInput });
-
-		refreshSuggestionPriority();
-		input.addEventListener("input", renderRecipientHint);
-		input.addEventListener("change", renderRecipientHint);
-		renderRecipientHint();
-	});
-}
-
-function initSignalDraftHelpers(composeForms) {
-	composeForms.forEach((form) => {
-		if (!(form instanceof HTMLFormElement)) {
-			return;
-		}
-
-		const subjectInput = form.querySelector("[data-signal-draft-subject]");
-		const bodyInput = form.querySelector("[data-signal-draft-body]");
-		const receiverInput = form.querySelector('input[name="receiver_slug"]');
-		const statusNode = form.querySelector("[data-signal-draft-status]");
-		const draftScope = form.dataset.draftScope || `${window.location.pathname}${window.location.search}`;
-		const storageKey = `o-signal-draft:${draftScope}`;
-		const renderStatus = createSignalDraftStatusRenderer(statusNode);
-		const persistDraft = createSignalDraftPersister({
-			storageKey,
-			subjectInput,
-			bodyInput,
-			receiverInput,
-			renderStatus,
-		});
-		const restoredDraft = readSignalDraft(storageKey);
-
-		if (applySignalDraftToFields({ draft: restoredDraft, subjectInput, bodyInput, receiverInput })) {
-			renderStatus("Brouillon restauré localement. ⌘/Ctrl + Entrée envoie.");
-		}
-
-		if (receiverInput instanceof HTMLInputElement && bodyInput instanceof HTMLTextAreaElement && receiverInput.type !== "hidden") {
-			receiverInput.addEventListener("keydown", (event) => {
-				if (event.key === "Enter" && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
-					event.preventDefault();
-					bodyInput.focus();
-					renderStatus("Destination retenue. Écris le message puis ⌘/Ctrl + Entrée pour transmettre.");
-				}
-			});
-		}
-
-		[subjectInput, bodyInput, receiverInput].forEach((field) => {
-			if (!(field instanceof HTMLInputElement) && !(field instanceof HTMLTextAreaElement)) {
-				return;
-			}
-
-			field.addEventListener("input", persistDraft);
-		});
-
-		if (bodyInput instanceof HTMLTextAreaElement) {
-			bodyInput.addEventListener("keydown", (event) => {
-				if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-					event.preventDefault();
-					renderStatus("Transmission en cours...");
-					form.requestSubmit();
-				}
-			});
-		}
-
-		form.addEventListener("submit", () => {
-			clearSignalDraft(storageKey);
-			renderStatus("Transmission en cours...");
-		});
-	});
-}
-
-function initSignalHistoryNavigation({ history, composeForm }) {
-	if (!(history instanceof HTMLElement)) {
-		return;
-	}
-
-	const jumpButtons = Array.from(document.querySelectorAll("[data-signal-history-jump]"));
-	if (!jumpButtons.length) {
-		return;
-	}
-
-	const resolveTarget = (mode) => {
-		if (mode === "composer") {
-			return composeForm?.querySelector("[data-signal-history-composer]") || null;
-		}
-
-		if (mode === "first") {
-			return history.querySelector("[data-signal-history-first]") || history.querySelector("[data-signal-history-item]");
-		}
-
-		return history.querySelector("[data-signal-history-last]") || history.querySelector("[data-signal-history-item]:last-of-type");
-	};
-
-	jumpButtons.forEach((button) => {
-		if (!(button instanceof HTMLButtonElement)) {
-			return;
-		}
-
-		const mode = button.dataset.signalHistoryJump || "latest";
-		button.addEventListener("click", () => {
-			const target = resolveTarget(mode);
-			if (!(target instanceof HTMLElement)) {
-				return;
-			}
-
-			if (mode === "composer") {
-				target.focus();
-				target.scrollIntoView({ block: "center", behavior: "smooth" });
-				return;
-			}
-
-			target.scrollIntoView({
-				block: mode === "first" ? "start" : "end",
-				behavior: "smooth",
-			});
-		});
-	});
-}
-
-function shouldSignalLiveHistoryStick(liveHistory) {
-	return (liveHistory.scrollHeight - liveHistory.scrollTop - liveHistory.clientHeight) < 72;
-}
-
-function scrollSignalLiveHistoryToBottom(liveHistory) {
-	liveHistory.scrollTop = liveHistory.scrollHeight;
-}
-
-function getSignalLiveTarget(liveRoot) {
-	return (liveRoot.dataset.liveTarget || "").trim();
-}
-
-function applySignalLivePayload({
-	payload,
-	liveRoot,
-	liveHistory,
-	echoContactsRoot,
-	liveView,
-	state,
-	updateUnreadLabels,
-	updateLiveIndicator,
-}) {
-	const wasNearBottom = shouldSignalLiveHistoryStick(liveHistory);
-	const nextHash = typeof payload.history_hash === "string" ? payload.history_hash : "";
-	const nextMessageCount = Number.parseInt(String(payload.message_count ?? state.liveMessageCount), 10) || 0;
-	const messageCountIncreased = nextMessageCount > state.liveMessageCount;
-
-	if (typeof payload.history_html === "string" && nextHash !== state.liveHash) {
-		liveHistory.innerHTML = payload.history_html;
-		state.liveHash = nextHash;
-		liveRoot.dataset.liveHash = nextHash;
-	}
-
-	state.liveMessageCount = nextMessageCount;
-	liveRoot.dataset.liveMessageCount = String(nextMessageCount);
-
-	if (typeof payload.unread_total !== "undefined") {
-		updateUnreadLabels(payload.unread_total);
-	}
-
-	if (liveView === "echo" && echoContactsRoot instanceof HTMLElement && typeof payload.echo_contacts_html === "string") {
-		echoContactsRoot.innerHTML = payload.echo_contacts_html;
-	}
-
-	if (payload.target && typeof payload.target.slug === "string" && payload.target.slug) {
-		liveRoot.dataset.liveTarget = payload.target.slug;
-	}
-
-	if (wasNearBottom || messageCountIncreased) {
-		scrollSignalLiveHistoryToBottom(liveHistory);
-	}
-
-	updateLiveIndicator("direct · temps réel");
-}
-
-function createSignalLivePoller({
-	liveRoot,
-	liveHistory,
-	echoContactsRoot,
-	updateLiveIndicator,
-	updateUnreadLabels,
-	apiPath,
-	liveView,
-	state,
-}) {
-	const redirectToLiveError = (errorCode) => {
-		if (!errorCode || typeof window === "undefined") {
-			return;
-		}
-
-		const targetUrl = new URL(window.location.href);
-		targetUrl.searchParams.set("error", errorCode);
-		window.location.assign(targetUrl.toString());
-	};
-
-	return async () => {
-		const target = getSignalLiveTarget(liveRoot);
-		if (!target || state.inflight || document.hidden) {
-			return;
-		}
-
-		state.inflight = true;
-		updateLiveIndicator("direct · synchro");
-
-		try {
-			const url = new URL(apiPath, window.location.origin);
-			url.searchParams.set("view", liveView);
-			url.searchParams.set("u", target);
-
-			const response = await fetch(url.toString(), {
-				method: "GET",
-				headers: { Accept: "application/json" },
-				credentials: "same-origin",
-				cache: "no-store",
-			});
-
-			let payload = null;
-			try {
-				payload = await response.json();
-			} catch (parseError) {
-				payload = null;
-			}
-
-			if (!response.ok) {
-				const payloadError = typeof payload?.error === "string" ? payload.error : "";
-				if (response.status === 401 || payloadError === "auth-required") {
-					redirectToLiveError("session");
-					return;
-				}
-
-				if (response.status === 503 || payloadError === "messaging-not-ready") {
-					redirectToLiveError("messaging");
-					return;
-				}
-
-				throw new Error(`HTTP ${response.status}`);
-			}
-
-			if (!payload || payload.ok === false) {
-				const payloadError = typeof payload?.error === "string" ? payload.error : "";
-				if (payloadError === "auth-required") {
-					redirectToLiveError("session");
-					return;
-				}
-
-				if (payloadError === "messaging-not-ready") {
-					redirectToLiveError("messaging");
-					return;
-				}
-
-				throw new Error("invalid-payload");
-			}
-
-			applySignalLivePayload({
-				payload,
-				liveRoot,
-				liveHistory,
-				echoContactsRoot,
-				liveView,
-				state,
-				updateUnreadLabels,
-				updateLiveIndicator,
-			});
-		} catch (error) {
-			console.error("Impossible de rafraîchir la messagerie en direct", error);
-			updateLiveIndicator("direct · interrompu");
-		} finally {
-			state.inflight = false;
-		}
-	};
-}
-
-function initSignalLiveHelpers({
-	liveRoot,
-	liveHistory,
-	echoContactsRoot,
-	updateLiveIndicator,
-	updateUnreadLabels,
-}) {
-	if (!(liveRoot instanceof HTMLElement) || !(liveHistory instanceof HTMLElement)) {
-		return;
-	}
-
-	const apiPath = liveRoot.dataset.liveApi || withBridgePrefix("/signal_live.php");
-	const liveView = liveRoot.dataset.liveView || "signal";
-	const pollInterval = Math.max(1400, Number.parseInt(liveRoot.dataset.liveInterval || "2500", 10) || 2500);
-	const state = {
-		liveHash: liveRoot.dataset.liveHash || "",
-		liveMessageCount: Number.parseInt(liveRoot.dataset.liveMessageCount || "0", 10) || 0,
-		inflight: false,
-	};
-	let timerId = 0;
-	const pollLiveThread = createSignalLivePoller({
-		liveRoot,
-		liveHistory,
-		echoContactsRoot,
-		updateLiveIndicator,
-		updateUnreadLabels,
-		apiPath,
-		liveView,
-		state,
-	});
-
-	if (getSignalLiveTarget(liveRoot)) {
-		scrollSignalLiveHistoryToBottom(liveHistory);
-		pollLiveThread();
-		timerId = window.setInterval(pollLiveThread, pollInterval);
-		document.addEventListener("visibilitychange", () => {
-			if (!document.hidden) {
-				pollLiveThread();
-			}
-		});
-		window.addEventListener("focus", pollLiveThread);
-		window.addEventListener("beforeunload", () => {
-			if (timerId) {
-				window.clearInterval(timerId);
-			}
-		});
-	} else {
-		updateLiveIndicator("direct · en attente");
-	}
-}
-
-function initSignalFlow() {
-	applySignalRaState(readActiveIoRaSession());
-	window.addEventListener("o:ra-modulation", (event) => {
-		const detail = event instanceof CustomEvent ? event.detail : null;
-		applySignalRaState(detail);
-	});
-
-	const filterInput = document.querySelector("[data-signal-contact-filter]");
-	const contactItems = Array.from(document.querySelectorAll("[data-signal-contact-item]"));
-	const openInput = document.querySelector("[data-signal-open-input]");
-	const history = document.getElementById("signal-history");
-	const activeComposeForm = document.querySelector('[data-signal-compose][data-draft-scope^="thread:"]');
-	const liveRoot = document.querySelector("[data-message-live]");
-	const liveHistory = liveRoot?.querySelector("[data-message-live-history]");
-	const liveIndicator = liveRoot?.querySelector("[data-message-live-indicator]");
-	const echoContactsRoot = liveRoot?.querySelector("[data-echo-contacts-list]");
-	const unreadLabels = Array.from(document.querySelectorAll("[data-signal-unread-label]"));
-	const composeForms = Array.from(document.querySelectorAll("[data-signal-compose]"));
-	const recipientInputs = Array.from(document.querySelectorAll("[data-signal-recipient-input]"));
-	const optionNodes = Array.from(document.querySelectorAll("#signal-contact-options option"));
-	const recipientDirectory = buildSignalRecipientDirectory(optionNodes);
-	const findRecipientMatch = createSignalRecipientMatcher(recipientDirectory);
-
-	if (history) {
-		history.scrollTop = history.scrollHeight;
-	}
-
-	const updateUnreadLabels = createSignalUnreadUpdater(unreadLabels);
-	const updateLiveIndicator = createSignalLiveIndicatorUpdater(liveIndicator);
-
-	initSignalHistoryNavigation({ history, composeForm: activeComposeForm });
-	initSignalContactFilter(filterInput, contactItems);
-	syncSignalOpenInput(openInput);
-
-	initSignalRecipientAssist({
-		recipientInputs,
-		algoraCopy: SIGNAL_ALGORA_COPY,
-		preferredPhasesByMode: SIGNAL_PREFERRED_PHASES_BY_MODE,
-		getSavedAlgoraMode: getSavedSignalAlgoraMode,
-		saveAlgoraMode: saveSignalAlgoraMode,
-		normalizeSignalRecipient,
-		findRecipientMatch,
-		recipientDirectory,
-	});
-
-	initSignalDraftHelpers(composeForms);
-
-	initSignalLiveHelpers({
-		liveRoot,
-		liveHistory,
-		echoContactsRoot,
-		updateLiveIndicator,
-		updateUnreadLabels,
-	});
-}
-
-function initStr3mRaSurface() {
-	if (!document.body.classList.contains("str3m-view")) {
-		return;
-	}
-
-	applyStr3mRaState(readActiveIoRaSession());
-	window.addEventListener("o:ra-modulation", (event) => {
-		const detail = event instanceof CustomEvent ? event.detail : null;
-		applyStr3mRaState(detail);
-	});
-	window.addEventListener("o:world-instrument", () => {
-		applyStr3mRaState(readActiveIoRaSession());
-	});
-}
-
-runPageInit("pageAccessibility", initPageAccessibility);
-runPageInit("spatialContext", initSpatialContext);
-runPageInit("continuityDome", initContinuityDome);
-runPageInit("nucleusBanner", initNucleusBanner);
-runPageInit("cornerDocks", initCornerDocks);
-runPageInit("guideVoice", initGuideVoice);
-runPageInit("mapSurface", initMapSurface);
-runPageInit("signalFlow", initSignalFlow);
-runPageInit("echoRaSurface", initEchoRaSurface);
-runPageInit("spectralTuner", initSpectralTuner);
-runPageInit("str3mRaSurface", initStr3mRaSurface);
-runPageInit("str3mArchipelago", initStr3mArchipelago);
-runPageInit("str3mParallax", initStr3mParallax);
-runPageInit("str3mShellFutureBridge", initStr3mShellFutureBridge);
-runPageInit("str3mGhostShellDock", initStr3mGhostShellDock);
-runPageInit("str3mIntegratedPlayer", initStr3mIntegratedPlayer);
-runPageInit("islandReaderStation", initIslandReaderStation);
-runPageInit("islandReaderFullscreen", initIslandReaderFullscreen);
-
-function initAzaTabs() {
-	const tabs = document.querySelectorAll('.aza-tab[data-tab]');
-	if (!tabs.length) return;
-
-	tabs.forEach((tab) => {
-		tab.addEventListener('click', () => {
-			const targetId = tab.dataset.tab;
-			tabs.forEach((t) => {
-				t.classList.toggle('aza-tab-active', t === tab);
-				t.setAttribute('aria-selected', t === tab ? 'true' : 'false');
-			});
-			document.querySelectorAll('.aza-tab-panel').forEach((panel) => {
-				panel.classList.toggle('aza-tab-panel-hidden', panel.id !== targetId);
-			});
-		});
-	});
-}
-
-runPageInit("azaTabs", initAzaTabs);
-
-function initB0t3() {
-	// Poetic substitution map — noise that keeps meaning partial
-	const subs = {
-		a: ['@','ä','à','â','α','∂'],
-		e: ['3','ë','è','ê','ε','∃'],
-		i: ['1','ï','î','ι','|','!'],
-		o: ['0','ö','ô','ø','ο','°'],
-		u: ['ü','û','υ','μ','∪'],
-		s: ['5','$','ş','ś','∫'],
-		n: ['η','ñ','∩','~'],
-		t: ['τ','+','†','⊤'],
-		r: ['г','ŗ','√','®'],
-		l: ['ł','|','λ','ℓ'],
-		c: ['¢','ç','©','⌀'],
-		p: ['þ','ρ','℗','π'],
-		m: ['μ','ṁ','∓'],
-		g: ['9','ĝ','γ'],
-		b: ['β','ƀ','6'],
-		d: ['δ','∂','ð'],
-		f: ['ƒ','φ'],
-		h: ['ħ','η','#'],
-		k: ['κ','ķ'],
-		v: ['ν','√','∨'],
-		w: ['ω','ŵ','∧'],
-		x: ['×','χ','ξ'],
-		y: ['ψ','ÿ','¥'],
-		z: ['ζ','ż','2'],
-	};
-
-	function brouille(char, instability) {
-		if (char === ' ' || char === '\n') return char;
-		if (Math.random() > instability) return char;
-		const lower = char.toLowerCase();
-		const pool  = subs[lower];
-		if (!pool) return char;
-		const sub = pool[Math.floor(Math.random() * pool.length)];
-		return char === char.toUpperCase() ? sub.toUpperCase() : sub;
-	}
-
-	function renderLine(el, text, instability) {
-		el.textContent = text.split('').map(c => brouille(c, instability)).join('');
-	}
-
-	function burstDeform(el, text, instability) {
-		let frame = 0;
-		const id = setInterval(() => {
-			renderLine(el, text, 0.85);
-			if (++frame >= 12) {
-				clearInterval(id);
-				renderLine(el, text, instability * 0.4);
-			}
-		}, 40);
-	}
-
-	document.querySelectorAll('[data-b0t3]').forEach(el => {
-		const text        = (el.dataset.b0t3 || '').trim();
-		const instability = parseFloat(el.dataset.b0t3Instability || '0.25');
-		if (!text) return;
-
-		// Ambient drift — gentle, slow
-		renderLine(el, text, instability * 0.08);
-		setInterval(() => renderLine(el, text, instability * 0.08), 1800 + Math.random() * 1200);
-
-		// Deform on long press or click
-		let pressTimer = null;
-		let pressing   = false;
-
-		el.style.cursor = 'pointer';
-		el.style.userSelect = 'none';
-
-		el.addEventListener('pointerdown', () => {
-			pressing   = true;
-			pressTimer = setTimeout(() => {
-				if (pressing) burstDeform(el, text, instability);
-			}, 420);
-		});
-
-		el.addEventListener('pointerup',     () => { pressing = false; clearTimeout(pressTimer); });
-		el.addEventListener('pointerleave',  () => { pressing = false; clearTimeout(pressTimer); });
-		el.addEventListener('click',         () => burstDeform(el, text, instability));
-	});
-
-	// Live preview in deposit form
-	const input = document.querySelector('.b0t3-input');
-	if (input) {
-		let previewEl = document.querySelector('.b0t3-preview');
-		if (!previewEl) {
-			previewEl = document.createElement('span');
-			previewEl.className = 'b0t3-preview b0t3-line';
-			input.parentNode.insertBefore(previewEl, input.nextSibling);
-		}
-		input.addEventListener('input', () => {
-			const val = input.value;
-			previewEl.dataset.b0t3 = val;
-			previewEl.dataset.b0t3Instability = document.querySelector('.b0t3-instability-range')?.value || '0.25';
-			previewEl.textContent = val;
-			// re-init this element
-			previewEl.removeAttribute('data-b0t3-init');
-			initB0t3SingleEl(previewEl);
-		});
-	}
-}
-
-function initB0t3SingleEl(el) {
-	const text        = (el.dataset.b0t3 || '').trim();
-	const instability = parseFloat(el.dataset.b0t3Instability || '0.25');
-	if (!text) return;
-	el.textContent = text.split('').map(c => {
-		if (c === ' ') return c;
-		const subs = { a:'@',e:'3',i:'1',o:'0',s:'5',t:'τ',n:'η' };
-		return Math.random() < instability * 0.08 ? (subs[c.toLowerCase()] || c) : c;
-	}).join('');
-}
-
-runPageInit("b0t3", initB0t3);
+// Page-specific init adapters moved to main.pages.js

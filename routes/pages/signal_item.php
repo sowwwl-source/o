@@ -1,0 +1,133 @@
+<?php
+declare(strict_types=1);
+
+require_once dirname(__DIR__, 2) . '/config.php';
+require_once dirname(__DIR__, 2) . '/lib/signals.php';
+
+$host = request_host();
+
+$id = trim((string) ($_GET['id'] ?? ''));
+$signal = $id !== '' ? read_signal($id) : null;
+$currentLand = current_authenticated_land();
+
+if (!$signal || !signal_can_view($signal, $currentLand)) {
+    http_response_code(404);
+}
+
+$brandDomain = current_brand_domain($host);
+$created = isset($_GET['created']) && $_GET['created'] === '1';
+$isOwner = $signal ? signal_is_owner($signal, $currentLand) : false;
+$signalHref = o_route_path('/signal');
+$landBaseHref = o_route_path('/land');
+$echoHref = o_route_path('/echo');
+$signalDate = $signal ? human_created_label((string) (($signal['published_at'] ?? '') ?: ($signal['created_at'] ?? ''))) : null;
+$signalLand = null;
+
+if ($signal && !empty($signal['land_slug'])) {
+    try {
+        $signalLand = find_land((string) $signal['land_slug']);
+    } catch (InvalidArgumentException $exception) {
+        $signalLand = null;
+    }
+}
+
+$ambientProfile = $signalLand ? land_visual_profile($signalLand) : land_collective_profile('dense');
+$pageTitle = $signal
+    ? (string) $signal['title'] . ' — Signal · ' . SITE_TITLE
+    : 'Signal introuvable — ' . SITE_TITLE;
+$pageDescription = $signal
+    ? 'Signal — transmission ' . (string) $signal['kind'] . ' depuis ' . (string) $signal['land_username'] . ' dans ' . SITE_TITLE . '.'
+    : "Signal introuvable — cette transmission n'est pas lisible ici.";
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="<?= h($pageDescription) ?>">
+    <meta name="theme-color" content="#09090b">
+    <title><?= h($pageTitle) ?></title>
+<?= render_o_discovery_head_tags($pageTitle, $pageDescription, $host, ['canonical_params' => ['id']]) ?>
+<?= render_o_page_head_assets(pwa_default_app_id($host), $host) ?>
+</head>
+<body class="experience signal-view">
+<?= render_skip_link() ?>
+<?= render_nucleus_banner('signal') ?>
+<div class="noise" aria-hidden="true"></div>
+<div class="aurora" aria-hidden="true"></div>
+<?= render_negative_merge_overlay($ambientProfile, 'dense', 'signal') ?>
+
+<main <?= main_landmark_attrs() ?> class="layout page-shell">
+    <?php if ($signal): ?>
+        <header class="hero page-header reveal">
+            <p class="eyebrow"><strong>ferry 01</strong> <span>Flux / <?= h((string) $signal['kind']) ?></span></p>
+            <h1 class="land-title signal-title">
+                <strong><?= h((string) $signal['title']) ?></strong>
+                <span><?= h((string) $signal['land_username']) ?></span>
+            </h1>
+            <p class="lead">Trace isolée dans l'océan public.</p>
+
+            <div class="land-meta">
+                <a class="meta-pill meta-pill-link" href="<?= h($signalHref) ?>">retour au flux</a>
+                <span class="meta-pill"><?= h($signalDate ?? 'maintenant') ?></span>
+                <span class="meta-pill"><?= h((string) $signal['kind']) ?></span>
+                <?php if ($isOwner): ?>
+                    <span class="meta-pill"><?= h((string) $signal['visibility']) ?></span>
+                    <span class="meta-pill"><?= h((string) $signal['status']) ?></span>
+                    <a class="meta-pill meta-pill-link" href="<?= h($landBaseHref) ?>?u=<?= rawurlencode((string) $signal['land_slug']) ?>">gérer ma terre</a>
+                <?php else: ?>
+                    <a class="meta-pill meta-pill-link" href="<?= h($landBaseHref) ?>?u=<?= rawurlencode((string) $signal['land_slug']) ?>">explorer l'île</a>
+                    <?php if ($currentLand): ?>
+                        <a class="meta-pill meta-pill-link" style="color: rgb(var(--land-secondary-rgb)); border-color: rgba(var(--land-secondary-rgb)/0.5);" href="<?= h($echoHref) ?>?u=<?= rawurlencode((string) $signal['land_username']) ?>">écho direct</a>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        </header>
+
+        <?= render_spatial_context_bar('signal', $host) ?>
+
+        <section class="panel reveal signal-detail-shell" aria-labelledby="signal-detail-title">
+            <div class="section-topline">
+                <div>
+                    <h2 id="signal-detail-title">Empreinte</h2>
+                    <p class="panel-copy">Trace laissée dans le flux.</p>
+                </div>
+                <?php if ($created): ?>
+                    <span class="badge">signal transmis</span>
+                <?php endif; ?>
+            </div>
+
+            <?php if ($created): ?>
+                <div class="flash flash-success" aria-live="polite">
+                    <p>Le signal a bien été transmis.</p>
+                </div>
+            <?php endif; ?>
+
+            <article class="signal-full">
+                <div class="signal-body">
+                    <p><?= nl2br(h((string) $signal['body'])) ?></p>
+                </div>
+
+                <?php if (!empty($signal['tags']) && is_array($signal['tags'])): ?>
+                    <div class="signal-tags">
+                        <?php foreach ($signal['tags'] as $tag): ?>
+                            <span class="meta-pill signal-tag">#<?= h((string) $tag) ?></span>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </article>
+        </section>
+    <?php else: ?>
+        <section class="hero page-header reveal">
+            <p class="eyebrow">signal introuvable</p>
+            <h1>Cette transmission n’est pas lisible ici.</h1>
+            <p class="lead">Elle est peut-être privée, brouillon, ou simplement absente.</p>
+            <div class="hero-actions">
+                <a class="pill-link" href="<?= h($signalHref) ?>">Retour au flux</a>
+            </div>
+        </section>
+        <?= render_spatial_context_bar('signal', $host) ?>
+    <?php endif; ?>
+</main>
+</body>
+</html>

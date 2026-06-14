@@ -351,121 +351,6 @@ EOF
 	fi
 }
 
-read_header_values() {
-	local url=${1:?Missing URL}
-	local header_name=${2:?Missing header name}
-	local header_name_lc
-
-	header_name_lc=$(printf '%s' "$header_name" | tr '[:upper:]' '[:lower:]')
-	curl -fsSI "$url" | awk -F': ' -v header_name_lc="$header_name_lc" '
-		tolower($1) == header_name_lc {
-			sub(/\r$/, "", $2)
-			print $2
-		}
-	'
-}
-
-assert_single_header() {
-	local url=${1:?Missing URL}
-	local header_name=${2:?Missing header name}
-	local count
-
-	count=$(read_header_values "$url" "$header_name" | awk 'END { print NR + 0 }')
-	if [[ "$count" -ne 1 ]]; then
-		echo "Expected a single ${header_name} header on ${url}, got ${count}" >&2
-		exit 1
-	fi
-}
-
-assert_header_contains() {
-	local url=${1:?Missing URL}
-	local header_name=${2:?Missing header name}
-	local pattern=${3:?Missing pattern}
-
-	if ! read_header_values "$url" "$header_name" | grep -qE "$pattern"; then
-		echo "Expected ${header_name} on ${url} to match ${pattern}" >&2
-		exit 1
-	fi
-}
-
-assert_body_matches() {
-	local url=${1:?Missing URL}
-	local pattern=${2:?Missing pattern}
-	local tmp_file
-	tmp_file=$(mktemp)
-	trap 'rm -f "$tmp_file"' RETURN
-
-	curl -fsS "$url" -o "$tmp_file"
-	if ! grep -qE "$pattern" "$tmp_file"; then
-		echo "Expected ${url} body to match ${pattern}" >&2
-		exit 1
-	fi
-}
-
-assert_body_absent() {
-	local url=${1:?Missing URL}
-	local pattern=${2:?Missing pattern}
-	local tmp_file
-	tmp_file=$(mktemp)
-	trap 'rm -f "$tmp_file"' RETURN
-
-	curl -fsS "$url" -o "$tmp_file"
-	if grep -qE "$pattern" "$tmp_file"; then
-		echo "Expected ${url} body to avoid ${pattern}" >&2
-		exit 1
-	fi
-}
-
-resolve_versioned_asset_url() {
-	local page_url=${1:?Missing page URL}
-	local asset_name=${2:?Missing asset name}
-	local html
-	local asset_path
-	local escaped_asset_name
-
-	html=$(curl -fsS -H 'Cache-Control: no-cache' "$page_url")
-	escaped_asset_name=$(printf '%s' "$asset_name" | sed 's/[][(){}.^$*+?|\\/]/\\&/g')
-	asset_path=$(printf '%s' "$html" | tr '\n' ' ' | grep -oE "/${escaped_asset_name}\\?v=[0-9]+" | head -n 1 || true)
-
-	if [[ -z "$asset_path" ]]; then
-		echo "Could not resolve versioned asset ${asset_name} from ${page_url}" >&2
-		exit 1
-	fi
-
-	printf 'https://sowwwl.com%s\n' "$asset_path"
-}
-
-signal_validation_args() {
-	local signal_delivery
-	local magic_delivery
-
-	signal_delivery=$(read_env_value "SOWWWL_SIGNAL_IDENTITY_DELIVERY")
-	magic_delivery=$(read_env_value "SOWWWL_MAGIC_LINK_DELIVERY")
-
-	printf '%s\n' "--require-schema-ready"
-	printf '%s\n' "--require-runtime-ready"
-	if [[ "${signal_delivery,,}" == "mail" || "${magic_delivery,,}" == "mail" ]]; then
-		printf '%s\n' "--require-delivery-ready"
-	fi
-}
-
-should_verify_0wlslw0_agent() {
-	local endpoint
-
-	endpoint=$(read_env_value "SOWWWL_0WLSLW0_AGENT_ENDPOINT")
-	[[ -n "$endpoint" ]]
-}
-
-should_verify_pi_host() {
-	local public_origin
-	local api_origin
-
-	public_origin=$(origin_from_url "$(read_env_value "SOWWWL_PUBLIC_ORIGIN")")
-	api_origin=$(origin_from_url "$(read_env_value "API_PUBLIC_BASE_URL")")
-
-	[[ "$public_origin" == "pi.sowwwl.cloud" || "$api_origin" == "pi.sowwwl.cloud" ]]
-}
-
 echo "==> Updating production checkout"
 cd "$prod_root"
 git fetch origin
@@ -533,6 +418,8 @@ docker exec "${project_name}-app-1" test -s /var/www/html/main.js
 docker exec "${project_name}-app-1" test -s /var/www/html/public-shell.js
 docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon.svg
 docker exec "${project_name}-app-1" test -s /var/www/html/icons/icon-192.png
+docker exec "${project_name}-app-1" test -s /var/www/html/404.php
+docker exec "${project_name}-app-1" test -s /var/www/html/robots.php
 docker exec "${project_name}-app-1" test -s /var/www/html/sitemap.php
 docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_signal_validation.php
 docker exec "${project_name}-app-1" test -s /var/www/html/scripts/check_0wlslw0_agent.php
@@ -554,100 +441,10 @@ if (!is_array($headers) || !isset($headers[0]) || stripos((string) $headers[0], 
 '
 
 echo "==> Public verification"
-if should_verify_0wlslw0_agent; then
-	echo "==> Verifying 0wlslw0 remote relay"
-	docker exec "${project_name}-app-1" php /var/www/html/scripts/check_0wlslw0_agent.php --require-remote-ok
-else
-	echo "==> 0wlslw0 remote relay not configured in $env_path (local fallback remains available)"
-fi
-echo "==> Verifying sowwwl.io spatial surface inside app container"
-docker exec "${project_name}-app-1" php /var/www/html/scripts/check_spatial_surface.php --require-ready >/dev/null
-echo "==> Verifying media readers inside app container"
-docker exec "${project_name}-app-1" php /var/www/html/scripts/check_media_readers.php --require-ready >/dev/null
-public_shell_url=$(resolve_versioned_asset_url https://sowwwl.com/ public-shell.js)
-main_js_url=$(resolve_versioned_asset_url https://sowwwl.com/str3m main.js)
-curl -fsSI https://sowwwl.com/
-curl -fsSI https://sowwwl.com/sitemap.xml
-curl -fsSI https://0wlslw0.com/
-curl -fsSI https://0wlslw0.com/sitemap.xml
-curl -fsSI https://sowwwl.io/
-curl -fsSI https://www.sowwwl.io/
-curl -fsSI https://sowwwl.cloud/
-curl -fsSI https://www.sowwwl.cloud/
-curl -fsSI https://sowwwl.xyz/
-curl -fsSI https://sowwwl.xyz/map
-curl -fsSI https://sowwwl.com/signal
-curl -fsSI https://sowwwl.com/str3m
-curl -fsSI 'https://sowwwl.com/island?u=pablo-espallergues'
-curl -fsSI https://sowwwl.com/0wlslw0
-curl -fsSI https://sowwwl.com/icons/icon.svg
-curl -fsSI https://sowwwl.com/icons/icon-192.png
-curl -fsSI 'https://sowwwl.com/manifest.php?app=owl'
-curl -fsSI https://sowwwl.org/
-curl -fsSI https://api.sowwwl.cloud/healthz
-curl -fsSI https://api.sowwwl.cloud/v1/status
-assert_body_matches https://sowwwl.com/ 'Trois portes : public, terre, 0wlslw0|Passer par 0wlslw0|commande noyau'
-assert_body_matches https://sowwwl.com/sitemap.xml '<loc>https://sowwwl\.com/</loc>|<loc>https://sowwwl\.com/str3m</loc>'
-assert_body_matches https://0wlslw0.com/ 'Entrer sans se perdre|guide des passages|Parler à 0wlslw0'
-assert_body_matches https://0wlslw0.com/sitemap.xml '<loc>https://0wlslw0\.com/</loc>'
-assert_body_matches "$public_shell_url" 'querySelectorAll\("\.reveal"\)|public-shell'
-assert_body_matches "$main_js_url" 'runPageInit\("xyzCamera",[[:space:]]*initXyzCamera\);?'
-assert_body_matches "$main_js_url" 'runPageInit\("guideVoice",[[:space:]]*initGuideVoice\);?'
-assert_body_matches "$main_js_url" 'const[[:space:]]+hasRecognition[[:space:]]*=[[:space:]]*Boolean\(RecognitionCtor\);?'
-assert_body_matches https://sowwwl.com/str3m 'data-str3m-player-engine|data-str3m-player-source-state|ouvrir la source'
-assert_body_matches 'https://sowwwl.com/island?u=pablo-espallergues' 'data-island-reader-shell|data-str3m-player-engine|ouvrir la source'
-assert_body_matches https://sowwwl.io/ 'monde instrument|Surface de jeu Terre et Mine|Mode casque web'
-assert_body_matches https://sowwwl.io/ 'Perspective caméra|data-xyz-camera-facing-button="environment"'
-assert_body_matches 'https://sowwwl.io/manifest.php?app=io&spatial=headset' '"name"[[:space:]]*:[[:space:]]*"SOWWWL IO"'
-assert_body_matches 'https://sowwwl.io/manifest.php?app=io&spatial=headset' 'spatial=headset'
-assert_header_contains https://www.sowwwl.io location '^https://sowwwl\.io/'
-assert_body_matches https://sowwwl.cloud/ 'One network\. Accueil des fleurs\.|Open the product|Review validation layer'
-assert_header_contains https://www.sowwwl.cloud location '^https://sowwwl\.cloud/'
-assert_body_matches https://sowwwl.xyz/ 'Le tore écoute le monde réel|Activer la membrane|Silence web|Partager'
-assert_body_matches https://sowwwl.xyz/ 'data-xyz-plasma-bridge="https://sowwwl\.xyz(/o)?/ingest/membrane"'
-assert_body_absent https://sowwwl.xyz/ 'data-xyz-plasma-bridge="https://lab\.sowwwl\.cloud'
-assert_body_matches https://sowwwl.xyz/map 'Le tore des terres actives|Console lexicale de la map|courants actifs'
-assert_body_matches https://sowwwl.org/ 'Comprendre les domaines sans se perdre|carte des rôles|Ouvrir sowwwl\.com'
-assert_body_matches https://api.sowwwl.cloud/v1/status '"service"[[:space:]]*:[[:space:]]*"api\.sowwwl\.cloud"'
-assert_body_matches https://api.sowwwl.cloud/v1/status '"openapi"[[:space:]]*:[[:space:]]*"https://api\.sowwwl\.cloud/docs/AzA_v0\.7_openapi\.min\.yaml"'
-if should_verify_pi_host; then
-	curl -fsSI https://pi.sowwwl.cloud/
-	curl -fsSI https://pi.sowwwl.cloud/healthz
-	curl -fsSI https://pi.sowwwl.cloud/v1/status
-	curl -fsSI https://pi.sowwwl.cloud/camera/pi3-camera-01
-	curl -fsSI https://pi.sowwwl.cloud/sceptre/ensemble
-	assert_body_matches https://pi.sowwwl.cloud/v1/status '"service"[[:space:]]*:[[:space:]]*"pi\.sowwwl\.cloud"'
-	assert_body_matches https://pi.sowwwl.cloud/v1/status '"openapi"[[:space:]]*:[[:space:]]*"https://pi\.sowwwl\.cloud/docs/AzA_v0\.7_openapi\.min\.yaml"'
-	assert_body_matches https://pi.sowwwl.cloud/camera/pi3-camera-01 'Fen.tre harmonique'
-	assert_body_matches https://pi.sowwwl.cloud/sceptre/ensemble 'Sceptre harmonique|pi\.sowwwl\.cloud'
-fi
-assert_single_header https://sowwwl.com/ cross-origin-opener-policy
-assert_single_header https://sowwwl.com/ cross-origin-resource-policy
-assert_single_header https://sowwwl.com/ x-permitted-cross-domain-policies
-assert_single_header https://sowwwl.xyz/ cross-origin-opener-policy
-assert_single_header https://sowwwl.xyz/ cross-origin-resource-policy
-assert_single_header https://sowwwl.xyz/ x-permitted-cross-domain-policies
-assert_single_header https://sowwwl.io/ cross-origin-opener-policy
-assert_single_header https://sowwwl.io/ cross-origin-resource-policy
-assert_single_header https://sowwwl.io/ x-permitted-cross-domain-policies
-assert_single_header https://0wlslw0.com cross-origin-opener-policy
-assert_single_header https://0wlslw0.com cross-origin-resource-policy
-assert_single_header https://0wlslw0.com x-permitted-cross-domain-policies
-assert_header_contains https://sowwwl.com/ permissions-policy 'microphone=\(self\)'
-assert_header_contains https://sowwwl.com/ permissions-policy 'screen-wake-lock=\(self\)'
-assert_header_contains https://sowwwl.io/ permissions-policy 'accelerometer=\(self\)'
-assert_header_contains https://sowwwl.io/ permissions-policy 'camera=\(self\)'
-assert_header_contains https://sowwwl.io/ permissions-policy 'microphone=\(self\)'
-assert_header_contains https://sowwwl.io/ permissions-policy 'screen-wake-lock=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'accelerometer=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'ambient-light-sensor=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'camera=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'gyroscope=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'magnetometer=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'microphone=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'screen-wake-lock=\(self\)'
-mapfile -t signal_args < <(signal_validation_args)
-docker exec "${project_name}-app-1" php /var/www/html/scripts/check_signal_validation.php "${signal_args[@]}" >/dev/null
-docker inspect "${project_name}-caddy-1" --format '{{range .Mounts}}{{println .Source " -> " .Destination}}{{end}}' | grep '/srv/sites'
+bash "$prod_root/scripts/check_bundle_contract.sh"
+bash "$prod_root/scripts/verify_public_contract.sh" \
+	--root "$prod_root" \
+	--env-file "$env_file" \
+	--project-name "$project_name"
 
 echo "==> Production deploy complete"

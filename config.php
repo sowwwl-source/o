@@ -197,6 +197,10 @@ function aza_absolute_storage_path(?string $publicPath): ?string
     return __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $normalized);
 }
 
+require_once __DIR__ . '/lib/runtime.php';
+require_once __DIR__ . '/lib/devices.php';
+
+if (!function_exists('o_mount_prefix')) {
 function o_mount_prefix(): string
 {
     static $prefix = null;
@@ -1740,6 +1744,7 @@ function current_brand_domain(?string $host = null): string
 
     return SITE_DOMAIN;
 }
+}
 
 $pdo = null;
 try {
@@ -1761,6 +1766,9 @@ require_once __DIR__ . '/lib/plasma_bridge.php';
 require_once __DIR__ . '/lib/meaning.php';
 require_once __DIR__ . '/lib/signal_mail.php';
 
+require_once __DIR__ . '/lib/head.php';
+
+if (!function_exists('pwa_app_catalog')) {
 function pwa_app_catalog(): array
 {
     static $catalog = null;
@@ -2145,6 +2153,7 @@ function render_o_page_head_assets(?string $preferred = null, ?string $host = nu
 {
     $scriptBundle = strtolower(trim((string) ($options['script_bundle'] ?? 'main')));
     $scriptAsset = $scriptBundle === 'public-shell' ? 'public-shell.js' : 'main.js';
+    $loadPageAdapters = $scriptBundle !== 'public-shell';
     $bridgePrefix = h(o_mount_prefix());
     $disableServiceWorker = o_mount_prefix() !== '' ? 'true' : 'false';
     $faviconHref = h(o_public_href('favicon.svg'));
@@ -2153,6 +2162,26 @@ function render_o_page_head_assets(?string $preferred = null, ?string $host = nu
     $stylesHref = h(o_asset_href('styles.css'));
     $scriptHref = h(o_asset_href($scriptAsset));
     $mainBundleHref = h(o_asset_href('main.js'));
+    $mainStr3mBundleHref = h(o_asset_href('main.str3m.js'));
+    $mainSceptreBundleHref = h(o_asset_href('main.sceptre.js'));
+    $mainLandscapeBundleHref = h(o_asset_href('main.landscape.js'));
+    $mainIslandBundleHref = h(o_asset_href('main.island.js'));
+    $mainPagesBundleHref = h(o_asset_href('main.pages.js'));
+    $str3mBundleScriptTag = $loadPageAdapters
+        ? "\n    <script defer src=\"{$mainStr3mBundleHref}\"></script>"
+        : '';
+    $sceptreBundleScriptTag = $loadPageAdapters
+        ? "\n    <script defer src=\"{$mainSceptreBundleHref}\"></script>"
+        : '';
+    $landscapeBundleScriptTag = $loadPageAdapters
+        ? "\n    <script defer src=\"{$mainLandscapeBundleHref}\"></script>"
+        : '';
+    $islandBundleScriptTag = $loadPageAdapters
+        ? "\n    <script defer src=\"{$mainIslandBundleHref}\"></script>"
+        : '';
+    $pageAdapterScriptTag = $loadPageAdapters
+        ? "\n    <script defer src=\"{$mainPagesBundleHref}\"></script>"
+        : '';
 
     return <<<HTML
     <meta name="o-bridge-prefix" content="{$bridgePrefix}">
@@ -2160,11 +2189,17 @@ function render_o_page_head_assets(?string $preferred = null, ?string $host = nu
     <meta name="o-spatial-native-contract" content="{$spatialContractVersion}">
     <meta name="o-spatial-native-event" content="o:native-spatial-state">
     <meta name="o-main-bundle" content="{$mainBundleHref}">
+    <meta name="o-main-str3m-bundle" content="{$mainStr3mBundleHref}">
+    <meta name="o-main-sceptre-bundle" content="{$mainSceptreBundleHref}">
+    <meta name="o-main-landscape-bundle" content="{$mainLandscapeBundleHref}">
+    <meta name="o-main-island-bundle" content="{$mainIslandBundleHref}">
+    <meta name="o-main-pages-bundle" content="{$mainPagesBundleHref}">
     <link rel="icon" href="{$faviconHref}" type="image/svg+xml">
 {$pwaHead}
     <link rel="stylesheet" href="{$stylesHref}">
-    <script defer src="{$scriptHref}"></script>
+    <script defer src="{$scriptHref}"></script>{$str3mBundleScriptTag}{$sceptreBundleScriptTag}{$landscapeBundleScriptTag}{$islandBundleScriptTag}{$pageAdapterScriptTag}
 HTML;
+}
 }
 
 function render_skip_link(string $targetId = 'main-content', string $label = 'Aller au contenu'): string

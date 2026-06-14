@@ -1,0 +1,55 @@
+name: O CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint-and-guards:
+    name: Lint And Guards
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo, pdo_mysql, pdo_sqlite, curl
+          coverage: none
+
+      - name: Check PHP syntax
+        run: find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \;
+
+      - name: Check bootstrap without database
+        run: php -r 'require "config.php"; echo "bootstrap-ok\n";'
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check main.js
+          node --check main.str3m.js
+          node --check main.sceptre.js
+          node --check main.landscape.js
+          node --check main.island.js
+          node --check main.pages.js
+          node --check public-shell.js
+
+      - name: Check shell scripts
+        run: |
+          bash -n scripts/deploy_prod_update.sh
+          bash -n scripts/check_bundle_contract.sh
+          bash -n scripts/verify_public_contract.sh
+
+      - name: Check bundle contract
+        run: bash scripts/check_bundle_contract.sh
+
+      - name: Check local helper scripts exist
+        run: |
+          test -s scripts/check_signal_validation.php
+          test -s scripts/check_0wlslw0_agent.php
+          test -s scripts/check_spatial_surface.php
+          test -s scripts/check_media_readers.php
