@@ -32,6 +32,23 @@ function home_surface_signup_portal_steps(): array
     return $portals;
 }
 
+function render_home_partial(string $partial, array $state = []): string
+{
+    if (!preg_match('/^[a-z0-9_-]+$/', $partial)) {
+        throw new InvalidArgumentException('Invalid home partial name.');
+    }
+
+    $path = dirname(__DIR__) . '/partials/home/' . $partial . '.php';
+    if (!is_file($path)) {
+        throw new RuntimeException('Home partial not found: ' . $partial);
+    }
+
+    ob_start();
+    extract($state, EXTR_SKIP);
+    require $path;
+    return (string) ob_get_clean();
+}
+
 function home_surface_request_context(): array
 {
     $host = request_host();
