@@ -452,6 +452,7 @@ if (!is_array($headers) || !isset($headers[0]) || stripos((string) $headers[0], 
 
 echo "==> Public verification"
 bash "$prod_root/scripts/check_bundle_contract.sh"
+bash "$prod_root/scripts/check_public_stateless_contract.sh"
 bash "$prod_root/scripts/verify_public_contract.sh" \
 	--root "$prod_root" \
 	--env-file "$env_file" \

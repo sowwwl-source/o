@@ -9,14 +9,29 @@ function bootstrap_request(): void
         return;
     }
 
-    start_secure_session();
+    start_secure_session(false);
     send_security_headers();
 }
 
-function start_secure_session(): void
+function secure_session_name(): string
+{
+    return 'sowwwl_session';
+}
+
+function has_secure_session_cookie(): bool
+{
+    $cookie = $_COOKIE[secure_session_name()] ?? null;
+    return is_string($cookie) && $cookie !== '';
+}
+
+function start_secure_session(bool $createIfMissing = true): bool
 {
     if (session_status() === PHP_SESSION_ACTIVE) {
-        return;
+        return true;
+    }
+
+    if (!$createIfMissing && !has_secure_session_cookie()) {
+        return false;
     }
 
     $sessionSavePath = sowwwl_session_save_path();
@@ -30,7 +45,7 @@ function start_secure_session(): void
         }
     }
 
-    session_name('sowwwl_session');
+    session_name(secure_session_name());
     ini_set('session.gc_maxlifetime', (string) SOWWWL_AUTH_SESSION_TTL);
     session_set_cookie_params([
         'lifetime' => SOWWWL_AUTH_SESSION_TTL,
@@ -42,6 +57,7 @@ function start_secure_session(): void
     ]);
 
     session_start();
+    return session_status() === PHP_SESSION_ACTIVE;
 }
 
 function sowwwl_session_save_path(): string
@@ -79,6 +95,25 @@ function send_security_headers(): void
     header('Cross-Origin-Opener-Policy: same-origin');
     header('Cross-Origin-Resource-Policy: same-origin');
     header('X-Permitted-Cross-Domain-Policies: none');
+}
+
+function mark_public_response_cacheable(int $maxAgeSeconds = 300, array $varyHeaders = ['Accept-Encoding']): void
+{
+    header_remove('Pragma');
+    header_remove('Expires');
+    header('Cache-Control: public, max-age=' . max(0, $maxAgeSeconds));
+
+    $varyHeaders = array_values(array_filter(array_unique(array_map(
+        static fn ($value): string => trim((string) $value),
+        $varyHeaders
+    ))));
+
+    if ($varyHeaders === []) {
+        header_remove('Vary');
+        return;
+    }
+
+    header('Vary: ' . implode(',', $varyHeaders));
 }
 
 function content_security_policy(): string
@@ -135,17 +170,29 @@ function site_origin(): string
 
 function remember_form_rendered_at(): void
 {
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        start_secure_session();
+    }
+
     $_SESSION['form_rendered_at'] = time();
 }
 
 function form_was_rendered_recently(int $minimumSeconds = 2): bool
 {
+    if (session_status() !== PHP_SESSION_ACTIVE && !start_secure_session(false)) {
+        return false;
+    }
+
     $renderedAt = (int) ($_SESSION['form_rendered_at'] ?? 0);
     return $renderedAt > 0 && (time() - $renderedAt) >= $minimumSeconds;
 }
 
 function csrf_token(): string
 {
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        start_secure_session();
+    }
+
     $token = (string) ($_SESSION['csrf_token'] ?? '');
 
     if ($token === '') {
@@ -156,14 +203,181 @@ function csrf_token(): string
     return $token;
 }
 
+function sowwwl_secret_looks_placeholder(string $value): bool
+{
+    $normalized = strtolower(trim($value));
+    if ($normalized === '') {
+        return true;
+    }
+
+    foreach ([
+        'change_me',
+        'replace_me',
+        'example',
+        'your_',
+        'placeholder',
+    ] as $marker) {
+        if (str_contains($normalized, $marker)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function sowwwl_public_request_secret(): string
+{
+    static $secret = null;
+
+    if (is_string($secret)) {
+        return $secret;
+    }
+
+    foreach ([
+        getenv('SOWWWL_PUBLIC_FORM_TOKEN_SECRET') ?: '',
+        getenv('SOWWWL_MAGIC_LINK_SECRET') ?: '',
+        getenv('DB_PASS') ?: '',
+        getenv('SOWWWL_ADMIN_PIN_HASH') ?: '',
+    ] as $candidate) {
+        $candidate = trim((string) $candidate);
+        if ($candidate === '' || sowwwl_secret_looks_placeholder($candidate)) {
+            continue;
+        }
+        $secret = $candidate;
+        return $secret;
+    }
+
+    $secret = '';
+    return $secret;
+}
+
+function sowwwl_base64url_encode(string $value): string
+{
+    return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+}
+
+function sowwwl_base64url_decode(string $value): ?string
+{
+    $normalized = strtr($value, '-_', '+/');
+    $padding = strlen($normalized) % 4;
+    if ($padding > 0) {
+        $normalized .= str_repeat('=', 4 - $padding);
+    }
+
+    $decoded = base64_decode($normalized, true);
+    return is_string($decoded) ? $decoded : null;
+}
+
+function issue_public_action_token(string $purpose, int $ttlSeconds = 900): string
+{
+    $secret = sowwwl_public_request_secret();
+    if ($secret === '') {
+        return '';
+    }
+
+    $issuedAt = time();
+    $payload = [
+        'purpose' => trim($purpose),
+        'host' => strtolower(request_host()),
+        'iat' => $issuedAt,
+        'exp' => $issuedAt + max(60, $ttlSeconds),
+    ];
+
+    $encodedPayload = sowwwl_base64url_encode((string) json_encode($payload, JSON_UNESCAPED_SLASHES));
+    $signature = hash_hmac('sha256', $encodedPayload, $secret, true);
+
+    return $encodedPayload . '.' . sowwwl_base64url_encode($signature);
+}
+
+function verify_public_action_token(?string $token, string $purpose): bool
+{
+    if (!is_string($token) || trim($token) === '') {
+        return false;
+    }
+
+    $secret = sowwwl_public_request_secret();
+    if ($secret === '') {
+        return false;
+    }
+
+    $parts = explode('.', trim($token), 2);
+    if (count($parts) !== 2) {
+        return false;
+    }
+
+    [$encodedPayload, $encodedSignature] = $parts;
+    $payloadJson = sowwwl_base64url_decode($encodedPayload);
+    $signature = sowwwl_base64url_decode($encodedSignature);
+    if ($payloadJson === null || $signature === null) {
+        return false;
+    }
+
+    $expectedSignature = hash_hmac('sha256', $encodedPayload, $secret, true);
+    if (!hash_equals($expectedSignature, $signature)) {
+        return false;
+    }
+
+    $payload = json_decode($payloadJson, true);
+    if (!is_array($payload)) {
+        return false;
+    }
+
+    $payloadPurpose = trim((string) ($payload['purpose'] ?? ''));
+    $payloadHost = strtolower(trim((string) ($payload['host'] ?? '')));
+    $expiresAt = (int) ($payload['exp'] ?? 0);
+    $issuedAt = (int) ($payload['iat'] ?? 0);
+    $now = time();
+
+    if ($payloadPurpose === '' || !hash_equals($payloadPurpose, trim($purpose))) {
+        return false;
+    }
+
+    if ($payloadHost === '' || !hash_equals($payloadHost, strtolower(request_host()))) {
+        return false;
+    }
+
+    if ($issuedAt <= 0 || $expiresAt <= 0 || $issuedAt > ($now + 30) || $expiresAt < $now) {
+        return false;
+    }
+
+    return true;
+}
+
+function issue_request_token(string $purpose, bool $preferStateless = false, int $ttlSeconds = 900): string
+{
+    if (!$preferStateless || session_status() === PHP_SESSION_ACTIVE || has_secure_session_cookie()) {
+        return csrf_token();
+    }
+
+    $token = issue_public_action_token($purpose, $ttlSeconds);
+    if ($token !== '') {
+        return $token;
+    }
+
+    return csrf_token();
+}
+
+function verify_request_token(?string $token, string $purpose): bool
+{
+    return verify_csrf_token($token) || verify_public_action_token($token, $purpose);
+}
+
 function verify_csrf_token(?string $token): bool
 {
+    if (session_status() !== PHP_SESSION_ACTIVE && !start_secure_session(false)) {
+        return false;
+    }
+
     $sessionToken = (string) ($_SESSION['csrf_token'] ?? '');
     return $sessionToken !== '' && is_string($token) && hash_equals($sessionToken, $token);
 }
 
 function auth_land_slug(): ?string
 {
+    if (session_status() !== PHP_SESSION_ACTIVE && !start_secure_session(false)) {
+        return null;
+    }
+
     expire_land_session_if_needed();
 
     $slug = trim((string) ($_SESSION['auth_land_slug'] ?? ''));
@@ -333,13 +547,13 @@ function enforce_rate_limit(string $action, int $maxAttempts, int $windowSeconds
     }
 }
 
-function guard_land_creation_request(?string $csrfToken, string $honeypot): void
+function guard_land_creation_request(?string $csrfToken, string $honeypot, string $purpose = 'land-create'): void
 {
     if (trim($honeypot) !== '') {
         throw new RuntimeException('Impossible de valider la demande. Réessaie.');
     }
 
-    if (!verify_csrf_token($csrfToken)) {
+    if (!verify_request_token($csrfToken, $purpose)) {
         throw new RuntimeException('Session expirée. Recharge la page et réessaie.');
     }
 
@@ -350,9 +564,9 @@ function guard_land_creation_request(?string $csrfToken, string $honeypot): void
     );
 }
 
-function guard_land_login_request(?string $csrfToken): void
+function guard_land_login_request(?string $csrfToken, string $purpose = 'land-login'): void
 {
-    if (!verify_csrf_token($csrfToken)) {
+    if (!verify_request_token($csrfToken, $purpose)) {
         throw new RuntimeException('Session expirée. Recharge la page et réessaie.');
     }
 

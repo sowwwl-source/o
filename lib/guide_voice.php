@@ -209,7 +209,7 @@ function guide_voice_browser_state(?array $authenticatedLand = null): array
 
     return [
         'api_path' => (string) $config['api_path'],
-        'csrf_token' => csrf_token(),
+        'csrf_token' => issue_request_token('guide-voice', $authenticatedLand === null),
         'greeting' => guide_voice_default_greeting($authenticatedLand),
         'upstream_configured' => guide_voice_upstream_configured(),
         'upstream_state' => guide_voice_upstream_state(),

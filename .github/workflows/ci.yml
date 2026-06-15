@@ -42,10 +42,14 @@ jobs:
         run: |
           bash -n scripts/deploy_prod_update.sh
           bash -n scripts/check_bundle_contract.sh
+          bash -n scripts/check_public_stateless_contract.sh
           bash -n scripts/verify_public_contract.sh
 
       - name: Check bundle contract
         run: bash scripts/check_bundle_contract.sh
+
+      - name: Check public stateless contract
+        run: bash scripts/check_public_stateless_contract.sh
 
       - name: Check local helper scripts exist
         run: |

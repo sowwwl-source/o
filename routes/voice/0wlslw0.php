@@ -37,7 +37,7 @@ if (!is_array($payload)) {
 }
 
 $csrfToken = trim((string) ($payload['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')));
-if (!verify_csrf_token($csrfToken)) {
+if (!verify_request_token($csrfToken, 'guide-voice')) {
     o_json_response(403, [
         'ok' => false,
         'error' => 'invalid_csrf',

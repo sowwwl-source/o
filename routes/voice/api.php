@@ -27,7 +27,7 @@ $csrfToken = trim((string) (
     ?? $_SERVER['HTTP_X_CSRF_TOKEN']
     ?? ''
 ));
-if (!verify_csrf_token($csrfToken)) {
+if (!verify_request_token($csrfToken, 'guide-voice')) {
     o_json_response(403, [
         'error' => 'invalid_csrf',
         'message' => 'Token CSRF invalide ou expiré.',

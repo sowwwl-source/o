@@ -275,6 +275,7 @@ curl -fsSI https://sowwwl.xyz/
 curl -fsSI https://sowwwl.xyz/map
 curl -fsSI https://sowwwl.com/signal
 curl -fsSI https://sowwwl.com/str3m
+curl -fsSI https://sowwwl.com/rejoindre
 curl -fsSI 'https://sowwwl.com/island?u=pablo-espallergues'
 curl -fsSI https://sowwwl.com/0wlslw0
 curl -fsSI https://sowwwl.com/icons/icon.svg
@@ -347,9 +348,11 @@ assert_header_contains https://sowwwl.com/0wlslw0.php location '^https://sowwwl\
 assert_header_contains https://sowwwl.com strict-transport-security 'max-age=31536000'
 assert_header_contains https://0wlslw0.com strict-transport-security 'max-age=31536000'
 assert_header_contains 'https://sowwwl.com/?connexion=1' cache-control 'no-store'
-assert_header_contains 'https://sowwwl.com/?connexion=1' set-cookie '^sowwwl_session='
 assert_header_contains https://sowwwl.com/ cache-control 'public, max-age='
 assert_header_absent https://sowwwl.com/ set-cookie
+assert_header_absent 'https://sowwwl.com/?connexion=1' set-cookie
+assert_header_absent https://sowwwl.com/rejoindre set-cookie
+assert_header_absent https://0wlslw0.com set-cookie
 assert_header_absent 'https://sowwwl.com/manifest.php?app=owl' set-cookie
 
 if should_verify_pi_host; then

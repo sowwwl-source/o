@@ -53,7 +53,7 @@ function signup_stage_link(int $step, array $form): string
 
 $host = request_host();
 
-$csrfToken = csrf_token();
+$csrfToken = issue_request_token('land-create', true);
 $authenticatedLand = current_authenticated_land();
 $brandDomain = current_brand_domain($host);
 $originBase = site_origin();
@@ -113,8 +113,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
-
-remember_form_rendered_at();
 
 if ($form['timezone'] === '') {
     $form['timezone'] = DEFAULT_TIMEZONE;
