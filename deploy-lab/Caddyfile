@@ -5,6 +5,7 @@
 (common_headers) {
 	encode zstd gzip
 	header {
+		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
@@ -34,6 +35,7 @@ api.lab.sowwwl.cloud {
 		Access-Control-Allow-Origin *
 		Access-Control-Allow-Headers "Authorization, Content-Type"
 		Access-Control-Allow-Methods "GET, POST, OPTIONS"
+		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options nosniff
 		Referrer-Policy no-referrer
 		-Server
