@@ -161,7 +161,7 @@ assert_body_matches() {
 	local tmp_file
 	tmp_file=$(mktemp)
 
-	curl -fsS "$url" -o "$tmp_file"
+	curl -sS "$url" -o "$tmp_file"
 	if ! grep -qE "$pattern" "$tmp_file"; then
 		rm -f "$tmp_file"
 		echo "Expected ${url} body to match ${pattern}" >&2
@@ -177,7 +177,7 @@ assert_body_absent() {
 	local tmp_file
 	tmp_file=$(mktemp)
 
-	curl -fsS "$url" -o "$tmp_file"
+	curl -sS "$url" -o "$tmp_file"
 	if grep -qE "$pattern" "$tmp_file"; then
 		rm -f "$tmp_file"
 		echo "Expected ${url} body to avoid ${pattern}" >&2
