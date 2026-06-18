@@ -75,7 +75,7 @@ $timezoneSuggestions = [
     'Asia/Bangkok',
 ];
 $authenticatedLand = current_authenticated_land();
-$csrfToken = csrf_token();
+$homeConnectionRequested = ((string) ($_GET['connexion'] ?? '')) === '1';
 $form = [
     'username' => '',
     'timezone' => DEFAULT_TIMEZONE,
@@ -144,7 +144,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     }
 }
 
-remember_form_rendered_at();
+$homeConnectionRequested = $homeConnectionRequested || $requestMethod === 'POST' || $message !== '';
+$shouldRenderHomeLoginForm = !$authenticatedLand && $homeConnectionRequested;
+$csrfToken = $shouldRenderHomeLoginForm ? issue_request_token('land-login', true) : '';
 
 $pulse = land_pulse();
 $previewSlug = preview_land_slug($form['username']);
@@ -204,8 +206,20 @@ $connectionNeedleClass = $connectionNeedleAngle < -12
 $homeHeroVuState = $connectionNeedleAngle < -12
     ? 'low'
     : ($connectionNeedleAngle > 12 ? 'high' : 'mid');
-$connectionStatusText = $authenticatedLand ? 'terre liée 3h33' : 'surface publique';
-$connectionDockOpen = $authenticatedLand || $message !== '';
+$connectionStatusText = $authenticatedLand
+    ? 'terre liée'
+    : ($homeConnectionRequested ? 'connexion ouverte' : 'connexion privée');
+$connectionDockOpen = $authenticatedLand || $message !== '' || $homeConnectionRequested;
+$homeUsesPublicShell = !$isSpatialSurface && !$isLabSurface && $userCloudSlug === null;
+if (
+    $homeUsesPublicShell
+    && in_array($requestMethod, ['GET', 'HEAD'], true)
+    && !$authenticatedLand
+    && !$homeConnectionRequested
+    && !has_secure_session_cookie()
+) {
+    mark_public_response_cacheable(300);
+}
 
 $pdoConn = null;
 if (isset($pdo) && $pdo instanceof PDO) {
@@ -239,15 +253,16 @@ if ($authenticatedLand) {
     }
 }
 
-$homeStatusLabel = $authenticatedLand ? 'terre liée' : 'réseau minimal';
+$homeStatusLabel = $authenticatedLand ? 'terre liée' : 'entrée simple';
 $homeLead = $authenticatedLand
-    ? 'Le tore suit la fréquence de ta terre. Ouvrir, écrire, dériver.'
-    : 'Un réseau minimal : courant public, terre personnelle, guide discret.';
+    ? 'Reprends ta terre, puis écris, relis ou passe par le guide.'
+    : 'Choisis une porte. Public, terre ou guide.';
 $homePrimaryActionHref = $authenticatedLand
     ? o_route_href('/land', ['u' => $activeLandSlug])
     : o_route_href('/rejoindre');
 $guideHref = guide_public_href($host);
 $homeHref = o_route_href('/');
+$homeConnectionHref = o_route_href('/', ['connexion' => '1']) . '#connexion';
 $signalHref = o_route_href('/signal');
 $str3mHref = o_route_href('/str3m');
 $mapHref = o_route_href('/map');
@@ -356,13 +371,12 @@ $spatialReadingOrderCards = $isSowwwlIo
     ]
     : [];
 $promptSeeds = guide_prompt_seeds();
-$homeHeroLineOne = $authenticatedLand ? 'Ta terre' : 'Réseau';
-$homeHeroLineTwo = $authenticatedLand ? 'module le tore.' : 'minimal.';
+$homeHeroLineOne = $authenticatedLand ? 'Ta terre' : 'Trois portes';
+$homeHeroLineTwo = $authenticatedLand ? 'reprend le fil.' : 'pour commencer.';
 $homeThresholdHint = $authenticatedLand
-    ? 'Le noyau reste simple : terre, adresse, courant.'
-    : 'Un point d’entrée simple, sans forcer l’identification.';
+    ? 'Le seuil reste court : terre, adresse, courant.'
+    : 'Le reste du réseau peut attendre le premier pas.';
 $homeStreamMood = (string) ($dailyStream['mood'] ?? 'calm');
-$homeStreamTemplate = (string) ($dailyStream['template'] ?? 'empty');
 $homeDailyTitle = $dailyTextItem
     ? (string) ($dailyTextItem['title'] ?? 'Texte du jour')
     : ($dailyAudioItem ? (string) ($dailyAudioItem['title'] ?? 'Nappe du jour') : 'Courant public en veille');
@@ -377,73 +391,76 @@ $homeDailyImageTitle = $dailyImageItem ? (string) ($dailyImageItem['title'] ?? '
 $homeSignalState = $authenticatedLand
     ? ($unreadSignal > 0 ? $unreadSignal . ' en attente' : 'boîte claire')
     : 'liaison possible';
-$homeSurfaceProofs = [
-    ['label' => 'lambda', 'value' => 'λ ' . $activeLambda . ' nm'],
-    ['label' => 'mood', 'value' => $homeStreamMood],
-    ['label' => 'terres', 'value' => (string) (int) ($pulse['count'] ?? 0)],
-    ['label' => 'fuseaux', 'value' => (string) (int) ($pulse['timezones'] ?? 0)],
-];
-$homeHeroPrimaryLabel = $authenticatedLand ? 'Rouvrir ma terre' : 'Poser une terre';
-$homeHeroSecondaryHref = $authenticatedLand ? $signalHref : $guideHref;
+$homeSurfaceProofs = $authenticatedLand
+    ? [
+        ['label' => 'terre', 'value' => $activeLandSlug !== '' ? '@' . $activeLandSlug : $activeLandLabel],
+        ['label' => 'signal', 'value' => $homeSignalState],
+        ['label' => 'courant', 'value' => 'ouvert'],
+        ['label' => 'fuseaux', 'value' => (string) (int) ($pulse['timezones'] ?? 0)],
+    ]
+    : [
+        ['label' => 'public', 'value' => 'ouvert'],
+        ['label' => 'terres', 'value' => (string) (int) ($pulse['count'] ?? 0)],
+        ['label' => 'fuseaux', 'value' => (string) (int) ($pulse['timezones'] ?? 0)],
+        ['label' => 'guide', 'value' => 'prêt'],
+    ];
+$homeHeroPrimaryHref = $authenticatedLand ? $homePrimaryActionHref : $str3mHref;
+$homeHeroPrimaryLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Entrer par le public';
+$homeHeroSecondaryHref = '#home-entry-doors';
 $homeHeroSecondaryLabel = $authenticatedLand
-    ? ($unreadSignal > 0 ? 'Écrire · ' . $unreadSignal . ' en attente' : 'Écrire maintenant')
-    : 'Passer par 0wlslw0';
-$homeHeroQuickFacts = [
-    ['label' => 'lambda', 'value' => 'λ ' . $activeLambda . ' nm'],
-    ['label' => 'mood', 'value' => $homeStreamMood],
-    [
-        'label' => $authenticatedLand ? 'signal' : 'terres',
-        'value' => $authenticatedLand ? $homeSignalState : (string) (int) ($pulse['count'] ?? 0),
-    ],
-];
+    ? 'Voir les trois portes'
+    : 'Choisir une autre porte';
+$homeHeroQuickFacts = $authenticatedLand
+    ? [
+        ['label' => 'terre', 'value' => $activeLandSlug !== '' ? '@' . $activeLandSlug : $activeLandLabel],
+        ['label' => 'signal', 'value' => $homeSignalState],
+    ]
+    : [
+        ['label' => 'public', 'value' => 'ouvert'],
+        ['label' => 'guide', 'value' => 'prêt'],
+    ];
+$homeEntryGridPrompt = $authenticatedLand
+    ? 'Choisis où reprendre. Le reste peut attendre.'
+    : 'Choisis une porte. Le reste vient après.';
 $homeEntryCards = $authenticatedLand
     ? [
         [
             'href' => $homePrimaryActionHref,
             'kicker' => '01 · terre',
-            'title' => 'Rouvrir ma terre',
+            'title' => 'Ouvrir ma terre',
             'copy' => 'Revenir immédiatement à ton noyau situé.',
             'hint' => 'Dire : « ouvre ma terre »',
             'state' => $activeLandSlug !== '' ? '@' . $activeLandSlug : $activeLandLabel,
-            'class' => 'entry-card entry-card--primary entry-card--land',
+            'class' => 'entry-card entry-card--land',
         ],
         [
-            'href' => $signalHref,
-            'kicker' => '02 · adresse',
-            'title' => 'Écrire maintenant',
-            'copy' => 'Aller droit vers Signal' . ($unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : '') . '.',
-            'hint' => 'Dire : « ouvre Signal »',
-            'state' => $homeSignalState,
-            'class' => 'entry-card entry-card--signal',
+            'href' => $guideHref,
+            'kicker' => '02 · guide',
+            'title' => 'Se faire guider',
+            'copy' => 'Passer par 0wlslw0 pour rerouter sans perdre le fil.',
+            'hint' => 'Dire : « aide-moi à choisir »',
+            'state' => 'guide',
+            'class' => 'entry-card entry-card--guide',
         ],
         [
             'href' => $str3mHref,
             'kicker' => '03 · public',
-            'title' => 'Relire le public',
+            'title' => 'Lire le public',
             'copy' => 'Voir le courant avant de replonger dans ta terre.',
-            'hint' => 'Dire : « ramène-moi vers Str3m »',
+            'hint' => 'Dire : « je veux lire le public »',
             'state' => $homeStreamMood,
-            'class' => 'entry-card',
-        ],
-        [
-            'href' => $publicInstrumentHref,
-            'kicker' => '04 · instrument',
-            'title' => 'Jouer l’instrument',
-            'copy' => 'Ouvrir sowwwl.io pour Terre, Mine, visage et paysage.',
-            'hint' => 'Dire : « ouvre l’instrument »',
-            'state' => 'sowwwl.io',
-            'class' => 'entry-card entry-card--instrument',
+            'class' => 'entry-card entry-card--signal',
         ],
     ]
     : [
         [
             'href' => $str3mHref,
             'kicker' => '01 · public',
-            'title' => 'Voir d’abord',
-            'copy' => 'Entrer publiquement dans Str3m et sentir le courant.',
-            'hint' => 'Dire : « je veux visiter publiquement »',
+            'title' => 'Lire le public',
+            'copy' => 'Entrer dans Str3m sans terre ni connexion privée.',
+            'hint' => 'Dire : « je veux lire le public »',
             'state' => $homeStreamMood,
-            'class' => 'entry-card entry-card--primary',
+            'class' => 'entry-card',
         ],
         [
             'href' => $joinHref,
@@ -457,71 +474,68 @@ $homeEntryCards = $authenticatedLand
         [
             'href' => $guideHref,
             'kicker' => '03 · 0wlslw0',
-            'title' => 'Me faire guider',
-            'copy' => 'Passer par 0wlslw0 pour clarifier vite, puis continuer.',
+            'title' => 'Se faire guider',
+            'copy' => 'Se faire guider par 0wlslw0, puis continuer.',
             'hint' => 'Dire : « aide-moi à choisir »',
             'state' => 'guide',
             'class' => 'entry-card entry-card--guide',
         ],
+    ];
+$homeSupportLinks = $authenticatedLand
+    ? [
         [
-            'href' => $publicInstrumentHref,
-            'kicker' => '04 · instrument',
+            'kicker' => 'aZa',
+            'title' => 'Déposer une matière',
+            'copy' => 'Archiver, classer et préparer l’île depuis ta terre active.',
+            'href' => $surfaceAzaHref,
+            'cta' => 'Ouvrir aZa',
+        ],
+        [
+            'kicker' => 'Map',
+            'title' => 'Voir le tore',
+            'copy' => 'Garder une vue d’ensemble sur les courants et les nœuds actifs.',
+            'href' => $mapHref,
+            'cta' => 'Ouvrir Map',
+        ],
+        [
+            'kicker' => 'Signal',
+            'title' => 'Écrire maintenant',
+            'copy' => 'Retrouver l’adresse et la boîte sans reprendre le centre' . ($unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : '') . '.',
+            'href' => $signalHref,
+            'cta' => 'Ouvrir Signal',
+        ],
+    ]
+    : [
+        [
+            'kicker' => 'Map',
+            'title' => 'Voir le tore',
+            'copy' => 'Repérer les terres actives et les courants sans créer de compte.',
+            'href' => $mapHref,
+            'cta' => 'Ouvrir Map',
+        ],
+        [
+            'kicker' => 'Instrument',
             'title' => 'Jouer l’instrument',
-            'copy' => 'Ouvrir sowwwl.io sans compte pour tester Terre, Mine et le monde.',
-            'hint' => 'Dire : « je veux jouer »',
-            'state' => 'sowwwl.io',
-            'class' => 'entry-card entry-card--instrument',
+            'copy' => 'Tester Terre et Mine sur sowwwl.io, sans identification.',
+            'href' => $publicInstrumentHref,
+            'cta' => 'Ouvrir l’instrument',
+        ],
+        [
+            'kicker' => 'Signal',
+            'title' => 'Préparer la suite',
+            'copy' => 'Voir comment l’adresse et la boîte apparaissent quand une terre répond.',
+            'href' => $signalHref,
+            'cta' => 'Voir Signal',
         ],
     ];
-$homeRouteNodes = [
-    [
-        'index' => '01',
-        'kicker' => 'str3m',
-        'title' => 'Lire le courant',
-        'copy' => 'La matière publique du jour, accordée au mood ' . $homeStreamMood . '.',
-        'href' => $str3mHref,
-        'signal' => $homeStreamTemplate,
-    ],
-    [
-        'index' => '02',
-        'kicker' => 'terre',
-        'title' => $authenticatedLand ? 'Rouvrir ta terre' : 'Poser une terre',
-        'copy' => $authenticatedLand
-            ? 'Revenir au noyau ' . ($activeLandSlug !== '' ? $activeLandSlug : $activeLandLabel) . ', avec sa fréquence située.'
-            : 'Créer un point stable dans le tore, lisible sans perdre la douceur du seuil.',
-        'href' => $homePrimaryActionHref,
-        'signal' => $activeLandLabel,
-    ],
-    [
-        'index' => '03',
-        'kicker' => 'signal',
-        'title' => 'Écrire juste',
-        'copy' => $authenticatedLand
-            ? 'La boîte reste disponible pour relier, répondre, préciser.'
-            : 'La porte d’adresse attend une terre pour devenir vraiment personnelle.',
-        'href' => $signalHref,
-        'signal' => $homeSignalState,
-    ],
-    [
-        'index' => '04',
-        'kicker' => '0wlslw0',
-        'title' => 'Se faire guider',
-        'copy' => 'Un guide bref pour choisir la prochaine entrée sans casser le fil.',
-        'href' => $guideHref,
-        'signal' => 'guide',
-    ],
-    [
-        'index' => '05',
-        'kicker' => 'instrument',
-        'title' => 'Jouer le monde',
-        'copy' => 'La porte sowwwl.io reste ouverte pour Terre, Mine, caméra et paysage.',
-        'href' => $publicInstrumentHref,
-        'signal' => 'sowwwl.io',
-    ],
-];
+$homePolishTitle = $authenticatedLand ? 'Le reste suit ta terre.' : 'Le reste attend juste après.';
+$homePolishCopy = $authenticatedLand
+    ? 'Une fois la porte choisie, courant, matière et carte restent proches sans reprendre la main.'
+    : 'Après le premier pas, courant, carte et instrument restent visibles ici sans brouiller l’entrée.';
 $membraneBridgeHref = plasma_bridge_url();
 $labSensorEndpointHref = o_route_href('/ingest/sensor');
 $labPublicPlasmaFeedHref = plasma_feed_url();
+$pocketCameraSlug = pocket_camera_slug();
 $pocketCameraStreamHref = pocket_camera_stream_url();
 $pocketCameraSnapshotHref = pocket_camera_snapshot_url();
 $pocketCameraLabel = pocket_camera_label();
@@ -780,7 +794,7 @@ $pageDescription = $isLabSurface
         : ($isSowwwlXyz
             ? 'SOWWWL XYZ — membrane musicale du tore pour téléphone, capteurs, monde instrument et gestes situés.'
             : (SITE_TITLE . ' — entrer publiquement, poser une terre, ou passer par 0wlslw0.')));
-$pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === null) ? 'public-shell' : 'main';
+$pageScriptBundle = $homeUsesPublicShell ? 'public-shell' : 'main';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -829,10 +843,10 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
     aria-labelledby="connection-meter-title"
     <?= $connectionDockOpen ? 'open' : '' ?>
 >
-    <summary class="connection-meter__toggle">
-        <span class="corner-dock-toggle__kicker">Se relier</span>
-        <strong><?= h($authenticatedLand ? $connectionStatusText : 'terre déjà posée ?') ?></strong>
-        <span class="corner-dock-toggle__meta"><?= $authenticatedLand ? h('@' . $activeLandSlug) : 'ouvrir doucement' ?></span>
+    <summary class="connection-meter__toggle" aria-controls="connection-meter-panel">
+        <span class="corner-dock-toggle__kicker"><?= $authenticatedLand ? 'Terre active' : 'Connexion privée' ?></span>
+        <strong><?= h($authenticatedLand ? $connectionStatusText : 'J’ai déjà une terre') ?></strong>
+        <span class="corner-dock-toggle__meta"><?= $authenticatedLand ? h('@' . $activeLandSlug) : 'me connecter' ?></span>
     </summary>
 
     <div class="connection-meter__dial" aria-hidden="true">
@@ -844,7 +858,7 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
         <span class="connection-meter__pin"></span>
     </div>
 
-    <div class="connection-meter__body">
+    <div class="connection-meter__body" id="connection-meter-panel">
         <div class="connection-meter__head">
             <span class="summary-label">VU connexion</span>
             <strong id="connection-meter-title"><?= h($connectionStatusText) ?></strong>
@@ -862,19 +876,23 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
                 <a class="pill-link" href="<?= h(o_route_href('/land', ['u' => $activeLandSlug])) ?>">ouvrir</a>
                 <a class="ghost-link" href="<?= h($logoutHref) ?>">retirer</a>
             </div>
-        <?php else: ?>
+        <?php elseif ($shouldRenderHomeLoginForm): ?>
             <form method="post" action="<?= h($homeHref) ?>#connexion" class="connection-meter__form" autocomplete="on">
                 <input type="hidden" name="action" value="login">
                 <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
                 <label>
-                    <span>Terre</span>
+                    <span>Nom de terre</span>
                     <input
                         type="text"
                         name="login_identifier"
-                        placeholder="nom"
+                        placeholder="nom ou slug"
                         required
                         value="<?= h($form['login_identifier']) ?>"
                         autocomplete="username"
+                        autocapitalize="none"
+                        autocorrect="off"
+                        spellcheck="false"
+                        enterkeyhint="next"
                     >
                 </label>
                 <label>
@@ -885,22 +903,31 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
                         placeholder="secret"
                         required
                         autocomplete="current-password"
+                        enterkeyhint="go"
                     >
                 </label>
-                <button type="submit">entrer</button>
+                <button type="submit">Me connecter</button>
             </form>
-            <a class="connection-meter__create" href="<?= h($joinHref) ?>">poser une terre</a>
+            <a class="connection-meter__create" href="<?= h($joinHref) ?>">Poser une terre</a>
+        <?php else: ?>
+            <p class="connection-meter__copy">Connexion réservée aux terres déjà posées. Si tu découvres O., commence plutôt par Str3m, puis décide si tu veux ancrer une terre.</p>
+            <div class="connection-meter__actions">
+                <a class="pill-link" href="<?= h($homeConnectionHref) ?>">Me connecter</a>
+                <a class="ghost-link" href="<?= h($joinHref) ?>">Poser une terre</a>
+            </div>
         <?php endif; ?>
     </div>
 </details>
 
-<div class="world-container" aria-hidden="true">
+<div class="world-container">
     <?php if ($isSpatialSurface): ?>
     <div
         class="xyz-camera-layer"
         data-xyz-camera-root
         data-xyz-plasma-bridge="<?= h($membraneBridgeHref) ?>"
+        data-xyz-plasma-feed="<?= h($labPublicPlasmaFeedHref) ?>"
         data-xyz-plasma-land="<?= h($activeLandSlug) ?>"
+        data-xyz-plasma-camera="<?= h($pocketCameraSlug) ?>"
         data-xyz-sceptre-feed="<?= h($sceptreFeedHref) ?>"
         data-xyz-sceptre-constellation-feed="<?= h($sceptreConstellationFeedHref) ?>"
         data-xyz-sceptre-device="<?= h($sceptreDeviceSlug) ?>"
@@ -963,8 +990,8 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
                 <button type="button" class="pill-link xyz-camera-toggle" data-xyz-camera-start><?= h($spatialActivationLabel) ?></button>
                 <button type="button" class="ghost-link xyz-camera-toggle" data-xyz-camera-demo aria-pressed="false">Terre &amp; Mine</button>
                 <button type="button" class="ghost-link xyz-camera-toggle hidden" data-xyz-camera-stop><?= h($spatialReleaseLabel) ?></button>
-                <a class="ghost-link" href="<?= h($authenticatedLand ? o_route_href('/land', ['u' => $activeLandSlug]) : '#connexion') ?>"><?= h($authenticatedLand ? 'Ouvrir ma terre' : 'Relier une terre') ?></a>
-                <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
+                <a class="ghost-link" href="<?= h($authenticatedLand ? o_route_href('/land', ['u' => $activeLandSlug]) : $homeConnectionHref) ?>"><?= h($authenticatedLand ? 'Ouvrir ma terre' : 'Me connecter') ?></a>
+                <a class="ghost-link" href="<?= h($guideHref) ?>">Se faire guider</a>
             </div>
 
             <div class="xyz-surface-meta" aria-label="Signature de la surface">
@@ -1866,7 +1893,7 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
                                 <p class="xyz-ar-pilot__copy" data-xyz-ar-pilot-copy>Commence par la carte pour tenir les plans, puis repasse par 0wlslw0 si tu dois réorienter la lecture située.</p>
                                 <div class="xyz-surface-route-links xyz-surface-route-links--ar" aria-label="Routes conseillées en réalité augmentée">
                                     <a class="ghost-link" href="<?= h($mapHref) ?>" data-xyz-ar-primary-link>Ouvrir Map</a>
-                                    <a class="ghost-link" href="<?= h($guideHref) ?>" data-xyz-ar-secondary-link>Passer par 0wlslw0</a>
+                                    <a class="ghost-link" href="<?= h($guideHref) ?>" data-xyz-ar-secondary-link>Se faire guider</a>
                                 </div>
                             </div>
                             <p class="xyz-ar-usage" data-xyz-ar-usage><?= h($spatialArUsage) ?></p>
@@ -2329,7 +2356,7 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
                 <article class="lab-console-presence__steer-card">
                     <span class="summary-label">routes conseillées</span>
                     <div class="lab-console-presence__route-links">
-                        <a class="pill-link" href="<?= h($guideHref) ?>" data-lab-presence-route-primary>Passer par 0wlslw0</a>
+                        <a class="pill-link" href="<?= h($guideHref) ?>" data-lab-presence-route-primary>Se faire guider</a>
                         <a class="ghost-link" href="<?= h($str3mHref) ?>" data-lab-presence-route-secondary>Ouvrir Str3m</a>
                     </div>
                     <p class="panel-copy" data-lab-presence-route-copy>Quand la terre dort, le lab garde un seuil public et une trace légère plutôt qu’une relance forcée.</p>
@@ -2523,7 +2550,7 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
                 </ul>
                 <div class="action-row">
                     <a class="pill-link" href="<?= h($labQaIslandHref) ?>">Relire l’île QA</a>
-                    <a class="ghost-link" href="<?= h($signalHref) ?>">Ouvrir Signal</a>
+                    <a class="ghost-link" href="<?= h($signalHref) ?>">Écrire maintenant</a>
                 </div>
             </article>
         </div>
@@ -2539,7 +2566,7 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
             </h1>
             <p class="lead"><?= h($homeLead) ?></p>
             <div class="home-hero-quickbar" aria-label="Actions immédiates du seuil">
-                <a class="pill-link home-hero-quickbar__primary" href="<?= h($homePrimaryActionHref) ?>"><?= h($homeHeroPrimaryLabel) ?></a>
+                <a class="pill-link home-hero-quickbar__primary" href="<?= h($homeHeroPrimaryHref) ?>"><?= h($homeHeroPrimaryLabel) ?></a>
                 <a class="ghost-link home-hero-quickbar__secondary" href="<?= h($homeHeroSecondaryHref) ?>"><?= h($homeHeroSecondaryLabel) ?></a>
             </div>
             <div class="home-hero-proofline" aria-label="État rapide du seuil">
@@ -2550,27 +2577,18 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
                     </span>
                 <?php endforeach; ?>
             </div>
-            <div class="home-threshold-links" aria-label="Repères du seuil">
-                <a class="ghost-link" href="<?= h($guideHref) ?>">Comprendre avec 0wlslw0</a>
-                <a class="ghost-link" href="<?= h($publicInstrumentHref) ?>">Instrument · sowwwl.io</a>
-                <?php if ($authenticatedLand): ?>
-                    <a class="ghost-link" href="<?= h($signalHref) ?>">Signal<?= $unreadSignal > 0 ? ' · ' . $unreadSignal . ' en attente' : ' · boîte' ?></a>
-                <?php else: ?>
-                    <a class="ghost-link" href="<?= h($mapHref) ?>">Voir le tore</a>
-                <?php endif; ?>
-            </div>
             <p class="world-intro-note world-intro-note--threshold"><?= h($homeThresholdHint) ?></p>
         </article>
 
-        <nav class="entry-grid editorial-nav" aria-label="Entrées principales du noyau">
+        <nav class="entry-grid editorial-nav" id="home-entry-doors" aria-label="Entrées principales du noyau">
             <div class="entry-grid__head">
                 <div class="entry-grid__intro">
                     <span class="summary-label">routes immédiates</span>
-                    <strong>Choisir sans se perdre.</strong>
+                    <strong>Trois portes suffisent.</strong>
                 </div>
-                <p class="entry-grid__prompt">Choisir en un geste. Si tu préfères la voix, dis simplement la phrase indiquée à 0wlslw0.</p>
+                <p class="entry-grid__prompt"><?= h($homeEntryGridPrompt) ?></p>
             </div>
-            <div class="entry-grid__cards">
+            <div class="entry-grid__cards entry-grid__cards--threshold">
                 <?php foreach ($homeEntryCards as $card): ?>
                     <a href="<?= h((string) $card['href']) ?>" class="<?= h((string) $card['class']) ?>">
                         <span class="entry-card__kicker">
@@ -2594,9 +2612,9 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
         </div>
 
         <header class="home-polish-head">
-            <p class="eyebrow"><strong>sowwwl.com</strong> <span>réseau minimal</span></p>
-            <h2 id="home-polish-title">Réseau minimal, déjà relié au dôme.</h2>
-            <p>La page d’entrée devient une chambre claire : elle montre le courant du jour, les cinq portes actives et les preuves discrètes du tore.</p>
+            <p class="eyebrow"><strong>sowwwl.com</strong> <span>après l’entrée</span></p>
+            <h2 id="home-polish-title"><?= h($homePolishTitle) ?></h2>
+            <p><?= h($homePolishCopy) ?></p>
         </header>
 
         <div class="home-polish-grid">
@@ -2630,19 +2648,23 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
                 </div>
             </article>
 
-            <nav class="home-route-orbit" aria-label="Chaînons publics du seuil">
-                <?php foreach ($homeRouteNodes as $routeNode): ?>
-                    <a class="home-route-node home-route-node--<?= h((string) $routeNode['kicker']) ?>" href="<?= h((string) $routeNode['href']) ?>">
-                        <span class="home-route-node__index"><?= h((string) $routeNode['index']) ?></span>
-                        <span class="home-route-node__body">
-                            <span class="summary-label"><?= h((string) $routeNode['kicker']) ?></span>
-                            <strong><?= h((string) $routeNode['title']) ?></strong>
-                            <span><?= h((string) $routeNode['copy']) ?></span>
-                        </span>
-                        <span class="home-route-node__signal"><?= h((string) $routeNode['signal']) ?></span>
-                    </a>
-                <?php endforeach; ?>
-            </nav>
+            <aside class="entry-secondary home-support-panel" aria-label="Repères secondaires">
+                <div class="home-support-panel__head">
+                    <span class="summary-label">repères secondaires</span>
+                    <strong><?= $authenticatedLand ? 'Garder deux ou trois repères proches.' : 'Garder le reste sous la main.' ?></strong>
+                    <p><?= $authenticatedLand ? 'Une fois la terre rouverte, matière, carte et guide restent accessibles sans reprendre le centre.' : 'Une fois la porte choisie, la carte, l’instrument et Signal restent disponibles sans brouiller l’entrée.' ?></p>
+                </div>
+                <div class="home-quicklist">
+                    <?php foreach ($homeSupportLinks as $item): ?>
+                        <article class="home-quickitem">
+                            <span class="summary-label"><?= h((string) $item['kicker']) ?></span>
+                            <strong><?= h((string) $item['title']) ?></strong>
+                            <p><?= h((string) $item['copy']) ?></p>
+                            <a class="ghost-link" href="<?= h((string) $item['href']) ?>"><?= h((string) $item['cta']) ?></a>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </aside>
         </div>
 
         <div class="home-proof-strip" aria-label="Preuves de surface">
@@ -2655,6 +2677,7 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
         </div>
     </section>
 
+    <?php if ($authenticatedLand): ?>
     <?= render_continuity_dome('surface', [
         'host' => $host,
         'land' => $authenticatedLand,
@@ -2662,6 +2685,7 @@ $pageScriptBundle = (!$isSpatialSurface && !$isLabSurface && $userCloudSlug === 
         'land_username' => $activeLandUsername,
         'unread_signal' => $unreadSignal,
     ]) ?>
+    <?php endif; ?>
     <?php endif; ?>
 
     <?php if (!$homeVisualOnly && $authenticatedLand): ?>

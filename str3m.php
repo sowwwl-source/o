@@ -136,6 +136,10 @@ $str3mHref = o_route_href('/str3m', [], $host);
 $landRouteHref = static fn (string $slug): string => o_route_href('/land', ['u' => $slug], $host);
 $shoreRouteHref = static fn (string $slug): string => o_route_href('/sh0re', ['u' => $slug], $host);
 $tokenRouteHref = static fn (string $token): string => o_route_href('/n', ['t' => $token], $host);
+$openLandHref = $authenticatedLand
+    ? (($landSlug = trim((string) ($authenticatedLand['slug'] ?? ''))) !== '' ? $landRouteHref($landSlug) : $landHref)
+    : $joinHref;
+$openLandLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une terre';
 $str3mGuide = guide_path('str3m');
 
 // 1. Chargement du courant quotidien (Str3m)
@@ -339,7 +343,6 @@ unset($land);
 
 $visibleLandPreviewCount = count($visibleLandPreview);
 $archipelagoLandCount = count($archipelagoLands);
-$str3mModeLabel = $authenticatedLand ? 'présence liée' : 'lecture publique';
 $str3mTodayTitle = $dailyTextItem
     ? (string) $dailyTextItem['title']
     : ($dailyAudioHasSource ? $dailyAudioTitle : 'Courant en veille');
@@ -354,8 +357,8 @@ if ($str3mTodayCopy === '') {
 
 $str3mVisibleTitle = 'Le courant attend une première preuve';
 $str3mVisibleCopy = 'Aucune terre n’a encore laissé assez de trace publique pour tenir la surface.';
-$str3mVisibleHref = $authenticatedLand ? $signalHref : $joinHref;
-$str3mVisibleLinkLabel = $authenticatedLand ? 'Ouvrir Signal' : 'Poser une terre';
+$str3mVisibleHref = $openLandHref;
+$str3mVisibleLinkLabel = $openLandLabel;
 
 if ($publicSignalCount > 0) {
     $str3mVisibleTitle = 'Des traces tiennent la surface';
@@ -370,7 +373,7 @@ if ($publicSignalCount > 0) {
 } elseif (($recentT0kCount + $recentB0t3Count) > 0) {
     $str3mVisibleTitle = 'Le courant bouge sans signal durable';
     $str3mVisibleCopy = 'Des gestes et dépôts publics circulent déjà, mais sans encore tenir une lecture stable de la surface.';
-    $str3mVisibleHref = '#str3m-proof-title';
+    $str3mVisibleHref = '#str3m-exploratory-title';
     $str3mVisibleLinkLabel = 'Relire les preuves';
 }
 
@@ -380,6 +383,76 @@ $str3mLabCopy = $archipelagoLandCount > 0
     : 'Le lab restera calme jusqu’à ce que des traces publiques suffisent à ouvrir l’archipel et ses objets portés.';
 $str3mLabHref = $archipelagoLandCount > 0 ? '#islands-title' : $futureShellRoute;
 $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir n0de';
+$str3mHeroLead = $authenticatedLand
+    ? 'Commence par le jour, puis relis les traces autour de ta terre.'
+    : 'Commence par le jour. L’écoute fine et l’archipel viennent après.';
+$str3mEmptyStateTitle = 'Aucune écoute publique aujourd’hui';
+$str3mEmptyStateCopy = 'Le courant reste lisible par le texte, les signaux et les terres visibles. L’écoute avancée réapparaît dès qu’une source audio publique est déposée.';
+$str3mEmptyStateLead = 'Commence par la couche la plus simple ci-dessous.';
+$str3mEmptyStatePrimaryHref = $openLandHref;
+$str3mEmptyStatePrimaryLabel = $openLandLabel;
+$str3mEmptyStateSecondaryHref = $guideHref;
+$str3mEmptyStateSecondaryLabel = 'Se faire guider';
+$str3mEmptyStateSurfaceLabel = 'veille publique';
+
+if ($publicSignalCount > 0) {
+    $str3mEmptyStateCopy = $publicSignalCount . ' signal' . ($publicSignalCount > 1 ? 's' : '') . ' public' . ($publicSignalCount > 1 ? 's restent' : ' reste') . ' déjà lisible' . ($publicSignalCount > 1 ? 's' : '') . ', même sans nappe audio pour aujourd’hui.';
+    $str3mEmptyStateLead = 'Commence par les signaux publics récents. L’écoute reviendra dès qu’une nappe sera publiée.';
+    $str3mEmptyStatePrimaryHref = '#str3m-signals-title';
+    $str3mEmptyStatePrimaryLabel = 'Lire les signaux';
+    $str3mEmptyStateSecondaryHref = $visibleLandPreviewCount > 0 ? '#str3m-visible-lands-title' : $guideHref;
+    $str3mEmptyStateSecondaryLabel = $visibleLandPreviewCount > 0 ? 'Voir les terres visibles' : 'Se faire guider';
+    $str3mEmptyStateSurfaceLabel = 'signaux disponibles';
+} elseif ($visibleLandPreviewCount > 0) {
+    $str3mEmptyStateCopy = $visibleLandPreviewCount . ' terre' . ($visibleLandPreviewCount > 1 ? 's' : '') . ' reste' . ($visibleLandPreviewCount > 1 ? 'nt' : '') . ' visible' . ($visibleLandPreviewCount > 1 ? 's' : '') . ', même sans écoute publique pour accompagner le jour.';
+    $str3mEmptyStateLead = 'Commence par les terres visibles pour lire le courant sans passer par l’audio.';
+    $str3mEmptyStatePrimaryHref = '#str3m-visible-lands-title';
+    $str3mEmptyStatePrimaryLabel = 'Voir les terres visibles';
+    $str3mEmptyStateSecondaryHref = $guideHref;
+    $str3mEmptyStateSecondaryLabel = 'Se faire guider';
+    $str3mEmptyStateSurfaceLabel = 'terres visibles';
+} elseif (($recentT0kCount + $recentB0t3Count) > 0) {
+    $str3mEmptyStateCopy = 'Des gestes et dépôts publics circulent déjà, mais aucune nappe audio ne tient encore la lecture du jour.';
+    $str3mEmptyStateLead = 'Relis d’abord les preuves exploratoires, puis décide si tu veux publier ou seulement observer.';
+    $str3mEmptyStatePrimaryHref = '#str3m-exploratory-title';
+    $str3mEmptyStatePrimaryLabel = 'Relire les preuves';
+    $str3mEmptyStateSecondaryHref = $guideHref;
+    $str3mEmptyStateSecondaryLabel = 'Se faire guider';
+    $str3mEmptyStateSurfaceLabel = 'gestes en circulation';
+}
+
+$str3mReadingCards = [
+    [
+        'kicker' => '01 · jour',
+        'title' => $str3mTodayTitle,
+        'copy' => $str3mTodayCopy,
+        'meta' => 'mood · ' . (string) ($dailyStream['mood'] ?? 'calm') . ' · template · ' . (string) ($dailyStream['template'] ?? 'empty'),
+        'href' => '#str3m-daily-reading',
+        'cta' => 'Lire le jour',
+        'class' => 'str3m-reading-card str3m-reading-card--primary',
+    ],
+    [
+        'kicker' => '02 · surface',
+        'title' => $str3mVisibleTitle,
+        'copy' => $str3mVisibleCopy,
+        'meta' => $publicSignalCount . ' signal' . ($publicSignalCount > 1 ? 's' : '') . ' · '
+            . $visibleLandPreviewCount . ' terre' . ($visibleLandPreviewCount > 1 ? 's' : '') . ' visible' . ($visibleLandPreviewCount > 1 ? 's' : ''),
+        'href' => $str3mVisibleHref,
+        'cta' => $str3mVisibleLinkLabel,
+        'class' => 'str3m-reading-card',
+    ],
+    [
+        'kicker' => '03 · suite',
+        'title' => $str3mLabTitle,
+        'copy' => $str3mLabCopy,
+        'meta' => $archipelagoLandCount . ' île' . ($archipelagoLandCount > 1 ? 's' : '') . ' · '
+            . $recentT0kCount . ' t0k' . ($recentT0kCount > 1 ? 's' : '') . ' · '
+            . $recentB0t3Count . ' b0t3' . ($recentB0t3Count > 1 ? 's' : ''),
+        'href' => $str3mLabHref,
+        'cta' => $str3mLabLinkLabel,
+        'class' => 'str3m-reading-card',
+    ],
+];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -403,10 +476,16 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
     <header class="hero page-header reveal">
         <p class="eyebrow"><strong>str3m</strong> <span>océan public</span></p>
         <h1 class="land-title signal-title">
-            <strong>Le courant et les îles.</strong>
-            <span>I inverse + voix</span>
+            <strong>Lire le courant public.</strong>
+            <span>Jour, traces, terres visibles.</span>
         </h1>
-        <p class="lead">Le courant du jour et les terres visibles.</p>
+        <p class="lead"><?= h($str3mHeroLead) ?></p>
+
+        <div class="action-row str3m-hero-actions">
+            <a class="pill-link" href="#str3m-daily-reading">Lire aujourd’hui</a>
+            <a class="ghost-link" href="<?= h($openLandHref) ?>"><?= h($openLandLabel) ?></a>
+            <a class="ghost-link" href="<?= h($guideHref) ?>">Se faire guider</a>
+        </div>
 
         <div class="land-meta">
             <a class="meta-pill meta-pill-link" href="<?= h($guideHref) ?>">0wlslw0</a>
@@ -428,29 +507,41 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
     <section class="panel reveal str3m-panel" aria-labelledby="str3m-title">
         <div class="section-topline">
             <div>
-                <h2 id="str3m-title">Str3m quotidien</h2>
-                <p class="panel-copy" data-str3m-ra-note>Une présence pour aujourd’hui.</p>
+                <h2 id="str3m-title">Lire aujourd’hui</h2>
+                <p class="panel-copy">Une première lecture publique, puis seulement l’écoute plus fine.</p>
             </div>
-            <span class="badge"><?= h((string) ($dailyStream['template'] ?? 'empty')) ?></span>
+            <span class="badge">jour</span>
         </div>
 
-        <div class="public-entry-grid public-entry-grid--dense str3m-surface-grid" aria-label="Surface en ce moment">
-            <article class="public-entry-card" data-str3m-ra-card="signals">
-                <strong><?= h((string) $publicSignalCount) ?> signal<?= $publicSignalCount > 1 ? 's' : '' ?> public<?= $publicSignalCount > 1 ? 's' : '' ?></strong>
-                <span><?= $publicSignalCount > 0 ? 'Des traces lisibles tiennent déjà le courant.' : 'Le courant attend encore sa première preuve publique.' ?></span>
-            </article>
-            <article class="public-entry-card" data-str3m-ra-card="lands">
-                <strong><?= h((string) $visibleLandPreviewCount) ?> terre<?= $visibleLandPreviewCount > 1 ? 's' : '' ?> visible<?= $visibleLandPreviewCount > 1 ? 's' : '' ?></strong>
-                <span><?= $visibleLandPreviewCount > 0 ? 'Des présences deviennent déjà relisibles sans porte privée.' : 'Aucune terre n’affleure encore assez pour tenir la surface.' ?></span>
-            </article>
-            <article class="public-entry-card" data-str3m-ra-card="gestures">
-                <strong><?= h((string) $str3mPublicGestureCount) ?> geste<?= $str3mPublicGestureCount > 1 ? 's' : '' ?> en circulation</strong>
-                <span><?= $str3mPublicGestureCount > 0 ? 't0ks et b0t3s bougent déjà dans le champ public.' : 'Le bord public reste calme pour le moment.' ?></span>
-            </article>
+        <div class="str3m-reading-rail" aria-label="Boussole de lecture du courant">
+            <?php foreach ($str3mReadingCards as $card): ?>
+                <a class="<?= h((string) $card['class']) ?>" href="<?= h((string) $card['href']) ?>">
+                    <span class="summary-label"><?= h((string) $card['kicker']) ?></span>
+                    <strong><?= h((string) $card['title']) ?></strong>
+                    <p><?= h((string) $card['copy']) ?></p>
+                    <small class="str3m-reading-card__meta"><?= h((string) $card['meta']) ?></small>
+                    <span class="str3m-reading-card__cta"><?= h((string) $card['cta']) ?></span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="str3m-proof-strip" aria-label="Preuves rapides du courant">
+            <span>
+                <strong><?= h((string) $publicSignalCount) ?></strong>
+                <small>signaux publics</small>
+            </span>
+            <span>
+                <strong><?= h((string) $visibleLandPreviewCount) ?></strong>
+                <small>terres visibles</small>
+            </span>
+            <span>
+                <strong><?= h((string) $str3mPublicGestureCount) ?></strong>
+                <small>gestes en circulation</small>
+            </span>
         </div>
 
         <div class="str3m-daily-grid">
-            <section class="str3m-card str3m-card-text">
+            <section class="str3m-card str3m-card-text" id="str3m-daily-reading">
                 <p class="summary-label">Texte d'ancrage</p>
                 <h3><?= $dailyTextItem ? h((string) $dailyTextItem['title']) : 'La surface est vierge' ?></h3>
                 <?php if ($dailyTextBody !== ''): ?>
@@ -465,7 +556,7 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
             </section>
 
             <section class="str3m-card str3m-card-visual">
-                <p class="summary-label">Surface</p>
+                <p class="summary-label">Écoute simple</p>
                 <h3><?= $dailyImageItem ? h((string) $dailyImageItem['title']) : 'Surface en suspens' ?></h3>
                 <div class="str3m-media-stage<?= $dailyAudioHasSource ? '' : ' is-passive' ?>">
                     <?php if ($dailyImagePath !== ''): ?>
@@ -480,139 +571,170 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                         </div>
                     <?php endif; ?>
 
-                    <section
-                        class="str3m-player<?= $dailyAudioHasSource ? '' : ' is-empty' ?>"
-                        data-str3m-player
-                        data-str3m-player-has-source="<?= $dailyAudioHasSource ? '1' : '0' ?>"
-                        data-str3m-player-source-url="<?= h($dailyAudioPath) ?>"
-                        data-str3m-player-title="<?= h($dailyAudioTitle) ?>"
-                        data-str3m-player-mood="<?= h((string) ($dailyStream['mood'] ?? 'calm')) ?>"
-                        data-str3m-player-template="<?= h((string) ($dailyStream['template'] ?? 'empty')) ?>"
-                        tabindex="0"
-                        aria-label="Lecteur intégré du str3m quotidien"
-                    >
-                        <div class="str3m-player__hero">
-                            <div>
-                                <p class="summary-label">Lecteur</p>
-                                <h4><?= h($dailyAudioTitle) ?></h4>
-                                <p class="str3m-player__copy"><?= h($dailyAudioCaption) ?></p>
-                                <p class="str3m-player__ra-note" data-str3m-player-ra-note>Le tore peut encore accorder la tenue de lecture selon la couche dominante.</p>
+                    <?php if ($dailyAudioHasSource): ?>
+                        <section
+                            class="str3m-player"
+                            data-str3m-player
+                            data-str3m-player-has-source="1"
+                            data-str3m-player-source-url="<?= h($dailyAudioPath) ?>"
+                            data-str3m-player-title="<?= h($dailyAudioTitle) ?>"
+                            data-str3m-player-mood="<?= h((string) ($dailyStream['mood'] ?? 'calm')) ?>"
+                            data-str3m-player-template="<?= h((string) ($dailyStream['template'] ?? 'empty')) ?>"
+                            tabindex="0"
+                            aria-label="Lecteur intégré du str3m quotidien"
+                        >
+                            <div class="str3m-player__hero">
+                                <div>
+                                    <p class="summary-label">Écoute</p>
+                                    <h4><?= h($dailyAudioTitle) ?></h4>
+                                    <p class="str3m-player__copy"><?= h($dailyAudioCaption) ?></p>
+                                    <p class="str3m-player__ra-note" data-str3m-player-ra-note>Le tore peut encore accorder la tenue de lecture selon la couche dominante.</p>
+                                </div>
+                                <div class="str3m-player__hero-meta" aria-label="État du lecteur">
+                                    <span class="meta-pill">mood : <?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></span>
+                                    <span class="meta-pill">template : <?= h((string) ($dailyStream['template'] ?? 'empty')) ?></span>
+                                </div>
                             </div>
-                            <div class="str3m-player__hero-meta" aria-label="État du lecteur">
-                                <span class="meta-pill">mood : <?= h((string) ($dailyStream['mood'] ?? 'calm')) ?></span>
-                                <span class="meta-pill">template : <?= h((string) ($dailyStream['template'] ?? 'empty')) ?></span>
+
+                            <div class="str3m-player__dock">
+                                <section class="str3m-player__transport str3m-player__transport--primary" aria-labelledby="str3m-player-transport-title">
+                                    <div class="str3m-player__section-topline">
+                                        <h5 id="str3m-player-transport-title">Écoute</h5>
+                                        <span class="str3m-player__state" data-str3m-player-status>prêt</span>
+                                    </div>
+
+                                    <div class="str3m-player__buttons">
+                                        <button type="button" class="str3m-player__button" data-str3m-player-back aria-label="Reculer de cinq secondes">−5 s</button>
+                                        <button type="button" class="str3m-player__button str3m-player__button--primary" data-str3m-player-toggle aria-label="Lecture ou pause">lecture</button>
+                                        <button type="button" class="str3m-player__button" data-str3m-player-forward aria-label="Avancer de cinq secondes">+5 s</button>
+                                    </div>
+
+                                    <label class="str3m-player__range-wrap">
+                                        <span class="sr-only">Progression du str3m</span>
+                                        <input type="range" min="0" max="1" step="0.001" value="0" data-str3m-player-progress>
+                                    </label>
+
+                                    <div class="str3m-player__times" aria-live="polite">
+                                        <span data-str3m-player-current>00:00</span>
+                                        <span data-str3m-player-duration>00:00</span>
+                                    </div>
+                                </section>
+
+                                <details class="str3m-player__advanced">
+                                    <summary class="str3m-player__advanced-summary" aria-controls="str3m-player-advanced-panel">
+                                        <span class="summary-label">écoute avancée</span>
+                                        <strong>Affiner la lecture</strong>
+                                        <span class="str3m-player__advanced-meta">vitesse · profils · EQ · état</span>
+                                    </summary>
+
+                                    <div class="str3m-player__advanced-grid" id="str3m-player-advanced-panel">
+                                        <section class="str3m-player__controls" aria-labelledby="str3m-player-controls-title">
+                                            <div class="str3m-player__section-topline">
+                                                <h5 id="str3m-player-controls-title">Lecture</h5>
+                                                <output class="str3m-player__rate" data-str3m-player-rate-output>1.00×</output>
+                                            </div>
+
+                                            <div class="str3m-player__buttons str3m-player__buttons--compact">
+                                                <button type="button" class="str3m-player__button" data-str3m-player-rate-step="-0.25">−</button>
+                                                <button type="button" class="str3m-player__button" data-str3m-player-rate-step="0.25">+</button>
+                                                <button type="button" class="str3m-player__button" data-str3m-player-reset>reset</button>
+                                            </div>
+
+                                            <div class="str3m-player__preset-bank" aria-label="Profils d'écoute">
+                                                <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="auto" aria-pressed="true">auto</button>
+                                                <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="velvet" aria-pressed="false">velours</button>
+                                                <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="voice" aria-pressed="false">voix</button>
+                                                <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="wide" aria-pressed="false">large</button>
+                                                <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="night" aria-pressed="false">nuit</button>
+                                            </div>
+
+                                            <label class="str3m-player__toggle">
+                                                <input type="checkbox" data-str3m-player-preserve-pitch checked>
+                                                <span>Conserver la hauteur</span>
+                                            </label>
+                                        </section>
+
+                                        <section class="str3m-player__status-panel" aria-labelledby="str3m-player-status-title">
+                                            <div class="str3m-player__section-topline">
+                                                <h5 id="str3m-player-status-title">État</h5>
+                                            </div>
+                                            <div class="str3m-player__status-grid">
+                                                <p><span>Moteur</span><strong data-str3m-player-engine>web en attente</strong></p>
+                                                <p><span>Sortie</span><strong data-str3m-player-output>intégrée</strong></p>
+                                                <p><span>Média</span><strong data-str3m-player-source-state>annoncée</strong></p>
+                                                <p><span>Source</span><strong data-str3m-player-source><?= h($dailyAudioTitle) ?></strong></p>
+                                                <p><span>Vitesse</span><strong data-str3m-player-rate-state>1.00×</strong></p>
+                                                <p><span>EQ</span><strong data-str3m-player-summary>plat</strong></p>
+                                                <p><span>Raccourcis</span><strong>Espace · ← → · ±</strong></p>
+                                            </div>
+                                            <div class="str3m-player__status-actions">
+                                                <a
+                                                    class="str3m-player__status-link"
+                                                    data-str3m-player-open
+                                                    href="<?= h($dailyAudioPath) ?>"
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >ouvrir la source</a>
+                                                <button type="button" class="str3m-player__button" data-str3m-player-retry>relancer EQ</button>
+                                            </div>
+                                        </section>
+
+                                        <section class="str3m-player__eq" aria-labelledby="str3m-player-eq-title">
+                                            <div class="str3m-player__section-topline">
+                                                <h5 id="str3m-player-eq-title">EQ audio</h5>
+                                                <span class="str3m-player__eq-state" data-str3m-player-eq-state>actif</span>
+                                            </div>
+
+                                            <div class="str3m-player__sliders">
+                                                <label class="str3m-player__slider">
+                                                    <span>Bass <output data-str3m-player-bass-value>0.0 dB</output></span>
+                                                    <input type="range" min="-12" max="12" step="0.5" value="0" data-str3m-player-bass>
+                                                </label>
+                                                <label class="str3m-player__slider">
+                                                    <span>Mid <output data-str3m-player-mid-value>0.0 dB</output></span>
+                                                    <input type="range" min="-12" max="12" step="0.5" value="0" data-str3m-player-mid>
+                                                </label>
+                                                <label class="str3m-player__slider">
+                                                    <span>Treble <output data-str3m-player-treble-value>0.0 dB</output></span>
+                                                    <input type="range" min="-12" max="12" step="0.5" value="0" data-str3m-player-treble>
+                                                </label>
+                                                <label class="str3m-player__slider">
+                                                    <span>Gain <output data-str3m-player-gain-value>100%</output></span>
+                                                    <input type="range" min="0" max="150" step="1" value="100" data-str3m-player-gain>
+                                                </label>
+                                            </div>
+                                        </section>
+                                    </div>
+                                </details>
                             </div>
-                        </div>
 
-                        <div class="str3m-player__dock">
-                            <section class="str3m-player__transport" aria-labelledby="str3m-player-transport-title">
-                                <div class="str3m-player__section-topline">
-                                    <h5 id="str3m-player-transport-title">Transport</h5>
-                                    <span class="str3m-player__state" data-str3m-player-status><?= $dailyAudioHasSource ? 'prêt' : 'veille' ?></span>
-                                </div>
-
-                                <div class="str3m-player__buttons">
-                                    <button type="button" class="str3m-player__button" data-str3m-player-back aria-label="Reculer de cinq secondes"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>−5 s</button>
-                                    <button type="button" class="str3m-player__button str3m-player__button--primary" data-str3m-player-toggle aria-label="Lecture ou pause"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>lecture</button>
-                                    <button type="button" class="str3m-player__button" data-str3m-player-forward aria-label="Avancer de cinq secondes"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>+5 s</button>
-                                </div>
-
-                                <label class="str3m-player__range-wrap">
-                                    <span class="sr-only">Progression du str3m</span>
-                                    <input type="range" min="0" max="1" step="0.001" value="0" data-str3m-player-progress<?= $dailyAudioHasSource ? '' : ' disabled' ?>>
-                                </label>
-
-                                <div class="str3m-player__times" aria-live="polite">
-                                    <span data-str3m-player-current>00:00</span>
-                                    <span data-str3m-player-duration>00:00</span>
-                                </div>
-                            </section>
-
-                            <section class="str3m-player__controls" aria-labelledby="str3m-player-controls-title">
-                                <div class="str3m-player__section-topline">
-                                    <h5 id="str3m-player-controls-title">Lecture</h5>
-                                    <output class="str3m-player__rate" data-str3m-player-rate-output>1.00×</output>
-                                </div>
-
-                                <div class="str3m-player__buttons str3m-player__buttons--compact">
-                                    <button type="button" class="str3m-player__button" data-str3m-player-rate-step="-0.25"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>−</button>
-                                    <button type="button" class="str3m-player__button" data-str3m-player-rate-step="0.25"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>+</button>
-                                    <button type="button" class="str3m-player__button" data-str3m-player-reset<?= $dailyAudioHasSource ? '' : ' disabled' ?>>reset</button>
-                                </div>
-
-                                <div class="str3m-player__preset-bank" aria-label="Profils d'écoute">
-                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="auto" aria-pressed="true"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>auto</button>
-                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="velvet" aria-pressed="false"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>velours</button>
-                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="voice" aria-pressed="false"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>voix</button>
-                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="wide" aria-pressed="false"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>large</button>
-                                    <button type="button" class="str3m-player__preset" data-str3m-player-listening-preset="night" aria-pressed="false"<?= $dailyAudioHasSource ? '' : ' disabled' ?>>nuit</button>
-                                </div>
-
-                                <label class="str3m-player__toggle">
-                                    <input type="checkbox" data-str3m-player-preserve-pitch checked<?= $dailyAudioHasSource ? '' : ' disabled' ?>>
-                                    <span>Conserver la hauteur</span>
-                                </label>
-                            </section>
-
-                            <section class="str3m-player__eq" aria-labelledby="str3m-player-eq-title">
-                                <div class="str3m-player__section-topline">
-                                    <h5 id="str3m-player-eq-title">EQ audio</h5>
-                                    <span class="str3m-player__eq-state" data-str3m-player-eq-state><?= $dailyAudioHasSource ? 'actif' : 'hors source' ?></span>
-                                </div>
-
-                                <div class="str3m-player__sliders">
-                                    <label class="str3m-player__slider">
-                                        <span>Bass <output data-str3m-player-bass-value>0.0 dB</output></span>
-                                        <input type="range" min="-12" max="12" step="0.5" value="0" data-str3m-player-bass<?= $dailyAudioHasSource ? '' : ' disabled' ?>>
-                                    </label>
-                                    <label class="str3m-player__slider">
-                                        <span>Mid <output data-str3m-player-mid-value>0.0 dB</output></span>
-                                        <input type="range" min="-12" max="12" step="0.5" value="0" data-str3m-player-mid<?= $dailyAudioHasSource ? '' : ' disabled' ?>>
-                                    </label>
-                                    <label class="str3m-player__slider">
-                                        <span>Treble <output data-str3m-player-treble-value>0.0 dB</output></span>
-                                        <input type="range" min="-12" max="12" step="0.5" value="0" data-str3m-player-treble<?= $dailyAudioHasSource ? '' : ' disabled' ?>>
-                                    </label>
-                                    <label class="str3m-player__slider">
-                                        <span>Gain <output data-str3m-player-gain-value>100%</output></span>
-                                        <input type="range" min="0" max="150" step="1" value="100" data-str3m-player-gain<?= $dailyAudioHasSource ? '' : ' disabled' ?>>
-                                    </label>
-                                </div>
-                            </section>
-
-                            <section class="str3m-player__status-panel" aria-labelledby="str3m-player-status-title">
-                                <div class="str3m-player__section-topline">
-                                    <h5 id="str3m-player-status-title">État</h5>
-                                </div>
-                                <div class="str3m-player__status-grid">
-                                    <p><span>Moteur</span><strong data-str3m-player-engine><?= $dailyAudioHasSource ? 'web en attente' : 'veille' ?></strong></p>
-                                    <p><span>Sortie</span><strong data-str3m-player-output><?= $dailyAudioHasSource ? 'intégrée' : 'veille' ?></strong></p>
-                                    <p><span>Média</span><strong data-str3m-player-source-state><?= $dailyAudioHasSource ? 'annoncée' : 'aucune source' ?></strong></p>
-                                    <p><span>Source</span><strong data-str3m-player-source><?= $dailyAudioHasSource ? h($dailyAudioTitle) : 'aucune nappe' ?></strong></p>
-                                    <p><span>Vitesse</span><strong data-str3m-player-rate-state>1.00×</strong></p>
-                                    <p><span>EQ</span><strong data-str3m-player-summary>plat</strong></p>
-                                    <p><span>Raccourcis</span><strong>Espace · ← → · ±</strong></p>
-                                </div>
-                                <div class="str3m-player__status-actions">
-                                    <a
-                                        class="str3m-player__status-link"
-                                        data-str3m-player-open
-                                        href="<?= $dailyAudioHasSource ? h($dailyAudioPath) : '#' ?>"
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        <?= $dailyAudioHasSource ? '' : 'hidden aria-hidden="true"' ?>
-                                    >ouvrir la source</a>
-                                    <button type="button" class="str3m-player__button" data-str3m-player-retry<?= $dailyAudioHasSource ? '' : ' disabled' ?>>relancer EQ</button>
-                                </div>
-                            </section>
-                        </div>
-
-                        <audio preload="metadata" class="str3m-player__native" data-str3m-player-audio<?= $dailyAudioHasSource ? '' : ' aria-hidden="true"' ?>>
-                            <?php if ($dailyAudioHasSource): ?>
+                            <audio preload="metadata" class="str3m-player__native" data-str3m-player-audio>
                                 <source src="<?= h($dailyAudioPath) ?>">
-                            <?php endif; ?>
-                        </audio>
-                    </section>
+                            </audio>
+                        </section>
+                    <?php else: ?>
+                        <article class="str3m-player str3m-player--empty-state is-empty" aria-label="Écoute du jour en veille">
+                            <div class="str3m-player__hero">
+                                <div>
+                                    <p class="summary-label">Écoute</p>
+                                    <h4><?= h($str3mEmptyStateTitle) ?></h4>
+                                    <p class="str3m-player__copy"><?= h($str3mEmptyStateCopy) ?></p>
+                                </div>
+                                <div class="str3m-player__hero-meta" aria-label="État du courant">
+                                    <span class="meta-pill">audio : en veille</span>
+                                    <span class="meta-pill">surface : <?= h($str3mEmptyStateSurfaceLabel) ?></span>
+                                </div>
+                            </div>
+
+                            <div class="str3m-player__empty">
+                                <p class="str3m-player__empty-lead"><?= h($str3mEmptyStateLead) ?></p>
+                                <div class="str3m-player__empty-actions">
+                                    <a class="pill-link" href="<?= h($str3mEmptyStatePrimaryHref) ?>"><?= h($str3mEmptyStatePrimaryLabel) ?></a>
+                                    <a class="ghost-link" href="<?= h($str3mEmptyStateSecondaryHref) ?>"><?= h($str3mEmptyStateSecondaryLabel) ?></a>
+                                </div>
+                            </div>
+                        </article>
+                    <?php endif; ?>
                 </div>
             </section>
         </div>
@@ -640,8 +762,8 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         <?php else: ?>
             <p class="panel-copy">Aucun signal public n’est encore publié. Il suffit d’un premier signal pour faire apparaître une terre ici.</p>
             <div class="action-row">
-                <a class="pill-link" href="<?= h($joinHref) ?>">Poser une terre</a>
-                <a class="ghost-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
+                <a class="pill-link" href="<?= h($openLandHref) ?>"><?= h($openLandLabel) ?></a>
+                <a class="ghost-link" href="<?= h($guideHref) ?>">Se faire guider</a>
                 <a class="ghost-link" href="<?= h($signalHref) ?>">Voir Signal</a>
             </div>
         <?php endif; ?>
@@ -688,45 +810,46 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
         <?php else: ?>
             <p class="panel-copy">Aucune terre n’affleure encore assez pour cette couche.</p>
             <div class="action-row">
-                <a class="pill-link" href="<?= h($guideHref) ?>">Passer par 0wlslw0</a>
-                <a class="ghost-link" href="<?= h($joinHref) ?>">Poser une terre</a>
+                <a class="pill-link" href="<?= h($guideHref) ?>">Se faire guider</a>
+                <a class="ghost-link" href="<?= h($openLandHref) ?>"><?= h($openLandLabel) ?></a>
             </div>
         <?php endif; ?>
     </section>
 
     <details class="panel reveal str3m-exploratory-panel" aria-labelledby="str3m-exploratory-title">
-        <summary class="str3m-layer-summary">
+        <summary class="str3m-layer-summary" aria-controls="str3m-exploratory-panel-body">
             <span class="summary-label">exploratoire</span>
             <strong id="str3m-exploratory-title">Autres couches du courant</strong>
             <span class="str3m-layer-summary__meta"><?= h((string) $archipelagoLandCount) ?> île<?= $archipelagoLandCount > 1 ? 's' : '' ?> · shell · <?= h((string) $recentT0kCount) ?> t0k<?= $recentT0kCount > 1 ? 's' : '' ?> · <?= h((string) $recentB0t3Count) ?> b0t3<?= $recentB0t3Count > 1 ? 's' : '' ?></span>
         </summary>
 
-    <section class="panel reveal" aria-labelledby="str3m-shell-future-title">
-        <div class="section-topline">
-            <div>
-                <h2 id="str3m-shell-future-title">Lab · shell porté</h2>
-                <p class="panel-copy">Couche exploratoire : tactilité publique et pont vers n0de.</p>
-            </div>
-            <a class="ghost-link" href="<?= h($futureShellRoute) ?>">Voir n0de</a>
-        </div>
+	        <div id="str3m-exploratory-panel-body">
+	            <section class="panel reveal" aria-labelledby="str3m-shell-future-title">
+	                <div class="section-topline">
+	                    <div>
+	                        <h2 id="str3m-shell-future-title">Lab · shell porté</h2>
+	                        <p class="panel-copy">Couche exploratoire : tactilité publique et pont vers n0de.</p>
+	                    </div>
+	                    <a class="ghost-link" href="<?= h($futureShellRoute) ?>">Voir n0de</a>
+	                </div>
 
-        <div class="public-entry-grid">
-            <article class="public-entry-card public-entry-card--future-shell">
-                <strong>tactilité</strong>
-                <span>Hover, focus et appui distinguent déjà les états publics.</span>
-            </article>
-            <article class="public-entry-card public-entry-card--future-shell">
-                <strong>hooks</strong>
-                <span>Chaque terre visible expose des métadonnées pour un shell futur.</span>
-            </article>
-            <article class="public-entry-card public-entry-card--future-shell">
-                <strong>n0de</strong>
-                <span>Le pont naturel reste l’objet porté : manifest, sync, shell de relation.</span>
-            </article>
-        </div>
-    </section>
+	                <div class="public-entry-grid">
+	                    <article class="public-entry-card public-entry-card--future-shell">
+	                        <strong>tactilité</strong>
+	                        <span>Hover, focus et appui distinguent déjà les états publics.</span>
+	                    </article>
+	                    <article class="public-entry-card public-entry-card--future-shell">
+	                        <strong>hooks</strong>
+	                        <span>Chaque terre visible expose des métadonnées pour un shell futur.</span>
+	                    </article>
+	                    <article class="public-entry-card public-entry-card--future-shell">
+	                        <strong>n0de</strong>
+	                        <span>Le pont naturel reste l’objet porté : manifest, sync, shell de relation.</span>
+	                    </article>
+	                </div>
+	            </section>
 
-    <section class="panel reveal" aria-labelledby="islands-title">
+            <section class="panel reveal" aria-labelledby="islands-title">
         <div class="section-topline">
             <div>
                 <h2 id="islands-title">Archipel</h2>
@@ -834,10 +957,10 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                 <p class="panel-copy">Aucune de ces terres n’a encore publié de signal durable. L’archipel montre donc le visible avant publication.</p>
             <?php endif; ?>
         <?php endif; ?>
-    </section>
+            </section>
 
-    <?php if ($recentT0ks): ?>
-    <section class="panel reveal str3m-t0ks" aria-labelledby="str3m-t0ks-title">
+            <?php if ($recentT0ks): ?>
+            <section class="panel reveal str3m-t0ks" aria-labelledby="str3m-t0ks-title">
         <div class="section-topline">
             <div>
                 <h2 id="str3m-t0ks-title">T0ks dans le courant</h2>
@@ -862,10 +985,10 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                 </article>
             <?php endforeach; ?>
         </div>
-    </section>
-    <?php endif; ?>
-    <?php if ($recentB0t3s): ?>
-    <section class="panel reveal str3m-b0t3s" aria-labelledby="str3m-b0t3-title">
+            </section>
+            <?php endif; ?>
+            <?php if ($recentB0t3s): ?>
+            <section class="panel reveal str3m-b0t3s" aria-labelledby="str3m-b0t3-title">
         <div class="section-topline">
             <div>
                 <h2 id="str3m-b0t3-title">B0t3s dans le courant</h2>
@@ -882,8 +1005,9 @@ $str3mLabLinkLabel = $archipelagoLandCount > 0 ? 'Explorer l’archipel' : 'Voir
                 ><?= h((string) $b0t3['text']) ?></a>
             <?php endforeach; ?>
         </div>
-    </section>
-    <?php endif; ?>
+            </section>
+            <?php endif; ?>
+        </div>
     </details>
 
     <aside class="str3m-shell-ghost-dock" data-str3m-shell-ghost hidden aria-live="polite" aria-label="Shell fantôme en devenir">

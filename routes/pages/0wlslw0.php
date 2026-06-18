@@ -95,7 +95,6 @@ $agentUrl = trim((string) ((getenv('SOWWWL_0WLSLW0_CHAT_URL') ?: getenv('SOWWWL_
 $voiceState = guide_voice_browser_state($authenticatedLand);
 $voiceUpstreamState = trim((string) ($voiceState['upstream_state'] ?? guide_voice_upstream_state()));
 $voiceUpstreamLabel = trim((string) ($voiceState['upstream_label'] ?? guide_voice_upstream_label()));
-$guideMode = guide_voice_mode_label();
 $siteTitle = defined('SITE_TITLE') ? (string) constant('SITE_TITLE') : 'O. Le réseau minimal';
 $guideHref = guide_public_href($host);
 $openLandHref = $authenticatedLand
@@ -103,17 +102,29 @@ $openLandHref = $authenticatedLand
     : o_route_href('/rejoindre');
 $openLandLabel = $authenticatedLand ? 'Ouvrir ma terre' : 'Poser une terre';
 $guidePassageStateShort = match ($voiceUpstreamState) {
-    'remote-ready' => 'relais vocal amont configuré',
-    'auth-missing' => 'relais repere, autorisation incomplète',
-    default => 'guidage local actif',
+    'remote-ready' => 'guide prêt',
+    'auth-missing' => 'guide local prêt',
+    default => 'guide local prêt',
 };
 $guidePassageStateLong = match ($voiceUpstreamState) {
-    'remote-ready' => 'Le relais vocal est configuré. 0wlslw0 passe par lui quand il répond, puis revient au guidage local si besoin.',
-    'auth-missing' => 'Le relais est repéré, mais l’autorisation reste incomplète. 0wlslw0 reste utilisable ici.',
-    default => 'Le guidage local reste actif. Si l’amont manque, 0wlslw0 garde le seuil ouvert ici.',
+    'remote-ready' => '0wlslw0 répond ici tout de suite et peut aller plus loin si besoin.',
+    'auth-missing' => '0wlslw0 répond ici tout de suite. Aucun réglage supplémentaire n’est nécessaire pour commencer.',
+    default => '0wlslw0 répond ici tout de suite. Tu peux commencer maintenant, en voix ou en texte.',
 };
+$guideHeroNote = $authenticatedLand
+    ? 'Parle normalement. 0wlslw0 reformule puis t’oriente autour de ta terre.'
+    : 'Pas besoin de connaître Signal, Str3m ou aZa. Dis ce que tu veux faire, 0wlslw0 t’aide à commencer.';
+$guideVoiceIntroTitle = $authenticatedLand
+    ? 'Repars d’une intention simple.'
+    : 'Commence sans vocabulaire technique.';
+$guideVoiceIntroCopy = $authenticatedLand
+    ? 'Dis ce que tu veux reprendre, écrire, relire ou clarifier. 0wlslw0 te reformule puis te montre la bonne suite.'
+    : 'Décris ton besoin avec tes mots. 0wlslw0 reformule puis t’ouvre la première porte utile.';
+$guideSuggestionsIntro = $authenticatedLand
+    ? 'Tu peux repartir de l’une de ces demandes.'
+    : 'Tu peux commencer par l’une de ces phrases.';
 $pageTitle = '0wlslw0 — ' . $siteTitle;
-$pageDescription = '0wlslw0 — guide d entree pour comprendre ' . $siteTitle . ' et trouver la bonne porte sans se perdre.';
+$pageDescription = '0wlslw0 — guide d’entrée pour comprendre ' . $siteTitle . ' et trouver la bonne porte sans se perdre.';
 $owlDoors = [
     [
         'label' => '01 · ici',
@@ -127,7 +138,7 @@ $owlDoors = [
         'title' => 'Voir le courant',
         'copy' => 'Lire le public avant de choisir une terre.',
         'href' => o_route_href('/str3m'),
-        'cta' => 'Ouvrir Str3m',
+        'cta' => 'Lire le public',
     ],
     [
         'label' => '03 · terre',
@@ -136,7 +147,7 @@ $owlDoors = [
             ? 'Revenir vers la terre déjà liée.'
             : 'Nommer, situer et ouvrir une terre.',
         'href' => $openLandHref,
-        'cta' => $authenticatedLand ? 'Ouvrir la terre' : 'Commencer',
+        'cta' => $openLandLabel,
     ],
 ];
 $guideVoiceNotes = [
@@ -182,26 +193,28 @@ $guideVoiceNotes = [
 
 <main <?= main_landmark_attrs() ?> class="layout page-shell">
     <header class="hero page-header reveal">
-        <p class="eyebrow"><strong>0wlslw0</strong> <span>guide d entree</span></p>
+        <p class="eyebrow"><strong>0wlslw0</strong> <span>guide d’entrée</span></p>
         <h1 class="land-title">
-            <strong>Entrer sans se perdre.</strong>
-            <span>0wlslw0 / guide des passages</span>
+            <strong>Trouver la bonne première porte.</strong>
+            <span>0wlslw0 écoute, reformule, accompagne.</span>
         </h1>
-        <p class="lead">Parle, écris, puis prends la bonne porte.</p>
+        <p class="lead">Parle normalement, ou écris si tu préfères.</p>
+
+        <div class="action-row guide-hero-actions">
+            <a class="pill-link" href="#guide-voice-title">Parler ou écrire</a>
+            <a class="ghost-link" href="<?= h(o_route_href('/str3m')) ?>">Lire le public</a>
+            <a class="ghost-link" href="<?= h($openLandHref) ?>"><?= h($openLandLabel) ?></a>
+        </div>
 
         <div class="land-meta">
             <a class="meta-pill meta-pill-link" href="<?= h($openLandHref) ?>"><?= h($openLandLabel) ?></a>
             <?php if ($authenticatedLand): ?>
-                <span class="meta-pill">terre liee : <?= h((string) $authenticatedLand['slug']) ?></span>
+                <span class="meta-pill">terre liée : <?= h((string) $authenticatedLand['slug']) ?></span>
             <?php else: ?>
-                <span class="meta-pill">visite publique</span>
-            <?php endif; ?>
-            <span class="meta-pill"><?= h($guideMode) ?></span>
-            <?php if ($agentUrl !== ''): ?>
-                <a class="meta-pill meta-pill-link" href="<?= h($agentUrl) ?>" target="_blank" rel="noopener">ouvrir l agent</a>
+                <span class="meta-pill">public ouvert</span>
             <?php endif; ?>
         </div>
-        <p class="panel-copy guide-hero-note"><?= h($guidePassageStateLong) ?></p>
+        <p class="panel-copy guide-hero-note"><?= h($guideHeroNote) ?></p>
     </header>
 
     <?= render_spatial_context_bar('guide', $host) ?>
@@ -230,36 +243,22 @@ $guideVoiceNotes = [
     >
         <div class="section-topline">
             <div>
-                <h2 id="guide-voice-title">Parler à 0wlslw0</h2>
-                <p class="panel-copy">Parle naturellement. Sinon, écris une phrase courte.</p>
+                <h2 id="guide-voice-title">Commencer avec 0wlslw0</h2>
+                <p class="panel-copy">Parle naturellement. Sinon, écris court.</p>
             </div>
-            <span class="badge">voix + texte</span>
+            <span class="badge">voix ou texte</span>
         </div>
-        <p class="guide-voice-bridge"><?= h($guidePassageStateShort) ?></p>
 
         <div class="guide-grid guide-voice-grid">
             <div class="guide-voice-stage">
-                <div class="guide-voice-orb" aria-hidden="true">
-                    <span class="guide-voice-orb-core"></span>
-                    <span class="guide-voice-orb-ring"></span>
-                    <span class="guide-voice-breather" data-guide-voice-breather hidden>0</span>
+                <div class="guide-voice-intro">
+                    <span class="summary-label">première fois</span>
+                    <strong><?= h($guideVoiceIntroTitle) ?></strong>
+                    <p><?= h($guideVoiceIntroCopy) ?></p>
                 </div>
 
-                <p class="guide-voice-status" data-guide-voice-status role="status" aria-live="polite" aria-atomic="true">Prêt. Active la voix puis parle naturellement.</p>
-                <p class="guide-voice-transcript" data-guide-voice-transcript>Exemples : « ouvre Signal » · « take me to Str3m ».</p>
-                <p class="guide-voice-reply" data-guide-voice-reply aria-live="polite" aria-atomic="true">0wlslw0 répondra ici puis lira sa réponse.</p>
-                <div class="guide-voice-meta" aria-live="polite">
-                    <span class="guide-voice-origin-badge" data-guide-voice-origin data-guide-voice-origin-state="<?= h($voiceUpstreamState) ?>"><?= h($voiceUpstreamLabel) ?></span>
-                    <span class="guide-voice-meta-copy">texte de secours · historique court</span>
-                </div>
-                <ol class="guide-voice-history" data-guide-voice-history aria-label="Historique récent avec 0wlslw0" hidden></ol>
-                <form class="guide-voice-form" data-guide-voice-form>
-                    <label class="sr-only" for="guide-voice-text-input">Écrire à 0wlslw0</label>
-                    <input id="guide-voice-text-input" type="text" name="guide_voice_text" maxlength="280" autocomplete="off" placeholder="Écris ici si tu préfères le silence." data-guide-voice-input>
-                    <button type="submit" class="pill-link guide-voice-submit" data-guide-voice-submit>Envoyer</button>
-                </form>
-                <p class="guide-voice-input-hint" data-guide-voice-input-hint>Le texte reste disponible même si la reconnaissance vocale Web manque ici.</p>
-                <div class="guide-voice-suggestions" data-guide-voice-suggestions aria-label="Impulsions proposées par 0wlslw0">
+                <p class="guide-voice-suggestions-intro"><?= h($guideSuggestionsIntro) ?></p>
+                <div class="guide-voice-suggestions" data-guide-voice-suggestions aria-label="Phrases proposées par 0wlslw0">
                     <?php foreach (($voiceState['starter_prompts'] ?? []) as $prompt): ?>
                         <?php
                         $promptUtterance = trim((string) ($prompt['utterance'] ?? ''));
@@ -271,34 +270,74 @@ $guideVoiceNotes = [
                         <button type="button" class="guide-voice-suggestion" data-guide-voice-suggestion data-utterance="<?= h($promptUtterance) ?>"><?= h($promptLabel) ?></button>
                     <?php endforeach; ?>
                 </div>
-                <div class="guide-voice-signature" aria-live="polite">
-                    <span class="summary-label">Signature vocale</span>
-                    <strong data-guide-voice-signature>Voix spectrale · λ <?= h((string) $guideLandLambda) ?> nm</strong>
-                    <span class="guide-voice-profile" data-guide-voice-profile>tempo ajusté · <?= h($guideLandLabel) ?></span>
-                    <span class="guide-voice-mute-indicator" data-guide-voice-mute-indicator>voix active · I inverse + voix</span>
-                </div>
+
+                <form class="guide-voice-form" data-guide-voice-form>
+                    <label class="sr-only" for="guide-voice-text-input">Écrire à 0wlslw0</label>
+                    <input
+                        id="guide-voice-text-input"
+                        type="text"
+                        name="guide_voice_text"
+                        maxlength="280"
+                        autocomplete="off"
+                        autocapitalize="sentences"
+                        spellcheck="true"
+                        enterkeyhint="send"
+                        aria-describedby="guide-voice-text-hint"
+                        placeholder="Exemple : je veux juste regarder"
+                        data-guide-voice-input
+                    >
+                    <button type="submit" class="pill-link guide-voice-submit" data-guide-voice-submit>Envoyer</button>
+                </form>
+                <p class="guide-voice-input-hint" id="guide-voice-text-hint" data-guide-voice-input-hint>Le texte suffit si tu préfères ne pas activer le micro.</p>
 
                 <div class="action-row guide-voice-actions">
-                    <button type="button" class="pill-link" data-guide-voice-start>Activer la voix</button>
-                    <button type="button" class="ghost-link" data-guide-voice-stop hidden>Couper</button>
-                    <?php if ($agentUrl !== ''): ?>
-                        <a class="ghost-link" href="<?= h($agentUrl) ?>" target="_blank" rel="noopener">Ouvrir le relais externe</a>
-                    <?php endif; ?>
+                    <button type="button" class="pill-link" data-guide-voice-start>Parler maintenant</button>
+                    <button type="button" class="ghost-link" data-guide-voice-stop hidden>Couper la voix</button>
                 </div>
 
-                <a class="ghost-link guide-voice-route-link" href="#" data-guide-voice-route hidden>Continuer</a>
+                <div class="guide-voice-secondary">
+                    <div class="guide-voice-orb" aria-hidden="true">
+                        <span class="guide-voice-orb-core"></span>
+                        <span class="guide-voice-orb-ring"></span>
+                        <span class="guide-voice-breather" data-guide-voice-breather hidden>0</span>
+                    </div>
+
+                    <p class="guide-voice-status" data-guide-voice-status role="status" aria-live="polite" aria-atomic="true">Prêt. Dis ce que tu cherches, ou choisis une phrase ci-dessus.</p>
+                    <p class="guide-voice-transcript" data-guide-voice-transcript>Exemples : « je veux juste regarder » · « aide-moi à choisir » · « je veux poser une terre ».</p>
+                    <p class="guide-voice-reply" data-guide-voice-reply aria-live="polite" aria-atomic="true">0wlslw0 répondra ici puis te proposera la suite la plus simple.</p>
+                    <div class="guide-voice-meta" aria-live="polite">
+                        <span class="guide-voice-origin-badge" data-guide-voice-origin data-guide-voice-origin-state="<?= h($voiceUpstreamState) ?>"><?= h($voiceUpstreamLabel) ?></span>
+                        <span class="guide-voice-meta-copy">voix ou texte · mémoire courte</span>
+                    </div>
+                    <ol class="guide-voice-history" data-guide-voice-history aria-label="Historique récent avec 0wlslw0" hidden></ol>
+                    <div class="guide-voice-signature" aria-live="polite">
+                        <span class="summary-label">Signature vocale</span>
+                        <strong data-guide-voice-signature>Voix du guide · λ <?= h((string) $guideLandLambda) ?> nm</strong>
+                        <span class="guide-voice-profile" data-guide-voice-profile>tempo ajusté · <?= h($guideLandLabel) ?></span>
+                        <span class="guide-voice-mute-indicator" data-guide-voice-mute-indicator>voix active · suivi prêt</span>
+                    </div>
+
+                    <a class="ghost-link guide-voice-route-link" href="#" data-guide-voice-route hidden>Continuer</a>
+                </div>
             </div>
 
             <details class="guide-voice-notes" aria-label="État du passage">
-                <summary class="guide-voice-notes__summary">
-                    <span class="summary-label">État du passage</span>
+                <summary class="guide-voice-notes__summary" aria-controls="guide-voice-notes-panel">
+                    <span class="summary-label">détails du passage</span>
                     <strong><?= h($guidePassageStateShort) ?></strong>
                 </summary>
-                <p class="panel-copy guide-voice-notes__copy"><?= h($guidePassageStateLong) ?></p>
-                <div class="guide-console guide-console--encoded guide-voice-console">
-                    <?php foreach ($guideVoiceNotes as [$label, $value]): ?>
-                        <?= guide_ascii_note((string) $label, (string) $value) ?>
-                    <?php endforeach; ?>
+                <div id="guide-voice-notes-panel">
+                    <p class="panel-copy guide-voice-notes__copy"><?= h($guidePassageStateLong) ?></p>
+                    <?php if ($agentUrl !== ''): ?>
+                        <div class="action-row guide-voice-notes__actions">
+                            <a class="ghost-link" href="<?= h($agentUrl) ?>" target="_blank" rel="noopener">Ouvrir le relais externe</a>
+                        </div>
+                    <?php endif; ?>
+                    <div class="guide-console guide-console--encoded guide-voice-console">
+                        <?php foreach ($guideVoiceNotes as [$label, $value]): ?>
+                            <?= guide_ascii_note((string) $label, (string) $value) ?>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             </details>
         </div>
@@ -307,8 +346,8 @@ $guideVoiceNotes = [
     <section class="panel reveal guide-paths-panel" aria-labelledby="guide-paths-title">
         <div class="section-topline">
             <div>
-                <h2 id="guide-paths-title">Puis choisir une porte</h2>
-                <p class="panel-copy">Quand c’est clair, prends la suite la plus simple.</p>
+                <h2 id="guide-paths-title">Quand c’est clair, continuer</h2>
+                <p class="panel-copy">Quand 0wlslw0 a clarifié ton besoin, la suite tient en trois portes simples.</p>
             </div>
         </div>
 
