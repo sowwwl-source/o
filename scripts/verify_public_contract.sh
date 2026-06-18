@@ -5,12 +5,11 @@ repo_root=""
 env_file="deploy/.env.production"
 project_name="sowwwl-o"
 skip_container_checks=0
-
-default_repo_root() {
-	local script_dir
-	script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
-	printf '%s\n' "$(cd "$script_dir/.." && pwd -P)"
-}
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+. "$script_dir/shell_common_helpers.sh"
+. "$script_dir/app_runtime_contract_helpers.sh"
+. "$script_dir/bundle_contract_helpers.sh"
+. "$script_dir/http_contract_helpers.sh"
 
 usage() {
 	cat <<'EOF'
@@ -29,7 +28,7 @@ What this script verifies:
 EOF
 }
 
-repo_root=$(default_repo_root)
+repo_root=$(script_parent_repo_root "${BASH_SOURCE[0]}")
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -75,118 +74,6 @@ if [[ ! -f "$env_path" ]]; then
 	exit 1
 fi
 
-read_env_value() {
-	local key=$1
-	local raw
-	raw=$(grep -E "^${key}=" "$env_path" 2>/dev/null | tail -n 1 | cut -d '=' -f 2- || true)
-	raw=${raw%$'\r'}
-	raw=${raw#"\""}
-	raw=${raw%"\""}
-	raw=${raw#"'"}
-	raw=${raw%"'"}
-	printf '%s' "$raw"
-}
-
-origin_from_url() {
-	local value=${1:-}
-	value=${value#http://}
-	value=${value#https://}
-	value=${value%%/*}
-	value=${value%%\?*}
-	printf '%s' "${value,,}"
-}
-
-read_header_values() {
-	local url=${1:?Missing URL}
-	local header_name=${2:?Missing header name}
-	local header_name_lc
-
-	header_name_lc=$(printf '%s' "$header_name" | tr '[:upper:]' '[:lower:]')
-	curl -fsSI "$url" | awk -F': ' -v header_name_lc="$header_name_lc" '
-		tolower($1) == header_name_lc {
-			sub(/\r$/, "", $2)
-			print $2
-		}
-	'
-}
-
-assert_single_header() {
-	local url=${1:?Missing URL}
-	local header_name=${2:?Missing header name}
-	local count
-
-	count=$(read_header_values "$url" "$header_name" | awk 'END { print NR + 0 }')
-	if [[ "$count" -ne 1 ]]; then
-		echo "Expected a single ${header_name} header on ${url}, got ${count}" >&2
-		exit 1
-	fi
-}
-
-assert_header_contains() {
-	local url=${1:?Missing URL}
-	local header_name=${2:?Missing header name}
-	local pattern=${3:?Missing pattern}
-
-	if ! read_header_values "$url" "$header_name" | grep -qE "$pattern"; then
-		echo "Expected ${header_name} on ${url} to match ${pattern}" >&2
-		exit 1
-	fi
-}
-
-assert_header_absent() {
-	local url=${1:?Missing URL}
-	local header_name=${2:?Missing header name}
-
-	if read_header_values "$url" "$header_name" | grep -q '.'; then
-		echo "Expected ${header_name} to be absent on ${url}" >&2
-		exit 1
-	fi
-}
-
-assert_status_code() {
-	local url=${1:?Missing URL}
-	local expected=${2:?Missing expected status}
-	local actual
-
-	actual=$(curl -sS -o /dev/null -I -w '%{http_code}' "$url")
-	if [[ "$actual" != "$expected" ]]; then
-		echo "Expected ${url} to return ${expected}, got ${actual}" >&2
-		exit 1
-	fi
-}
-
-assert_body_matches() {
-	local url=${1:?Missing URL}
-	local pattern=${2:?Missing pattern}
-	local tmp_file
-	tmp_file=$(mktemp)
-
-	curl -fsS "$url" -o "$tmp_file"
-	if ! grep -qE "$pattern" "$tmp_file"; then
-		rm -f "$tmp_file"
-		echo "Expected ${url} body to match ${pattern}" >&2
-		exit 1
-	fi
-
-	rm -f "$tmp_file"
-}
-
-assert_body_absent() {
-	local url=${1:?Missing URL}
-	local pattern=${2:?Missing pattern}
-	local tmp_file
-	tmp_file=$(mktemp)
-
-	curl -fsS "$url" -o "$tmp_file"
-	if grep -qE "$pattern" "$tmp_file"; then
-		rm -f "$tmp_file"
-		echo "Expected ${url} body to avoid ${pattern}" >&2
-		exit 1
-	fi
-
-	rm -f "$tmp_file"
-}
-
 resolve_versioned_asset_url() {
 	local page_url=${1:?Missing page URL}
 	local asset_name=${2:?Missing asset name}
@@ -210,12 +97,12 @@ signal_validation_args() {
 	local signal_delivery
 	local magic_delivery
 
-	signal_delivery=$(read_env_value "SOWWWL_SIGNAL_IDENTITY_DELIVERY")
-	magic_delivery=$(read_env_value "SOWWWL_MAGIC_LINK_DELIVERY")
+	signal_delivery=$(shell_read_env_value "$env_path" "SOWWWL_SIGNAL_IDENTITY_DELIVERY")
+	magic_delivery=$(shell_read_env_value "$env_path" "SOWWWL_MAGIC_LINK_DELIVERY")
 
 	printf '%s\n' "--require-schema-ready"
 	printf '%s\n' "--require-runtime-ready"
-	if [[ "${signal_delivery,,}" == "mail" || "${magic_delivery,,}" == "mail" ]]; then
+	if [[ "$(shell_to_lower "$signal_delivery")" == "mail" || "$(shell_to_lower "$magic_delivery")" == "mail" ]]; then
 		printf '%s\n' "--require-delivery-ready"
 	fi
 }
@@ -223,7 +110,7 @@ signal_validation_args() {
 should_verify_0wlslw0_agent() {
 	local endpoint
 
-	endpoint=$(read_env_value "SOWWWL_0WLSLW0_AGENT_ENDPOINT")
+	endpoint=$(shell_read_env_value "$env_path" "SOWWWL_0WLSLW0_AGENT_ENDPOINT")
 	[[ -n "$endpoint" ]]
 }
 
@@ -231,65 +118,87 @@ should_verify_pi_host() {
 	local public_origin
 	local api_origin
 
-	public_origin=$(origin_from_url "$(read_env_value "SOWWWL_PUBLIC_ORIGIN")")
-	api_origin=$(origin_from_url "$(read_env_value "API_PUBLIC_BASE_URL")")
+	public_origin=$(shell_origin_from_url "$(shell_read_env_value "$env_path" "SOWWWL_PUBLIC_ORIGIN")")
+	api_origin=$(shell_origin_from_url "$(shell_read_env_value "$env_path" "API_PUBLIC_BASE_URL")")
 
 	[[ "$public_origin" == "pi.sowwwl.cloud" || "$api_origin" == "pi.sowwwl.cloud" ]]
 }
 
+detect_container_repo_root() {
+	local container_name=${1:?Missing container name}
+	local candidate
+
+	for candidate in /var/www/html /var/www/html/o; do
+		if docker exec "$container_name" test -f "$candidate/config.php" >/dev/null 2>&1 \
+			&& docker exec "$container_name" test -d "$candidate/scripts" >/dev/null 2>&1; then
+			printf '%s\n' "$candidate"
+			return 0
+		fi
+	done
+
+	return 1
+}
+
 if [[ $skip_container_checks -eq 0 ]]; then
+	container_repo_root=""
+
+	if ! shell_container_is_running "$app_container"; then
+		echo "App container is not running: $app_container" >&2
+		shell_read_lines_into_array running_app_containers < <(shell_list_running_app_containers)
+		if [[ ${#running_app_containers[@]} -gt 0 ]]; then
+			echo "Running app containers detected: ${running_app_containers[*]}" >&2
+		fi
+		echo "Retry with --project-name <compose-project> or use --skip-container-checks." >&2
+		exit 1
+	fi
+
+	container_repo_root=$(detect_container_repo_root "$app_container" || true)
+	if [[ -z "$container_repo_root" ]]; then
+		echo "Could not locate repository root inside $app_container. Checked /var/www/html and /var/www/html/o." >&2
+		exit 1
+	fi
+
 	echo "==> Verifying runtime helpers inside app container"
-	docker exec "$app_container" php /var/www/html/scripts/check_spatial_surface.php --require-ready >/dev/null
-	docker exec "$app_container" php /var/www/html/scripts/check_media_readers.php --require-ready >/dev/null
-	mapfile -t signal_args < <(signal_validation_args)
-	docker exec "$app_container" php /var/www/html/scripts/check_signal_validation.php "${signal_args[@]}" >/dev/null
+	app_runtime_require_standard_guard_files "$app_container" "$container_repo_root/scripts"
+	app_runtime_run_spatial_surface_guard "$app_container" "$container_repo_root/scripts"
+		shell_read_lines_into_array signal_args < <(signal_validation_args)
+	app_runtime_run_standard_guard_suite "$app_container" "$container_repo_root/scripts" "${signal_args[@]}"
 
 	if should_verify_0wlslw0_agent; then
 		echo "==> Verifying 0wlslw0 remote relay"
-		docker exec "$app_container" php /var/www/html/scripts/check_0wlslw0_agent.php --require-remote-ok
+		app_runtime_run_0wlslw0_remote_guard "$app_container" "$container_repo_root/scripts"
 	else
 		echo "==> 0wlslw0 remote relay not configured in $env_path (local fallback remains available)"
 	fi
 fi
 
 echo "==> Verifying public contract"
-public_shell_url=$(resolve_versioned_asset_url https://sowwwl.com/ public-shell.js)
-main_js_url=$(resolve_versioned_asset_url https://sowwwl.com/str3m main.js)
-main_str3m_url=$(resolve_versioned_asset_url https://sowwwl.com/str3m main.str3m.js)
-main_sceptre_url=$(resolve_versioned_asset_url https://sowwwl.com/ main.sceptre.js)
-main_landscape_url=$(resolve_versioned_asset_url https://sowwwl.com/ main.landscape.js)
-main_island_url=$(resolve_versioned_asset_url https://sowwwl.com/ main.island.js)
-main_pages_url=$(resolve_versioned_asset_url https://sowwwl.com/ main.pages.js)
+bundle_resolve_public_asset_urls
 
-curl -fsSI https://sowwwl.com/
-curl -fsSI https://sowwwl.com/robots.txt
-curl -fsSI https://sowwwl.com/sitemap.xml
-curl -fsSI https://0wlslw0.com/
-curl -fsSI https://0wlslw0.com/robots.txt
-curl -fsSI https://0wlslw0.com/sitemap.xml
-curl -fsSI https://sowwwl.io/
-curl -fsSI https://www.sowwwl.io/
-curl -fsSI https://sowwwl.cloud/
-curl -fsSI https://www.sowwwl.cloud/
-curl -fsSI https://sowwwl.xyz/
-curl -fsSI https://sowwwl.xyz/map
-curl -fsSI https://sowwwl.com/signal
-curl -fsSI https://sowwwl.com/str3m
-curl -fsSI 'https://sowwwl.com/island?u=pablo-espallergues'
-curl -fsSI https://sowwwl.com/0wlslw0
-curl -fsSI https://sowwwl.com/icons/icon.svg
-curl -fsSI https://sowwwl.com/icons/icon-192.png
-curl -fsSI 'https://sowwwl.com/manifest.php?app=owl'
-curl -fsSI https://sowwwl.org/
-curl -fsSI https://api.sowwwl.cloud/healthz
-curl -fsSI https://api.sowwwl.cloud/v1/status
-curl -fsSI "$public_shell_url"
-curl -fsSI "$main_js_url"
-curl -fsSI "$main_str3m_url"
-curl -fsSI "$main_sceptre_url"
-curl -fsSI "$main_landscape_url"
-curl -fsSI "$main_island_url"
-curl -fsSI "$main_pages_url"
+assert_head_ok https://sowwwl.com/
+assert_head_ok https://sowwwl.com/robots.txt
+assert_head_ok https://sowwwl.com/sitemap.xml
+assert_head_ok https://0wlslw0.com/
+assert_head_ok https://0wlslw0.com/robots.txt
+assert_head_ok https://0wlslw0.com/sitemap.xml
+assert_head_ok https://sowwwl.io/
+assert_head_ok https://www.sowwwl.io/
+assert_head_ok https://sowwwl.cloud/
+assert_head_ok https://www.sowwwl.cloud/
+assert_head_ok https://sowwwl.xyz/
+assert_head_ok https://sowwwl.xyz/map
+assert_head_ok https://sowwwl.com/signal
+assert_head_ok https://sowwwl.com/str3m
+assert_head_ok https://sowwwl.com/rejoindre
+assert_head_ok 'https://sowwwl.com/island?u=pablo-espallergues'
+assert_head_ok https://sowwwl.com/0wlslw0
+assert_head_ok https://sowwwl.com/icons/icon.svg
+assert_head_ok https://sowwwl.com/icons/icon-192.png
+assert_head_ok 'https://sowwwl.com/manifest.php?app=owl'
+assert_head_ok https://sowwwl.org/
+assert_head_ok https://api.sowwwl.cloud/healthz
+assert_head_ok https://api.sowwwl.cloud/v1/status
+bundle_assert_public_asset_heads
 
 assert_status_code https://sowwwl.com/robots.txt 200
 assert_status_code https://sowwwl.com/sitemap.xml 200
@@ -302,25 +211,14 @@ assert_status_code https://sowwwl.com/map.php 308
 assert_status_code https://sowwwl.com/rejoindre.php 308
 assert_status_code https://sowwwl.com/0wlslw0.php 308
 
-assert_body_matches https://sowwwl.com/ 'Trois portes : public, terre, 0wlslw0|Passer par 0wlslw0|commande noyau'
+assert_body_matches https://sowwwl.com/ 'Trois portes suffisent|Voir le public|Poser une terre|Se faire guider|J’ai déjà une terre'
 assert_body_matches https://sowwwl.com/robots.txt 'Sitemap: https://sowwwl\.com/sitemap\.xml'
 assert_body_matches https://sowwwl.com/sitemap.xml '<loc>https://sowwwl\.com/</loc>|<loc>https://sowwwl\.com/str3m</loc>'
-assert_body_matches https://0wlslw0.com/ 'Entrer sans se perdre|guide des passages|Parler à 0wlslw0'
+assert_body_matches https://0wlslw0.com/ 'Trouver la bonne première porte|Parler ou écrire|Lire le public'
 assert_body_matches https://0wlslw0.com/robots.txt 'Sitemap: https://0wlslw0\.com/sitemap\.xml'
 assert_body_matches https://0wlslw0.com/sitemap.xml '<loc>https://0wlslw0\.com/</loc>'
-assert_body_matches "$public_shell_url" 'querySelectorAll\("\.reveal"\)|public-shell'
-assert_body_absent "$public_shell_url" 'requestIdleCallback'
-assert_body_matches "$main_js_url" 'runPageInit\("xyzCamera",[[:space:]]*initXyzCamera\);?'
-assert_body_matches "$main_js_url" 'const[[:space:]]+hasRecognition[[:space:]]*=[[:space:]]*Boolean\(RecognitionCtor\);?'
-assert_body_matches "$main_str3m_url" 'function[[:space:]]+initStr3mIntegratedPlayer\(\)|function[[:space:]]+bindStr3mIntegratedPlayer\('
-assert_body_matches "$main_sceptre_url" 'function[[:space:]]+initSceptreConsole\(\)|function[[:space:]]+initPocketCameraPanels\('
-assert_body_matches "$main_landscape_url" 'function[[:space:]]+initLandscapeChoirs\(\)'
-assert_body_matches "$main_island_url" 'function[[:space:]]+initIslandReaderStation\(\)|function[[:space:]]+initIslandReaderFullscreen\(\)'
-assert_body_matches "$main_pages_url" 'runPageInit\("landscapeChoirs",[[:space:]]*initLandscapeChoirs\);?'
-assert_body_matches "$main_pages_url" 'runPageInit\("sceptreConsole",[[:space:]]*initSceptreConsole\);?'
-assert_body_matches "$main_pages_url" 'runPageInit\("str3mIntegratedPlayer",[[:space:]]*initStr3mIntegratedPlayer\);?'
-assert_body_matches "$main_pages_url" 'runPageInit\("guideVoice",[[:space:]]*initGuideVoice\);?'
-assert_body_matches https://sowwwl.com/str3m 'data-str3m-player-engine|data-str3m-player-source-state|ouvrir la source'
+bundle_assert_public_js_contract
+assert_body_matches https://sowwwl.com/str3m 'data-str3m-player-engine|data-str3m-player-source-state|ouvrir la source|Aucune écoute publique aujourd’hui|Lire aujourd’hui|Se faire guider'
 assert_body_matches 'https://sowwwl.com/island?u=pablo-espallergues' 'data-island-reader-shell|data-str3m-player-engine|ouvrir la source'
 assert_body_matches https://sowwwl.io/ 'monde instrument|Surface de jeu Terre et Mine|Mode casque web'
 assert_body_matches https://sowwwl.io/ 'Perspective caméra|data-xyz-camera-facing-button="environment"'
@@ -347,52 +245,40 @@ assert_header_contains https://sowwwl.com/0wlslw0.php location '^https://sowwwl\
 assert_header_contains https://sowwwl.com strict-transport-security 'max-age=31536000'
 assert_header_contains https://0wlslw0.com strict-transport-security 'max-age=31536000'
 assert_header_contains 'https://sowwwl.com/?connexion=1' cache-control 'no-store'
-assert_header_contains 'https://sowwwl.com/?connexion=1' set-cookie '^sowwwl_session='
 assert_header_contains https://sowwwl.com/ cache-control 'public, max-age='
 assert_header_absent https://sowwwl.com/ set-cookie
+assert_header_absent 'https://sowwwl.com/?connexion=1' set-cookie
+assert_header_absent https://sowwwl.com/rejoindre set-cookie
 assert_header_absent 'https://sowwwl.com/manifest.php?app=owl' set-cookie
 
 if should_verify_pi_host; then
-	curl -fsSI https://pi.sowwwl.cloud/
-	curl -fsSI https://pi.sowwwl.cloud/healthz
-	curl -fsSI https://pi.sowwwl.cloud/v1/status
-	curl -fsSI https://pi.sowwwl.cloud/camera/pi3-camera-01
-	curl -fsSI https://pi.sowwwl.cloud/sceptre/ensemble
+	assert_head_ok https://pi.sowwwl.cloud/
+	assert_head_ok https://pi.sowwwl.cloud/healthz
+	assert_head_ok https://pi.sowwwl.cloud/v1/status
+	assert_head_ok https://pi.sowwwl.cloud/camera/pi3-camera-01
+	assert_head_ok https://pi.sowwwl.cloud/sceptre/ensemble
 	assert_body_matches https://pi.sowwwl.cloud/v1/status '"service"[[:space:]]*:[[:space:]]*"pi\.sowwwl\.cloud"'
 	assert_body_matches https://pi.sowwwl.cloud/v1/status '"openapi"[[:space:]]*:[[:space:]]*"https://pi\.sowwwl\.cloud/docs/AzA_v0\.7_openapi\.min\.yaml"'
 	assert_body_matches https://pi.sowwwl.cloud/camera/pi3-camera-01 'Fen.tre harmonique'
 	assert_body_matches https://pi.sowwwl.cloud/sceptre/ensemble 'Sceptre harmonique|pi\.sowwwl\.cloud'
 fi
 
-assert_single_header https://sowwwl.com/ cross-origin-opener-policy
-assert_single_header https://sowwwl.com/ cross-origin-resource-policy
-assert_single_header https://sowwwl.com/ x-permitted-cross-domain-policies
-assert_single_header https://sowwwl.xyz/ cross-origin-opener-policy
-assert_single_header https://sowwwl.xyz/ cross-origin-resource-policy
-assert_single_header https://sowwwl.xyz/ x-permitted-cross-domain-policies
-assert_single_header https://sowwwl.io/ cross-origin-opener-policy
-assert_single_header https://sowwwl.io/ cross-origin-resource-policy
-assert_single_header https://sowwwl.io/ x-permitted-cross-domain-policies
-assert_single_header https://0wlslw0.com cross-origin-opener-policy
-assert_single_header https://0wlslw0.com cross-origin-resource-policy
-assert_single_header https://0wlslw0.com x-permitted-cross-domain-policies
+assert_standard_cross_origin_headers https://sowwwl.com/
+assert_standard_cross_origin_headers https://sowwwl.xyz/
+assert_standard_cross_origin_headers https://sowwwl.io/
+assert_standard_cross_origin_headers https://0wlslw0.com
 
-assert_header_contains https://sowwwl.com/ permissions-policy 'microphone=\(self\)'
-assert_header_contains https://sowwwl.com/ permissions-policy 'screen-wake-lock=\(self\)'
-assert_header_contains https://sowwwl.io/ permissions-policy 'accelerometer=\(self\)'
-assert_header_contains https://sowwwl.io/ permissions-policy 'camera=\(self\)'
-assert_header_contains https://sowwwl.io/ permissions-policy 'microphone=\(self\)'
-assert_header_contains https://sowwwl.io/ permissions-policy 'screen-wake-lock=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'accelerometer=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'ambient-light-sensor=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'camera=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'gyroscope=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'magnetometer=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'microphone=\(self\)'
-assert_header_contains https://sowwwl.xyz/ permissions-policy 'screen-wake-lock=\(self\)'
+assert_permissions_policy_self_directives https://sowwwl.com/ microphone screen-wake-lock
+assert_permissions_policy_self_directives https://sowwwl.io/ accelerometer camera microphone screen-wake-lock
+assert_permissions_policy_self_directives https://sowwwl.xyz/ \
+	accelerometer ambient-light-sensor camera gyroscope magnetometer microphone screen-wake-lock
 
 if [[ $skip_container_checks -eq 0 ]]; then
-	docker inspect "$caddy_container" --format '{{range .Mounts}}{{println .Source " -> " .Destination}}{{end}}' | grep '/srv/sites' >/dev/null
+	if shell_container_exists "$caddy_container"; then
+		docker inspect "$caddy_container" --format '{{range .Mounts}}{{println .Source " -> " .Destination}}{{end}}' | grep '/srv/sites' >/dev/null
+	else
+		echo "==> Skipping caddy mount check: container not present for project $project_name"
+	fi
 fi
 
 echo "==> Public contract verified"

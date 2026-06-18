@@ -106,19 +106,30 @@ function media_fetch_local(string $baseUrl, string $host, string $path): array
 }
 
 [$islandSlug, $islandSlugFallbackUsed] = media_resolve_default_island_slug($requestedIslandSlug);
+$islandLandAvailable = find_land($islandSlug) !== null;
+$skipIslandRoute = $requestedIslandSlug === '' && !$islandLandAvailable;
 
 $routes = [
     'str3m' => [
         'path' => '/str3m',
         'markers' => [
-            'data-str3m-player',
             'data-continuity-dome',
-            'data-str3m-player-engine',
-            'data-str3m-player-output',
-            'data-str3m-player-source-state',
-            'data-str3m-player-listening-preset',
-            'data-str3m-player-open',
-            'data-str3m-player-retry',
+        ],
+        'marker_groups' => [
+            'integrated-player' => [
+                'data-str3m-player',
+                'data-str3m-player-engine',
+                'data-str3m-player-output',
+                'data-str3m-player-source-state',
+                'data-str3m-player-listening-preset',
+                'data-str3m-player-open',
+                'data-str3m-player-retry',
+            ],
+            'empty-state' => [
+                'str3m-player--empty-state',
+                'Aucune écoute publique aujourd’hui',
+                'str3m-player__empty-actions',
+            ],
         ],
     ],
     'island' => [
@@ -154,6 +165,8 @@ $payload = [
     'requested_island_slug' => $requestedIslandSlug !== '' ? $requestedIslandSlug : null,
     'island_slug' => $islandSlug,
     'island_slug_fallback_used' => $islandSlugFallbackUsed,
+    'island_land_available' => $islandLandAvailable,
+    'island_route_skipped' => $skipIslandRoute,
     'routes' => [],
     'ready' => false,
 ];
@@ -163,41 +176,72 @@ $issues = [];
 foreach ($routes as $name => $route) {
     $result = media_fetch_local($baseUrl, $host, (string) $route['path']);
     $routeIssues = [];
+    $routeSkipped = $name === 'island' && $skipIslandRoute;
+    $skipReason = $routeSkipped ? ('missing-land:' . $islandSlug) : null;
     $expectedStatuses = array_map('intval', (array) ($route['expected_statuses'] ?? [200]));
-    if (!in_array($result['status_code'], $expectedStatuses, true)) {
+
+    if (!$routeSkipped && !in_array($result['status_code'], $expectedStatuses, true)) {
         $routeIssues[] = 'http-' . ($result['status_code'] ?: 'unreachable');
     }
 
-    foreach ((array) ($route['markers'] ?? []) as $marker) {
-        $markerValue = trim((string) $marker);
-        if ($markerValue === '') {
-            continue;
-        }
-        if ($result['body'] === '' || strpos($result['body'], $markerValue) === false) {
-            $routeIssues[] = 'missing:' . $markerValue;
-        }
-    }
-
-    foreach ((array) ($route['conditional_markers'] ?? []) as $trigger => $markers) {
-        $triggerValue = trim((string) $trigger);
-        if ($triggerValue === '' || $result['body'] === '' || strpos($result['body'], $triggerValue) === false) {
-            continue;
-        }
-
-        foreach ((array) $markers as $marker) {
+    if (!$routeSkipped) {
+        foreach ((array) ($route['markers'] ?? []) as $marker) {
             $markerValue = trim((string) $marker);
             if ($markerValue === '') {
                 continue;
             }
-
-            if (strpos($result['body'], $markerValue) === false) {
+            if ($result['body'] === '' || strpos($result['body'], $markerValue) === false) {
                 $routeIssues[] = 'missing:' . $markerValue;
             }
         }
-    }
 
-    if ($result['error'] !== '') {
-        $routeIssues[] = $result['error'];
+        foreach ((array) ($route['conditional_markers'] ?? []) as $trigger => $markers) {
+            $triggerValue = trim((string) $trigger);
+            if ($triggerValue === '' || $result['body'] === '' || strpos($result['body'], $triggerValue) === false) {
+                continue;
+            }
+
+            foreach ((array) $markers as $marker) {
+                $markerValue = trim((string) $marker);
+                if ($markerValue === '') {
+                    continue;
+                }
+
+                if (strpos($result['body'], $markerValue) === false) {
+                    $routeIssues[] = 'missing:' . $markerValue;
+                }
+            }
+        }
+
+        if ($result['error'] !== '') {
+            $routeIssues[] = $result['error'];
+        }
+
+        $markerGroupMatched = empty($route['marker_groups']);
+        foreach ((array) ($route['marker_groups'] ?? []) as $markers) {
+            $groupMatched = true;
+
+            foreach ((array) $markers as $marker) {
+                $markerValue = trim((string) $marker);
+                if ($markerValue === '') {
+                    continue;
+                }
+
+                if ($result['body'] === '' || strpos($result['body'], $markerValue) === false) {
+                    $groupMatched = false;
+                    break;
+                }
+            }
+
+            if ($groupMatched) {
+                $markerGroupMatched = true;
+                break;
+            }
+        }
+
+        if (!$markerGroupMatched) {
+            $routeIssues[] = 'missing-group:' . implode('|', array_keys((array) $route['marker_groups']));
+        }
     }
 
     if ($routeIssues !== []) {
@@ -209,6 +253,8 @@ foreach ($routes as $name => $route) {
         'status_code' => $result['status_code'],
         'expected_statuses' => $expectedStatuses,
         'ready' => $routeIssues === [],
+        'skipped' => $routeSkipped,
+        'skip_reason' => $skipReason,
         'issues' => $routeIssues,
     ];
 }
@@ -226,6 +272,9 @@ if ($asJson) {
         fwrite(STDOUT, 'path        : ' . (string) ($route['path'] ?? '') . PHP_EOL);
         fwrite(STDOUT, 'http status : ' . (string) ($route['status_code'] ?? 0) . PHP_EOL);
         fwrite(STDOUT, 'ready       : ' . (($route['ready'] ?? false) ? 'yes' : 'no') . PHP_EOL);
+        if (($route['skipped'] ?? false) === true) {
+            fwrite(STDOUT, 'skipped     : ' . (string) ($route['skip_reason'] ?? 'yes') . PHP_EOL);
+        }
         if (($route['issues'] ?? []) !== []) {
             fwrite(STDOUT, 'issues      : ' . implode(', ', (array) $route['issues']) . PHP_EOL);
         }
