@@ -5,6 +5,42 @@ require __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/str3m_media.php';
 require_once __DIR__ . '/lib/str3m_daily.php';
 
+if (!function_exists('has_secure_session_cookie')) {
+    function has_secure_session_cookie(): bool
+    {
+        $cookie = $_COOKIE['sowwwl_session'] ?? null;
+        return is_string($cookie) && $cookie !== '';
+    }
+}
+
+if (!function_exists('mark_public_response_cacheable')) {
+    function mark_public_response_cacheable(int $maxAgeSeconds = 300, array $varyHeaders = ['Accept-Encoding']): void
+    {
+        header_remove('Pragma');
+        header_remove('Expires');
+        header('Cache-Control: public, max-age=' . max(0, $maxAgeSeconds));
+
+        $varyHeaders = array_values(array_filter(array_unique(array_map(
+            static fn ($value): string => trim((string) $value),
+            $varyHeaders
+        ))));
+
+        if ($varyHeaders === []) {
+            header_remove('Vary');
+            return;
+        }
+
+        header('Vary: ' . implode(',', $varyHeaders));
+    }
+}
+
+if (!function_exists('issue_request_token')) {
+    function issue_request_token(string $purpose, bool $preferStateless = false, int $ttlSeconds = 900): string
+    {
+        return csrf_token();
+    }
+}
+
 function signup_portal_steps(): array
 {
     $steps = [
