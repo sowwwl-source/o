@@ -85,6 +85,114 @@ body {
 	border: 0;
 }
 
+#o-apparitions {
+	position: fixed;
+	left: 50%;
+	bottom: max(0.9rem, env(safe-area-inset-bottom));
+	transform: translateX(-50%) translateY(0);
+	width: min(42rem, calc(100vw - 1.25rem));
+	display: flex;
+	align-items: center;
+	gap: 0.7rem;
+	padding: 0.75rem 0.9rem;
+	border: 1px solid rgba(var(--land-secondary-rgb) / 0.22);
+	border-radius: 1.2rem;
+	background:
+		linear-gradient(180deg, rgba(var(--panel-rgb) / 0.94), rgba(var(--bg-rgb) / 0.9));
+	box-shadow: 0 18px 48px rgba(0 0 0 / 0.28);
+	backdrop-filter: var(--glass-effect);
+	-webkit-backdrop-filter: var(--glass-effect);
+	z-index: 130;
+	opacity: 1;
+	transition: opacity 220ms ease, transform 220ms ease;
+}
+
+#o-apparitions.is-hidden {
+	opacity: 0;
+	transform: translateX(-50%) translateY(10px);
+	pointer-events: none;
+}
+
+.o-apparitions__sig {
+	flex: 0 0 auto;
+	color: rgba(var(--land-secondary-rgb) / 0.7);
+	font-size: 0.78rem;
+	letter-spacing: 0.32em;
+}
+
+.o-apparitions__list {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.o-apparition-link {
+	display: inline-flex;
+	align-items: center;
+	min-height: 2.1rem;
+	padding: 0.45rem 0.68rem;
+	border: 1px solid rgba(var(--land-secondary-rgb) / 0.18);
+	border-radius: 999px;
+	background: rgba(var(--bg-rgb) / 0.34);
+	box-shadow: 0 10px 28px rgba(0 0 0 / 0.14);
+	color: var(--fg);
+	font-size: 0.72rem;
+	letter-spacing: 0.22em;
+	text-decoration: none;
+	text-transform: uppercase;
+	transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+	white-space: nowrap;
+}
+
+.o-apparition-link:hover,
+.o-apparition-link:focus-visible {
+	color: var(--fg);
+	background: rgba(var(--land-secondary-rgb) / 0.12);
+	border-color: rgba(var(--land-secondary-rgb) / 0.4);
+	box-shadow: 0 14px 34px rgba(0 0 0 / 0.18);
+	transform: translateY(-1px);
+	outline: none;
+}
+
+.o-flip {
+	display: inline-flex;
+	align-items: center;
+	min-height: 1em;
+}
+
+.o-flip-char {
+	display: inline-block;
+	width: 1ch;
+	text-align: center;
+	opacity: 0.72;
+	transform: translateY(0.06em);
+}
+
+.o-flip-char.is-locked {
+	opacity: 1;
+	transform: translateY(0);
+	transition: opacity 160ms ease, transform 160ms ease;
+}
+
+@media (max-width: 640px) {
+	#o-apparitions {
+		width: calc(100vw - 1rem);
+		padding: 0.72rem 0.8rem;
+		gap: 0.58rem;
+	}
+
+	.o-apparitions__list {
+		gap: 0.42rem;
+	}
+
+	.o-apparition-link {
+		padding: 0.42rem 0.6rem;
+		font-size: 0.68rem;
+		letter-spacing: 0.18em;
+	}
+}
+
 .skip-link {
 	position: fixed;
 	left: max(1rem, env(safe-area-inset-left));

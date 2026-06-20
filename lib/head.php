@@ -395,6 +395,7 @@ function render_o_page_head_assets(?string $preferred = null, ?string $host = nu
     $spatialContractVersion = h(spatial_native_contract_version());
     $stylesHref = h(o_asset_href('styles.css'));
     $scriptHref = h(o_asset_href($scriptAsset));
+    $apparitionsHref = h(o_asset_href('apparitions.js'));
     $mainBundleHref = h(o_asset_href('main.js'));
     $mainStr3mBundleHref = h(o_asset_href('main.str3m.js'));
     $mainSceptreBundleHref = h(o_asset_href('main.sceptre.js'));
@@ -431,6 +432,7 @@ function render_o_page_head_assets(?string $preferred = null, ?string $host = nu
     <link rel="icon" href="{$faviconHref}" type="image/svg+xml">
 {$pwaHead}
     <link rel="stylesheet" href="{$stylesHref}">
-    <script defer src="{$scriptHref}"></script>{$str3mBundleScriptTag}{$sceptreBundleScriptTag}{$landscapeBundleScriptTag}{$islandBundleScriptTag}{$pageAdapterScriptTag}
+    <script defer src="{$scriptHref}"></script>
+    <script defer src="{$apparitionsHref}"></script>{$str3mBundleScriptTag}{$sceptreBundleScriptTag}{$landscapeBundleScriptTag}{$islandBundleScriptTag}{$pageAdapterScriptTag}
 HTML;
 }
