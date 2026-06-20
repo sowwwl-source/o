@@ -5,6 +5,7 @@
   const LAST_KEY = 'o:layer:last';
   const NEGATIVE_KEY = 'o:layer:negative';
   const APPARITIONS_LAST_AT_KEY = 'o:apparitions:last_at';
+  const APPARITION_MEMBER_CONTEXT_KEY = 'o:apparitions:member_context';
   const FLASH_LAST_BLACK_AT_KEY = 'o:flash:last_black_at';
   const RECOVERY_LAST_SHOWN_AT_KEY = 'o:recovery:last_shown_at';
   const RECOVERY_DISMISSED_UNTIL_KEY = 'o:recovery:dismissed_until';
@@ -18,14 +19,17 @@
   const SOUND_MUTED_KEY = 'o:sound:muted';
 
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const APPARITION_MEMBER_PATHS = new Set(['/land', '/shore', '/bato', '/dashboard', '/silence']);
+  const APPARITION_MEMBER_PATHS = new Set(['/land', '/shore', '/bato', '/dashboard', '/silence', '/echo']);
+  const APPARITION_MEMBER_PREFIXES = ['/port/'];
   const APPARITION_ENTRYPOINTS = [
-    { id: 'land', label: 'LAND', href: '/land', rarity: 'common' },
-    { id: 'shore', label: 'SHORE', href: '/shore', rarity: 'common' },
-    { id: 'bato', label: 'BATO', href: '/bato', rarity: 'uncommon' },
-    { id: 'dashboard', label: 'DASHBOARD', href: '/dashboard', rarity: 'uncommon' },
+    { id: 'land', label: 'LAND', href: '/land', rarity: 'common', audiences: ['member', 'mixed'], cluster: 'anchor' },
+    { id: 'shore', label: 'SHORE', href: '/shore', rarity: 'common', audiences: ['member', 'mixed'], cluster: 'anchor' },
+    { id: 'bato', label: 'BATO', href: '/bato', rarity: 'uncommon', audiences: ['member', 'mixed'] },
+    { id: 'dashboard', label: 'DASHBOARD', href: '/dashboard', rarity: 'uncommon', audiences: ['member', 'mixed'] },
     { id: 'aza', label: 'AZA', href: '/aza', rarity: 'rare' },
-    { id: 'silence', label: 'SILENCE', href: '/silence', rarity: 'rare' },
+    { id: 'silence', label: 'SILENCE', href: '/silence', rarity: 'rare', audiences: ['member', 'mixed'] },
+    { id: 'str3m', label: 'STR3M', href: '/str3m', rarity: 'uncommon', audiences: ['guest', 'mixed', 'member'], cluster: 'public' },
+    { id: 'signal', label: 'SIGNAL', href: '/signal', rarity: 'rare', audiences: ['guest', 'mixed', 'member'], cluster: 'public' },
     // INSTALL is meant to stay uncanny on public/mixed paths, not once a land is clearly active.
     { id: 'install', label: 'INSTALL', href: '/install', rarity: 'mythic', audiences: ['guest', 'mixed'] },
   ];
@@ -131,9 +135,33 @@
     return path === '/' ? '/install' : path;
   }
 
+  function isMemberPath(normalized) {
+    if (APPARITION_MEMBER_PATHS.has(normalized)) return true;
+    return APPARITION_MEMBER_PREFIXES.some((prefix) => normalized === prefix.slice(0, -1) || normalized.startsWith(prefix));
+  }
+
+  function hasMemberContext() {
+    return sessionStorage.getItem(APPARITION_MEMBER_CONTEXT_KEY) === '1';
+  }
+
+  function writeMemberContext(active) {
+    if (active) {
+      sessionStorage.setItem(APPARITION_MEMBER_CONTEXT_KEY, '1');
+      return;
+    }
+    sessionStorage.removeItem(APPARITION_MEMBER_CONTEXT_KEY);
+  }
+
   function apparitionAudienceForPath(normalized) {
-    if (normalized === '/install') return 'guest';
-    if (APPARITION_MEMBER_PATHS.has(normalized)) return 'member';
+    if (normalized === '/install') {
+      writeMemberContext(false);
+      return 'guest';
+    }
+    if (isMemberPath(normalized)) {
+      writeMemberContext(true);
+      return 'member';
+    }
+    if (hasMemberContext()) return 'member';
     return 'mixed';
   }
 
@@ -251,18 +279,18 @@
   }
 
   function rarityWeight(rarity) {
-    if (rarity === 'common') return 12;
+    if (rarity === 'common') return 10;
     if (rarity === 'uncommon') return 5;
-    if (rarity === 'rare') return 1.5;
-    if (rarity === 'mythic') return 0.35;
+    if (rarity === 'rare') return 3.5;
+    if (rarity === 'mythic') return 1;
     return 1;
   }
 
   function rarityChance(rarity) {
     if (rarity === 'common') return 1;
-    if (rarity === 'uncommon') return 0.65;
-    if (rarity === 'rare') return 0.22;
-    if (rarity === 'mythic') return 0.06;
+    if (rarity === 'uncommon') return 0.7;
+    if (rarity === 'rare') return 0.55;
+    if (rarity === 'mythic') return 0.18;
     return 0.25;
   }
 
@@ -301,6 +329,16 @@
     return picked;
   }
 
+  function keepClusterQuota(candidates, cluster, maxCount) {
+    if (!cluster || maxCount < 0) return candidates.slice();
+
+    const grouped = candidates.filter((candidate) => candidate.cluster === cluster);
+    if (grouped.length <= maxCount) return candidates.slice();
+
+    const keptIds = new Set(sampleWeightedWithoutReplacement(grouped, maxCount).map((candidate) => candidate.id));
+    return candidates.filter((candidate) => candidate.cluster !== cluster || keptIds.has(candidate.id));
+  }
+
   function readLastApparitionAt() {
     const raw = sessionStorage.getItem(APPARITIONS_LAST_AT_KEY);
     const n = Number(raw);
@@ -324,7 +362,7 @@
       return true;
     });
 
-    const targetCount = window.matchMedia('(max-width: 520px)').matches ? 2 : randomInt(2, 4);
+    const targetCount = randomInt(1, 2);
 
     function materialize(candidates) {
       return candidates.map((e) => ({
@@ -361,7 +399,9 @@
     if (candidates.length === 0) candidates = gatedCandidates(filtered, { ignoreCooldown: false, ignoreChance: true });
     if (candidates.length === 0) candidates = gatedCandidates(filtered, { ignoreCooldown: true, ignoreChance: true });
 
-    const picked = sampleWeightedWithoutReplacement(materialize(candidates), targetCount);
+    let curated = keepClusterQuota(materialize(candidates), 'anchor', 1);
+    curated = keepClusterQuota(curated, 'public', 1);
+    const picked = sampleWeightedWithoutReplacement(curated, targetCount);
     return picked;
   }
 
@@ -586,6 +626,8 @@
   }
 
   function mountApparitions(targets) {
+    if (!Array.isArray(targets) || targets.length === 0) return;
+
     const existing = document.getElementById('o-apparitions');
     if (existing) existing.remove();
 
@@ -731,8 +773,14 @@
         return;
       }
 
+      const targets = pickApparitionTargets();
+      if (targets.length === 0) {
+        apparitionTimer = window.setTimeout(scheduleApparitions, randomInt(9000, 18000));
+        return;
+      }
+
       writeLastApparitionAt(Date.now());
-      mountApparitions(pickApparitionTargets());
+      mountApparitions(targets);
 
       // Next apparition in ~25–55s.
       apparitionTimer = window.setTimeout(scheduleApparitions, randomInt(25000, 55000));
